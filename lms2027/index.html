@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2027</title>
+<!-- 접속이 불안정해 index.css나 index.js가 안 들어오면 모든 창이 꾸밈 없이 한 줄로 펼쳐진
+     깨진 화면이 보인다. 그래서 index.js가 디자인 적용까지 확인하고 html에 lms-ready를
+     붙이기 전에는 본문을 숨기고, 끝내 준비가 안 되면(lms-fail) 새로고침 안내만 보여 준다.
+     2026 lms에서 실제로 겪고 고친 문제라 처음부터 그대로 가져왔다. --lms-css-ok를 지우지 말 것. -->
+<style>
+html:not(.lms-ready) body{background:#F4F3EE}
+html:not(.lms-ready) body>*:not(#bootFail){display:none!important}
+#bootFail{display:none}
+html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-index:99999;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:#F4F3EE;color:#0A1317;text-align:center;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;font-size:17px;font-weight:600;line-height:1.6;word-break:keep-all}
+#bootFail button{padding:12px 28px;border:0;border-radius:999px;background:#0A1317;color:#fff;font:inherit;font-size:15px;cursor:pointer}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link rel="stylesheet" href="index.css?v=20261023a">
+<!-- 개발 중에는 /hoistory/lms2027/ 스코프를 쓴다. 학년 전환 때 lms/ 자리로 옮기면서
+     manifest의 id, start_url, scope를 /hoistory/lms/로 되돌린다(LMS2027.md 참고). -->
+<link rel="manifest" href="/hoistory/lms2027/manifest.json">
+<meta name="theme-color" content="#FF6B3D">
+<meta name="apple-mobile-web-app-title" content="IDY History LMS">
+<script src="/hoistory/pwa.js"></script>
+</head>
+<body>
+
+<div id="bootFail">
+  <p>접속이 불안정합니다.<br>새로고침하여 재접속해 주세요.</p>
+  <button type="button" onclick="location.reload()">새로고침</button>
+</div>
+<script>
+/* 페이지가 다 받아졌는데(load)도 index.js가 준비 표시를 못 붙였으면 안내를 띄운다.
+   load가 영영 안 오는 느린 연결도 있어 20초 뒤에도 한 번 더 본다. */
+(function () {
+  var root = document.documentElement;
+  function check() { if (!root.classList.contains('lms-ready')) root.classList.add('lms-fail'); }
+  window.addEventListener('load', function () { setTimeout(check, 1500); });
+  setTimeout(check, 20000);
+})();
+</script>
+
+<!-- ── 로그인 ──
+     학번을 받아 진행 중인 수업에서 등록(enrollment)을 찾는다. 2026과 달라진 점은
+     학번이 전역 식별자가 아니라는 것 — 학번은 수업 안에서만 유효하므로 어느 수업의
+     학번인지를 찾아내는 단계가 로그인에 들어간다. -->
+<div id="loginScreen" class="screen">
+  <div class="login-wrap">
+    <div class="login-brand">DIVE INTO HISTORY</div>
+    <div class="login-tagline">생각하고 활동하고 성찰하는 역사 수업 공간</div>
+    <div class="login-year" id="loginYear"></div>
+    <hr class="login-divider">
+
+    <label class="field">
+      <span class="field-label">학번</span>
+      <input id="inpStudentNo" class="field-input" type="tel" inputmode="numeric"
+             maxlength="5" autocomplete="off" placeholder="10101">
+    </label>
+
+    <!-- 이름 확인 칸은 학번으로 등록을 찾은 뒤에만 펼친다. -->
+    <div id="confirmBox" class="confirm-box" hidden>
+      <div class="confirm-course" id="confirmCourse"></div>
+      <div class="confirm-name" id="confirmName"></div>
+      <p class="confirm-ask">본인이 맞습니까?</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-ghost" id="btnConfirmNo">아니요</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmYes">맞습니다</button>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-block" id="btnLookup">확인</button>
+    <p class="login-msg" id="loginMsg"></p>
+  </div>
+</div>
+
+<!-- ── 수업 홈 ──
+     클래스룸의 수업 한 칸에 해당한다. 학생은 자기가 등록된 수업만 본다. -->
+<div id="courseScreen" class="screen" hidden>
+  <header class="hub-header">
+    <div class="hub-logo-wrap">
+      <span class="hub-logo">DIVE INTO</span><span class="hub-logo-sub">HISTORY</span>
+    </div>
+    <div class="header-right">
+      <span class="student-chip" id="chipStudent"></span>
+      <button type="button" class="logout-btn" id="btnLogout">로그아웃</button>
+    </div>
+  </header>
+
+  <main class="hub-body">
+    <section class="course-head">
+      <span class="course-badge" id="courseBadge"></span>
+      <h1 class="course-title" id="courseTitle"></h1>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span class="panel-ic" data-icon="book-open" data-icon-size="18"></span>
+        <h2 class="panel-title">수업</h2>
+      </div>
+      <div id="lessonList" class="lesson-list">
+        <p class="empty">불러오는 중입니다.</p>
+      </div>
+    </section>
+
+    <!-- 개편 진행 중임을 숨기지 않는다. 아직 안 옮긴 기능이 무엇인지 적어 둔다. -->
+    <section class="panel panel-note">
+      <div class="panel-head">
+        <span class="panel-ic" data-icon="clipboard-list" data-icon-size="18"></span>
+        <h2 class="panel-title">개편 진행 상황</h2>
+      </div>
+      <ul class="todo">
+        <li><span class="todo-done" data-icon="circle-check" data-icon-size="15"></span>사람, 수업, 등록 세 축 데이터 모델</li>
+        <li><span class="todo-done" data-icon="circle-check" data-icon-size="15"></span>수업 단위 로그인과 강의 목록</li>
+        <li><span class="todo-wait"></span>미션, 생각 체크, 성적, 공지, 경험치</li>
+        <li><span class="todo-wait"></span>어드민(수업 만들기, 명단 업로드, 강의 라이브러리)</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<script type="module" src="index.js?v=20261023a"></script>
+</body>
+</html>

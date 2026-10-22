@@ -1,0 +1,134 @@
+/* 2027 LMS 학생 화면 — 색 토큰은 2026 lms/index.css에서 그대로 가져왔다.
+   디자인 방향은 아직 정하지 않았으므로(LMS2027.md) 지금은 기존 톤을 유지한다. */
+
+:root{
+  --lms-css-ok:1; /* index.js가 이 값으로 디자인 적용 여부를 확인한다(index.html의 lms-ready) */
+  --canvas:#FAFAF9;--surface:#F4F3EE;
+  --hairline:#E5E4DF;--hairline-soft:#ECEAE4;
+  --ink-deep:#0A1317;--ink:#2C3333;--charcoal:#4A5568;--slate:#6B7280;--stone:#C4C4C4;
+  --primary:#FF6B3D;--primary-deep:#E24E1B;--primary-soft:rgba(255,107,61,0.10);
+  --navy:#27384F;
+  --success:#16A34A;--critical:#DC2626;
+  --m-ink:#1A1A1A;--m-ink-soft:#5A5A5A;--m-ink-faint:#9A9A9A;
+  --m-line:#E6E6E6;--m-line-strong:#D4D4D4;
+  --shadow:rgba(20,22,26,0.25) 0px 1px 4px 0px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--canvas);color:var(--ink);
+  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.hi-ic,svg{vertical-align:middle}
+.screen[hidden]{display:none}
+
+/* ── 로그인 ── */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-wrap{width:100%;max-width:380px;text-align:center}
+.login-brand{font-weight:900;font-size:26px;letter-spacing:1.5px;color:var(--primary)}
+.login-tagline{margin-top:8px;font-size:13px;color:var(--m-ink-soft);word-break:keep-all}
+.login-year{margin-top:14px;font-weight:800;font-size:15px;color:var(--navy);letter-spacing:.5px}
+.login-divider{margin:20px 0;border:0;border-top:1px solid var(--m-line)}
+
+.field{display:block;text-align:left}
+.field-label{display:block;margin-bottom:6px;font-size:13px;font-weight:700;color:var(--charcoal)}
+.field-input{
+  width:100%;padding:13px 14px;border:1px solid var(--m-line-strong);border-radius:10px;
+  background:#fff;font:inherit;font-size:17px;letter-spacing:2px;text-align:center;
+}
+.field-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+
+.btn{
+  padding:12px 20px;border:1px solid transparent;border-radius:10px;
+  font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;
+}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-deep)}
+.btn-ghost{background:#fff;border-color:var(--m-line-strong);color:var(--m-ink-soft)}
+.btn-ghost:hover{background:rgba(0,0,0,.03)}
+.btn-block{display:block;width:100%;margin-top:16px}
+
+/* 학번으로 등록을 찾은 뒤 본인 확인. 배경 틴트로 묶는다(가장자리 색 띠는 쓰지 않는다). */
+.confirm-box{
+  margin-top:18px;padding:18px 16px;border:1px solid var(--m-line);border-radius:12px;
+  background:var(--primary-soft);text-align:center;
+}
+.confirm-course{font-size:12px;font-weight:700;color:var(--primary-deep);letter-spacing:.3px}
+.confirm-name{margin-top:6px;font-size:22px;font-weight:800;color:var(--m-ink)}
+.confirm-ask{margin:12px 0 14px;font-size:14px;color:var(--m-ink-soft)}
+.confirm-actions{display:flex;gap:8px}
+.confirm-actions .btn{flex:1}
+
+.login-msg{min-height:20px;margin:12px 0 0;font-size:13px;font-weight:600;color:var(--critical);word-break:keep-all}
+.login-msg.info{color:var(--m-ink-soft)}
+
+/* ── 수업 홈 ── */
+.hub-header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 20px;background:rgba(255,255,255,.75);
+  backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-bottom:1px solid var(--m-line);position:sticky;top:0;z-index:20;
+}
+.hub-logo-wrap{display:flex;align-items:center;gap:6px;min-width:0}
+.hub-logo{font-weight:900;font-size:18px;color:var(--primary);letter-spacing:1px;white-space:nowrap}
+.hub-logo-sub{font-weight:900;font-size:18px;color:var(--navy);letter-spacing:1px;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.student-chip{
+  padding:6px 12px;border:1px solid var(--m-line-strong);border-radius:8px;
+  background:rgba(255,255,255,.6);font-size:13px;font-weight:600;color:var(--m-ink);white-space:nowrap;
+}
+.logout-btn{
+  padding:6px 12px;border:1px solid var(--m-line-strong);border-radius:8px;background:none;
+  font:inherit;font-size:12px;color:var(--m-ink-soft);cursor:pointer;
+}
+.logout-btn:hover{background:rgba(0,0,0,.03)}
+
+.hub-body{max-width:900px;margin:0 auto;padding:24px 20px 70px}
+
+.course-head{margin-bottom:22px}
+.course-badge{
+  display:inline-block;padding:4px 10px;border-radius:999px;
+  background:var(--primary-soft);color:var(--primary-deep);font-size:12px;font-weight:800;letter-spacing:.3px;
+}
+.course-title{margin:10px 0 0;font-size:24px;font-weight:800;color:var(--m-ink);word-break:keep-all}
+
+.panel{
+  margin-bottom:16px;padding:18px;border:1px solid var(--m-line);border-radius:14px;
+  background:#fff;box-shadow:var(--shadow);
+}
+.panel-head{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.panel-ic{display:inline-flex;color:var(--primary)}
+.panel-title{margin:0;font-size:15px;font-weight:800;color:var(--m-ink)}
+
+.lesson-list{display:flex;flex-direction:column;gap:8px}
+.lesson{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;
+  border:1px solid var(--m-line);border-radius:10px;background:var(--surface);
+  text-decoration:none;color:inherit;
+}
+.lesson:hover{background:#fff;border-color:var(--m-line-strong)}
+.lesson-no{
+  flex-shrink:0;min-width:46px;padding:4px 8px;border-radius:7px;
+  background:var(--primary);color:#fff;font-size:12px;font-weight:800;text-align:center;
+}
+.lesson-title{flex:1;font-size:15px;font-weight:600;word-break:keep-all}
+
+.empty{margin:0;padding:18px 4px;color:var(--m-ink-faint);font-size:14px;text-align:center;word-break:keep-all}
+
+/* 개편 진행 상황 — 작업 중임을 숨기지 않는 칸 */
+.panel-note{background:var(--surface);box-shadow:none}
+.todo{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.todo li{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--m-ink-soft);word-break:keep-all}
+.todo-done{display:inline-flex;flex-shrink:0;margin-top:1px;color:var(--success)}
+.todo-wait{
+  flex-shrink:0;width:15px;height:15px;margin-top:1px;border-radius:50%;
+  border:1.5px dashed var(--stone);
+}
+
+@media (max-width:600px){
+  .hub-header{padding:12px 14px}
+  .hub-body{padding:18px 14px 60px}
+  .course-title{font-size:20px}
+  .student-chip{font-size:12px;padding:5px 9px}
+}
