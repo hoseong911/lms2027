@@ -31,6 +31,8 @@ export const COLL = {
   courseStudents: 'course_students',
   courseLessons:  'course_lessons',
   lessonLibrary:  'lesson_library',
+  courseAuth:     'course_auth',     // 학생이 스스로 정한 비밀번호(해시)
+  courseConsent:  'course_consent',  // 개인정보 수집 동의
 };
 
 /* 관리 축의 한쪽 — 메뉴. 2026 어드민의 사이드바 항목을 그대로 옮겼다.
@@ -173,6 +175,41 @@ export async function findStudentAcrossCourses(db, studentNo, year = schoolYear(
   return null;
 }
 
+/* 그 해 전체 명단을 한 번에 읽어 "학번 -> { name, courseId }" 표로 만든다.
+ *
+ * 로그인 화면이 글자를 칠 때마다 조용히 명단과 대조하는데(2026과 같은 동작),
+ * 그때마다 Firestore에 물으면 읽기가 타이핑 수만큼 늘어난다. 2026은
+ * shared/auth.js가 RTDB 명단을 localStorage에 24시간 캐시해서 이 문제를 풀었고,
+ * 여기서도 같은 방식을 쓴다. 다른 점은 표에 courseId가 함께 들어간다는 것이다 —
+ * 학번만으로는 어느 반 학생인지 알 수 없으므로. */
+const ROSTER_CACHE_KEY = 'lms2027_roster';
+const ROSTER_TTL = 24 * 60 * 60 * 1000;
+
+export async function loadYearRoster(db, year = schoolYear(), { fresh = false } = {}) {
+  if (!fresh) {
+    try {
+      const c = JSON.parse(localStorage.getItem(ROSTER_CACHE_KEY) || 'null');
+      if (c && c.year === year && Date.now() - c.at < ROSTER_TTL) return c.map;
+    } catch (_) {}
+  }
+  const courses = await listCourses(db, { year });
+  const ids = new Set(courses.map(c => c.id));
+  const snap = await getDocs(collection(db, COLL.courseStudents));
+  const map = {};
+  snap.docs.forEach(d => {
+    const v = d.data();
+    if (ids.has(v.courseId)) map[String(v.studentNo)] = { name: v.name, courseId: v.courseId };
+  });
+  try {
+    localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify({ year, at: Date.now(), map }));
+  } catch (_) {}
+  return map;
+}
+
+export function clearRosterCache() {
+  try { localStorage.removeItem(ROSTER_CACHE_KEY); } catch (_) {}
+}
+
 // 한 반의 명단을 통째로 교체한다. 2026의 엑셀 업로드와 같은 동작이지만
 // 지우는 범위가 그 반으로 제한된다(예전에는 전교생 명단을 지웠다).
 export async function replaceRoster(db, cid, rows) {
@@ -211,6 +248,51 @@ export async function replaceGradeRoster(db, { year, grade, rows }) {
   }
   return { classes, foreign };
 }
+
+/* ── 비밀번호와 동의 ──
+ *
+ * 2026(lms_auth)의 방식을 그대로 옮겼다. 다만 문서 id에 반을 넣어
+ * 해가 바뀌어도 같은 학번이 작년 비밀번호를 물려받지 않게 했다.
+ *
+ * !! 2026의 약점을 그대로 물려받은 상태다 !!
+ * 학생이 Firebase Auth 사용자가 아니라서 규칙에 "본인 것만"을 쓸 수 없고,
+ * 결국 이 문서는 공개 읽기이자 공개 쓰기가 된다(누구든 임의 학번의 비밀번호를
+ * 덮어쓸 수 있다). 성적과 제출물을 넣기 전에 인증 모델을 정하고 이 자리를
+ * 바꿔야 한다(LMS2027.md 4). 지금은 로그인 화면을 2026과 같게 두려고
+ * 같은 방식으로 돌려놓은 것이다.
+ */
+export const authDocId = (cid, studentNo) => `${cid}_${studentNo}`;
+
+// SHA-256. 소금은 학번이고 앞머리까지 2026 lms/index.js의 hashPw와 같게 둔다.
+export async function hashPw(pw, salt) {
+  const data = new TextEncoder().encode(`lms:${salt}:${pw}`);
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+export const isHash = v => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
+
+export async function getAuthHash(db, cid, studentNo) {
+  const s = await getDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)));
+  return s.exists() ? (s.data().pw || '') : '';
+}
+
+export async function setPw(db, cid, studentNo, pw) {
+  await setDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)),
+    { pw: await hashPw(pw, studentNo) });
+}
+
+// 선생님이 초기화하면 문서를 지운다. 다음 로그인 때 새로 정하게 된다.
+export const clearPw = (db, cid, studentNo) =>
+  deleteDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)));
+
+export async function hasConsent(db, cid, studentNo) {
+  const s = await getDoc(doc(db, COLL.courseConsent, authDocId(cid, studentNo)));
+  return s.exists();
+}
+
+export const saveConsent = (db, cid, studentNo, name) =>
+  setDoc(doc(db, COLL.courseConsent, authDocId(cid, studentNo)),
+    { agreedAt: serverTimestamp(), name });
 
 /* ── 강의 ── */
 

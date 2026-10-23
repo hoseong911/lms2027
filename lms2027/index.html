@@ -17,8 +17,9 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
-<link rel="stylesheet" href="index.css?v=20261023b">
+<link rel="stylesheet" href="index.css?v=20261023c">
 <!-- 개발 중에는 /hoistory/lms2027/ 스코프를 쓴다. 학년 전환 때 lms/ 자리로 옮기면서
      manifest의 id, start_url, scope를 /hoistory/lms/로 되돌린다(LMS2027.md 참고). -->
 <link rel="manifest" href="/hoistory/lms2027/manifest.json">
@@ -44,42 +45,107 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
 </script>
 
 <!-- ── 로그인 ──
-     학번을 받아 그 해 개설된 반에서 명단을 찾는다. 2026과 달라진 점은 학번이
-     전역 식별자가 아니라는 것 — 반이 1년 단위로 생기고 없어지므로 학번은
-     그 반의 명단 안에서만 뜻을 가진다. -->
-<div id="loginScreen" class="screen">
+     2026 lms/index.html의 로그인 화면을 그대로 가져왔다(구조, 문구, 순서 모두).
+     달라진 것은 학번을 찾는 곳뿐이다 — 2026은 RTDB 명단 하나를 봤고, 지금은
+     그 해 개설된 반들의 명단에서 찾는다(반이 1년 단위이므로).
+     2026에서 닫기 버튼에 유니코드 기호를 쓴 자리는 shared/icons.js의 SVG로 바꿨다. -->
+<div id="loginScreen">
   <div class="login-wrap">
     <div class="login-brand">DIVE INTO HISTORY</div>
     <div class="login-tagline">생각하고 활동하고 성찰하는 역사 수업 공간</div>
-    <div class="login-year" id="loginYear"></div>
     <hr class="login-divider">
 
-    <label class="field">
-      <span class="field-label">학번</span>
-      <input id="inpStudentNo" class="field-input" type="tel" inputmode="numeric"
-             maxlength="5" autocomplete="off" placeholder="10101">
-    </label>
-
-    <!-- 이름 확인 칸은 학번으로 명단을 찾은 뒤에만 펼친다. -->
-    <div id="confirmBox" class="confirm-box" hidden>
-      <div class="confirm-course" id="confirmCourse"></div>
-      <div class="confirm-name" id="confirmName"></div>
-      <p class="confirm-ask">본인이 맞습니까?</p>
-      <div class="confirm-actions">
-        <button type="button" class="btn btn-ghost" id="btnConfirmNo">아니요</button>
-        <button type="button" class="btn btn-primary" id="btnConfirmYes">맞습니다</button>
+    <!-- 자동저장 카드 (localStorage에 저장된 경우 표시) -->
+    <div id="autoSaveCard" class="autosave-card" style="display:none">
+      <div class="autosave-student">
+        <div class="autosave-avatar" id="autosaveAvatar"></div>
+        <div>
+          <div class="autosave-name" id="autosaveName"></div>
+          <div class="autosave-id" id="autosaveStudentId"></div>
+        </div>
       </div>
+      <button class="enter-btn" id="autoEnterBtn">저장된 정보로 입장하기</button>
+      <button class="autosave-reset-btn" id="autosaveResetBtn">다른 학생으로 로그인</button>
     </div>
 
-    <button type="button" class="btn btn-primary btn-block" id="btnLookup">확인</button>
-    <p class="login-msg" id="loginMsg"></p>
+    <!-- 일반 로그인 폼 -->
+    <div id="normalLoginForm" style="display:flex;flex-direction:column">
+      <p class="login-guide">입장 시 학번과 이름을 입력해 주세요.<br>비밀번호를 설정하면 성적 정보를 안전하게 볼 수 있어요.</p>
+      <div class="login-fields">
+        <input class="login-input" id="idInput" type="text" inputmode="numeric" placeholder="학번" maxlength="5" autocomplete="off">
+        <input class="login-input" id="nameInput" type="text" placeholder="이름" autocomplete="name">
+        <input class="login-input" id="pwInput" type="password" placeholder="비밀번호" disabled autocomplete="new-password">
+      </div>
+      <div class="status-area" id="statusArea"></div>
+      <div class="autosave-check-wrap">
+        <label class="autosave-check-label">
+          <input type="checkbox" id="autosaveCheck" checked>
+          <span>이 기기에서 자동 로그인</span>
+        </label>
+      </div>
+      <button class="enter-btn" id="enterBtn" disabled>입장하기</button>
+      <button class="forgot-pw-btn" id="forgotPwBtn" type="button">비밀번호 초기화</button>
+    </div>
+  </div>
+  <div class="emoji-links">
+    <a href="admin.html" title="관리자"><span data-icon="settings" data-icon-size="20"></span></a>
+    <a href="../index.html" title="홈"><span data-icon="home" data-icon-size="20"></span></a>
+    <a href="https://open.kakao.com/o/smm3ixqi" target="_blank" rel="noopener" title="카카오 오픈채팅"><span data-icon="message-square" data-icon-size="20"></span></a>
+  </div>
+  <button id="installBtn" class="install-btn" type="button" style="display:none">
+    <span data-icon="upload" data-icon-size="16"></span>
+    <span>홈 화면에 추가</span>
+  </button>
+</div>
+
+<!-- ── iOS 홈 화면 추가 안내 ── -->
+<div id="iosInstallGuide" class="ios-guide" style="display:none">
+  <div class="ios-guide-box">
+    <button class="ios-guide-close" id="iosGuideClose" type="button" aria-label="닫기"><span data-icon="x" data-icon-size="18"></span></button>
+    <div class="ios-guide-title">홈 화면에 추가하기</div>
+    <p class="ios-guide-step"><span class="ios-guide-num">1</span> 화면 아래(또는 위)의 <b>공유</b> 버튼 <span data-icon="upload" data-icon-size="16"></span> 을 누르세요</p>
+    <p class="ios-guide-step"><span class="ios-guide-num">2</span> 메뉴를 내려 <b>"홈 화면에 추가"</b> 를 누르세요</p>
+    <p class="ios-guide-note">사파리(Safari) 브라우저에서 열어야 추가할 수 있어요.</p>
+  </div>
+</div>
+
+<!-- ── 개인정보 동의 팝업 ── -->
+<div id="consentPopup">
+  <div class="consent-box">
+    <div class="consent-title">개인정보 수집 및 이용 동의</div>
+    <div class="consent-body">
+      <p>호이스토리 학습 공간은 원활한 학습 활동 지원을 위해 아래와 같이 개인정보를 수집하고 이용합니다.</p>
+      <table class="consent-table">
+        <tr><th>수집 항목</th><td>학번, 이름</td></tr>
+        <tr><th>수집 목적</th><td>학습 활동 기록, 성적 관리, 수업 운영</td></tr>
+        <tr><th>보유 기간</th><td>해당 학년도 종료 시까지 (이후 즉시 파기)</td></tr>
+        <tr><th>제3자 제공</th><td>해당 없음</td></tr>
+      </table>
+      <p>위 개인정보 수집 및 이용에 동의하십니까?</p>
+      <p class="consent-note">※ 동의를 거부할 권리가 있으나, 거부 시 학습 공간 이용이 제한됩니다.</p>
+    </div>
+    <div class="consent-btns">
+      <button class="consent-deny" id="consentDenyBtn">동의하지 않습니다</button>
+      <button class="consent-agree" id="consentAgreeBtn">동의합니다</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 비밀번호 초기화 안내 모달 ── -->
+<div id="pwResetHelpModal" class="pw-help-modal" style="display:none">
+  <div class="pw-help-box">
+    <button class="pw-help-close-x" id="pwHelpClose" type="button" aria-label="닫기"><span data-icon="x" data-icon-size="17"></span></button>
+    <div class="pw-help-icon"><span data-icon="lock" data-icon-size="28"></span></div>
+    <div class="pw-help-title">비밀번호를 잊으셨나요?</div>
+    <p class="pw-help-text">비밀번호는 <b>선생님만 초기화</b>할 수 있어요.<br>아래 버튼으로 선생님께 도움을 요청하세요.</p>
+    <a class="pw-help-send" href="https://open.kakao.com/o/smm3ixqi" target="_blank" rel="noopener"><span data-icon="message-square" data-icon-size="18"></span> 선생님께 메시지 보내기</a>
   </div>
 </div>
 
 <!-- ── 수업 홈 ──
      학생은 자기 반 하나만 본다. 메뉴 구성은 2026과 같다(개념, 미션, 생각, 콘텐츠, 성적).
      선생님 어드민이 반별 또는 메뉴별로 관리하는 대상이 바로 이 칸들이다. -->
-<div id="courseScreen" class="screen" hidden>
+<div id="courseScreen" hidden>
   <header class="hub-header">
     <div class="hub-logo-wrap">
       <span class="hub-logo">DIVE INTO</span><span class="hub-logo-sub">HISTORY</span>
@@ -112,6 +178,6 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
   </main>
 </div>
 
-<script type="module" src="index.js?v=20261023b"></script>
+<script type="module" src="index.js?v=20261023c"></script>
 </body>
 </html>
