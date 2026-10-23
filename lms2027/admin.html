@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2027 : 관리자 모드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link rel="stylesheet" href="admin.css?v=20261023a">
+<meta name="theme-color" content="#FF6B3D">
+</head>
+<body>
+
+<!-- ────── 로그인 ──────
+     2026 어드민과 같은 방식이다. 선생님만 실제 Firebase Auth 사용자이고
+     firestore.rules의 isAdmin()이 이 계정을 본다. -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-brand">2027</div>
+    <div class="login-sub">관리자 모드</div>
+    <div class="login-fields">
+      <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="username">
+      <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="login-enter-btn" id="loginSubmitBtn">접속</button>
+  </div>
+</div>
+
+<!-- ────── 어드민 ────── -->
+<div id="adminView" hidden>
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <div>
+        <div class="adm-title"><span class="adm-title-main">DIVE INTO HISTORY</span><span class="adm-title-lms">2027</span></div>
+        <div class="adm-sub">관리자 모드</div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-logout-btn" id="adminLogoutBtn">로그아웃</button>
+      <button class="adm-menu-btn" id="admMenuBtn" aria-label="메뉴 열기">
+        <span data-icon="layout-grid" data-icon-size="18"></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="adm-body">
+    <div class="adm-sidebar-scrim" id="admSidebarScrim"></div>
+
+    <!-- ── 사이드바 ──
+         관리 축이 둘이다. "반별"은 반을 먼저 고르고 그 반의 메뉴들을 보고,
+         "메뉴별"은 메뉴를 먼저 고르고 그 메뉴의 반들을 본다. 둘 다 같은
+         자리(반 x 메뉴)에 도착하므로 선생님이 그때 편한 쪽으로 들어가면 된다. -->
+    <nav class="adm-sidebar" id="admSidebar">
+      <div class="nav-group">
+        <div class="nav-item active" data-nav="classes">
+          <span class="nav-ic" data-icon="users" data-icon-size="18"></span>
+          <span class="nav-label">반 관리</span>
+        </div>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-group">
+        <div class="nav-item" data-nav="byclass">
+          <span class="nav-ic" data-icon="layout-grid" data-icon-size="18"></span>
+          <span class="nav-label">반별 관리</span>
+        </div>
+        <div class="nav-item" data-nav="bymenu">
+          <span class="nav-ic" data-icon="list-ordered" data-icon-size="18"></span>
+          <span class="nav-label">메뉴별 관리</span>
+        </div>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-group">
+        <div class="nav-item" data-nav="library">
+          <span class="nav-ic" data-icon="book-open" data-icon-size="18"></span>
+          <span class="nav-label">강의 라이브러리</span>
+        </div>
+      </div>
+    </nav>
+
+    <main class="adm-main">
+
+      <!-- ══════ 반 관리 ══════ -->
+      <section class="panel-page" data-page="classes">
+        <div class="page-head">
+          <h1 class="page-title">반 관리</h1>
+          <p class="page-desc">반은 1년 단위로 개설하고 없앱니다. 학년이 바뀌면 새로 개설합니다.</p>
+        </div>
+
+        <div class="year-bar">
+          <label class="year-label" for="selYear">학년도</label>
+          <select id="selYear" class="sel"></select>
+          <label class="chk">
+            <input type="checkbox" id="chkArchived">
+            <span>아카이브한 반도 보기</span>
+          </label>
+        </div>
+
+        <!-- 학년 통째 개설 -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">학년 통째 개설</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <label class="f"><span class="f-label">학년</span>
+                <input type="number" id="inpGradeAll" class="inp" min="1" max="6" value="1"></label>
+              <label class="f"><span class="f-label">반 수</span>
+                <input type="number" id="inpClassCount" class="inp" min="1" max="20" value="6"></label>
+              <button type="button" class="btn btn-primary" id="btnCreateGrade">개설</button>
+            </div>
+            <p class="hint" id="hintCreateGrade"></p>
+          </div>
+        </div>
+
+        <!-- 학년 명단 통째 업로드 -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">학년 명단 통째 업로드</h2>
+          </div>
+          <div class="card-body">
+            <p class="hint">학번에서 반을 읽어 반별로 나눠 넣습니다. 반이 없으면 함께 개설합니다.</p>
+            <div class="form-row">
+              <label class="f"><span class="f-label">학년</span>
+                <input type="number" id="inpGradeUp" class="inp" min="1" max="6" value="1"></label>
+              <input type="file" id="fileRoster" class="file" accept=".xlsx,.xls">
+            </div>
+            <div class="upload-desc">A열 학번, B열 이름. 1행은 머리글로 보고 건너뜁니다.</div>
+            <p class="hint" id="hintUpload"></p>
+          </div>
+        </div>
+
+        <!-- 반 목록 -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">반 목록</h2>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnAddOne">반 하나 추가</button>
+          </div>
+          <div class="card-body">
+            <div id="classList"><p class="empty">불러오는 중입니다.</p></div>
+            <!-- 반별 명단 올리기. 목록의 [명단 올리기]가 어느 반인지 담아 두고 이 칸을 누른다. -->
+            <input type="file" id="fileClassRoster" accept=".xlsx,.xls" hidden>
+            <p class="hint" id="hintClassUpload"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ 반별 관리 ══════ -->
+      <section class="panel-page" data-page="byclass" hidden>
+        <div class="page-head">
+          <h1 class="page-title">반별 관리</h1>
+          <p class="page-desc">반을 고르면 그 반의 메뉴들이 나옵니다.</p>
+        </div>
+        <div class="pick-bar" id="pickClassBar"></div>
+        <div id="byClassBody"><p class="empty">위에서 반을 골라 주세요.</p></div>
+      </section>
+
+      <!-- ══════ 메뉴별 관리 ══════ -->
+      <section class="panel-page" data-page="bymenu" hidden>
+        <div class="page-head">
+          <h1 class="page-title">메뉴별 관리</h1>
+          <p class="page-desc">메뉴를 고르면 그 메뉴를 쓰는 반들이 나옵니다.</p>
+        </div>
+        <div class="pick-bar" id="pickMenuBar"></div>
+        <div id="byMenuBody"><p class="empty">위에서 메뉴를 골라 주세요.</p></div>
+      </section>
+
+      <!-- ══════ 강의 라이브러리 ══════ -->
+      <section class="panel-page" data-page="library" hidden>
+        <div class="page-head">
+          <h1 class="page-title">강의 라이브러리</h1>
+          <p class="page-desc">강의 내용은 연도와 무관하게 남습니다. 반에 붙여 쓰고, 반이 없어져도 강의는 남습니다.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">강의 추가</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <label class="f f-no"><span class="f-label">강 번호</span>
+                <input type="text" id="inpLessonNo" class="inp" placeholder="1"></label>
+              <label class="f f-grow"><span class="f-label">제목</span>
+                <input type="text" id="inpLessonTitle" class="inp" placeholder="강의 제목"></label>
+              <button type="button" class="btn btn-primary" id="btnAddLesson">추가</button>
+            </div>
+            <p class="hint" id="hintLesson"></p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">강의 목록</h2>
+          </div>
+          <div class="card-body">
+            <div id="libraryList"><p class="empty">불러오는 중입니다.</p></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- 엑셀 명단 업로드용. 2026 어드민과 같은 버전을 쓴다. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module" src="admin.js?v=20261023a"></script>
+</body>
+</html>

@@ -1,14 +1,19 @@
-/* 2027 LMS 학생 화면 — 클래스룸 스타일의 골자
+/* 2027 LMS 학생 화면 — 큰 틀
  *
  * 2026(lms/index.js, 2490줄)과 가장 크게 달라진 곳은 로그인이다.
  * 2026에서는 학번이 전역 식별자여서 RTDB 명단 하나를 보면 끝났다.
- * 지금은 학번이 "그 수업 안에서의 번호"이므로, 로그인은
- *   학번 입력, 진행 중인 수업들에서 등록(enrollment) 찾기, 수업과 사람 확정
- * 순서로 간다. 자세한 근거는 LMS2027.md 2.1 참고.
+ * 지금은 반이 1년 단위로 생기고 없어지므로 학번은 그 반의 명단 안에서만
+ * 뜻을 가진다. 그래서 로그인이
+ *   학번 입력, 그 해 개설된 반에서 명단 찾기, 반과 학생 확정
+ * 순서로 간다. 자세한 근거는 LMS2027.md 참고.
  *
- * 아직 안 옮긴 것: 미션, 생각 체크, 성적, 공지, 경험치, 뽑기.
- * 비밀번호와 권한은 인증 모델(LMS2027.md 2.4)이 정해진 뒤에 넣는다 —
- * 지금 2026 방식을 그대로 베껴 두면 그때 두 번 고치게 된다.
+ * 메뉴 구성(개념, 미션, 생각, 성적, 콘텐츠, 경험치)은 2026과 같다.
+ * 어드민이 반별 또는 메뉴별로 관리하는 대상이 이 칸들이며, 양쪽이 같은
+ * MENUS 표(model.js)를 읽으므로 한쪽만 늘어나는 일이 없다.
+ *
+ * 아직 안 옮긴 것: 각 메뉴의 실제 내용, 공지, 뽑기, 비밀번호와 권한.
+ * 비밀번호는 인증 모델이 정해진 뒤에 넣는다 — 지금 2026 방식을 그대로
+ * 베껴 두면 그때 두 번 고치게 된다.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -16,9 +21,9 @@ import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/
 import { firebaseConfig } from "../shared/firebase-config.js";
 import { icon } from "../shared/icons.js?v=20260918";
 import {
-  schoolYear, courseLabel, findEnrollmentAcrossCourses,
-  listCourseLessons, lessonTag, listActiveCourses, getCourse
-} from "./model.js?v=20261023a";
+  MENUS, schoolYear, courseLabel, listCourses, getCourse,
+  findStudentAcrossCourses, listCourseLessons, lessonTag
+} from "./model.js?v=20261023b";
 
 // 여기까지 왔으면 모듈은 다 받았다. 디자인(index.css)도 들어왔는지 확인해서 본문을 연다.
 // 디자인이 빠졌으면 깨진 화면 대신 새로고침 안내를 띄운다(index.html의 bootFail).
@@ -38,7 +43,7 @@ const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
-  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* 정적 HTML에 박아 둔 아이콘 자리를 SVG로 채운다(CLAUDE.md 아이콘 규칙). */
 function mountIcons(root = document) {
@@ -48,8 +53,8 @@ function mountIcons(root = document) {
 }
 
 /* ── 세션 ──
- * 2026과 같은 sessionStorage 키 이름을 쓰되(ox, j_sahwa 같은 앱이 이 키를 읽는다)
- * 수업 정보를 함께 남긴다. 어느 수업의 학번인지 모르면 데이터를 찾을 수 없다. */
+ * 반이 1년짜리이므로 학번만으로는 어느 반 학생인지 알 수 없다. courseId를 함께 남긴다.
+ * lms_sid와 lms_sname은 다른 앱(ox, j_sahwa 등)이 읽는 2026 키라 이름을 그대로 둔다. */
 const SESSION_KEY = 'lms2027_session';
 
 function saveSession(s) {
@@ -73,7 +78,7 @@ function clearSession() {
 
 /* ── 로그인 ── */
 
-let _found = null; // 학번으로 찾아 둔 { enrollment, course }
+let _found = null; // 학번으로 찾아 둔 { student, course }
 
 function msg(text, kind = '') {
   const el = $('loginMsg');
@@ -95,19 +100,19 @@ async function lookup() {
   $('btnLookup').disabled = true;
   msg('확인하고 있습니다.', 'info');
   try {
-    const hit = await findEnrollmentAcrossCourses(db, no);
+    const hit = await findStudentAcrossCourses(db, no);
     if (!hit) {
-      // 명단이 아직 안 올라온 것과 학번이 틀린 것을 학생은 구분할 수 없으므로
-      // 수업이 하나도 없으면 그 사실을 알려 준다(개편 중에 특히 자주 만난다).
-      const courses = await listActiveCourses(db);
+      // 반이 아직 안 개설된 것과 학번이 틀린 것을 학생은 구분할 수 없으므로
+      // 반이 하나도 없으면 그 사실을 알려 준다(개편 중에 특히 자주 만난다).
+      const courses = await listCourses(db, { year: schoolYear() });
       msg(courses.length === 0
-        ? '아직 개설된 수업이 없습니다. 선생님께 문의해 주세요.'
+        ? '아직 개설된 반이 없습니다. 선생님께 문의해 주세요.'
         : '명단에서 찾을 수 없습니다. 학번을 다시 확인해 주세요.');
       return;
     }
     _found = hit;
     $('confirmCourse').textContent = courseLabel(hit.course);
-    $('confirmName').textContent   = hit.enrollment.name || '';
+    $('confirmName').textContent   = hit.student.name || '';
     $('confirmBox').hidden = false;
     $('btnLookup').hidden = true;
     msg('');
@@ -121,13 +126,11 @@ async function lookup() {
 
 function confirmYes() {
   if (!_found) return;
-  const { enrollment, course } = _found;
+  const { student, course } = _found;
   saveSession({
-    enrollmentId: enrollment.id,
-    personId:     enrollment.personId || '',
-    courseId:     course.id,
-    studentNo:    enrollment.studentNo,
-    name:         enrollment.name || '',
+    courseId:  course.id,
+    studentNo: student.studentNo,
+    name:      student.name || '',
   });
   openCourse();
 }
@@ -140,18 +143,38 @@ async function openCourse() {
 
   $('loginScreen').hidden = true;
   $('courseScreen').hidden = false;
-
   $('chipStudent').textContent = `${s.studentNo} ${s.name}`.trim();
+  renderMenus();
 
   try {
     const course = await getCourse(db, s.courseId);
-    $('courseBadge').textContent = course ? `${course.year}학년도` : '';
-    $('courseTitle').textContent = course ? courseLabel(course) : '수업';
+    // 반이 지워졌거나 아카이브됐으면 더 들어가지 않는다(학년이 바뀌면 생기는 상황).
+    if (!course || course.status === 'archived') {
+      clearSession();
+      showLogin();
+      msg('이 반은 더 이상 운영되지 않습니다. 학번을 다시 확인해 주세요.');
+      return;
+    }
+    $('courseBadge').textContent = `${course.year}학년도`;
+    $('courseTitle').textContent = courseLabel(course);
     renderLessons(await listCourseLessons(db, s.courseId, { openOnly: true }));
   } catch (e) {
     console.warn('[openCourse]', e);
-    $('lessonList').innerHTML = '<p class="empty">수업을 불러오지 못했습니다. 새로고침해 주세요.</p>';
+    $('lessonList').innerHTML =
+      '<p class="empty">수업을 불러오지 못했습니다. 새로고침해 주세요.</p>';
   }
+}
+
+/* 메뉴 칸 — 아직 내용이 없는 메뉴는 "준비 중"으로 둔다. 빈 칸을 숨기지 않는 쪽을
+   고른 것은, 어드민에서 메뉴별로 관리할 때 학생 화면에 무엇이 있는지가 한눈에
+   보여야 하기 때문이다. */
+function renderMenus() {
+  $('menuGrid').innerHTML = MENUS.map(m => `
+    <button type="button" class="menu-card" data-menu="${esc(m.key)}" disabled>
+      <span class="menu-ic">${icon(m.icon, 22)}</span>
+      <span class="menu-label">${esc(m.label)}</span>
+      <span class="menu-state">준비 중</span>
+    </button>`).join('');
 }
 
 function renderLessons(rows) {
