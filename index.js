@@ -26,9 +26,9 @@ import { firebaseConfig } from "./shared/firebase-config.js";
 import { icon } from "./shared/icons.js?v=20261025a";
 import {
   MENUS, schoolYear, courseLabel, getCourse, loadYearRoster, clearRosterCache,
-  getAuthHash, setPw, hashPw, isHash, hasConsent, saveConsent,
+  getAuthHash, setPw, hashPw, isHash, hasConsent, saveConsent, listStudentCourses,
   listCourseLessons, lessonTag
-} from "./model.js?v=20261025c";
+} from "./model.js?v=20261025d";
 
 // 여기까지 왔으면 모듈은 다 받았다. 디자인(index.css)도 들어왔는지 확인해서 본문을 연다.
 // 디자인이 빠졌으면 깨진 화면 대신 새로고침 안내를 띄운다(index.html의 bootFail).
@@ -59,42 +59,49 @@ mountIcons();
 
 /* ── 상태 ── */
 
+// 로그인은 올해 학년도 하나를 본다. 비밀번호와 동의도 "학년도 + 학번"에 붙어 있다.
+const YEAR = schoolYear();
+
 const idInput    = $('idInput');
 const nameInput  = $('nameInput');
 const pwInput    = $('pwInput');
 const enterBtn   = $('enterBtn');
 const statusArea = $('statusArea');
 
-let _roster = {};                  // 학번 -> { name, courseId }
+let _roster = { students: {}, courses: {} };   // model.js loadYearRoster
 let _rosterLoaded = false;
 let _matched = false;              // 학번과 이름이 명단과 조용히 일치하는지(에러는 표시하지 않음)
-let _hit = null;                   // 맞았을 때 { studentNo, name, courseId }
+let _hit = null;                   // 맞았을 때 { studentNo, name, courseIds }
 let _hasPw = false, _storedPw = null, _pwChecked = false, _pwAttemptFailed = false;
 let _pwLookupToken = 0;            // 입력이 바뀌면 이전 비밀번호 조회 결과를 무시
 
+/* 세션 — 학번, 이름, 학년도가 "누구인지"이고, 반(lms_cid)은 클래스 고르기에서 정해진다.
+   한 학생이 여러 반(예: 3학년 사회, 3학년 역사)에 들 수 있어서 로그인과 반 고르기를 나눴다. */
 let currentStudentId   = sessionStorage.getItem('lms_sid')   || '';
 let currentStudentName = sessionStorage.getItem('lms_sname') || '';
 let currentCourseId    = sessionStorage.getItem('lms_cid')   || '';
+if (sessionStorage.getItem('lms_year') !== String(YEAR)) { currentStudentId = currentStudentName = currentCourseId = ''; }
 
-const _savedSid   = localStorage.getItem('lms_autosave_sid');
-const _savedSname = localStorage.getItem('lms_autosave_sname');
-const _savedCid   = localStorage.getItem('lms_autosave_cid');
+// 자동 로그인은 학년도가 같을 때만 쓴다(작년 학번으로 올해 들어오지 않게).
+const _savedOk    = localStorage.getItem('lms_autosave_year') === String(YEAR);
+const _savedSid   = _savedOk ? localStorage.getItem('lms_autosave_sid')   : null;
+const _savedSname = _savedOk ? localStorage.getItem('lms_autosave_sname') : null;
 
 /* ── 명단 ──
    2026은 shared/auth.js가 RTDB 명단을 24시간 캐시했다. 여기서는 그 해 반들의
    명단을 같은 방식으로 캐시한다(model.js의 loadYearRoster). */
 async function initRoster() {
   try {
-    _roster = await loadYearRoster(db, schoolYear());
+    _roster = await loadYearRoster(db, YEAR);
   } catch (e) {
     console.warn('[roster]', e);
-    _roster = {};
+    _roster = { students: {}, courses: {} };
   }
   _rosterLoaded = true;
   refreshCreds();   // 명단이 로그인 화면보다 늦게 와도 한 번 다시 대조한다
 }
 
-const lookupRoster = no => _roster[String(no).trim()] || null;
+const lookupRoster = no => _roster.students[String(no).trim()] || null;
 
 /* ── 로그인 ── */
 
@@ -138,7 +145,7 @@ async function refreshCreds() {
 
   const found = /^\d{5}$/.test(no) ? lookupRoster(no) : null;
   _matched = !!(found && name && found.name === name);
-  _hit = _matched ? { studentNo: no, name: found.name, courseId: found.courseId } : null;
+  _hit = _matched ? { studentNo: no, name: found.name, courseIds: found.courseIds } : null;
 
   if (!_matched) {
     _pwChecked = false; _hasPw = false; _storedPw = null;
@@ -151,7 +158,7 @@ async function refreshCreds() {
   _pwChecked = false;
   updateLoginUI();                       // "확인 중"
   let stored = null;
-  try { stored = await getAuthHash(db, _hit.courseId, no); } catch (_) {}
+  try { stored = await getAuthHash(db, YEAR, no); } catch (_) {}
   if (token !== _pwLookupToken) return;  // 그 사이 입력이 바뀌었으면 결과 무시
   _hasPw = !!stored; _storedPw = stored || null; _pwChecked = true;
   updateLoginUI();
@@ -182,12 +189,12 @@ enterBtn.addEventListener('click', async () => {
   // 명단이 아직 안 왔으면 여기서 한 번 더 기다린다(캐시가 비어 있는 첫 방문).
   if (!_rosterLoaded) {
     setStatusLine({ type: 'muted', icon: 'hourglass', text: '명단을 불러오고 있습니다.' });
-    try { _roster = await loadYearRoster(db, schoolYear()); _rosterLoaded = true; } catch (_) {}
+    try { _roster = await loadYearRoster(db, YEAR); _rosterLoaded = true; } catch (_) {}
   }
   const found = lookupRoster(no);
   if (!found) {
     // 반이 하나도 없으면 학번이 틀린 게 아니라 아직 개설 전일 수 있다.
-    setStatusLine({ type: 'err', icon: 'x', text: Object.keys(_roster).length
+    setStatusLine({ type: 'err', icon: 'x', text: Object.keys(_roster.students).length
       ? '학번 또는 이름을 확인해 주세요.'
       : '아직 개설된 반이 없습니다. 선생님께 문의해 주세요.' });
     return;
@@ -196,13 +203,12 @@ enterBtn.addEventListener('click', async () => {
     setStatusLine({ type: 'err', icon: 'x', text: '학번 또는 이름을 확인해 주세요.' });
     return;
   }
-  const cid = found.courseId;
   const registeredName = found.name;
 
   // 2) 비밀번호 확인 또는 설정 (조회 결과가 아직이면 여기서 한 번 더 읽는다)
   let stored = _storedPw;
   if (!_pwChecked || !_hit || _hit.studentNo !== no) {
-    try { stored = await getAuthHash(db, cid, no) || null; } catch (_) {}
+    try { stored = await getAuthHash(db, YEAR, no) || null; } catch (_) {}
   }
   const pw = pwInput.value;
   if (stored) {
@@ -215,7 +221,8 @@ enterBtn.addEventListener('click', async () => {
       pwInput.focus(); return;
     }
     // 저장이 실패한 채 들여보내면 비밀번호 없는 계정이 남아 아무나 선점할 수 있다.
-    try { await setPw(db, cid, no, pw); }
+    // courseId는 규칙이 명단을 찾아보는 데 쓴다(학생이 든 반 하나면 된다).
+    try { await setPw(db, YEAR, no, found.courseIds[0], pw); }
     catch (e) {
       console.warn('[setPw]', e);
       setStatusLine({ type: 'err', icon: 'x', text: '비밀번호를 저장하지 못했어요. 잠시 후 다시 눌러 주세요.' });
@@ -226,25 +233,30 @@ enterBtn.addEventListener('click', async () => {
   // 3) 세션 저장 + 자동 로그인 + 진입 (첫 로그인이면 진입 흐름에서 개인정보 동의)
   sessionStorage.setItem('lms_sid',   no);
   sessionStorage.setItem('lms_sname', registeredName);
-  sessionStorage.setItem('lms_cid',   cid);
+  sessionStorage.setItem('lms_year',  String(YEAR));
+  sessionStorage.removeItem('lms_cid');
   if ($('autosaveCheck')?.checked) {
     localStorage.setItem('lms_autosave_sid',   no);
     localStorage.setItem('lms_autosave_sname', registeredName);
-    localStorage.setItem('lms_autosave_cid',   cid);
+    localStorage.setItem('lms_autosave_year',  String(YEAR));
   } else {
-    localStorage.removeItem('lms_autosave_sid');
-    localStorage.removeItem('lms_autosave_sname');
-    localStorage.removeItem('lms_autosave_cid');
+    clearAutosave();
   }
-  currentStudentId = no; currentStudentName = registeredName; currentCourseId = cid;
-  checkConsentThenEnter(cid, no, registeredName);
+  currentStudentId = no; currentStudentName = registeredName; currentCourseId = '';
+  checkConsentThenEnter(no, registeredName);
 });
+
+function clearAutosave() {
+  ['lms_autosave_sid', 'lms_autosave_sname', 'lms_autosave_year', 'lms_autosave_cid']
+    .forEach(k => localStorage.removeItem(k));
+}
 
 /* ── 자동 로그인 카드 ── */
 
-if (currentStudentId && currentStudentName && currentCourseId) {
-  checkConsentThenEnter(currentCourseId, currentStudentId, currentStudentName);
-} else if (_savedSid && _savedSname && _savedCid) {
+if (currentStudentId && currentStudentName) {
+  if (currentCourseId) enterHub(currentCourseId, currentStudentId, currentStudentName);
+  else checkConsentThenEnter(currentStudentId, currentStudentName);
+} else if (_savedSid && _savedSname) {
   $('autosaveAvatar').textContent    = _savedSname.charAt(0);
   $('autosaveName').textContent      = _savedSname;
   $('autosaveStudentId').textContent = `학번 ${_savedSid}`;
@@ -255,15 +267,13 @@ if (currentStudentId && currentStudentName && currentCourseId) {
 $('autoEnterBtn').addEventListener('click', () => {
   sessionStorage.setItem('lms_sid',   _savedSid);
   sessionStorage.setItem('lms_sname', _savedSname);
-  sessionStorage.setItem('lms_cid',   _savedCid);
-  currentStudentId = _savedSid; currentStudentName = _savedSname; currentCourseId = _savedCid;
-  checkConsentThenEnter(_savedCid, _savedSid, _savedSname);
+  sessionStorage.setItem('lms_year',  String(YEAR));
+  currentStudentId = _savedSid; currentStudentName = _savedSname; currentCourseId = '';
+  checkConsentThenEnter(_savedSid, _savedSname);
 });
 
 $('autosaveResetBtn').addEventListener('click', () => {
-  localStorage.removeItem('lms_autosave_sid');
-  localStorage.removeItem('lms_autosave_sname');
-  localStorage.removeItem('lms_autosave_cid');
+  clearAutosave();
   $('autoSaveCard').style.display    = 'none';
   $('normalLoginForm').style.display = 'flex';
 });
@@ -276,22 +286,25 @@ $('pwResetHelpModal').addEventListener('click', e => {
   if (e.target.id === 'pwResetHelpModal') e.currentTarget.style.display = 'none';
 });
 
-/* ── 개인정보 동의 ── */
+/* ── 개인정보 동의 ── 학년도에 한 번. 동의가 끝나면 클래스 고르기로 간다. */
 
-async function checkConsentThenEnter(cid, no, name) {
+async function checkConsentThenEnter(no, name) {
   try {
-    if (await hasConsent(db, cid, no)) { enterHub(cid, no, name); return; }
-  } catch (_) { enterHub(cid, no, name); return; }
-  showConsentPopup(cid, no, name);
+    if (await hasConsent(db, YEAR, no)) { showClassPicker(no, name); return; }
+  } catch (_) { showClassPicker(no, name); return; }
+  showConsentPopup(no, name);
 }
 
-function showConsentPopup(cid, no, name) {
+function showConsentPopup(no, name) {
   $('loginScreen').style.display  = 'none';
   $('consentPopup').style.display = 'flex';
   $('consentAgreeBtn').onclick = async () => {
-    try { await saveConsent(db, cid, no, name); } catch (_) {}
+    // 자동 로그인이면 명단이 아직 안 왔을 수 있다. 그때는 기다렸다 읽는다.
+    if (!_rosterLoaded) { try { _roster = await loadYearRoster(db, YEAR); _rosterLoaded = true; } catch (_) {} }
+    const cids = lookupRoster(no)?.courseIds || [];
+    try { if (cids.length) await saveConsent(db, YEAR, no, cids[0], name); } catch (_) {}
     $('consentPopup').style.display = 'none';
-    enterHub(cid, no, name);
+    showClassPicker(no, name);
   };
   $('consentDenyBtn').onclick = () => {
     alert('개인정보 수집 및 이용에 동의하지 않으면 학습 공간을 이용할 수 없습니다.');
@@ -299,23 +312,67 @@ function showConsentPopup(cid, no, name) {
     $('loginScreen').style.display  = 'flex';
     sessionStorage.removeItem('lms_sid');
     sessionStorage.removeItem('lms_sname');
+    sessionStorage.removeItem('lms_year');
     sessionStorage.removeItem('lms_cid');
   };
 }
+
+/* ── 클래스 고르기 ──
+   로그인한 학생이 든 반(예: 3학년 사회, 3학년 역사)을 보여 주고, 누르면 그 반의 메뉴로 간다
+   (선생님 지시 2026-10-25). */
+
+const classTag = c => c.subject ? `${c.grade}학년 ${c.subject}` : `${c.grade}학년 ${c.classNo}반`;
+
+async function showClassPicker(no, name) {
+  $('loginScreen').style.display = 'none';
+  $('courseScreen').hidden = false;
+  $('pickView').hidden = false;
+  $('courseView').hidden = true;
+  $('chipStudent').textContent = `${no} ${name}`.trim();
+  sessionStorage.removeItem('lms_cid');
+  currentCourseId = '';
+  const box = $('classPick');
+  box.innerHTML = '<p class="empty">불러오는 중입니다.</p>';
+  let courses = [];
+  try { courses = await listStudentCourses(db, YEAR, no); }
+  catch (e) {
+    console.warn('[classPick]', e);
+    box.innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
+    return;
+  }
+  if (!courses.length) {
+    backToLogin('들어갈 수 있는 반이 없습니다. 선생님께 문의해 주세요.');
+    return;
+  }
+  box.innerHTML = courses.map(c => `
+    <button type="button" class="class-card" data-cid="${esc(c.id)}">${esc(classTag(c))}</button>`).join('');
+}
+
+$('classPick').addEventListener('click', e => {
+  const b = e.target.closest('[data-cid]');
+  if (!b) return;
+  sessionStorage.setItem('lms_cid', b.dataset.cid);
+  currentCourseId = b.dataset.cid;
+  enterHub(b.dataset.cid, currentStudentId, currentStudentName);
+});
+
+$('btnPickBack').addEventListener('click', () => showClassPicker(currentStudentId, currentStudentName));
 
 /* ── 수업 홈 ── */
 
 async function enterHub(cid, no, name) {
   $('loginScreen').style.display = 'none';
   $('courseScreen').hidden = false;
+  $('pickView').hidden = true;
+  $('courseView').hidden = false;
   $('chipStudent').textContent = `${no} ${name}`.trim();
   renderMenus();
 
   try {
     const course = await getCourse(db, cid);
-    // 반이 지워졌거나 아카이브됐으면 더 들어가지 않는다(학년이 바뀌면 생기는 상황).
-    if (!course || course.status === 'archived') {
-      backToLogin('이 반은 더 이상 운영되지 않습니다. 선생님께 문의해 주세요.');
+    // 반이 지워졌거나 아카이브됐으면 클래스 고르기로 돌려보낸다.
+    if (!course || course.status === 'archived' || course.year !== YEAR) {
+      showClassPicker(no, name);
       return;
     }
     $('courseBadge').textContent = `${course.year}학년도`;
@@ -329,12 +386,8 @@ async function enterHub(cid, no, name) {
 }
 
 function backToLogin(message) {
-  sessionStorage.removeItem('lms_sid');
-  sessionStorage.removeItem('lms_sname');
-  sessionStorage.removeItem('lms_cid');
-  localStorage.removeItem('lms_autosave_sid');
-  localStorage.removeItem('lms_autosave_sname');
-  localStorage.removeItem('lms_autosave_cid');
+  ['lms_sid', 'lms_sname', 'lms_year', 'lms_cid'].forEach(k => sessionStorage.removeItem(k));
+  clearAutosave();
   clearRosterCache();   // 반이 바뀌었으면 캐시도 낡았다
   $('courseScreen').hidden = true;
   $('autoSaveCard').style.display    = 'none';

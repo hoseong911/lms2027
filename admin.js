@@ -29,10 +29,10 @@ import {
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
-  listStudents, countStudentsByCourse, replaceRoster, splitRosterByClass, replaceRosterBySubject,
+  listStudents, countStudentsByCourse, replaceRoster, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025c";
+} from "./model.js?v=20261025d";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -66,7 +66,7 @@ const state = {
   filter: { subject: new Set(), grade: new Set(), classNo: new Set() },
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
-  upload: null,         // 명단 올리기 대상 { kind: 'subject', subject } | { kind: 'class', id }
+  upload: null,         // 명단 올리기 대상 { kind: 'all' } | { kind: 'class', id }
 };
 
 const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
@@ -385,7 +385,7 @@ function renderClasses() {
     ? ib('edit-year', 'pencil', `${state.year}학년도 수정`) + ib('del-year', 'trash-2', `${state.year}학년도 삭제`, '', 'ib-danger')
     : '';
   $('classTools').innerHTML = hasYear
-    ? ib('add-class', 'plus', '반 만들기', '', 'ib-primary') + ib('upload-subject', 'upload', '명단 올리기')
+    ? ib('add-class', 'plus', '반 만들기', '', 'ib-primary') + ib('upload-all', 'upload', '명단 올리기')
     : '';
 
   // 사라진 값의 태그는 끈다(반을 지우거나 고친 뒤).
@@ -572,19 +572,11 @@ async function onClassesClick(ev) {
         return;
       }
 
-      // 여러 반 명단을 한 번에 — 과목을 먼저 고르고 파일을 고른다. 학년과 반은 학번에서 읽는다.
-      case 'upload-subject': {
-        const v = await ask({
-          title: `${year}학년도 명단 올리기`,
-          fields: [{ key: 'subject', type: 'choice', options: subjectOptions(),
-            value: [...state.filter.subject][0] || "", placeholder: "과목" }],
-          check: v => validSubject(v.subject) ? '' : '과목을 고르거나 적어 주세요.',
-        });
-        if (!v) return;
-        state.upload = { kind: 'subject', subject: v.subject };
+      // 여러 반 명단을 한 번에 — 엑셀 줄마다 과목, 학년, 반, 번호, 이름이 있어서 따로 묻지 않는다.
+      case 'upload-all':
+        state.upload = { kind: 'all' };
         $('fileRoster').click();
         return;
-      }
 
       case 'upload-class':
         state.upload = { kind: 'class', id: c.id };
@@ -601,8 +593,8 @@ async function onClassesClick(ev) {
   }
 }
 
-/* 엑셀 한 장을 읽어 { studentNo, name } 줄로. A열 학번, B열 이름, 1행은 머리글로 보고 건너뛴다. */
-function readRoster(file) {
+/* 엑셀 첫 시트를 줄 배열로. 1행은 머리글로 보고 건너뛴다. */
+function readSheet(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -610,19 +602,19 @@ function readRoster(file) {
       try {
         const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
         const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
-        resolve(raw.slice(1)
-          .filter(r => r[0] !== '' && r[1] !== '')
-          .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1]).trim() }))
-          .filter(s => parseStudentNo(s.studentNo) && s.name));
+        resolve(raw.slice(1).filter(r => r.some(v => String(v).trim() !== '')));
       } catch (err) { reject(err); }
     };
     reader.readAsArrayBuffer(file);
   });
 }
 
-/* 명단 올리기 — [명단 올리기]는 과목 하나에 대해 학번의 학년과 반 자리로 흩어 넣고(없는 반은 만든다),
-   반 줄의 올리기는 그 반 학번만 넣는다. 어느 쪽이든 지우는 범위는 명단이 들어가는 반뿐이다
-   (2026에서는 전교생 명단을 통째로 지웠다). 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다. */
+/* 명단 올리기
+ *   [명단 올리기](목록 위) — A열 과목, B열 학년, C열 반, D열 번호, E열 이름. 줄마다 반이 정해지므로
+ *                          과목을 묻지 않는다. 없는 반은 만든다. 한 학생이 두 과목 줄에 있으면 두 반에 다 들어간다
+ *   반 줄의 올리기          — A열 학번, B열 이름(2026 형식). 그 반 학번만 넣는다
+ * 어느 쪽이든 지우는 범위는 명단이 들어가는 반뿐이다(2026에서는 전교생 명단을 통째로 지웠다).
+ * 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다. */
 async function onRosterFile(ev) {
   const file = ev.target.files[0];
   const target = state.upload;
@@ -631,24 +623,30 @@ async function onRosterFile(ev) {
   if (!file || !target) return;
 
   try {
-    const rows = await readRoster(file);
-    if (!rows.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
+    const raw = await readSheet(file);
 
-    if (target.kind === 'subject') {
-      const groups = splitRosterByClass(rows);
+    if (target.kind === 'all') {
+      const rows = raw.map(rosterRowFromSheet);
+      const bad = rows.filter(r => !r).length;
+      const good = rows.filter(Boolean);
+      if (!good.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
+      const groups = groupRosterRows(good);
       const ok = await ask({
-        title: `${state.year}학년도 ${target.subject} 명단 교체`,
+        title: `${state.year}학년도 명단 교체`,
         body: `<div class="roster">${groups.map(g => {
-          const exists = state.courses.some(x => (x.subject || '') === target.subject && x.grade === g.grade && x.classNo === g.classNo);
-          return `<div class="roster-row"><span class="roster-no">${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${exists ? '' : ', 새 반'}</span></div>`;
-        }).join('')}</div>`,
+          const exists = state.courses.some(x => (x.subject || '') === g.subject && x.grade === g.grade && x.classNo === g.classNo);
+          return `<div class="roster-row"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${exists ? '' : ', 새 반'}</span></div>`;
+        }).join('')}</div>${bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''}`,
       });
       if (!ok) return;
-      const classes = await replaceRosterBySubject(db, { year: state.year, subject: target.subject, rows });
-      toast(`${target.subject} ${classes.length}개 반, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.`);
+      const classes = await replaceRosterRows(db, { year: state.year, rows: good });
+      toast(`${classes.length}개 반, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.`);
     } else {
       const c = state.courses.find(x => x.id === target.id);
       if (!c) return;
+      const rows = raw
+        .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1] ?? '').trim() }))
+        .filter(s => parseStudentNo(s.studentNo) && s.name);
       const mine = rows.filter(s => { const p = parseStudentNo(s.studentNo); return p.grade === c.grade && p.classNo === c.classNo; });
       if (!mine.length) { toast(`${courseShort(c)} 학번이 없습니다.`, 'err'); return; }
       const ok = await ask({ title: `${courseShort(c)} 명단 교체`, body: `${mine.length}명` });

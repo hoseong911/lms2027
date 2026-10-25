@@ -116,13 +116,35 @@ export async function renameYear(db, from, to) {
   courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { year: to }));
   batch.delete(yearRef(db, from));
   await batch.commit();
+  // 비밀번호와 동의는 문서 id가 "학년도_학번"이라 새 학년도 id로 옮긴다.
+  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
+    const docs = await docsWithPrefix(db, coll, `${from}_`);
+    for (let i = 0; i < docs.length; i += 200) {
+      const b = writeBatch(db);
+      docs.slice(i, i + 200).forEach(d => {
+        b.set(doc(db, coll, `${to}_` + d.id.slice(`${from}_`.length)), d.data());
+        b.delete(d.ref);
+      });
+      await b.commit();
+    }
+  }
 }
 
 // 학년도 삭제 — 그 해의 반을 전부 지운다(명단, 강의 연결, 비밀번호, 동의까지).
 // 어드민이 지우기 전에 선생님 계정 비밀번호로 다시 인증받는다(admin.js).
 export async function deleteYear(db, year) {
   for (const c of await coursesOfYear(db, year)) await deleteCourse(db, c.id);
+  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
+    await deleteDocs(db, await docsWithPrefix(db, coll, `${year}_`));
+  }
   await deleteDoc(yearRef(db, year));
+}
+
+// 문서 id가 prefix로 시작하는 문서들(비밀번호와 동의는 courseId 칸 대신 id에 학년도가 들어 있다).
+async function docsWithPrefix(db, coll, prefix) {
+  const q = query(collection(db, coll),
+    where(documentId(), '>=', prefix), where(documentId(), '<', prefix + ''));
+  return (await getDocs(q)).docs;
 }
 
 /* ── 반(Course) ──
@@ -220,16 +242,12 @@ async function deleteDocs(db, docs) {
   }
 }
 
-// 반 삭제 — 명단, 강의 연결, 비밀번호, 동의까지 같이 지운다. 되돌릴 수 없으므로 호출부에서 꼭 확인받는다.
-// 비밀번호와 동의는 courseId 칸이 없고 문서 id가 "반id_학번"이라 id 앞머리로 찾는다.
+// 반 삭제 — 명단과 강의 연결을 같이 지운다. 되돌릴 수 없으므로 호출부에서 꼭 확인받는다.
+// 비밀번호와 동의는 반이 아니라 "학년도 + 학번"에 붙어 있어서(한 학생이 여러 반에 들어가므로)
+// 반을 지워도 남는다. 학년도를 지울 때 함께 지운다.
 export async function deleteCourse(db, id) {
   for (const coll of [COLL.courseStudents, COLL.courseLessons]) {
     await deleteDocs(db, (await getDocs(query(collection(db, coll), where('courseId', '==', id)))).docs);
-  }
-  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
-    const q = query(collection(db, coll),
-      where(documentId(), '>=', `${id}_`), where(documentId(), '<', `${id}_`));
-    await deleteDocs(db, (await getDocs(q)).docs);
   }
   await deleteDoc(doc(db, COLL.courses, id));
 }
@@ -258,50 +276,48 @@ export async function findStudent(db, cid, studentNo) {
   return s.exists() ? { id: s.id, ...s.data() } : null;
 }
 
-// 학번만 알 때 — 진행 중인 반을 훑어 찾는다. 학생 로그인이 쓴다.
-// 학번에서 학년과 반을 뽑을 수 있으므로 해당하는 반을 먼저 보고 나머지를 본다.
-export async function findStudentAcrossCourses(db, studentNo, year = schoolYear()) {
-  const courses = await listCourses(db, { year });
-  if (!courses.length) return null;
-  const p = parseStudentNo(studentNo);
-  const score = c => (p && c.grade === p.grade && c.classNo === p.classNo) ? 0 : 1;
-  const ordered = p ? [...courses].sort((a, b) => score(a) - score(b)) : courses;
-  for (const c of ordered) {
-    const st = await findStudent(db, c.id, studentNo);
-    if (st) return { student: st, course: c };
-  }
-  return null;
-}
-
-/* 그 해 전체 명단을 한 번에 읽어 "학번 -> { name, courseId }" 표로 만든다.
+/* 그 해 전체 명단을 한 번에 읽어 로그인용 표로 만든다.
+ *   students  학번 -> { name, courseIds: [...] }   한 학생이 여러 반(사회 반, 역사 반)에 들 수 있다
+ *   courses   반id -> { subject, grade, classNo } 로그인 뒤 클래스 고르기 화면이 쓴다
  *
  * 로그인 화면이 글자를 칠 때마다 조용히 명단과 대조하는데(2026과 같은 동작),
  * 그때마다 Firestore에 물으면 읽기가 타이핑 수만큼 늘어난다. 2026은
  * shared/auth.js가 RTDB 명단을 localStorage에 24시간 캐시해서 이 문제를 풀었고,
- * 여기서도 같은 방식을 쓴다. 다른 점은 표에 courseId가 함께 들어간다는 것이다 —
- * 학번만으로는 어느 반 학생인지 알 수 없으므로. */
-const ROSTER_CACHE_KEY = 'lms2027_roster';
+ * 여기서도 같은 방식을 쓴다. */
+const ROSTER_CACHE_KEY = 'lms2027_roster_v2';
 const ROSTER_TTL = 24 * 60 * 60 * 1000;
 
 export async function loadYearRoster(db, year = schoolYear(), { fresh = false } = {}) {
   if (!fresh) {
     try {
       const c = JSON.parse(localStorage.getItem(ROSTER_CACHE_KEY) || 'null');
-      if (c && c.year === year && Date.now() - c.at < ROSTER_TTL) return c.map;
+      if (c && c.year === year && Date.now() - c.at < ROSTER_TTL) return c.data;
     } catch (_) {}
   }
-  const courses = await listCourses(db, { year });
-  const ids = new Set(courses.map(c => c.id));
+  const list = await listCourses(db, { year });
+  const courses = {};
+  list.forEach(c => { courses[c.id] = { subject: c.subject || '', grade: c.grade, classNo: c.classNo }; });
   const snap = await getDocs(collection(db, COLL.courseStudents));
-  const map = {};
+  const students = {};
   snap.docs.forEach(d => {
     const v = d.data();
-    if (ids.has(v.courseId)) map[String(v.studentNo)] = { name: v.name, courseId: v.courseId };
+    if (!courses[v.courseId]) return;
+    const s = (students[String(v.studentNo)] ||= { name: v.name, courseIds: [] });
+    s.courseIds.push(v.courseId);
   });
+  const data = { students, courses };
   try {
-    localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify({ year, at: Date.now(), map }));
+    localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify({ year, at: Date.now(), data }));
   } catch (_) {}
-  return map;
+  return data;
+}
+
+// 한 학생이 그 학년도에 든 반들(아카이브 제외). 로그인 뒤 클래스 고르기 화면이 쓴다.
+// 캐시된 명단 대신 학번으로 바로 묻는다 — 선생님이 반을 더하면 바로 보여야 해서다(읽기는 반 수만큼).
+export async function listStudentCourses(db, year, studentNo) {
+  const snap = await getDocs(query(collection(db, COLL.courseStudents), where('studentNo', '==', String(studentNo))));
+  const courses = await Promise.all(snap.docs.map(d => getCourse(db, d.data().courseId)));
+  return courses.filter(c => c && c.year === year && c.status !== 'archived').sort(courseOrder);
 }
 
 export function clearRosterCache() {
@@ -328,25 +344,35 @@ export async function replaceRoster(db, cid, rows) {
   return rows.length;
 }
 
-/* 명단 여러 반을 한 번에 — 엑셀 한 장을 받아 학번의 학년과 반 자리로 흩어 넣는다.
- * 과목은 학번에 없으므로 선생님이 고른다. 그 과목에 반이 아직 없으면 같이 만든다.
- * 지우는 범위는 명단이 들어가는 반뿐이다(2026에서는 전교생 명단을 통째로 지웠다). */
-export function splitRosterByClass(rows) {
-  const by = {};
-  for (const r of rows) {
-    const p = parseStudentNo(r.studentNo);
-    if (!p) continue;
-    (by[`${p.grade}-${p.classNo}`] ||= { grade: p.grade, classNo: p.classNo, rows: [] }).rows.push(r);
-  }
-  return Object.values(by).sort((a, b) => (a.grade - b.grade) || (a.classNo - b.classNo));
+/* 명단 엑셀 한 장 — A열 과목, B열 학년, C열 반, D열 번호, E열 이름(선생님 지시 2026-10-25).
+ * 과목까지 줄마다 들어 있으므로 따로 묻지 않는다. 학번은 학년 한 자리 + 반 두 자리 + 번호
+ * 두 자리로 만든다(10203 = 1학년 2반 3번). 한 학생이 사회와 역사 줄에 둘 다 있으면 두 반에 다 들어간다. */
+export function rosterRowFromSheet(r) {
+  const subject = String(r[0] ?? '').trim();
+  const grade = +String(r[1] ?? '').trim(), classNo = +String(r[2] ?? '').trim(), num = +String(r[3] ?? '').trim();
+  const name = String(r[4] ?? '').trim();
+  if (!validSubject(subject) || !validGrade(grade) || !validClass(classNo) || !inRange(num, 1, 99) || !name) return null;
+  const studentNo = `${grade}${String(classNo).padStart(2, '0')}${String(num).padStart(2, '0')}`;
+  return { subject, grade, classNo, studentNo, name };
 }
 
-export async function replaceRosterBySubject(db, { year, subject, rows }) {
+// 과목, 학년, 반이 같은 줄끼리 묶는다.
+export function groupRosterRows(rows) {
+  const by = {};
+  for (const r of rows) {
+    (by[`${r.subject}|${r.grade}|${r.classNo}`] ||= { subject: r.subject, grade: r.grade, classNo: r.classNo, rows: [] }).rows.push(r);
+  }
+  return Object.values(by).sort((a, b) =>
+    a.subject.localeCompare(b.subject, 'ko') || (a.grade - b.grade) || (a.classNo - b.classNo));
+}
+
+// 묶음마다 반을 찾거나 만들고 그 반 명단을 교체한다. 파일에 없는 반은 건드리지 않는다.
+export async function replaceRosterRows(db, { year, rows }) {
   const classes = [];
-  for (const g of splitRosterByClass(rows)) {
-    const { id } = await createCourse(db, { year, subject, grade: g.grade, classNo: g.classNo });
+  for (const g of groupRosterRows(rows)) {
+    const { id, created } = await createCourse(db, { year, subject: g.subject, grade: g.grade, classNo: g.classNo });
     const n = await replaceRoster(db, id, g.rows);
-    classes.push({ grade: g.grade, classNo: g.classNo, courseId: id, count: n });
+    classes.push({ ...g, courseId: id, created, count: n });
   }
   return classes;
 }
@@ -358,17 +384,19 @@ export async function replaceRosterBySubject(db, { year, subject, rows }) {
  * 학번과 이름과 본인이 정한 비밀번호의 일치 여부만 본다. 이 방식은 그대로 간다 —
  * 가짜 이메일 계정이나 익명 로그인 같은 제안을 다시 꺼내지 말 것.
  *
- * 2026(lms_auth)의 방식을 그대로 옮겼고, 문서 id에 반을 넣어 해가 바뀌어도
- * 같은 학번이 작년 비밀번호를 물려받지 않게 했다.
+ * 문서 id는 "학년도_학번"(2027_10203). 한 학생이 사회 반과 역사 반에 다 들어갈 수 있어서
+ * 비밀번호를 반이 아니라 학년도에 붙였다(2026-10-25). 반마다 따로면 비밀번호가 둘이 된다.
+ * 학년도가 들어 있으니 해가 바뀌어도 같은 학번이 작년 비밀번호를 물려받지 않는다.
  *
  * 학생을 서버가 식별하지 못하므로 규칙에 "본인 것만"을 쓸 수 없다. 대신
- * firestore.rules에서 (1) 명단에 있는 반id_학번만 (2) create 한 번만 쓰게 했다.
+ * firestore.rules에서 (1) 그 학년도 어느 반 명단에 있는 학번만 (2) create 한 번만 쓰게 했다.
+ * 규칙이 명단을 찾아볼 수 있게 문서에 courseId(학생이 든 반 하나)를 같이 적는다.
  * 덮어쓰기는 선생님만 되고, 초기화는 문서를 지우는 것(clearPw)이다.
  * 읽기는 문서 하나(get)만 열고 목록(list)은 닫았다 — 해시를 통째로 긁어 가지 못한다.
  * 그래서 setPw는 비밀번호가 없을 때만 불러야 한다(있는 문서에 쓰면 update라 막힌다).
  * 남은 길 두 가지 — 해시를 PBKDF2로, 검증을 Cloud Function으로. LMS2027.md 4 참고.
  */
-export const authDocId = (cid, studentNo) => `${cid}_${studentNo}`;
+export const authDocId = (year, studentNo) => `${year}_${studentNo}`;
 
 // SHA-256. 소금은 학번이고 앞머리까지 2026 lms/index.js의 hashPw와 같게 둔다.
 export async function hashPw(pw, salt) {
@@ -378,28 +406,28 @@ export async function hashPw(pw, salt) {
 }
 export const isHash = v => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
 
-export async function getAuthHash(db, cid, studentNo) {
-  const s = await getDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)));
+export async function getAuthHash(db, year, studentNo) {
+  const s = await getDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
   return s.exists() ? (s.data().pw || '') : '';
 }
 
-export async function setPw(db, cid, studentNo, pw) {
-  await setDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)),
-    { pw: await hashPw(pw, studentNo) });
+export async function setPw(db, year, studentNo, courseId, pw) {
+  await setDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)),
+    { pw: await hashPw(pw, studentNo), courseId });
 }
 
 // 선생님이 초기화하면 문서를 지운다. 다음 로그인 때 새로 정하게 된다.
-export const clearPw = (db, cid, studentNo) =>
-  deleteDoc(doc(db, COLL.courseAuth, authDocId(cid, studentNo)));
+export const clearPw = (db, year, studentNo) =>
+  deleteDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
 
-export async function hasConsent(db, cid, studentNo) {
-  const s = await getDoc(doc(db, COLL.courseConsent, authDocId(cid, studentNo)));
+export async function hasConsent(db, year, studentNo) {
+  const s = await getDoc(doc(db, COLL.courseConsent, authDocId(year, studentNo)));
   return s.exists();
 }
 
-export const saveConsent = (db, cid, studentNo, name) =>
-  setDoc(doc(db, COLL.courseConsent, authDocId(cid, studentNo)),
-    { agreedAt: serverTimestamp(), name });
+export const saveConsent = (db, year, studentNo, courseId, name) =>
+  setDoc(doc(db, COLL.courseConsent, authDocId(year, studentNo)),
+    { agreedAt: serverTimestamp(), name, courseId });
 
 /* ── 강의 ── */
 

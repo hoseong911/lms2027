@@ -136,7 +136,21 @@ svg{vertical-align:middle}
 
 .hub-body{max-width:900px;margin:0 auto;padding:24px 20px 70px}
 
-.course-head{margin-bottom:22px}
+.course-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:22px}
+.pick-back{
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:36px;height:36px;margin-top:2px;border:1px solid var(--m-line);border-radius:10px;
+  background:#fff;color:var(--m-ink-soft);cursor:pointer;
+}
+.pick-back:hover{border-color:var(--primary);color:var(--primary)}
+
+/* 클래스 고르기 — 학생이 든 반마다 카드 하나 */
+.class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.class-card{
+  padding:26px 14px;border:1px solid var(--m-line);border-radius:14px;background:#fff;
+  box-shadow:var(--shadow);font:inherit;font-size:18px;font-weight:800;color:var(--m-ink);cursor:pointer;
+}
+.class-card:hover{border-color:var(--primary);background:var(--primary-soft)}
 .course-badge{
   display:inline-block;padding:4px 10px;border-radius:999px;
   background:var(--primary-soft);color:var(--primary-deep);font-size:12px;font-weight:800;letter-spacing:.3px;
