@@ -24,7 +24,7 @@ import {
 import { firebaseConfig } from "./shared/firebase-config.js";
 import { icon } from "./shared/icons.js?v=20261025a";
 import {
-  MENUS, menuByKey, schoolYear, parseStudentNo, SUBJECTS,
+  MENUS, menuByKey, schoolYear, parseStudentNo,
   validYear, validGrade, validClass, validSubject,
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
@@ -32,7 +32,7 @@ import {
   listStudents, countStudentsByCourse, replaceRoster, splitRosterByClass, replaceRosterBySubject,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025b";
+} from "./model.js?v=20261025c";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -357,9 +357,9 @@ function wireClasses() {
   $('fileRoster').addEventListener('change', onRosterFile);
 }
 
-// 그 해에 쓰인 과목에 기본 과목(사회, 역사)을 더한다. 반 만들기 칩과 명단 올리기 칩이 쓴다.
+// 그 해에 이미 쓰인 과목만 칩으로 보인다. 정해 둔 과목은 없다 — 처음엔 직접 적는다.
 const subjectOptions = () =>
-  [...new Set([...SUBJECTS, ...state.courses.map(c => c.subject).filter(Boolean)])];
+  [...new Set(state.courses.map(c => c.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
 
 const TAGS = [
   { key: 'subject', label: v => v,          values: () => [...new Set(state.courses.map(c => c.subject || ''))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')) },
@@ -440,9 +440,9 @@ function classRow(c) {
 
 // 반 만들기와 고치기가 같은 칸을 쓴다 — 과목, 학년, 반.
 function courseFields(c = null) {
-  const lastSubject = [...state.filter.subject][0] || state.courses[0]?.subject || SUBJECTS[0];
+  const lastSubject = [...state.filter.subject][0] || "";
   return [
-    { key: 'subject', type: 'choice', options: subjectOptions(), value: c ? c.subject : lastSubject, placeholder: '다른 과목' },
+    { key: 'subject', type: 'choice', options: subjectOptions(), value: c ? c.subject : lastSubject, placeholder: '과목' },
     { key: 'grade',   type: 'num', value: c ? c.grade : '',   placeholder: '학년 (숫자 입력)', suffix: '학년' },
     { key: 'classNo', type: c ? 'num' : 'text', value: c ? c.classNo : '',
       placeholder: c ? '반 (숫자 입력)' : '반 (3 또는 1~6)', suffix: '반' },
@@ -577,7 +577,7 @@ async function onClassesClick(ev) {
         const v = await ask({
           title: `${year}학년도 명단 올리기`,
           fields: [{ key: 'subject', type: 'choice', options: subjectOptions(),
-            value: [...state.filter.subject][0] || SUBJECTS[0], placeholder: '다른 과목' }],
+            value: [...state.filter.subject][0] || "", placeholder: "과목" }],
           check: v => validSubject(v.subject) ? '' : '과목을 고르거나 적어 주세요.',
         });
         if (!v) return;

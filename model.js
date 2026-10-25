@@ -74,10 +74,6 @@ export function parseStudentNo(no) {
  * 반을 채운다). 그래서 school_years/{2027} 문서가 따로 있다.
  * 반 문서도 year를 숫자로 들고 있어서, 학년도 숫자를 바꾸면 그 해 반 문서를 같이 고친다. */
 
-// 선생님이 가르치는 과목(2026-10-25). 반을 만들 때 고르는 칩의 기본값이고,
-// 여기 없는 과목도 직접 적어 만들 수 있다. 한 번 만들면 그 과목도 칩에 나온다.
-export const SUBJECTS = ['사회', '역사'];
-
 export const LIMITS = { yearMin: 2000, yearMax: 2100, gradeMin: 1, gradeMax: 9, classMin: 1, classMax: 99, subjectMax: 20 };
 const inRange = (n, a, b) => Number.isInteger(n) && n >= a && n <= b;
 export const validYear    = n => inRange(n, LIMITS.yearMin,  LIMITS.yearMax);
@@ -130,7 +126,7 @@ export async function deleteYear(db, year) {
 }
 
 /* ── 반(Course) ──
- * 반 하나 = 학년도 + 과목 + 학년 + 반. 선생님이 사회와 역사를 다 가르쳐서
+ * 반 하나 = 학년도 + 과목 + 학년 + 반. 과목은 선생님이 직접 적는다(정해 둔 목록이 없다). 그래서
  * 같은 해 같은 1학년 3반이라도 과목이 다르면 다른 반이다(2026-10-25). */
 
 export function courseLabel(c) {
