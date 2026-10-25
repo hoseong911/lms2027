@@ -81,7 +81,7 @@ svg{vertical-align:middle}
 .page-title{margin:0;font-size:22px;font-weight:800}
 
 /* ── 학년도 줄 ── */
-.year-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.year-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:34px;margin-bottom:16px}
 .year-bar .pick-bar{margin-bottom:0}
 .year-tools{display:flex;gap:4px}
 .sel,.inp{
@@ -137,23 +137,26 @@ svg{vertical-align:middle}
 .cls-row.arch .cls-meta{color:var(--faint)}
 .acts{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
 .badge{
-  padding:3px 8px;border-radius:999px;background:var(--point-l);
+  padding:3px 8px;border-radius:6px;background:var(--point-l);
   font-size:11px;font-weight:700;color:var(--point);
 }
 
 /* ── 축 고르기 줄 (반별 / 메뉴별 공용) ── */
-.pick-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-/* 학년도 칩 높이를 못박는다. 옆에 + 버튼이 있는 강의실 관리와 없는 학생 관리에서
-   칩이 2.4px 다르게 늘어나 메뉴를 오갈 때 아래가 들썩였다(2026-10-25). */
-.year-bar .pick{height:36px}
+/* ── 고르기 줄(학년도, 반별 관리의 반, 메뉴별 관리의 메뉴) ──
+   카테고리와 정렬 토글은 테두리 없는 글자로 두고 사이에 구분선을 넣는다(선생님 지시 2026-10-25).
+   켜진 것은 진한 색 굵은 글씨. 알약 모양 테두리는 쓰지 않는다. */
+.pick-bar{display:flex;align-items:center;flex-wrap:wrap;row-gap:8px;margin-bottom:18px}
 .pick{
-  display:inline-flex;align-items:center;gap:7px;padding:9px 14px;
-  border:1px solid var(--border);border-radius:999px;background:#fff;
-  font:inherit;font-size:13.5px;font-weight:600;color:var(--sub);cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;height:20px;padding:0 14px;
+  border:0;border-radius:0;background:none;
+  font:inherit;font-size:14px;font-weight:600;color:var(--faint);cursor:pointer;
 }
-.pick:hover{border-color:var(--primary);color:var(--primary-deep)}
-.pick.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pick:first-child{padding-left:0}
+.pick + .pick{border-left:1px solid var(--border)}
+.pick:hover{color:var(--text)}
+.pick.on{color:var(--primary-deep);font-weight:800}
 .pick-ic{display:inline-flex}
+.pick-bar .ib{margin-left:10px}
 
 /* ── 반 x 메뉴 칸 ──
    반별 보기와 메뉴별 보기가 같은 칸 모양을 쓴다. 들어가는 방향만 다르고
@@ -207,7 +210,6 @@ svg{vertical-align:middle}
 .ib-danger:hover{background:var(--critical-l);color:var(--critical)}
 .modal-foot .ib-danger{background:var(--critical);border-color:var(--critical);color:#fff}
 .modal-foot .ib-danger:hover{background:#B91C1C;border-color:#B91C1C;color:#fff}
-.ib-round{border-radius:999px;width:36px;height:36px}
 .adm-menu-btn{display:none}
 
 
@@ -231,7 +233,7 @@ svg{vertical-align:middle}
 .roster{display:flex;flex-direction:column;border:1px solid var(--hairline-soft);border-radius:9px;max-height:50vh;overflow:auto}
 .roster-row{display:flex;gap:14px;padding:8px 12px;font-size:14px;border-bottom:1px solid var(--hairline-soft)}
 .roster-row:last-child{border-bottom:0}
-.roster-no{min-width:52px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+.roster-no{min-width:52px;font-weight:700;color:var(--sub)}
 
 /* ── 토스트 ── 방금 한 일의 결과와 오류 */
 .toast{
@@ -253,12 +255,13 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .tag-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .tag-bar{display:flex;flex-direction:column;gap:8px;min-width:0}
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
+/* 태그는 테두리 없이 배경으로 구분한다(선생님 지시 2026-10-25). 켜진 것은 진한 배경. */
 .tag{
-  padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;
+  padding:6px 12px;border:0;border-radius:6px;background:#F1F1F1;
   font:inherit;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer;
 }
-.tag:hover{border-color:var(--point);color:var(--point)}
-.tag.on{background:var(--point);border-color:var(--point);color:#fff}
+.tag:hover{background:#E6E6E6;color:var(--text)}
+.tag.on{background:var(--point);color:#fff}
 
 /* ── 모달 입력 칸 ──
    이름표를 위에 달지 않는다. placeholder로 무엇을 적는지, 옆의 단위로 무슨 숫자인지 보인다. */
@@ -266,7 +269,7 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .fld .inp{flex:1;min-width:0}
 .fld-suffix{flex-shrink:0;font-size:14px;font-weight:600;color:var(--text)}
 .choice{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.choice .pick{padding:7px 14px}
+.choice .tag{padding:8px 14px;font-size:14px}
 .choice-inp{flex:1;min-width:90px;padding:8px 11px}
 
 @media (max-width:860px){
@@ -295,8 +298,9 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   display:flex;align-items:center;gap:14px;padding:10px 14px;
   border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:#fff;
 }
-.stu-no{min-width:52px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+/* 학번은 이름과 같은 글꼴 크기. 예전엔 크기가 빠져 16px로 커지고 tabular-nums로 숫자 사이가 벌어져 보였다. */
+.stu-no{min-width:52px;font-size:14.5px;font-weight:700;color:var(--text)}
 .stu-name{min-width:72px;font-size:14.5px;font-weight:700}
-.stu-courses{display:flex;gap:6px;flex-wrap:wrap}
-.stu-course{padding:3px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--hairline-soft);font-size:12.5px;color:var(--sub)}
+.stu-courses{flex:1;display:flex;gap:6px;flex-wrap:wrap}
+.stu-course{padding:4px 9px;border-radius:6px;background:#F1F1F1;font-size:13px;color:var(--sub)}
 .roster-row.off{color:var(--faint)}

@@ -25,15 +25,15 @@ import {
 import { firebaseConfig } from "./shared/firebase-config.js";
 import { icon } from "./shared/icons.js?v=20261025a";
 import {
-  MENUS, menuByKey, schoolYear,
+  MENUS, menuByKey, schoolYear, roomNo,
   validYear, validGrade, validClass, validSubject,
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
-  countStudentsByCourse, listYearStudents, addStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
+  countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025h";
+} from "./model.js?v=20261025i";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -100,7 +100,7 @@ function fieldHtml(f) {
     const opts = [...new Set([...(f.options || []), ...(f.value && !(f.options || []).includes(f.value) ? [f.value] : [])])];
     return `
       <div class="choice" data-key="${esc(f.key)}">
-        ${opts.map(o => `<button type="button" class="pick${o === f.value ? ' on' : ''}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}
+        ${opts.map(o => `<button type="button" class="tag${o === f.value ? ' on' : ''}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}
         <input class="inp choice-inp" type="text" placeholder="${esc(f.placeholder || "직접 입력")}" autocomplete="off">
       </div>`;
   }
@@ -108,7 +108,7 @@ function fieldHtml(f) {
   if (f.type === 'pick') {
     return `
       <div class="choice" data-key="${esc(f.key)}">
-        ${(f.options || []).map(o => `<button type="button" class="pick${o.value === f.value ? ' on' : ''}" data-choice="${esc(o.value)}">${esc(o.label)}</button>`).join('')}
+        ${(f.options || []).map(o => `<button type="button" class="tag${o.value === f.value ? ' on' : ''}" data-choice="${esc(o.value)}">${esc(o.label)}</button>`).join('')}
       </div>`;
   }
   const type = f.type === 'num' ? 'text' : (f.type || 'text');
@@ -127,7 +127,7 @@ function readFields() {
   $('modalBody').querySelectorAll('input.inp[data-key]').forEach(i => { vals[i.dataset.key] = i.value.trim(); });
   $('modalBody').querySelectorAll('.choice').forEach(box => {
     const typed = box.querySelector('.choice-inp')?.value.trim() || '';
-    const on = box.querySelector('.pick.on');
+    const on = box.querySelector('.tag.on');
     vals[box.dataset.key] = typed || (on ? on.dataset.choice : '');
   });
   return vals;
@@ -168,12 +168,12 @@ $('modalBody').addEventListener('click', e => {
   const b = e.target.closest('[data-choice]');
   if (!b) return;
   const box = b.closest('.choice');
-  box.querySelectorAll('.pick').forEach(p => p.classList.toggle('on', p === b));
+  box.querySelectorAll('.tag').forEach(p => p.classList.toggle('on', p === b));
   const inp = box.querySelector('.choice-inp'); if (inp) inp.value = '';
 });
 $('modalBody').addEventListener('input', e => {
   if (!e.target.classList.contains('choice-inp')) return;
-  if (e.target.value.trim()) e.target.closest('.choice').querySelectorAll('.pick').forEach(p => p.classList.remove('on'));
+  if (e.target.value.trim()) e.target.closest('.choice').querySelectorAll('.tag').forEach(p => p.classList.remove('on'));
 });
 
 $('modalCancel').addEventListener('click', () => _modalDone && _modalDone(null));
@@ -387,7 +387,7 @@ function renderClasses() {
   $('yearBar').innerHTML = state.years.map(y => `
     <button type="button" class="pick${y === state.year ? ' on' : ''}" data-act="pick-year" data-year="${y}">
       ${y}학년도
-    </button>`).join('') + ib('add-year', 'plus', '학년도 추가', '', 'ib-round');
+    </button>`).join('') + ib('add-year', 'plus', '학년도 추가');
 
   const hasYear = state.year != null;
   $('yearTools').innerHTML = hasYear
@@ -522,13 +522,14 @@ async function onClassesClick(ev) {
             const nos = parseClassNos(v.classNo);
             if (!nos) return '반을 확인해 주세요.';
             const taken = nos.filter(n => state.courses.some(x => (x.subject || '') === v.subject && x.grade === num(v.grade) && x.classNo === n));
-            return taken.length === nos.length ? `${v.subject} ${v.grade}학년 ${taken.join(', ')}반이 이미 있습니다.` : '';
+            return taken.length === nos.length ? `${v.subject} ${taken.map(n => roomNo(num(v.grade), n)).join(', ')}이 이미 있습니다.` : '';
           },
         });
         if (!v) return;
         const { made, skipped } = await createCourses(db, { year, subject: v.subject, grade: num(v.grade), classNos: parseClassNos(v.classNo) });
-        toast(`${v.subject} ${v.grade}학년 ${made.join(', ')}반을 만들었습니다.` +
-          (skipped.length ? ` 이미 있던 ${skipped.join(', ')}반은 그대로 두었습니다.` : ''));
+        const rn = n => roomNo(num(v.grade), n);
+        toast(`${v.subject} ${made.map(rn).join(', ')}을 만들었습니다.` +
+          (skipped.length ? ` 이미 있던 ${skipped.map(rn).join(', ')}은 그대로 두었습니다.` : ''));
         break;
       }
 
@@ -541,12 +542,12 @@ async function onClassesClick(ev) {
             if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
             if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
             const dup = state.courses.some(x => x.id !== c.id && (x.subject || '') === v.subject && x.grade === num(v.grade) && x.classNo === num(v.classNo));
-            return dup ? `${v.subject} ${v.grade}학년 ${v.classNo}반이 이미 있습니다.` : '';
+            return dup ? `${v.subject} ${roomNo(num(v.grade), num(v.classNo))}이 이미 있습니다.` : '';
           },
         });
         if (!v) return;
         await updateCourse(db, c.id, { subject: v.subject, grade: num(v.grade), classNo: num(v.classNo) });
-        toast(`${v.subject} ${v.grade}학년 ${v.classNo}반으로 저장했습니다.`);
+        toast(`${v.subject} ${roomNo(num(v.grade), num(v.classNo))}로 저장했습니다.`);
         break;
       }
 
@@ -612,6 +613,7 @@ function wireStudents() {
     if (ev.target.closest('[data-act="add-student"]')) doAddStudent();
   });
   $('fileRoster').addEventListener('change', onRosterFile);
+  $('stuList').addEventListener('click', onStudentClick);
 }
 
 async function renderStudents() {
@@ -636,8 +638,55 @@ async function renderStudents() {
       <span class="stu-no">${esc(s.studentNo)}</span>
       <span class="stu-name">${esc(s.name)}</span>
       <span class="stu-courses">${s.courses.map(c => `<span class="stu-course">${esc(courseShort(c))}</span>`).join('')}</span>
+      <span class="acts">
+        ${ib('edit-student', 'pencil', `${s.studentNo} ${s.name} 수정`, `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`)}
+        ${ib('del-student', 'trash-2', `${s.studentNo} ${s.name} 삭제`, `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`, 'ib-danger')}
+      </span>
     </div>`).join('') : '<p class="empty">학생이 없습니다.</p>';
 }
+
+/* 학생 줄의 수정과 삭제. 학생은 학번으로 그 학년도 강의실 전부에 묶여 있어서 한꺼번에 고치고 지운다. */
+async function onStudentClick(ev) {
+  const btn = ev.target.closest('[data-act]');
+  if (!btn) return;
+  const no = btn.dataset.no, name = btn.dataset.name;
+  const p = parseNo(no);
+  try {
+    if (btn.dataset.act === 'edit-student') {
+      const v = await ask({
+        title: `${no} ${name} 수정`,
+        fields: [
+          { key: 'grade',   type: 'num',  value: p.grade,   placeholder: '학년 (숫자 입력)', suffix: '학년' },
+          { key: 'classNo', type: 'num',  value: p.classNo, placeholder: '반 (숫자 입력)',   suffix: '반' },
+          { key: 'num',     type: 'num',  value: p.num,     placeholder: '번호 (숫자 입력)', suffix: '번' },
+          { key: 'name',    type: 'text', value: name,      placeholder: '이름' },
+        ],
+        check: v => {
+          if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
+          if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
+          if (!(num(v.num) >= 1 && num(v.num) <= 99)) return '번호를 확인해 주세요.';
+          return v.name ? '' : '이름을 입력해 주세요.';
+        },
+      });
+      if (!v) return;
+      const row = await updateStudent(db, state.year, no, v);
+      toast(`${row.studentNo} ${row.name}으로 저장했습니다.`);
+    }
+    if (btn.dataset.act === 'del-student') {
+      if (!await askDelete(name, `${no} ${name}이 이 학년도 강의실 전부에서 빠지고 비밀번호도`)) return;
+      await deleteStudent(db, state.year, no);
+      toast(`${no} ${name}을 삭제했습니다.`);
+    }
+    await reloadAll();
+    renderStudents();
+  } catch (e) {
+    console.warn('[student]', e);
+    toast('처리하지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+// 학번 다섯 자리를 학년, 반, 번호로.
+const parseNo = s => ({ grade: +String(s)[0], classNo: +String(s).slice(1, 3), num: +String(s).slice(3, 5) });
 
 
 /* 학생 직접 추가 — 학년, 반, 번호, 이름만 적는다. 그 학년도에 만든 그 반 강의실 전부(과목 무관)에
@@ -664,7 +713,7 @@ async function doAddStudent() {
     },
   });
   if (!v || !result) return;
-  toast(`${v.name}을 ${result.added.map(c => c.subject || courseShort(c)).join(', ')} ${v.grade}학년 ${v.classNo}반에 추가했습니다.`);
+  toast(`${v.name}을 ${result.added.map(courseShort).join(', ')}에 추가했습니다.`);
   await reloadAll();
   renderStudents();
 }
@@ -691,7 +740,7 @@ async function onRosterFile(ev) {
     const ok = await ask({
       title: `${state.year}학년도 명단 교체`,
       body: `<div class="roster">${groups.map(g => `
-        <div class="roster-row${has(g) ? '' : ' off'}"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${has(g) ? '' : ', 없는 강의실이라 넣지 않음'}</span></div>`).join('')}</div>` +
+        <div class="roster-row${has(g) ? '' : ' off'}"><span class="roster-no">${esc(g.subject)} ${roomNo(g.grade, g.classNo)}</span><span>${g.rows.length}명${has(g) ? '' : ', 없는 강의실이라 넣지 않음'}</span></div>`).join('')}</div>` +
         (bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''),
     });
     if (!ok) return;

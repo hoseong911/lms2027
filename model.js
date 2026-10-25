@@ -157,7 +157,9 @@ export function courseLabel(c) {
   // 가운뎃점은 화면 문구에 쓰지 않는다(CLAUDE.md 화면 규칙).
   return `${c.year}학년도 ${courseShort(c)}`;
 }
-export const courseShort = c => c ? `${c.subject ? c.subject + ' ' : ''}${c.grade}학년 ${c.classNo}반` : '';
+// 강의실 이름은 "사회 301"처럼 쓴다(학년 한 자리 + 반 두 자리, 선생님 지시 2026-10-25).
+export const roomNo = (grade, classNo) => `${grade}${String(classNo).padStart(2, '0')}`;
+export const courseShort = c => c ? `${c.subject ? c.subject + ' ' : ''}${roomNo(c.grade, c.classNo)}` : '';
 
 // 과목, 학년, 반 순서. 화면의 반 목록과 고르기 줄이 모두 이 순서를 쓴다.
 export const courseOrder = (a, b) =>
@@ -225,7 +227,7 @@ export async function updateCourse(db, id, { subject, grade, classNo }) {
   checkCourse({ year: c.year, subject, grade, classNo });
   if (sameCourse(c, subject, grade, classNo)) return;
   const dup = await findCourse(db, c.year, subject, grade, classNo);
-  if (dup && dup.id !== id) throw new Error(`${subject} ${grade}학년 ${classNo}반이 이미 있습니다.`);
+  if (dup && dup.id !== id) throw new Error(`${subject} ${roomNo(grade, classNo)}이 이미 있습니다.`);
   await updateDoc(doc(db, COLL.courses, id), { subject, grade, classNo });
 }
 
@@ -322,7 +324,7 @@ export async function addStudent(db, { year, grade, classNo, num, name }) {
   const rooms = (await coursesOfYear(db, year))
     .filter(c => c.grade === row.grade && c.classNo === row.classNo && c.status !== 'archived')
     .sort(courseOrder);
-  if (!rooms.length) throw new Error(`${row.grade}학년 ${row.classNo}반 강의실이 없습니다.`);
+  if (!rooms.length) throw new Error(`${roomNo(row.grade, row.classNo)} 강의실이 없습니다.`);
   const added = [], skipped = [];
   for (const c of rooms) {
     const ref = doc(db, COLL.courseStudents, studentDocId(c.id, row.studentNo));
@@ -330,10 +332,54 @@ export async function addStudent(db, { year, grade, classNo, num, name }) {
     await setDoc(ref, { courseId: c.id, studentNo: row.studentNo, name: row.name });
     added.push(c);
   }
-  if (!added.length) throw new Error(`${row.studentNo}은 ${row.grade}학년 ${row.classNo}반 강의실에 이미 다 있습니다.`);
+  if (!added.length) throw new Error(`${row.studentNo}은 ${roomNo(row.grade, row.classNo)} 강의실에 이미 다 있습니다.`);
   return { row, added, skipped };
 }
 
+
+// 그 학년도에 한 학번이 든 명단 문서들(강의실마다 하나씩).
+async function studentDocsOfYear(db, year, studentNo) {
+  const snap = await getDocs(query(collection(db, COLL.courseStudents), where('studentNo', '==', String(studentNo))));
+  const ids = new Set((await coursesOfYear(db, year)).map(c => c.id));
+  return snap.docs.filter(d => ids.has(d.data().courseId));
+}
+
+// 학생 고치기 — 학년, 반, 번호, 이름. 학생 추가와 같게 그 반 강의실 전부에 다시 등록한다.
+// 학번이 바뀌면 비밀번호와 동의 문서(학년도_학번)도 새 학번으로 옮긴다 — 학생이 다시 정하지 않아도 되게.
+export async function updateStudent(db, year, oldNo, { grade, classNo, num, name }) {
+  const row = rosterRowFromSheet(['-', grade, classNo, num, name]);
+  if (!row) throw new Error('학년, 반, 번호, 이름을 확인해 주세요.');
+  const rooms = (await coursesOfYear(db, year))
+    .filter(c => c.grade === row.grade && c.classNo === row.classNo && c.status !== 'archived');
+  if (!rooms.length) throw new Error(`${roomNo(row.grade, row.classNo)} 강의실이 없습니다.`);
+  if (row.studentNo !== String(oldNo) && (await studentDocsOfYear(db, year, row.studentNo)).length) {
+    throw new Error(`${row.studentNo} 학생이 이미 있습니다.`);
+  }
+  const old = await studentDocsOfYear(db, year, oldNo);
+  const batch = writeBatch(db);
+  old.forEach(d => batch.delete(d.ref));
+  rooms.forEach(c => batch.set(doc(db, COLL.courseStudents, studentDocId(c.id, row.studentNo)),
+    { courseId: c.id, studentNo: row.studentNo, name: row.name }));
+  if (row.studentNo !== String(oldNo)) {
+    for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
+      const s = await getDoc(doc(db, coll, authDocId(year, oldNo)));
+      if (!s.exists()) continue;
+      batch.set(doc(db, coll, authDocId(year, row.studentNo)), { ...s.data(), courseId: rooms[0].id });
+      batch.delete(s.ref);
+    }
+  }
+  await batch.commit();
+  return row;
+}
+
+// 학생 삭제 — 그 학년도 강의실 전부에서 빼고 비밀번호와 동의도 지운다.
+export async function deleteStudent(db, year, studentNo) {
+  const batch = writeBatch(db);
+  (await studentDocsOfYear(db, year, studentNo)).forEach(d => batch.delete(d.ref));
+  batch.delete(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
+  batch.delete(doc(db, COLL.courseConsent, authDocId(year, studentNo)));
+  await batch.commit();
+}
 // 학생 관리 화면 — 그 학년도 학생 전부와 각자 든 강의실(아카이브 포함). 학번 순.
 export async function listYearStudents(db, year) {
   const courses = await listCourses(db, { year, includeArchived: true });
