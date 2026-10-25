@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
-<link rel="stylesheet" href="admin.css?v=20261025a">
+<link rel="stylesheet" href="admin.css?v=20261025b">
 <meta name="theme-color" content="#FF6B3D">
 </head>
 <body>
@@ -84,9 +84,9 @@
     <main class="adm-main">
 
       <!-- ══════ 학급 관리 ══════
-           학년도, 학년, 반을 선생님이 직접 만들고 고치고 지운다(2026-10-25).
-           학년도 칩 줄에서 학년도를 고르면 그 아래에 학년 카드가 하나씩 나오고,
-           카드 안에 반이 한 줄씩 있다. 버튼은 전부 아이콘이다(CLAUDE.md 화면 규칙). -->
+           학년도 칩 줄, 태그 줄 셋(과목, 학년, 반), 반 목록 한 줄.
+           반을 학년 아래로 묶지 않고 태그로 골라 본다. 태그는 여러 개를 함께 켤 수 있다(2026-10-25).
+           버튼은 전부 아이콘이다(CLAUDE.md 화면 규칙). -->
       <section class="panel-page" data-page="classes">
         <div class="page-head">
           <h1 class="page-title">학급 관리</h1>
@@ -97,9 +97,14 @@
           <div class="year-tools" id="yearTools"></div>
         </div>
 
-        <div id="gradeList"><p class="empty">불러오는 중입니다.</p></div>
+        <div class="tag-head">
+          <div class="tag-bar" id="tagBar"></div>
+          <div class="year-tools" id="classTools"></div>
+        </div>
 
-        <!-- 명단 올리기용 파일 칸. 누른 버튼이 학년인지 반인지 state.upload에 담아 두고 연다. -->
+        <div id="classList"><p class="empty">불러오는 중입니다.</p></div>
+
+        <!-- 명단 올리기용 파일 칸. 누른 버튼이 과목 전체인지 반 하나인지 state.upload에 담아 두고 연다. -->
         <input type="file" id="fileRoster" accept=".xlsx,.xls" hidden>
       </section>
 
@@ -129,9 +134,9 @@
         <div class="card">
           <div class="card-body">
             <div class="form-row">
-              <label class="f f-no"><span class="f-label">강 번호</span>
-                <input type="text" id="inpLessonNo" class="inp" placeholder="1"></label>
-              <label class="f f-grow"><span class="f-label">제목</span>
+              <label class="f f-no">
+                <input type="text" id="inpLessonNo" class="inp" placeholder="강 번호"></label>
+              <label class="f f-grow">
                 <input type="text" id="inpLessonTitle" class="inp" placeholder="강의 제목"></label>
               <button type="button" class="ib ib-primary" id="btnAddLesson" title="강의 추가" aria-label="강의 추가">
                 <span data-icon="plus" data-icon-size="18"></span>
@@ -174,6 +179,6 @@
 
 <!-- 엑셀 명단 업로드용. 2026 어드민과 같은 버전을 쓴다. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script type="module" src="admin.js?v=20261025a"></script>
+<script type="module" src="admin.js?v=20261025b"></script>
 </body>
 </html>

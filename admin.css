@@ -132,7 +132,7 @@ svg{vertical-align:middle}
 }
 .cls-row:last-child{margin-bottom:0}
 .cls-row.arch{background:var(--surface);color:var(--faint)}
-.cls-name{font-size:14.5px;font-weight:700;min-width:44px}
+.cls-name{font-size:14.5px;font-weight:700;min-width:120px}
 .cls-meta{flex:1;font-size:12.5px;color:var(--sub)}
 .cls-row.arch .cls-meta{color:var(--faint)}
 .acts{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
@@ -207,16 +207,6 @@ svg{vertical-align:middle}
 .ib-round{border-radius:999px;width:38px;height:38px}
 .adm-menu-btn{display:none}
 
-/* 학년 카드 머리의 숫자(반 수, 학생 수). 설명이 아니라 데이터다. */
-.card-meta{margin-left:10px;font-size:13px;font-weight:600;color:var(--sub)}
-
-/* 학년 추가 — 학년 카드들 맨 뒤의 빈 칸 */
-.add-block{
-  display:flex;align-items:center;justify-content:center;width:100%;height:56px;
-  border:1.5px dashed var(--border);border-radius:13px;background:transparent;
-  color:var(--faint);cursor:pointer;
-}
-.add-block:hover{border-color:var(--primary);color:var(--primary)}
 
 /* ── 모달 ── */
 .modal-scrim{
@@ -248,6 +238,33 @@ svg{vertical-align:middle}
   box-shadow:var(--shadow);word-break:keep-all;text-align:center;
 }
 .toast.err{background:var(--critical)}
+
+/* 숫자 칸에 스크롤 화살표를 두지 않는다(CLAUDE.md 화면 규칙). 숫자 칸은 원래
+   type="text" + inputmode="numeric"으로 만들지만, 혹시 number가 섞여도 화살표가 안 보이게 막는다. */
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+
+/* ── 학급 관리 태그 ──
+   줄 셋(과목, 학년, 반). 여러 개를 함께 켤 수 있다. */
+.tag-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.tag-bar{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{
+  padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;
+  font:inherit;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer;
+}
+.tag:hover{border-color:var(--point);color:var(--point)}
+.tag.on{background:var(--point);border-color:var(--point);color:#fff}
+
+/* ── 모달 입력 칸 ──
+   이름표를 위에 달지 않는다. placeholder로 무엇을 적는지, 옆의 단위로 무슨 숫자인지 보인다. */
+.fld{display:flex;align-items:center;gap:8px}
+.fld .inp{flex:1;min-width:0}
+.fld-suffix{flex-shrink:0;font-size:14px;font-weight:600;color:var(--text)}
+.choice{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.choice .pick{padding:7px 14px}
+.choice-inp{flex:1;min-width:90px;padding:8px 11px}
 
 @media (max-width:860px){
   .adm-menu-btn{display:inline-flex}

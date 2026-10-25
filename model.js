@@ -5,8 +5,8 @@
  * 1년짜리 데이터다. 학생의 영구 신원(Person)은 두지 않는다 —
  * 해마다 다시 만들면 되므로 그 층이 필요 없다(2026-10-23 선생님 결정).
  *
- *   school_years     학년도 하나와 그 안의 학년 목록. 반이 없어도 학년도와 학년은 있다.
- *   courses          반 하나. { year, grade, classNo } 가 곧 이름이다(문서 id는 자동).
+ *   school_years     학년도 하나. 반이 없어도 학년도는 있다.
+ *   courses          반 하나. { year, subject, grade, classNo } 가 곧 이름이다(문서 id는 자동).
  *   course_students  그 반의 명단. 학번은 이 반 안에서만 유효하다.
  *   course_lessons   그 반이 쓰는 강의. 몇 강인지, 공개했는지, 수업일.
  *   lesson_library   강의 내용(슬라이드 본문). 연도와 무관하게 남는다.
@@ -24,7 +24,7 @@
 
 import {
   collection, query, where, getDocs, getDoc, doc, documentId,
-  addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion, arrayRemove
+  addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export const COLL = {
@@ -68,113 +68,90 @@ export function parseStudentNo(no) {
   return { grade: +s[0], classNo: +s.slice(1, 3), num: +s.slice(3, 5) };
 }
 
-/* ── 학년도와 학년 ──
+/* ── 학년도 ──
  *
- * 학년도와 학년은 반이 하나도 없어도 있을 수 있어야 한다(선생님이 먼저 만들고
- * 나중에 반을 채운다). 그래서 school_years 문서 하나가 그 해의 학년 목록을 든다.
- *   school_years/{2027}  { year: 2027, grades: [1, 2, 3] }
- * 반 문서도 year와 grade를 숫자로 들고 있다. 학년도나 학년 번호를 바꾸면
- * 해당하는 반 문서를 같이 고친다(반은 많아야 서른 개 남짓이다). */
+ * 학년도는 반이 하나도 없어도 있을 수 있어야 한다(선생님이 먼저 만들고 나중에
+ * 반을 채운다). 그래서 school_years/{2027} 문서가 따로 있다.
+ * 반 문서도 year를 숫자로 들고 있어서, 학년도 숫자를 바꾸면 그 해 반 문서를 같이 고친다. */
 
-export const LIMITS = { yearMin: 2000, yearMax: 2100, gradeMin: 1, gradeMax: 9, classMin: 1, classMax: 99 };
+// 선생님이 가르치는 과목(2026-10-25). 반을 만들 때 고르는 칩의 기본값이고,
+// 여기 없는 과목도 직접 적어 만들 수 있다. 한 번 만들면 그 과목도 칩에 나온다.
+export const SUBJECTS = ['사회', '역사'];
+
+export const LIMITS = { yearMin: 2000, yearMax: 2100, gradeMin: 1, gradeMax: 9, classMin: 1, classMax: 99, subjectMax: 20 };
 const inRange = (n, a, b) => Number.isInteger(n) && n >= a && n <= b;
-export const validYear  = n => inRange(n, LIMITS.yearMin,  LIMITS.yearMax);
-export const validGrade = n => inRange(n, LIMITS.gradeMin, LIMITS.gradeMax);
-export const validClass = n => inRange(n, LIMITS.classMin, LIMITS.classMax);
+export const validYear    = n => inRange(n, LIMITS.yearMin,  LIMITS.yearMax);
+export const validGrade   = n => inRange(n, LIMITS.gradeMin, LIMITS.gradeMax);
+export const validClass   = n => inRange(n, LIMITS.classMin, LIMITS.classMax);
+export const validSubject = s => typeof s === 'string' && s.trim().length > 0 && s.trim().length <= LIMITS.subjectMax;
 
 const yearRef = (db, year) => doc(db, COLL.schoolYears, String(year));
-const sortNum = arr => [...new Set(arr)].sort((a, b) => a - b);
 
 async function coursesOfYear(db, year) {
   const snap = await getDocs(query(collection(db, COLL.courses), where('year', '==', year)));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// 학년도 목록. 학년 목록에는 반에만 있고 school_years에 빠진 학년도 합쳐 둔다
-// (어느 쪽이 어긋나도 화면에서 반이 사라지지 않게).
+// 학년도 목록(큰 해부터). school_years에 빠졌어도 반이 있는 해는 넣는다(반이 화면에서 사라지지 않게).
 export async function listYears(db) {
   const [ys, cs] = await Promise.all([
     getDocs(collection(db, COLL.schoolYears)),
     getDocs(collection(db, COLL.courses)),
   ]);
-  const map = {};
-  ys.docs.forEach(d => { const v = d.data(); map[v.year] = { year: v.year, grades: [...(v.grades || [])] }; });
-  cs.docs.forEach(d => {
-    const v = d.data();
-    if (v.year == null) return;
-    (map[v.year] ||= { year: v.year, grades: [] }).grades.push(v.grade);
-  });
-  return Object.values(map)
-    .map(y => ({ ...y, grades: sortNum(y.grades.filter(g => g != null)) }))
-    .sort((a, b) => b.year - a.year);
+  const set = new Set();
+  ys.docs.forEach(d => { const y = d.data().year; if (y != null) set.add(y); });
+  cs.docs.forEach(d => { const y = d.data().year; if (y != null) set.add(y); });
+  return [...set].sort((a, b) => b - a);
 }
 
 export async function createYear(db, year) {
   if (!validYear(year)) throw new Error('학년도를 확인해 주세요.');
-  if ((await getDoc(yearRef(db, year))).exists()) throw new Error(`${year}학년도가 이미 있습니다.`);
-  await setDoc(yearRef(db, year), { year, grades: [], createdAt: serverTimestamp() });
+  if ((await listYears(db)).includes(year)) throw new Error(`${year}학년도가 이미 있습니다.`);
+  await setDoc(yearRef(db, year), { year, createdAt: serverTimestamp() });
 }
 
 export async function renameYear(db, from, to) {
   if (from === to) return;
   if (!validYear(to)) throw new Error('학년도를 확인해 주세요.');
-  const all = await listYears(db);
-  if (all.some(y => y.year === to)) throw new Error(`${to}학년도가 이미 있습니다.`);
-  const cur = all.find(y => y.year === from) || { grades: [] };
+  if ((await listYears(db)).includes(to)) throw new Error(`${to}학년도가 이미 있습니다.`);
   const courses = await coursesOfYear(db, from);
   const batch = writeBatch(db);
-  batch.set(yearRef(db, to), { year: to, grades: cur.grades, createdAt: serverTimestamp() });
+  batch.set(yearRef(db, to), { year: to, createdAt: serverTimestamp() });
   courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { year: to }));
   batch.delete(yearRef(db, from));
   await batch.commit();
 }
 
 // 학년도 삭제 — 그 해의 반을 전부 지운다(명단, 강의 연결, 비밀번호, 동의까지).
+// 어드민이 지우기 전에 선생님 계정 비밀번호로 다시 인증받는다(admin.js).
 export async function deleteYear(db, year) {
   for (const c of await coursesOfYear(db, year)) await deleteCourse(db, c.id);
   await deleteDoc(yearRef(db, year));
 }
 
-export async function addGrade(db, year, grade) {
-  if (!validGrade(grade)) throw new Error('학년을 확인해 주세요.');
-  const y = (await listYears(db)).find(v => v.year === year);
-  if (y && y.grades.includes(grade)) throw new Error(`${grade}학년이 이미 있습니다.`);
-  await setDoc(yearRef(db, year), { year, grades: arrayUnion(grade) }, { merge: true });
-}
-
-export async function renameGrade(db, year, from, to) {
-  if (from === to) return;
-  if (!validGrade(to)) throw new Error('학년을 확인해 주세요.');
-  const y = (await listYears(db)).find(v => v.year === year) || { grades: [] };
-  if (y.grades.includes(to)) throw new Error(`${to}학년이 이미 있습니다.`);
-  const courses = (await coursesOfYear(db, year)).filter(c => c.grade === from);
-  const batch = writeBatch(db);
-  batch.set(yearRef(db, year), { year, grades: sortNum(y.grades.map(g => g === from ? to : g)) }, { merge: true });
-  courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { grade: to }));
-  await batch.commit();
-}
-
-export async function deleteGrade(db, year, grade) {
-  for (const c of (await coursesOfYear(db, year)).filter(c => c.grade === grade)) await deleteCourse(db, c.id);
-  await setDoc(yearRef(db, year), { year, grades: arrayRemove(grade) }, { merge: true });
-}
-
-/* ── 반(Course) ── */
+/* ── 반(Course) ──
+ * 반 하나 = 학년도 + 과목 + 학년 + 반. 선생님이 사회와 역사를 다 가르쳐서
+ * 같은 해 같은 1학년 3반이라도 과목이 다르면 다른 반이다(2026-10-25). */
 
 export function courseLabel(c) {
   if (!c) return '';
   if (c.title) return c.title;
   // 가운뎃점은 화면 문구에 쓰지 않는다(CLAUDE.md 화면 규칙).
-  return `${c.year}학년도 ${c.grade}학년 ${c.classNo}반`;
+  return `${c.year}학년도 ${courseShort(c)}`;
 }
-export const courseShort = c => c ? `${c.grade}학년 ${c.classNo}반` : '';
+export const courseShort = c => c ? `${c.subject ? c.subject + ' ' : ''}${c.grade}학년 ${c.classNo}반` : '';
+
+// 과목, 학년, 반 순서. 화면의 반 목록과 고르기 줄이 모두 이 순서를 쓴다.
+export const courseOrder = (a, b) =>
+  (b.year - a.year) || String(a.subject || '').localeCompare(String(b.subject || ''), 'ko') ||
+  (a.grade - b.grade) || (a.classNo - b.classNo);
 
 export async function listCourses(db, { year = null, includeArchived = false } = {}) {
   let rows = year != null
     ? await coursesOfYear(db, year)
     : (await getDocs(collection(db, COLL.courses))).docs.map(d => ({ id: d.id, ...d.data() }));
   if (!includeArchived) rows = rows.filter(r => r.status !== 'archived');
-  return rows.sort((a, b) => (b.year - a.year) || (a.grade - b.grade) || (a.classNo - b.classNo));
+  return rows.sort(courseOrder);
 }
 
 export async function getCourse(db, cid) {
@@ -182,43 +159,56 @@ export async function getCourse(db, cid) {
   return s.exists() ? { id: s.id, ...s.data() } : null;
 }
 
-/* 반 문서 id는 자동 id다. 처음에는 y2027g1c3처럼 못박았는데, 선생님이 학년도와
- * 학년과 반 번호를 자유롭게 고칠 수 있어야 해서(2026-10-25) 바꿨다. id가 이름을
+/* 반 문서 id는 자동 id다. 처음에는 y2027g1c3처럼 못박았는데, 선생님이 과목과
+ * 학년과 반을 자유롭게 고칠 수 있어야 해서(2026-10-25) 바꿨다. id가 이름을
  * 들고 있으면 이름을 고칠 때마다 명단, 비밀번호, 동의 문서를 전부 새 id로 옮겨야 한다.
  * 같은 반이 둘 생기는 것은 만들 때와 고칠 때 이 함수로 막는다. */
-async function findCourse(db, year, grade, classNo) {
-  return (await coursesOfYear(db, year)).find(c => c.grade === grade && c.classNo === classNo) || null;
+const sameCourse = (c, subject, grade, classNo) =>
+  (c.subject || '') === subject && c.grade === grade && c.classNo === classNo;
+
+async function findCourse(db, year, subject, grade, classNo) {
+  return (await coursesOfYear(db, year)).find(c => sameCourse(c, subject, grade, classNo)) || null;
 }
 
-// 이미 있으면 그 반을 돌려준다(학년 명단 업로드가 반을 찾거나 만들 때 쓴다).
-export async function createCourse(db, { year, grade, classNo }) {
-  if (!validYear(year) || !validGrade(grade) || !validClass(classNo)) throw new Error('학년도와 학년과 반을 확인해 주세요.');
-  const found = await findCourse(db, year, grade, classNo);
+function checkCourse({ year, subject, grade, classNo }) {
+  if (!validYear(year))       throw new Error('학년도를 확인해 주세요.');
+  if (!validSubject(subject)) throw new Error('과목을 확인해 주세요.');
+  if (!validGrade(grade))     throw new Error('학년을 확인해 주세요.');
+  if (!validClass(classNo))   throw new Error('반을 확인해 주세요.');
+}
+
+// 이미 있으면 그 반을 돌려준다(명단 올리기가 반을 찾거나 만들 때 쓴다).
+export async function createCourse(db, { year, subject, grade, classNo }) {
+  subject = String(subject ?? '').trim();
+  checkCourse({ year, subject, grade, classNo });
+  const found = await findCourse(db, year, subject, grade, classNo);
   if (found) return { id: found.id, created: false };
   const ref = await addDoc(collection(db, COLL.courses), {
-    year, grade, classNo, status: 'active', createdAt: serverTimestamp()
+    year, subject, grade, classNo, status: 'active', createdAt: serverTimestamp()
   });
-  await setDoc(yearRef(db, year), { year, grades: arrayUnion(grade) }, { merge: true });
+  await setDoc(yearRef(db, year), { year }, { merge: true });
   return { id: ref.id, created: true };
 }
 
-// 학년 개설 — 1반부터 count반까지 한 번에. 이미 있는 반은 건너뛴다. count가 0이면 학년만 만든다.
-export async function createGrade(db, { year, grade, count }) {
+// 반 여러 개를 한 번에(반 칸에 "1~6"을 적었을 때). 이미 있는 반은 건너뛴다.
+export async function createCourses(db, { year, subject, grade, classNos }) {
   const made = [], skipped = [];
-  if (!count) { await addGrade(db, year, grade); return { made, skipped }; }
-  for (let n = 1; n <= count; n++) {
-    const r = await createCourse(db, { year, grade, classNo: n });
-    (r.created ? made : skipped).push(n);
+  for (const classNo of classNos) {
+    const r = await createCourse(db, { year, subject, grade, classNo });
+    (r.created ? made : skipped).push(classNo);
   }
   return { made, skipped };
 }
 
-export async function renameCourse(db, id, classNo) {
-  if (!validClass(classNo)) throw new Error('반을 확인해 주세요.');
+export async function updateCourse(db, id, { subject, grade, classNo }) {
+  subject = String(subject ?? '').trim();
   const c = await getCourse(db, id);
-  if (!c || c.classNo === classNo) return;
-  if (await findCourse(db, c.year, c.grade, classNo)) throw new Error(`${c.grade}학년 ${classNo}반이 이미 있습니다.`);
-  await updateDoc(doc(db, COLL.courses, id), { classNo });
+  if (!c) throw new Error('반을 찾을 수 없습니다.');
+  checkCourse({ year: c.year, subject, grade, classNo });
+  if (sameCourse(c, subject, grade, classNo)) return;
+  const dup = await findCourse(db, c.year, subject, grade, classNo);
+  if (dup && dup.id !== id) throw new Error(`${subject} ${grade}학년 ${classNo}반이 이미 있습니다.`);
+  await updateDoc(doc(db, COLL.courses, id), { subject, grade, classNo });
 }
 
 // 아카이브 — 지우지 않고 내린다. 지난 해 반은 이 상태로 남아 기록을 지킨다.
@@ -342,23 +332,27 @@ export async function replaceRoster(db, cid, rows) {
   return rows.length;
 }
 
-/* 한 학년 명단을 통째로 받아 학번의 반 자리로 흩어 넣는다.
- * 반이 아직 없으면 같이 개설한다 — 엑셀 한 장으로 학년 하나가 끝난다.
- * 올린 학년과 다른 학년의 학번은 건드리지 않고 그대로 돌려준다(오타나 섞인 줄). */
-export async function replaceGradeRoster(db, { year, grade, rows }) {
-  const byClass = {}, foreign = [];
+/* 명단 여러 반을 한 번에 — 엑셀 한 장을 받아 학번의 학년과 반 자리로 흩어 넣는다.
+ * 과목은 학번에 없으므로 선생님이 고른다. 그 과목에 반이 아직 없으면 같이 만든다.
+ * 지우는 범위는 명단이 들어가는 반뿐이다(2026에서는 전교생 명단을 통째로 지웠다). */
+export function splitRosterByClass(rows) {
+  const by = {};
   for (const r of rows) {
     const p = parseStudentNo(r.studentNo);
-    if (!p || p.grade !== grade) { foreign.push(r); continue; }
-    (byClass[p.classNo] ||= []).push(r);
+    if (!p) continue;
+    (by[`${p.grade}-${p.classNo}`] ||= { grade: p.grade, classNo: p.classNo, rows: [] }).rows.push(r);
   }
+  return Object.values(by).sort((a, b) => (a.grade - b.grade) || (a.classNo - b.classNo));
+}
+
+export async function replaceRosterBySubject(db, { year, subject, rows }) {
   const classes = [];
-  for (const classNo of Object.keys(byClass).map(Number).sort((a, b) => a - b)) {
-    const { id } = await createCourse(db, { year, grade, classNo });
-    const n = await replaceRoster(db, id, byClass[classNo]);
-    classes.push({ classNo, courseId: id, count: n });
+  for (const g of splitRosterByClass(rows)) {
+    const { id } = await createCourse(db, { year, subject, grade: g.grade, classNo: g.classNo });
+    const n = await replaceRoster(db, id, g.rows);
+    classes.push({ grade: g.grade, classNo: g.classNo, courseId: id, count: n });
   }
-  return { classes, foreign };
+  return classes;
 }
 
 /* ── 비밀번호와 동의 ──
