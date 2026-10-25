@@ -84,5 +84,5 @@
 | `course_students` | `반id_학번` | 명단 |
 | `course_lessons` | 자동 id | 반이 쓰는 강의 |
 | `lesson_library` | 자동 id | 강의 내용. 연도와 무관하게 남는다 |
-| `course_auth` | `반id_학번` | 학생 비밀번호 해시. 학생은 create 한 번만 |
-| `course_consent` | `반id_학번` | 개인정보 동의 |
+| `course_auth` | `학년도_학번` | 학생 비밀번호 해시와 학생이 든 반 하나(`courseId`, 규칙이 명단 확인에 씀). 학생은 create 한 번만. 한 학생이 여러 반에 들어도 비밀번호는 하나 |
+| `course_consent` | `학년도_학번` | 개인정보 동의. 학년도에 한 번 |
