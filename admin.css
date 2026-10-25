@@ -283,3 +283,16 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .cls-name{min-width:auto}
   .cls-meta{flex-basis:100%;order:3}
 }
+
+/* 과목 태그와 학년 태그 사이 간격(같은 줄) */
+.tag-gap{width:14px}
+
+/* ── 학생 관리 ── */
+.stu-row{
+  display:flex;align-items:center;gap:14px;padding:10px 14px;
+  border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:#fff;
+}
+.stu-no{min-width:52px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+.stu-name{min-width:72px;font-size:14.5px;font-weight:700}
+.stu-courses{display:flex;gap:6px;flex-wrap:wrap}
+.stu-course{padding:3px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--hairline-soft);font-size:12.5px;color:var(--sub)}

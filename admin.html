@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
-<link rel="stylesheet" href="admin.css?v=20261025b">
+<link rel="stylesheet" href="admin.css?v=20261025c">
 <meta name="theme-color" content="#FF6B3D">
 </head>
 <body>
@@ -57,8 +57,12 @@
     <nav class="adm-sidebar" id="admSidebar">
       <div class="nav-group">
         <div class="nav-item active" data-nav="classes">
+          <span class="nav-ic" data-icon="school" data-icon-size="18"></span>
+          <span class="nav-label">강의실 관리</span>
+        </div>
+        <div class="nav-item" data-nav="students">
           <span class="nav-ic" data-icon="users" data-icon-size="18"></span>
-          <span class="nav-label">학급 관리</span>
+          <span class="nav-label">학생 관리</span>
         </div>
       </div>
       <div class="nav-divider"></div>
@@ -83,13 +87,14 @@
 
     <main class="adm-main">
 
-      <!-- ══════ 학급 관리 ══════
-           학년도 칩 줄, 태그 줄 셋(과목, 학년, 반), 반 목록 한 줄.
-           반을 학년 아래로 묶지 않고 태그로 골라 본다. 태그는 여러 개를 함께 켤 수 있다(2026-10-25).
+      <!-- ══════ 강의실 관리 ══════ (2026-10-25 "학급 관리"에서 이름을 바꿈)
+           학년도 칩 줄, 태그 두 줄(과목과 학년 한 줄, 반 한 줄), 강의실 목록 한 줄.
+           반은 몇 개로 늘어날지 몰라서 따로 한 줄을 쓴다. 태그는 여러 개를 함께 켤 수 있다.
+           명단은 여기서 다루지 않고 학생 관리에서 한꺼번에 올린다.
            버튼은 전부 아이콘이다(CLAUDE.md 화면 규칙). -->
       <section class="panel-page" data-page="classes">
         <div class="page-head">
-          <h1 class="page-title">학급 관리</h1>
+          <h1 class="page-title">강의실 관리</h1>
         </div>
 
         <div class="year-bar">
@@ -103,8 +108,23 @@
         </div>
 
         <div id="classList"><p class="empty">불러오는 중입니다.</p></div>
+      </section>
 
-        <!-- 명단 올리기용 파일 칸. 누른 버튼이 과목 전체인지 반 하나인지 state.upload에 담아 두고 연다. -->
+      <!-- ══════ 학생 관리 ══════
+           명단은 여기서 한꺼번에 만든다(선생님 지시 2026-10-25). 강의실마다 따로 올리지 않는다.
+           엑셀 A열 과목, B열 학년, C열 반, D열 번호, E열 이름. -->
+      <section class="panel-page" data-page="students" hidden>
+        <div class="page-head">
+          <h1 class="page-title">학생 관리</h1>
+        </div>
+
+        <div class="year-bar">
+          <div class="pick-bar" id="stuYearBar"></div>
+          <div class="year-tools" id="stuTools"></div>
+        </div>
+
+        <div id="stuList"><p class="empty">불러오는 중입니다.</p></div>
+
         <input type="file" id="fileRoster" accept=".xlsx,.xls" hidden>
       </section>
 
@@ -179,6 +199,6 @@
 
 <!-- 엑셀 명단 업로드용. 2026 어드민과 같은 버전을 쓴다. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script type="module" src="admin.js?v=20261025d"></script>
+<script type="module" src="admin.js?v=20261025e"></script>
 </body>
 </html>

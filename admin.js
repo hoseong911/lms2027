@@ -1,8 +1,9 @@
 /* 2027 LMS 어드민 — 큰 틀
  *
- *  1. 학급 관리 — 학년도를 고르고, 그 해의 반(과목 + 학년 + 반)을 만들고 고치고 지운다.
- *                반은 학년 아래로 묶지 않고 한 줄로 늘어놓은 뒤 위의 태그(과목, 학년, 반)로
- *                골라 본다. 태그는 여러 개를 함께 켤 수 있다.
+ *  1. 강의실 관리 — 학년도를 고르고, 그 해의 강의실(과목 + 학년 + 반)을 만들고 고치고 지운다.
+ *                강의실은 학년 아래로 묶지 않고 한 줄로 늘어놓은 뒤 위의 태그(과목과 학년 한 줄,
+ *                반 한 줄)로 골라 본다. 태그는 여러 개를 함께 켤 수 있다.
+ *     학생 관리 — 명단을 엑셀 한 장으로 한꺼번에 만든다. 강의실마다 따로 올리지 않는다.
  *  2. 두 관리 축 — "반별"은 반을 먼저 고르고 그 반의 메뉴들을 보고,
  *                "메뉴별"은 메뉴를 먼저 고르고 그 메뉴의 반들을 본다.
  *  3. 강의 라이브러리 — 강의 내용은 연도와 무관하게 남는다.
@@ -24,15 +25,15 @@ import {
 import { firebaseConfig } from "./shared/firebase-config.js";
 import { icon } from "./shared/icons.js?v=20261025a";
 import {
-  MENUS, menuByKey, schoolYear, parseStudentNo,
+  MENUS, menuByKey, schoolYear,
   validYear, validGrade, validClass, validSubject,
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
-  listStudents, countStudentsByCourse, replaceRoster, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
+  countStudentsByCourse, listYearStudents, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025d";
+} from "./model.js?v=20261025e";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -66,7 +67,6 @@ const state = {
   filter: { subject: new Set(), grade: new Set(), classNo: new Set() },
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
-  upload: null,         // 명단 올리기 대상 { kind: 'all' } | { kind: 'class', id }
 };
 
 const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
@@ -284,6 +284,7 @@ function boot() {
   $('admSidebarScrim').addEventListener('click', toggleSidebar);
 
   wireClasses();
+  wireStudents();
   wireLibrary();
   reloadAll();
 }
@@ -300,6 +301,7 @@ function showPage(nav) {
     el.hidden = el.dataset.page !== nav);
   if (window.innerWidth <= 860 && $('admSidebar').classList.contains('open')) toggleSidebar();
 
+  if (nav === 'students') renderStudents();
   if (nav === 'byclass') renderPickClass();
   if (nav === 'bymenu')  renderPickMenu();
   if (nav === 'library') reloadLibrary();
@@ -343,8 +345,8 @@ async function reloadCourses() {
   renderPickMenu();
 }
 
-/* ══════ 학급 관리 ══════
- * 학년도 칩 줄, 그 아래 태그 줄 셋(과목, 학년, 반), 그 아래 반 목록 한 줄.
+/* ══════ 강의실 관리 ══════ (2026-10-25 "학급 관리"에서 이름을 바꿈)
+ * 학년도 칩 줄, 그 아래 태그 두 줄(과목과 학년, 반), 그 아래 강의실 목록 한 줄. 명단은 학생 관리에서.
  * 반을 학년 아래로 묶지 않는다(선생님 지시 2026-10-25). 과목별, 학년별, 반별로
  * 태그를 켜서 골라 본다. 태그는 여러 개를 함께 켤 수 있다. */
 
@@ -354,7 +356,6 @@ function wireClasses() {
   $('classTools').addEventListener('click', onClassesClick);
   $('tagBar').addEventListener('click', onTagClick);
   $('classList').addEventListener('click', onClassesClick);
-  $('fileRoster').addEventListener('change', onRosterFile);
 }
 
 // 그 해에 이미 쓰인 과목만 칩으로 보인다. 정해 둔 과목은 없다 — 처음엔 직접 적는다.
@@ -385,7 +386,7 @@ function renderClasses() {
     ? ib('edit-year', 'pencil', `${state.year}학년도 수정`) + ib('del-year', 'trash-2', `${state.year}학년도 삭제`, '', 'ib-danger')
     : '';
   $('classTools').innerHTML = hasYear
-    ? ib('add-class', 'plus', '반 만들기', '', 'ib-primary') + ib('upload-all', 'upload', '명단 올리기')
+    ? ib('add-class', 'plus', '강의실 만들기', '', 'ib-primary')
     : '';
 
   // 사라진 값의 태그는 끈다(반을 지우거나 고친 뒤).
@@ -393,16 +394,18 @@ function renderClasses() {
     const vals = new Set(t.values());
     [...state.filter[t.key]].forEach(v => { if (!vals.has(v)) state.filter[t.key].delete(v); });
   });
-  $('tagBar').innerHTML = state.courses.length ? TAGS.map(t => `
-    <div class="tag-row">
-      ${t.values().map(v => `
-        <button type="button" class="tag${state.filter[t.key].has(v) ? ' on' : ''}" data-tag="${t.key}" data-val="${esc(v)}">${esc(t.label(v))}</button>`).join('')}
-    </div>`).join('') : '';
+  // 태그 두 줄 — 과목과 학년이 한 줄, 반이 한 줄(반은 몇 개로 늘어날지 몰라서 따로, 선생님 지시 2026-10-25).
+  const tagBtns = t => t.values().map(v => `
+        <button type="button" class="tag${state.filter[t.key].has(v) ? ' on' : ''}" data-tag="${t.key}" data-val="${esc(v)}">${esc(t.label(v))}</button>`).join('');
+  const [tSubject, tGrade, tClass] = TAGS;
+  $('tagBar').innerHTML = state.courses.length ? `
+    <div class="tag-row">${tagBtns(tSubject)}<span class="tag-gap"></span>${tagBtns(tGrade)}</div>
+    <div class="tag-row">${tagBtns(tClass)}</div>` : '';
 
   if (!hasYear) { $('classList').innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
   const rows = state.courses.filter(passesFilter);
-  $('classList').innerHTML = !state.courses.length ? '<p class="empty">반이 없습니다.</p>'
-    : !rows.length ? '<p class="empty">맞는 반이 없습니다.</p>'
+  $('classList').innerHTML = !state.courses.length ? '<p class="empty">강의실이 없습니다.</p>'
+    : !rows.length ? '<p class="empty">맞는 강의실이 없습니다.</p>'
     : rows.map(classRow).join('');
 }
 
@@ -428,8 +431,6 @@ function classRow(c) {
       ${arch ? '<span class="badge">아카이브</span>' : ''}
       <span class="cls-meta">학생 ${n}명, 강의 ${lc.total}개 중 ${lc.open}개 공개</span>
       <span class="acts">
-        ${ib('roster', 'users', `${name} 명단`, ca)}
-        ${ib('upload-class', 'upload', `${name} 명단 올리기`, ca)}
         ${arch ? ib('unarchive', 'archive-restore', `${name} 아카이브 해제`, ca)
                : ib('archive', 'archive', `${name} 아카이브`, ca)}
         ${ib('edit-class', 'pencil', `${name} 수정`, ca)}
@@ -505,7 +506,7 @@ async function onClassesClick(ev) {
 
       case 'add-class': {
         const v = await ask({
-          title: `${year}학년도 반 만들기`,
+          title: `${year}학년도 강의실 만들기`,
           fields: courseFields(),
           check: v => {
             if (!validSubject(v.subject)) return '과목을 고르거나 적어 주세요.';
@@ -559,30 +560,6 @@ async function onClassesClick(ev) {
         toast(`${courseShort(c)} 아카이브를 해제했습니다.`);
         break;
 
-      case 'roster': {
-        const rows = await listStudents(db, c.id);
-        await ask({
-          title: `${courseShort(c)} 명단 ${rows.length}명`,
-          body: rows.length
-            ? `<div class="roster">${rows.map(r =>
-                `<div class="roster-row"><span class="roster-no">${esc(r.studentNo)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>`
-            : '<p class="empty">명단이 비어 있습니다.</p>',
-          info: true,
-        });
-        return;
-      }
-
-      // 여러 반 명단을 한 번에 — 엑셀 줄마다 과목, 학년, 반, 번호, 이름이 있어서 따로 묻지 않는다.
-      case 'upload-all':
-        state.upload = { kind: 'all' };
-        $('fileRoster').click();
-        return;
-
-      case 'upload-class':
-        state.upload = { kind: 'class', id: c.id };
-        $('fileRoster').click();
-        return;
-
       default:
         return;
     }
@@ -609,53 +586,76 @@ function readSheet(file) {
   });
 }
 
-/* 명단 올리기
- *   [명단 올리기](목록 위) — A열 과목, B열 학년, C열 반, D열 번호, E열 이름. 줄마다 반이 정해지므로
- *                          과목을 묻지 않는다. 없는 반은 만든다. 한 학생이 두 과목 줄에 있으면 두 반에 다 들어간다
- *   반 줄의 올리기          — A열 학번, B열 이름(2026 형식). 그 반 학번만 넣는다
- * 어느 쪽이든 지우는 범위는 명단이 들어가는 반뿐이다(2026에서는 전교생 명단을 통째로 지웠다).
+/* ══════ 학생 관리 ══════
+ * 명단은 여기서 한꺼번에 만든다(선생님 지시 2026-10-25). 강의실마다 따로 올리지 않는다.
+ * 학년도는 강의실 관리와 같은 값(state.year)을 쓴다. 학년도를 만들고 고치는 것은 강의실 관리에서. */
+
+function wireStudents() {
+  $('stuYearBar').addEventListener('click', async ev => {
+    const b = ev.target.closest('[data-year]');
+    if (!b) return;
+    state.year = +b.dataset.year;
+    state.pickedCourse = null;
+    await reloadCourses();
+    renderStudents();
+  });
+  $('stuTools').addEventListener('click', ev => {
+    if (ev.target.closest('[data-act="upload-all"]')) $('fileRoster').click();
+  });
+  $('fileRoster').addEventListener('change', onRosterFile);
+}
+
+async function renderStudents() {
+  $('stuYearBar').innerHTML = state.years.map(y => `
+    <button type="button" class="pick${y === state.year ? ' on' : ''}" data-year="${y}">${y}학년도</button>`).join('');
+  $('stuTools').innerHTML = state.year != null ? ib('upload-all', 'upload', '명단 올리기', '', 'ib-primary') : '';
+
+  const box = $('stuList');
+  if (state.year == null) { box.innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
+  box.innerHTML = '<p class="empty">불러오는 중입니다.</p>';
+  let rows;
+  try { rows = await listYearStudents(db, state.year); }
+  catch (e) {
+    console.warn('[students]', e);
+    box.innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
+    return;
+  }
+  box.innerHTML = rows.length ? rows.map(s => `
+    <div class="stu-row">
+      <span class="stu-no">${esc(s.studentNo)}</span>
+      <span class="stu-name">${esc(s.name)}</span>
+      <span class="stu-courses">${s.courses.map(c => `<span class="stu-course">${esc(courseShort(c))}</span>`).join('')}</span>
+    </div>`).join('') : '<p class="empty">학생이 없습니다.</p>';
+}
+
+/* 명단 올리기 — 엑셀 A열 과목, B열 학년, C열 반, D열 번호, E열 이름. 줄마다 강의실이 정해지므로
+ * 따로 묻지 않는다. 없는 강의실은 만든다. 한 학생이 두 과목 줄에 있으면 두 강의실에 다 들어간다.
+ * 파일에 나온 강의실의 명단만 교체하고, 다른 강의실은 건드리지 않는다.
  * 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다. */
 async function onRosterFile(ev) {
   const file = ev.target.files[0];
-  const target = state.upload;
   ev.target.value = '';
-  state.upload = null;
-  if (!file || !target) return;
+  if (!file) return;
 
   try {
     const raw = await readSheet(file);
-
-    if (target.kind === 'all') {
-      const rows = raw.map(rosterRowFromSheet);
-      const bad = rows.filter(r => !r).length;
-      const good = rows.filter(Boolean);
-      if (!good.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
-      const groups = groupRosterRows(good);
-      const ok = await ask({
-        title: `${state.year}학년도 명단 교체`,
-        body: `<div class="roster">${groups.map(g => {
-          const exists = state.courses.some(x => (x.subject || '') === g.subject && x.grade === g.grade && x.classNo === g.classNo);
-          return `<div class="roster-row"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${exists ? '' : ', 새 반'}</span></div>`;
-        }).join('')}</div>${bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''}`,
-      });
-      if (!ok) return;
-      const classes = await replaceRosterRows(db, { year: state.year, rows: good });
-      toast(`${classes.length}개 반, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.`);
-    } else {
-      const c = state.courses.find(x => x.id === target.id);
-      if (!c) return;
-      const rows = raw
-        .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1] ?? '').trim() }))
-        .filter(s => parseStudentNo(s.studentNo) && s.name);
-      const mine = rows.filter(s => { const p = parseStudentNo(s.studentNo); return p.grade === c.grade && p.classNo === c.classNo; });
-      if (!mine.length) { toast(`${courseShort(c)} 학번이 없습니다.`, 'err'); return; }
-      const ok = await ask({ title: `${courseShort(c)} 명단 교체`, body: `${mine.length}명` });
-      if (!ok) return;
-      await replaceRoster(db, c.id, mine);
-      const skipped = rows.length - mine.length;
-      toast(`${courseShort(c)} ${mine.length}명을 올렸습니다.` + (skipped ? ` 다른 반 학번 ${skipped}줄은 넣지 않았습니다.` : ''));
-    }
+    const rows = raw.map(rosterRowFromSheet);
+    const bad = rows.filter(r => !r).length;
+    const good = rows.filter(Boolean);
+    if (!good.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
+    const groups = groupRosterRows(good);
+    const ok = await ask({
+      title: `${state.year}학년도 명단 교체`,
+      body: `<div class="roster">${groups.map(g => {
+        const exists = state.courses.some(x => (x.subject || '') === g.subject && x.grade === g.grade && x.classNo === g.classNo);
+        return `<div class="roster-row"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${exists ? '' : ', 새 강의실'}</span></div>`;
+      }).join('')}</div>${bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''}`,
+    });
+    if (!ok) return;
+    const classes = await replaceRosterRows(db, { year: state.year, rows: good });
+    toast(`${classes.length}개 강의실, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.`);
     await reloadAll();
+    renderStudents();
   } catch (e) {
     console.warn('[roster]', e);
     toast('올리지 못했습니다. ' + e.message, 'err');

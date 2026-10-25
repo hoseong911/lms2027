@@ -312,6 +312,23 @@ export async function loadYearRoster(db, year = schoolYear(), { fresh = false } 
   return data;
 }
 
+// 학생 관리 화면 — 그 학년도 학생 전부와 각자 든 강의실(아카이브 포함). 학번 순.
+export async function listYearStudents(db, year) {
+  const courses = await listCourses(db, { year, includeArchived: true });
+  const byId = Object.fromEntries(courses.map(c => [c.id, c]));
+  const snap = await getDocs(collection(db, COLL.courseStudents));
+  const map = {};
+  snap.docs.forEach(d => {
+    const v = d.data();
+    const c = byId[v.courseId];
+    if (!c) return;
+    (map[v.studentNo] ||= { studentNo: String(v.studentNo), name: v.name, courses: [] }).courses.push(c);
+  });
+  return Object.values(map)
+    .map(s => ({ ...s, courses: s.courses.sort(courseOrder) }))
+    .sort((a, b) => a.studentNo.localeCompare(b.studentNo));
+}
+
 // 한 학생이 그 학년도에 든 반들(아카이브 제외). 로그인 뒤 클래스 고르기 화면이 쓴다.
 // 캐시된 명단 대신 학번으로 바로 묻는다 — 선생님이 반을 더하면 바로 보여야 해서다(읽기는 반 수만큼).
 export async function listStudentCourses(db, year, studentNo) {
