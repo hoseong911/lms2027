@@ -33,7 +33,7 @@ import {
   countStudentsByCourse, listYearStudents, addStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025f";
+} from "./model.js?v=20261025g";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -88,6 +88,7 @@ function toast(text, kind = 'ok') {
  *     type 'num'     숫자 칸. type="text" + inputmode="numeric"이라 스크롤 화살표가 없다
  *     type 'text' | 'email' | 'password'
  *     type 'choice'  칩 하나 고르기(options) + 직접 적는 칸. 과목 고르기에 쓴다
+ *     type 'pick'    칩 하나 고르기만(options: [{ value, label }]). 학생 추가의 강의실 고르기에 쓴다
  *   입력 칸 위에 이름표를 달지 않는다. 무엇을 적는 칸인지는 placeholder로, 단위는 suffix로.
  *   check(values): 문제가 있으면 오류 문구를 돌려준다(Promise도 된다). 모달 안에 띄우고 닫지 않는다.
  *   info: 확인 버튼 하나만(명단 보기처럼 보기만 하는 창).
@@ -101,6 +102,13 @@ function fieldHtml(f) {
       <div class="choice" data-key="${esc(f.key)}">
         ${opts.map(o => `<button type="button" class="pick${o === f.value ? ' on' : ''}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}
         <input class="inp choice-inp" type="text" placeholder="${esc(f.placeholder || "직접 입력")}" autocomplete="off">
+      </div>`;
+  }
+  // 'pick' — 정해진 것 중에서만 고른다(직접 입력 칸 없음). options: [{ value, label }]
+  if (f.type === 'pick') {
+    return `
+      <div class="choice" data-key="${esc(f.key)}">
+        ${(f.options || []).map(o => `<button type="button" class="pick${o.value === f.value ? ' on' : ''}" data-choice="${esc(o.value)}">${esc(o.label)}</button>`).join('')}
       </div>`;
   }
   const type = f.type === 'num' ? 'text' : (f.type || 'text');
@@ -118,7 +126,7 @@ function readFields() {
   const vals = {};
   $('modalBody').querySelectorAll('input.inp[data-key]').forEach(i => { vals[i.dataset.key] = i.value.trim(); });
   $('modalBody').querySelectorAll('.choice').forEach(box => {
-    const typed = box.querySelector('.choice-inp').value.trim();
+    const typed = box.querySelector('.choice-inp')?.value.trim() || '';
     const on = box.querySelector('.pick.on');
     vals[box.dataset.key] = typed || (on ? on.dataset.choice : '');
   });
@@ -161,7 +169,7 @@ $('modalBody').addEventListener('click', e => {
   if (!b) return;
   const box = b.closest('.choice');
   box.querySelectorAll('.pick').forEach(p => p.classList.toggle('on', p === b));
-  box.querySelector('.choice-inp').value = '';
+  const inp = box.querySelector('.choice-inp'); if (inp) inp.value = '';
 });
 $('modalBody').addEventListener('input', e => {
   if (!e.target.classList.contains('choice-inp')) return;
@@ -632,36 +640,38 @@ async function renderStudents() {
 }
 
 
-/* 학생 직접 추가 — 엑셀 한 줄과 같은 칸(과목, 학년, 반, 번호, 이름). 강의실이 없으면 만든다. */
+/* 학생 직접 추가 — 이미 만든 강의실 중에서 고르고 번호와 이름만 적는다
+   (선생님 지시 2026-10-25 — 생성된 강의실에 한정해서 학생을 만든다). 학년과 반은 강의실에서 온다. */
 async function doAddStudent() {
+  const rooms = activeCourses();
+  if (!rooms.length) { toast('강의실이 없습니다. 강의실 관리에서 먼저 만들어 주세요.', 'err'); return; }
   const v = await ask({
     title: `${state.year}학년도 학생 추가`,
     fields: [
-      { key: 'subject', type: 'choice', options: subjectOptions(), value: '', placeholder: '과목' },
-      { key: 'grade',   type: 'num',  placeholder: '학년 (숫자 입력)', suffix: '학년' },
-      { key: 'classNo', type: 'num',  placeholder: '반 (숫자 입력)',   suffix: '반' },
-      { key: 'num',     type: 'num',  placeholder: '번호 (숫자 입력)', suffix: '번' },
-      { key: 'name',    type: 'text', placeholder: '이름' },
+      { key: 'courseId', type: 'pick', options: rooms.map(c => ({ value: c.id, label: courseShort(c) })), value: '' },
+      { key: 'num',  type: 'num',  placeholder: '번호 (숫자 입력)', suffix: '번' },
+      { key: 'name', type: 'text', placeholder: '이름' },
     ],
     check: async v => {
-      if (!validSubject(v.subject)) return '과목을 고르거나 적어 주세요.';
-      if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
-      if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
+      if (!v.courseId) return '강의실을 골라 주세요.';
       if (!(num(v.num) >= 1 && num(v.num) <= 99)) return '번호를 확인해 주세요.';
       if (!v.name) return '이름을 입력해 주세요.';
       try {
-        await addStudent(db, { year: state.year, ...v });
+        await addStudent(db, v);
         return '';
       } catch (e) { return e.message; }
     },
   });
   if (!v) return;
-  toast(`${v.subject} ${v.grade}학년 ${v.classNo}반 ${v.num}번 ${v.name}을 추가했습니다.`);
+  const c = rooms.find(x => x.id === v.courseId);
+  toast(`${courseShort(c)} ${v.num}번 ${v.name}을 추가했습니다.`);
   await reloadAll();
   renderStudents();
 }
+
 /* 명단 올리기 — 엑셀 A열 과목, B열 학년, C열 반, D열 번호, E열 이름. 줄마다 강의실이 정해지므로
- * 따로 묻지 않는다. 없는 강의실은 만든다. 한 학생이 두 과목 줄에 있으면 두 강의실에 다 들어간다.
+ * 따로 묻지 않는다. 이미 만든 강의실에만 넣는다(선생님 지시 2026-10-25). 없는 강의실 줄은
+ * 미리 보기에 표시하고 넣지 않는다. 한 학생이 두 과목 줄에 있으면 두 강의실에 다 들어간다.
  * 파일에 나온 강의실의 명단만 교체하고, 다른 강의실은 건드리지 않는다.
  * 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다. */
 async function onRosterFile(ev) {
@@ -676,16 +686,18 @@ async function onRosterFile(ev) {
     const good = rows.filter(Boolean);
     if (!good.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
     const groups = groupRosterRows(good);
+    const has = g => state.courses.some(x => (x.subject || '') === g.subject && x.grade === g.grade && x.classNo === g.classNo);
+    if (!groups.some(has)) { toast('엑셀에 있는 강의실이 하나도 없습니다. 강의실 관리에서 먼저 만들어 주세요.', 'err'); return; }
     const ok = await ask({
       title: `${state.year}학년도 명단 교체`,
-      body: `<div class="roster">${groups.map(g => {
-        const exists = state.courses.some(x => (x.subject || '') === g.subject && x.grade === g.grade && x.classNo === g.classNo);
-        return `<div class="roster-row"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${exists ? '' : ', 새 강의실'}</span></div>`;
-      }).join('')}</div>${bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''}`,
+      body: `<div class="roster">${groups.map(g => `
+        <div class="roster-row${has(g) ? '' : ' off'}"><span class="roster-no">${esc(g.subject)} ${g.grade}학년 ${g.classNo}반</span><span>${g.rows.length}명${has(g) ? '' : ', 없는 강의실이라 넣지 않음'}</span></div>`).join('')}</div>` +
+        (bad ? `<p class="modal-err">읽지 못한 줄 ${bad}개는 넣지 않습니다.</p>` : ''),
     });
     if (!ok) return;
-    const classes = await replaceRosterRows(db, { year: state.year, rows: good });
-    toast(`${classes.length}개 강의실, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.`);
+    const { classes, missing } = await replaceRosterRows(db, { year: state.year, rows: good });
+    toast(`${classes.length}개 강의실, ${classes.reduce((s, c) => s + c.count, 0)}명을 올렸습니다.` +
+      (missing.length ? ` 없는 강의실 ${missing.length}개는 넣지 않았습니다.` : ''));
     await reloadAll();
     renderStudents();
   } catch (e) {

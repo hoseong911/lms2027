@@ -312,15 +312,17 @@ export async function loadYearRoster(db, year = schoolYear(), { fresh = false } 
   return data;
 }
 
-// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 칸은 엑셀 명단과 같다 — 과목, 학년, 반, 번호, 이름.
-// 엑셀 올리기와 같게 강의실이 없으면 만든다. 그 강의실에 같은 학번이 이미 있으면 막는다.
-export async function addStudent(db, { year, subject, grade, classNo, num, name }) {
-  const row = rosterRowFromSheet([subject, grade, classNo, num, name]);
-  if (!row) throw new Error('과목, 학년, 반, 번호, 이름을 확인해 주세요.');
-  const { id } = await createCourse(db, { year, subject: row.subject, grade: row.grade, classNo: row.classNo });
-  const ref = doc(db, COLL.courseStudents, studentDocId(id, row.studentNo));
-  if ((await getDoc(ref)).exists()) throw new Error(`${row.subject} ${row.grade}학년 ${row.classNo}반에 ${row.studentNo}이 이미 있습니다.`);
-  await setDoc(ref, { courseId: id, studentNo: row.studentNo, name: row.name });
+// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 이미 만든 강의실 중에서 고르고 번호와 이름만 적는다
+// (선생님 지시 2026-10-25 — 생성된 강의실에 한정해서 학생을 만든다). 학년과 반은 강의실에서 온다.
+// 그 강의실에 같은 학번이 이미 있으면 막는다.
+export async function addStudent(db, { courseId, num, name }) {
+  const c = await getCourse(db, courseId);
+  if (!c) throw new Error('강의실을 찾을 수 없습니다.');
+  const row = rosterRowFromSheet([c.subject, c.grade, c.classNo, num, name]);
+  if (!row) throw new Error('번호와 이름을 확인해 주세요.');
+  const ref = doc(db, COLL.courseStudents, studentDocId(courseId, row.studentNo));
+  if ((await getDoc(ref)).exists()) throw new Error(`${courseShort(c)}에 ${row.studentNo}이 이미 있습니다.`);
+  await setDoc(ref, { courseId, studentNo: row.studentNo, name: row.name });
   return row;
 }
 
@@ -395,15 +397,17 @@ export function groupRosterRows(rows) {
     a.subject.localeCompare(b.subject, 'ko') || (a.grade - b.grade) || (a.classNo - b.classNo));
 }
 
-// 묶음마다 반을 찾거나 만들고 그 반 명단을 교체한다. 파일에 없는 반은 건드리지 않는다.
+// 묶음마다 이미 만든 강의실을 찾아 그 명단을 교체한다. 강의실이 없는 묶음은 넣지 않고 돌려준다
+// (생성된 강의실에 한정해서 학생을 만든다, 선생님 지시 2026-10-25). 파일에 없는 강의실은 건드리지 않는다.
 export async function replaceRosterRows(db, { year, rows }) {
-  const classes = [];
+  const classes = [], missing = [];
   for (const g of groupRosterRows(rows)) {
-    const { id, created } = await createCourse(db, { year, subject: g.subject, grade: g.grade, classNo: g.classNo });
-    const n = await replaceRoster(db, id, g.rows);
-    classes.push({ ...g, courseId: id, created, count: n });
+    const c = await findCourse(db, year, g.subject, g.grade, g.classNo);
+    if (!c) { missing.push(g); continue; }
+    const n = await replaceRoster(db, c.id, g.rows);
+    classes.push({ ...g, courseId: c.id, count: n });
   }
-  return classes;
+  return { classes, missing };
 }
 
 /* ── 비밀번호와 동의 ──
