@@ -214,7 +214,13 @@ enterBtn.addEventListener('click', async () => {
       setStatusLine({ type: 'err', icon: 'x', text: '비밀번호를 4자 이상으로 설정해 주세요.' });
       pwInput.focus(); return;
     }
-    try { await setPw(db, cid, no, pw); } catch (_) {}
+    // 저장이 실패한 채 들여보내면 비밀번호 없는 계정이 남아 아무나 선점할 수 있다.
+    try { await setPw(db, cid, no, pw); }
+    catch (e) {
+      console.warn('[setPw]', e);
+      setStatusLine({ type: 'err', icon: 'x', text: '비밀번호를 저장하지 못했어요. 잠시 후 다시 눌러 주세요.' });
+      return;
+    }
   }
 
   // 3) 세션 저장 + 자동 로그인 + 진입 (첫 로그인이면 진입 흐름에서 개인정보 동의)

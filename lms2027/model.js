@@ -259,12 +259,12 @@ export async function replaceGradeRoster(db, { year, grade, rows }) {
  * 2026(lms_auth)의 방식을 그대로 옮겼고, 문서 id에 반을 넣어 해가 바뀌어도
  * 같은 학번이 작년 비밀번호를 물려받지 않게 했다.
  *
- * 남은 과제: 학생을 서버가 식별하지 못하므로 규칙에 "본인 것만"을 쓸 수 없고,
- * 지금은 이 문서가 공개 읽기이자 공개 쓰기다(누구든 임의 학번의 비밀번호를
- * 덮어쓸 수 있다). Auth 없이도 좁힐 수 있는 길이 세 가지 있다 —
- * 규칙을 create 전용으로 두기, 해시를 PBKDF2로 바꾸기, 검증을 Cloud Function으로
- * 옮겨 해시를 아예 내려보내지 않기. 셋 다 학생 쪽 로그인 흐름은 그대로다.
- * 자세한 내용은 LMS2027.md 4 참고.
+ * 학생을 서버가 식별하지 못하므로 규칙에 "본인 것만"을 쓸 수 없다. 대신
+ * firestore.rules에서 (1) 명단에 있는 반id_학번만 (2) create 한 번만 쓰게 했다.
+ * 덮어쓰기는 선생님만 되고, 초기화는 문서를 지우는 것(clearPw)이다.
+ * 읽기는 문서 하나(get)만 열고 목록(list)은 닫았다 — 해시를 통째로 긁어 가지 못한다.
+ * 그래서 setPw는 비밀번호가 없을 때만 불러야 한다(있는 문서에 쓰면 update라 막힌다).
+ * 남은 길 두 가지 — 해시를 PBKDF2로, 검증을 Cloud Function으로. LMS2027.md 4 참고.
  */
 export const authDocId = (cid, studentNo) => `${cid}_${studentNo}`;
 
@@ -358,11 +358,11 @@ export function lessonOrderKey(v) {
 // 강 번호 표기 — 숫자면 "N강", 문자(OT 등)면 그대로. 2026 규칙 유지.
 export const lessonTag = n => /^\d+$/.test(String(n ?? '').trim()) ? `${n}강` : `${n}`;
 
-/* ── firestore.rules 상태 (2026-10-23) ──
- * 위 컬렉션들은 아직 firestore.rules에 전용 블록이 없다. 맨 끝 catch-all
- * (match 전체 경로에 read 공개, write 관리자)로 떨어지므로 지금 당장
- * 학생 읽기와 선생님 쓰기는 된다. 규칙을 배포하지 않아도 돌아간다.
- *
- * 다만 그 catch-all이 곧 "공개 읽기"다. 2026에서 전교생 성적이 공개 읽기였던 것과
- * 같은 상태이므로, 성적과 제출물을 넣기 전에 전용 블록을 반드시 쓴다.
+/* ── firestore.rules 상태 (2026-10-25 배포) ──
+ * 위 여섯 컬렉션 모두 전용 블록이 있다("2027 LMS" 구역).
+ *   courses, course_students, course_lessons, lesson_library — 읽기 공개, 쓰기 선생님
+ *   course_auth, course_consent — get 공개, list 선생님, 명단 학생의 create 한 번만
+ * 규칙은 겹치면 OR로 합쳐지므로 catch-all에서 course_auth와 course_consent를 뺐다.
+ * 성적과 제출물 컬렉션을 새로 만들면 공개 읽기로 둘지 그때 따로 정한다 —
+ * 블록이 없으면 catch-all(공개 읽기)로 떨어진다.
  */
