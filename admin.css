@@ -291,8 +291,6 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .cls-meta{flex-basis:100%;order:3}
 }
 
-/* 과목 태그와 학년 태그 사이 간격(같은 줄) */
-.tag-gap{width:6px}
 
 /* ── 학생 관리 ── */
 .stu-row{

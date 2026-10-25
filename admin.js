@@ -1,8 +1,8 @@
 /* 2027 LMS 어드민 — 큰 틀
  *
  *  1. 강의실 관리 — 학년도를 고르고, 그 해의 강의실(과목 + 학년 + 반)을 만들고 고치고 지운다.
- *                강의실은 학년 아래로 묶지 않고 한 줄로 늘어놓은 뒤 위의 태그(과목과 학년 한 줄,
- *                반 한 줄)로 골라 본다. 태그는 여러 개를 함께 켤 수 있다.
+ *                강의실은 학년 아래로 묶지 않고 한 줄로 늘어놓은 뒤 위의 태그(과목 한 줄,
+ *                학년+반 301, 302 한 줄)로 골라 본다. 태그는 여러 개를 함께 켤 수 있다.
  *     학생 관리 — 명단을 엑셀 한 장으로 한꺼번에 만든다. 강의실마다 따로 올리지 않는다.
  *  2. 두 관리 축 — "반별"은 반을 먼저 고르고 그 반의 메뉴들을 보고,
  *                "메뉴별"은 메뉴를 먼저 고르고 그 메뉴의 반들을 본다.
@@ -64,7 +64,7 @@ const state = {
   lessonCount: {},      // courseId 별 { total, open }
   // 학급 관리 태그. 같은 줄 안에서는 하나라도 맞으면, 줄끼리는 모두 맞아야 보인다.
   // 아무것도 안 켠 줄은 거르지 않는다.
-  filter: { subject: new Set(), grade: new Set(), classNo: new Set() },
+  filter: { subject: new Set(), room: new Set() },
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
   students: [],         // 학생 관리 목록(고른 학년도)
@@ -356,7 +356,7 @@ async function reloadCourses() {
 }
 
 /* ══════ 강의실 관리 ══════ (2026-10-25 "학급 관리"에서 이름을 바꿈)
- * 학년도 칩 줄, 그 아래 태그 두 줄(과목과 학년, 반), 그 아래 강의실 목록 한 줄. 명단은 학생 관리에서.
+ * 학년도 칩 줄, 그 아래 태그 두 줄(과목, 학년+반), 그 아래 강의실 목록 한 줄. 명단은 학생 관리에서.
  * 반을 학년 아래로 묶지 않는다(선생님 지시 2026-10-25). 과목별, 학년별, 반별로
  * 태그를 켜서 골라 본다. 태그는 여러 개를 함께 켤 수 있다. */
 
@@ -372,16 +372,17 @@ function wireClasses() {
 const subjectOptions = () =>
   [...new Set(state.courses.map(c => c.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
 
+// 태그 두 줄 — 과목 한 줄, 학년+반(301, 302 …) 한 줄. 학생 관리의 반별 구분과 같은 모양(선생님 지시 2026-10-25).
+const courseRoom = c => roomNo(c.grade, c.classNo);
 const TAGS = [
-  { key: 'subject', label: v => v,          values: () => [...new Set(state.courses.map(c => c.subject || ''))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')) },
-  { key: 'grade',   label: v => `${v}학년`, values: () => [...new Set(state.courses.map(c => c.grade))].sort((a, b) => a - b) },
-  { key: 'classNo', label: v => `${v}반`,   values: () => [...new Set(state.courses.map(c => c.classNo))].sort((a, b) => a - b) },
-];
+  { key: 'subject', of: c => c.subject || '' },
+  { key: 'room',    of: courseRoom },
+].map(t => ({ ...t, values: () => [...new Set(state.courses.map(t.of))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')) }));
 
 function passesFilter(c) {
   return TAGS.every(t => {
     const on = state.filter[t.key];
-    return !on.size || on.has(t.key === 'subject' ? (c.subject || '') : c[t.key]);
+    return !on.size || on.has(t.of(c));
   });
 }
 
@@ -404,13 +405,10 @@ function renderClasses() {
     const vals = new Set(t.values());
     [...state.filter[t.key]].forEach(v => { if (!vals.has(v)) state.filter[t.key].delete(v); });
   });
-  // 태그 두 줄 — 과목과 학년이 한 줄, 반이 한 줄(반은 몇 개로 늘어날지 몰라서 따로, 선생님 지시 2026-10-25).
   const tagBtns = t => t.values().map(v => `
-        <button type="button" class="tag${state.filter[t.key].has(v) ? ' on' : ''}" data-tag="${t.key}" data-val="${esc(v)}">${esc(t.label(v))}</button>`).join('');
-  const [tSubject, tGrade, tClass] = TAGS;
-  $('tagBar').innerHTML = state.courses.length ? `
-    <div class="tag-row">${tagBtns(tSubject)}<span class="tag-gap"></span>${tagBtns(tGrade)}</div>
-    <div class="tag-row">${tagBtns(tClass)}</div>` : '';
+        <button type="button" class="tag${state.filter[t.key].has(v) ? ' on' : ''}" data-tag="${t.key}" data-val="${esc(v)}">${esc(v)}</button>`).join('');
+  $('tagBar').innerHTML = state.courses.length
+    ? TAGS.filter(t => t.values().length).map(t => `<div class="tag-row">${tagBtns(t)}</div>`).join('') : '';
 
   if (!hasYear) { $('classList').innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
   const rows = state.courses.filter(passesFilter);
@@ -423,7 +421,7 @@ function onTagClick(ev) {
   const b = ev.target.closest('[data-tag]');
   if (!b) return;
   const key = b.dataset.tag;
-  const val = key === 'subject' ? b.dataset.val : +b.dataset.val;
+  const val = b.dataset.val;
   const set = state.filter[key];
   set.has(val) ? set.delete(val) : set.add(val);
   renderClasses();
@@ -666,8 +664,8 @@ function drawStudents() {
       <span class="stu-name">${esc(s.name)}</span>
       <span class="stu-courses">${s.courses.map(c => `<span class="stu-course">${esc(courseShort(c))}</span>`).join('')}</span>
       <span class="acts">
-        ${ib('reset-pw', 'key', `${s.studentNo} ${s.name} 비밀번호 초기화`, sd(s))}
         ${ib('edit-student', 'pencil', `${s.studentNo} ${s.name} 수정`, sd(s))}
+        ${ib('reset-pw', 'key', `${s.studentNo} ${s.name} 비밀번호 초기화`, sd(s))}
         ${ib('del-student', 'trash-2', `${s.studentNo} ${s.name} 삭제`, sd(s), 'ib-danger')}
       </span>
     </div>`).join('');
