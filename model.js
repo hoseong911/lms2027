@@ -312,18 +312,26 @@ export async function loadYearRoster(db, year = schoolYear(), { fresh = false } 
   return data;
 }
 
-// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 이미 만든 강의실 중에서 고르고 번호와 이름만 적는다
-// (선생님 지시 2026-10-25 — 생성된 강의실에 한정해서 학생을 만든다). 학년과 반은 강의실에서 온다.
-// 그 강의실에 같은 학번이 이미 있으면 막는다.
-export async function addStudent(db, { courseId, num, name }) {
-  const c = await getCourse(db, courseId);
-  if (!c) throw new Error('강의실을 찾을 수 없습니다.');
-  const row = rosterRowFromSheet([c.subject, c.grade, c.classNo, num, name]);
-  if (!row) throw new Error('번호와 이름을 확인해 주세요.');
-  const ref = doc(db, COLL.courseStudents, studentDocId(courseId, row.studentNo));
-  if ((await getDoc(ref)).exists()) throw new Error(`${courseShort(c)}에 ${row.studentNo}이 이미 있습니다.`);
-  await setDoc(ref, { courseId, studentNo: row.studentNo, name: row.name });
-  return row;
+// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 학년, 반, 번호, 이름만 적으면
+// 그 학년도에 이미 만든 "그 학년 그 반" 강의실 전부(과목 무관, 아카이브 제외)에 등록된다
+// (선생님 지시 2026-10-25 — 3학년 1반 홍길동이면 사회 3학년 1반, 역사 3학년 1반에 다 들어간다).
+// 그 반 강의실이 하나도 없으면 막는다. 이미 들어 있는 강의실은 건너뛴다.
+export async function addStudent(db, { year, grade, classNo, num, name }) {
+  const row = rosterRowFromSheet(['-', grade, classNo, num, name]);
+  if (!row) throw new Error('학년, 반, 번호, 이름을 확인해 주세요.');
+  const rooms = (await coursesOfYear(db, year))
+    .filter(c => c.grade === row.grade && c.classNo === row.classNo && c.status !== 'archived')
+    .sort(courseOrder);
+  if (!rooms.length) throw new Error(`${row.grade}학년 ${row.classNo}반 강의실이 없습니다.`);
+  const added = [], skipped = [];
+  for (const c of rooms) {
+    const ref = doc(db, COLL.courseStudents, studentDocId(c.id, row.studentNo));
+    if ((await getDoc(ref)).exists()) { skipped.push(c); continue; }
+    await setDoc(ref, { courseId: c.id, studentNo: row.studentNo, name: row.name });
+    added.push(c);
+  }
+  if (!added.length) throw new Error(`${row.studentNo}은 ${row.grade}학년 ${row.classNo}반 강의실에 이미 다 있습니다.`);
+  return { row, added, skipped };
 }
 
 // 학생 관리 화면 — 그 학년도 학생 전부와 각자 든 강의실(아카이브 포함). 학번 순.

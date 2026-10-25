@@ -33,7 +33,7 @@ import {
   countStudentsByCourse, listYearStudents, addStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025g";
+} from "./model.js?v=20261025h";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -640,31 +640,31 @@ async function renderStudents() {
 }
 
 
-/* 학생 직접 추가 — 이미 만든 강의실 중에서 고르고 번호와 이름만 적는다
-   (선생님 지시 2026-10-25 — 생성된 강의실에 한정해서 학생을 만든다). 학년과 반은 강의실에서 온다. */
+/* 학생 직접 추가 — 학년, 반, 번호, 이름만 적는다. 그 학년도에 만든 그 반 강의실 전부(과목 무관)에
+   등록된다(선생님 지시 2026-10-25 — 3학년 1반 홍길동이면 사회 3학년 1반, 역사 3학년 1반에 다). */
 async function doAddStudent() {
-  const rooms = activeCourses();
-  if (!rooms.length) { toast('강의실이 없습니다. 강의실 관리에서 먼저 만들어 주세요.', 'err'); return; }
+  let result = null;
   const v = await ask({
     title: `${state.year}학년도 학생 추가`,
     fields: [
-      { key: 'courseId', type: 'pick', options: rooms.map(c => ({ value: c.id, label: courseShort(c) })), value: '' },
-      { key: 'num',  type: 'num',  placeholder: '번호 (숫자 입력)', suffix: '번' },
-      { key: 'name', type: 'text', placeholder: '이름' },
+      { key: 'grade',   type: 'num',  placeholder: '학년 (숫자 입력)', suffix: '학년' },
+      { key: 'classNo', type: 'num',  placeholder: '반 (숫자 입력)',   suffix: '반' },
+      { key: 'num',     type: 'num',  placeholder: '번호 (숫자 입력)', suffix: '번' },
+      { key: 'name',    type: 'text', placeholder: '이름' },
     ],
     check: async v => {
-      if (!v.courseId) return '강의실을 골라 주세요.';
+      if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
+      if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
       if (!(num(v.num) >= 1 && num(v.num) <= 99)) return '번호를 확인해 주세요.';
       if (!v.name) return '이름을 입력해 주세요.';
       try {
-        await addStudent(db, v);
+        result = await addStudent(db, { year: state.year, ...v });
         return '';
       } catch (e) { return e.message; }
     },
   });
-  if (!v) return;
-  const c = rooms.find(x => x.id === v.courseId);
-  toast(`${courseShort(c)} ${v.num}번 ${v.name}을 추가했습니다.`);
+  if (!v || !result) return;
+  toast(`${v.name}을 ${result.added.map(c => c.subject || courseShort(c)).join(', ')} ${v.grade}학년 ${v.classNo}반에 추가했습니다.`);
   await reloadAll();
   renderStudents();
 }
