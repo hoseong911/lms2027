@@ -5,7 +5,8 @@
  * 1년짜리 데이터다. 학생의 영구 신원(Person)은 두지 않는다 —
  * 해마다 다시 만들면 되므로 그 층이 필요 없다(2026-10-23 선생님 결정).
  *
- *   courses          반 하나. { year, grade, classNo } 가 곧 이름이다.
+ *   school_years     학년도 하나와 그 안의 학년 목록. 반이 없어도 학년도와 학년은 있다.
+ *   courses          반 하나. { year, grade, classNo } 가 곧 이름이다(문서 id는 자동).
  *   course_students  그 반의 명단. 학번은 이 반 안에서만 유효하다.
  *   course_lessons   그 반이 쓰는 강의. 몇 강인지, 공개했는지, 수업일.
  *   lesson_library   강의 내용(슬라이드 본문). 연도와 무관하게 남는다.
@@ -22,11 +23,12 @@
  */
 
 import {
-  collection, query, where, getDocs, getDoc, doc,
-  addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp
+  collection, query, where, getDocs, getDoc, doc, documentId,
+  addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export const COLL = {
+  schoolYears:    'school_years',
   courses:        'courses',
   courseStudents: 'course_students',
   courseLessons:  'course_lessons',
@@ -66,27 +68,113 @@ export function parseStudentNo(no) {
   return { grade: +s[0], classNo: +s.slice(1, 3), num: +s.slice(3, 5) };
 }
 
+/* ── 학년도와 학년 ──
+ *
+ * 학년도와 학년은 반이 하나도 없어도 있을 수 있어야 한다(선생님이 먼저 만들고
+ * 나중에 반을 채운다). 그래서 school_years 문서 하나가 그 해의 학년 목록을 든다.
+ *   school_years/{2027}  { year: 2027, grades: [1, 2, 3] }
+ * 반 문서도 year와 grade를 숫자로 들고 있다. 학년도나 학년 번호를 바꾸면
+ * 해당하는 반 문서를 같이 고친다(반은 많아야 서른 개 남짓이다). */
+
+export const LIMITS = { yearMin: 2000, yearMax: 2100, gradeMin: 1, gradeMax: 9, classMin: 1, classMax: 99 };
+const inRange = (n, a, b) => Number.isInteger(n) && n >= a && n <= b;
+export const validYear  = n => inRange(n, LIMITS.yearMin,  LIMITS.yearMax);
+export const validGrade = n => inRange(n, LIMITS.gradeMin, LIMITS.gradeMax);
+export const validClass = n => inRange(n, LIMITS.classMin, LIMITS.classMax);
+
+const yearRef = (db, year) => doc(db, COLL.schoolYears, String(year));
+const sortNum = arr => [...new Set(arr)].sort((a, b) => a - b);
+
+async function coursesOfYear(db, year) {
+  const snap = await getDocs(query(collection(db, COLL.courses), where('year', '==', year)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// 학년도 목록. 학년 목록에는 반에만 있고 school_years에 빠진 학년도 합쳐 둔다
+// (어느 쪽이 어긋나도 화면에서 반이 사라지지 않게).
+export async function listYears(db) {
+  const [ys, cs] = await Promise.all([
+    getDocs(collection(db, COLL.schoolYears)),
+    getDocs(collection(db, COLL.courses)),
+  ]);
+  const map = {};
+  ys.docs.forEach(d => { const v = d.data(); map[v.year] = { year: v.year, grades: [...(v.grades || [])] }; });
+  cs.docs.forEach(d => {
+    const v = d.data();
+    if (v.year == null) return;
+    (map[v.year] ||= { year: v.year, grades: [] }).grades.push(v.grade);
+  });
+  return Object.values(map)
+    .map(y => ({ ...y, grades: sortNum(y.grades.filter(g => g != null)) }))
+    .sort((a, b) => b.year - a.year);
+}
+
+export async function createYear(db, year) {
+  if (!validYear(year)) throw new Error('학년도를 확인해 주세요.');
+  if ((await getDoc(yearRef(db, year))).exists()) throw new Error(`${year}학년도가 이미 있습니다.`);
+  await setDoc(yearRef(db, year), { year, grades: [], createdAt: serverTimestamp() });
+}
+
+export async function renameYear(db, from, to) {
+  if (from === to) return;
+  if (!validYear(to)) throw new Error('학년도를 확인해 주세요.');
+  const all = await listYears(db);
+  if (all.some(y => y.year === to)) throw new Error(`${to}학년도가 이미 있습니다.`);
+  const cur = all.find(y => y.year === from) || { grades: [] };
+  const courses = await coursesOfYear(db, from);
+  const batch = writeBatch(db);
+  batch.set(yearRef(db, to), { year: to, grades: cur.grades, createdAt: serverTimestamp() });
+  courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { year: to }));
+  batch.delete(yearRef(db, from));
+  await batch.commit();
+}
+
+// 학년도 삭제 — 그 해의 반을 전부 지운다(명단, 강의 연결, 비밀번호, 동의까지).
+export async function deleteYear(db, year) {
+  for (const c of await coursesOfYear(db, year)) await deleteCourse(db, c.id);
+  await deleteDoc(yearRef(db, year));
+}
+
+export async function addGrade(db, year, grade) {
+  if (!validGrade(grade)) throw new Error('학년을 확인해 주세요.');
+  const y = (await listYears(db)).find(v => v.year === year);
+  if (y && y.grades.includes(grade)) throw new Error(`${grade}학년이 이미 있습니다.`);
+  await setDoc(yearRef(db, year), { year, grades: arrayUnion(grade) }, { merge: true });
+}
+
+export async function renameGrade(db, year, from, to) {
+  if (from === to) return;
+  if (!validGrade(to)) throw new Error('학년을 확인해 주세요.');
+  const y = (await listYears(db)).find(v => v.year === year) || { grades: [] };
+  if (y.grades.includes(to)) throw new Error(`${to}학년이 이미 있습니다.`);
+  const courses = (await coursesOfYear(db, year)).filter(c => c.grade === from);
+  const batch = writeBatch(db);
+  batch.set(yearRef(db, year), { year, grades: sortNum(y.grades.map(g => g === from ? to : g)) }, { merge: true });
+  courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { grade: to }));
+  await batch.commit();
+}
+
+export async function deleteGrade(db, year, grade) {
+  for (const c of (await coursesOfYear(db, year)).filter(c => c.grade === grade)) await deleteCourse(db, c.id);
+  await setDoc(yearRef(db, year), { year, grades: arrayRemove(grade) }, { merge: true });
+}
+
 /* ── 반(Course) ── */
 
 export function courseLabel(c) {
   if (!c) return '';
   if (c.title) return c.title;
-  // 가운뎃점은 화면 문구에 쓰지 않는다(CLAUDE.md 디자인 원칙).
+  // 가운뎃점은 화면 문구에 쓰지 않는다(CLAUDE.md 화면 규칙).
   return `${c.year}학년도 ${c.grade}학년 ${c.classNo}반`;
 }
 export const courseShort = c => c ? `${c.grade}학년 ${c.classNo}반` : '';
 
 export async function listCourses(db, { year = null, includeArchived = false } = {}) {
-  const snap = await getDocs(collection(db, COLL.courses));
-  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (year != null) rows = rows.filter(r => r.year === year);
+  let rows = year != null
+    ? await coursesOfYear(db, year)
+    : (await getDocs(collection(db, COLL.courses))).docs.map(d => ({ id: d.id, ...d.data() }));
   if (!includeArchived) rows = rows.filter(r => r.status !== 'archived');
   return rows.sort((a, b) => (b.year - a.year) || (a.grade - b.grade) || (a.classNo - b.classNo));
-}
-
-export async function listYears(db) {
-  const snap = await getDocs(collection(db, COLL.courses));
-  return [...new Set(snap.docs.map(d => d.data().year).filter(y => y != null))].sort((a, b) => b - a);
 }
 
 export async function getCourse(db, cid) {
@@ -94,23 +182,30 @@ export async function getCourse(db, cid) {
   return s.exists() ? { id: s.id, ...s.data() } : null;
 }
 
-// 반 문서 id를 년도와 학년과 반으로 못박는다. 같은 반을 두 번 개설하는 사고를 구조로 막는다
-// (자동 id를 받으면 "2027 1학년 3반"이 둘 생겨도 아무 데서도 안 걸린다).
-export const courseId = (year, grade, classNo) => `y${year}g${grade}c${classNo}`;
-
-export async function createCourse(db, { year, grade, classNo }) {
-  const id = courseId(year, grade, classNo);
-  const exists = await getDoc(doc(db, COLL.courses, id));
-  if (exists.exists()) return { id, created: false };
-  await setDoc(doc(db, COLL.courses, id), {
-    year, grade, classNo, status: 'active', createdAt: serverTimestamp()
-  });
-  return { id, created: true };
+/* 반 문서 id는 자동 id다. 처음에는 y2027g1c3처럼 못박았는데, 선생님이 학년도와
+ * 학년과 반 번호를 자유롭게 고칠 수 있어야 해서(2026-10-25) 바꿨다. id가 이름을
+ * 들고 있으면 이름을 고칠 때마다 명단, 비밀번호, 동의 문서를 전부 새 id로 옮겨야 한다.
+ * 같은 반이 둘 생기는 것은 만들 때와 고칠 때 이 함수로 막는다. */
+async function findCourse(db, year, grade, classNo) {
+  return (await coursesOfYear(db, year)).find(c => c.grade === grade && c.classNo === classNo) || null;
 }
 
-// 학년 통째 개설 — 1반부터 count반까지 한 번에. 이미 있는 반은 건너뛴다.
+// 이미 있으면 그 반을 돌려준다(학년 명단 업로드가 반을 찾거나 만들 때 쓴다).
+export async function createCourse(db, { year, grade, classNo }) {
+  if (!validYear(year) || !validGrade(grade) || !validClass(classNo)) throw new Error('학년도와 학년과 반을 확인해 주세요.');
+  const found = await findCourse(db, year, grade, classNo);
+  if (found) return { id: found.id, created: false };
+  const ref = await addDoc(collection(db, COLL.courses), {
+    year, grade, classNo, status: 'active', createdAt: serverTimestamp()
+  });
+  await setDoc(yearRef(db, year), { year, grades: arrayUnion(grade) }, { merge: true });
+  return { id: ref.id, created: true };
+}
+
+// 학년 개설 — 1반부터 count반까지 한 번에. 이미 있는 반은 건너뛴다. count가 0이면 학년만 만든다.
 export async function createGrade(db, { year, grade, count }) {
   const made = [], skipped = [];
+  if (!count) { await addGrade(db, year, grade); return { made, skipped }; }
   for (let n = 1; n <= count; n++) {
     const r = await createCourse(db, { year, grade, classNo: n });
     (r.created ? made : skipped).push(n);
@@ -118,20 +213,37 @@ export async function createGrade(db, { year, grade, count }) {
   return { made, skipped };
 }
 
+export async function renameCourse(db, id, classNo) {
+  if (!validClass(classNo)) throw new Error('반을 확인해 주세요.');
+  const c = await getCourse(db, id);
+  if (!c || c.classNo === classNo) return;
+  if (await findCourse(db, c.year, c.grade, classNo)) throw new Error(`${c.grade}학년 ${classNo}반이 이미 있습니다.`);
+  await updateDoc(doc(db, COLL.courses, id), { classNo });
+}
+
 // 아카이브 — 지우지 않고 내린다. 지난 해 반은 이 상태로 남아 기록을 지킨다.
 export const archiveCourse   = (db, id) => updateDoc(doc(db, COLL.courses, id), { status: 'archived' });
 export const unarchiveCourse = (db, id) => updateDoc(doc(db, COLL.courses, id), { status: 'active' });
 
-// 반 삭제 — 명단과 강의 연결까지 같이 지운다. 되돌릴 수 없으므로 호출부에서 꼭 확인받는다.
+async function deleteDocs(db, docs) {
+  // 배치 한 번에 500건 제한이 있어 나눠 커밋한다.
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = writeBatch(db);
+    docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+// 반 삭제 — 명단, 강의 연결, 비밀번호, 동의까지 같이 지운다. 되돌릴 수 없으므로 호출부에서 꼭 확인받는다.
+// 비밀번호와 동의는 courseId 칸이 없고 문서 id가 "반id_학번"이라 id 앞머리로 찾는다.
 export async function deleteCourse(db, id) {
   for (const coll of [COLL.courseStudents, COLL.courseLessons]) {
-    const snap = await getDocs(query(collection(db, coll), where('courseId', '==', id)));
-    // 배치 한 번에 500건 제한이 있어 나눠 커밋한다.
-    for (let i = 0; i < snap.docs.length; i += 400) {
-      const batch = writeBatch(db);
-      snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-      await batch.commit();
-    }
+    await deleteDocs(db, (await getDocs(query(collection(db, coll), where('courseId', '==', id)))).docs);
+  }
+  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
+    const q = query(collection(db, coll),
+      where(documentId(), '>=', `${id}_`), where(documentId(), '<', `${id}_`));
+    await deleteDocs(db, (await getDocs(q)).docs);
   }
   await deleteDoc(doc(db, COLL.courses, id));
 }

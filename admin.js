@@ -1,22 +1,17 @@
 /* 2027 LMS 어드민 — 큰 틀
  *
- * 세 가지만 담았다.
- *
- *  1. 반 관리  — 반을 1년 단위로 개설하고 없앤다. 학년 통째 개설과
- *                학년 명단 통째 업로드가 핵심이다(학번에서 반을 읽어 흩는다).
+ *  1. 학급 관리 — 학년도, 학년, 반을 선생님이 직접 만들고 고치고 지운다.
+ *                학년 통째 개설과 학년 명단 통째 업로드(학번에서 반을 읽어 흩는다)도 여기.
  *  2. 두 관리 축 — "반별"은 반을 먼저 고르고 그 반의 메뉴들을 보고,
  *                "메뉴별"은 메뉴를 먼저 고르고 그 메뉴의 반들을 본다.
- *                둘 다 같은 자리(반 x 메뉴)에 도착한다. 선생님이 그때
- *                편한 쪽으로 들어가면 된다.
- *  3. 강의 라이브러리 — 강의 내용은 연도와 무관하게 남는다. 반이 없어져도
- *                강의는 남아서 다음 해 반에 다시 붙여 쓴다.
+ *                둘 다 같은 자리(반 x 메뉴)에 도착한다.
+ *  3. 강의 라이브러리 — 강의 내용은 연도와 무관하게 남는다.
  *
  * 2026 admin.js(10,382줄)와 달리 인라인 onclick과 window 노출을 쓰지 않는다.
- * 전부 data-act 속성 + 컨테이너 이벤트 위임이다. 2026에서는 window 노출을
- * 빠뜨리면 조용히 실패하는 사고가 반복돼서 CLAUDE.md에 별도 규칙까지 있었다.
+ * 전부 data-act 속성 + 컨테이너 이벤트 위임이다.
  *
- * 각 메뉴의 실제 작업 화면(개념 편집, 성적 표 등)은 아직 없다. 지금은
- * 반 x 메뉴 칸까지 도착하는 길만 세워 둔 상태다.
+ * 화면 규칙(CLAUDE.md) — 작은 글씨 설명을 붙이지 않는다. 액션 버튼은 아이콘만
+ * 두고 title과 aria-label로 이름을 단다. alert/confirm/prompt 대신 ask() 모달.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -24,18 +19,20 @@ import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./shared/firebase-config.js";
-import { icon } from "./shared/icons.js?v=20260918";
+import { icon } from "./shared/icons.js?v=20261025a";
 import {
   MENUS, menuByKey, schoolYear, parseStudentNo,
-  courseLabel, courseShort, listCourses, listYears,
-  createCourse, createGrade, archiveCourse, unarchiveCourse, deleteCourse,
+  validYear, validGrade, validClass,
+  listYears, createYear, renameYear, deleteYear, renameGrade, deleteGrade,
+  courseLabel, courseShort, listCourses,
+  createCourse, createGrade, renameCourse, archiveCourse, unarchiveCourse, deleteCourse,
   listStudents, countStudentsByCourse, replaceRoster, replaceGradeRoster,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261023b";
+} from "./model.js?v=20261025a";
 
 const app  = initializeApp(firebaseConfig);
-// 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(lms2027/index.js 주석 참고).
+// 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
 const db   = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 const auth = getAuth(app);
 
@@ -49,25 +46,98 @@ function mountIcons(root = document) {
   });
 }
 
-function hint(id, text, kind = '') {
-  const el = $(id);
-  if (!el) return;
-  el.textContent = text;
-  el.className = 'hint' + (kind ? ' ' + kind : '');
-}
+// 아이콘 버튼 하나. 이름은 title과 aria-label로만 단다(화면에 글자를 늘어놓지 않는다).
+const ib = (act, ic, name, data = '', cls = '') =>
+  `<button type="button" class="ib${cls ? ' ' + cls : ''}" data-act="${act}" ${data} title="${esc(name)}" aria-label="${esc(name)}">${icon(ic, 16)}</button>`;
 
 /* ── 상태 ──
- * 모듈 최상위 변수를 최소로 둔다. 2026 admin.js는 여기에 81개가 있었고
- * 탭 사이로 값이 새는 것을 눈으로 막아야 했다. */
+ * 모듈 최상위 변수를 최소로 둔다. 2026 admin.js는 여기에 81개가 있었다. */
 const state = {
-  year: schoolYear(),
-  courses: [],          // 지금 학년도의 반 목록
+  years: [],            // [{ year, grades: [1,2,3] }] 큰 해부터
+  year: null,           // 고른 학년도
+  courses: [],          // 고른 학년도의 반 전부(아카이브 포함)
   studentCount: {},     // courseId 별 학생 수
   lessonCount: {},      // courseId 별 { total, open }
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
-  uploadTarget: null,   // 반별 명단 업로드가 어느 반인지
+  upload: null,         // 명단 올리기 대상 { kind: 'grade', grade } | { kind: 'class', id }
 };
+
+const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
+
+/* ── 토스트 ── 방금 한 일의 결과와 오류만 짧게 띄운다. */
+let _toastTimer = null;
+function toast(text, kind = 'ok') {
+  const el = $('toast');
+  el.textContent = text;
+  el.className = 'toast ' + kind;
+  el.hidden = false;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.hidden = true; }, kind === 'err' ? 5000 : 2600);
+}
+
+/* ── 모달 ──
+ * ask({ title, body, fields, check, info, danger }) 는 값 묶음이나 null(취소)을 돌려준다.
+ *   fields: [{ key, label, type: 'number'|'text', value, placeholder }]
+ *   check(values): 문제가 있으면 오류 문구를 돌려준다. 모달 안에 띄우고 닫지 않는다.
+ *   info: 확인 버튼 하나만(명단 보기처럼 보기만 하는 창).
+ */
+let _modalDone = null;
+
+function ask({ title, body = '', fields = [], check = null, info = false, danger = false }) {
+  if (_modalDone) _modalDone(null);
+  $('modalTitle').textContent = title;
+  $('modalBody').innerHTML = `
+    ${body ? `<div class="modal-text">${body}</div>` : ''}
+    ${fields.map(f => `
+      <label class="f">
+        <span class="f-label">${esc(f.label)}</span>
+        <input class="inp" data-key="${esc(f.key)}" type="${f.type === 'number' ? 'number' : 'text'}"
+          ${f.type === 'number' ? 'inputmode="numeric"' : ''}
+          value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder ?? '')}" autocomplete="off">
+      </label>`).join('')}
+    <div class="modal-err" id="modalErr"></div>`;
+  $('modalCancel').hidden = info;
+  $('modalOk').classList.toggle('ib-danger', danger);
+  $('modalOk').classList.toggle('ib-primary', !danger);
+  $('modal').hidden = false;
+  const first = $('modalBody').querySelector('input');
+  (first || $('modalOk')).focus();
+  if (first) first.select();
+
+  return new Promise(resolve => {
+    _modalDone = v => { _modalDone = null; $('modal').hidden = true; resolve(v); };
+    $('modalOk').onclick = () => {
+      const vals = {};
+      $('modalBody').querySelectorAll('input[data-key]').forEach(i => {
+        vals[i.dataset.key] = i.type === 'number' ? (i.value === '' ? NaN : Number(i.value)) : i.value.trim();
+      });
+      const err = check ? check(vals) : '';
+      if (err) { $('modalErr').textContent = err; return; }
+      _modalDone(vals);
+    };
+  });
+}
+
+$('modalCancel').addEventListener('click', () => _modalDone && _modalDone(null));
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal' && _modalDone) _modalDone(null); });
+document.addEventListener('keydown', e => {
+  if ($('modal').hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); _modalDone && _modalDone(null); }
+  // 버튼에 초점이 있을 때는 그 버튼이 Enter를 받게 둔다(취소 위에서 Enter가 확인이 되지 않게).
+  if (e.key === 'Enter' && !e.isComposing && e.target.tagName === 'INPUT') { e.preventDefault(); $('modalOk').click(); }
+});
+
+// 되돌릴 수 없는 삭제는 이름을 그대로 적게 한다.
+function askDelete(name, what) {
+  return ask({
+    title: `${name} 삭제`,
+    body: `${esc(what)} 함께 지워지고 되돌릴 수 없습니다.`,
+    fields: [{ key: 'name', label: '확인을 위해 이름 입력', type: 'text', placeholder: name }],
+    check: v => v.name === name ? '' : `"${name}"을 그대로 입력해 주세요.`,
+    danger: true,
+  });
+}
 
 /* ── 로그인 ── */
 
@@ -120,7 +190,7 @@ function boot() {
 
   wireClasses();
   wireLibrary();
-  loadYears().then(reloadCourses);
+  reloadAll();
 }
 
 function toggleSidebar() {
@@ -140,14 +210,28 @@ function showPage(nav) {
   if (nav === 'library') reloadLibrary();
 }
 
-/* ── 공통: 반 목록 다시 읽기 ──
- * 학생 수와 강의 수를 반마다 따로 묻지 않고 컬렉션을 한 번씩만 읽어 센다.
- * 반이 스무 개를 넘어가면 반별 조회는 읽기가 그만큼 곱해진다. */
+/* ── 공통: 다시 읽기 ──
+ * 학생 수와 강의 수를 반마다 따로 묻지 않고 컬렉션을 한 번씩만 읽어 센다. */
+async function reloadAll() {
+  try {
+    state.years = await listYears(db);
+  } catch (e) {
+    console.warn('[listYears]', e);
+    $('gradeList').innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
+    return;
+  }
+  const has = y => state.years.some(v => v.year === y);
+  if (!has(state.year)) {
+    const cur = schoolYear();
+    state.year = has(cur) ? cur : (state.years[0]?.year ?? null);
+  }
+  await reloadCourses();
+}
+
 async function reloadCourses() {
-  const showArch = $('chkArchived').checked;
   try {
     const [courses, sc, lc] = await Promise.all([
-      listCourses(db, { year: state.year, includeArchived: showArch }),
+      state.year != null ? listCourses(db, { year: state.year, includeArchived: true }) : [],
       countStudentsByCourse(db),
       countLessonsByCourse(db),
     ]);
@@ -156,263 +240,325 @@ async function reloadCourses() {
     state.lessonCount = lc;
   } catch (e) {
     console.warn('[reloadCourses]', e);
-    $('classList').innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
+    $('gradeList').innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
     return;
   }
-  renderClassList();
+  if (state.pickedCourse && !activeCourses().some(c => c.id === state.pickedCourse)) state.pickedCourse = null;
+  renderClasses();
   renderPickClass();
   renderPickMenu();
 }
 
-async function loadYears() {
-  let years = [];
-  try { years = await listYears(db); } catch (e) { console.warn('[loadYears]', e); }
-  const cur = schoolYear();
-  // 올해와 내년은 반이 아직 없어도 고를 수 있어야 한다(개설하려면 먼저 골라야 하므로).
-  const all = [...new Set([...years, cur, cur + 1])].sort((a, b) => b - a);
-  if (!all.includes(state.year)) state.year = cur;
-  $('selYear').innerHTML = all.map(y =>
-    `<option value="${y}"${y === state.year ? ' selected' : ''}>${y}학년도</option>`).join('');
-}
-
-/* ══════ 반 관리 ══════ */
+/* ══════ 학급 관리 ══════ */
 
 function wireClasses() {
-  $('selYear').addEventListener('change', e => {
-    state.year = +e.target.value;
-    state.pickedCourse = null;
-    reloadCourses();
-  });
-  $('chkArchived').addEventListener('change', reloadCourses);
-  $('btnCreateGrade').addEventListener('click', doCreateGrade);
-  $('btnAddOne').addEventListener('click', doAddOne);
-  $('fileRoster').addEventListener('change', doUploadGradeRoster);
-  $('fileClassRoster').addEventListener('change', doUploadClassRoster);
-
-  // 반 목록의 버튼은 이벤트 위임으로 받는다(인라인 onclick과 window 노출을 쓰지 않는다).
-  $('classList').addEventListener('click', onClassListClick);
+  $('yearBar').addEventListener('click', onClassesClick);
+  $('yearTools').addEventListener('click', onClassesClick);
+  $('gradeList').addEventListener('click', onClassesClick);
+  $('fileRoster').addEventListener('change', onRosterFile);
 }
 
-async function doCreateGrade() {
-  const grade = +$('inpGradeAll').value;
-  const count = +$('inpClassCount').value;
-  if (!(grade >= 1 && grade <= 6) || !(count >= 1 && count <= 20)) {
-    hint('hintCreateGrade', '학년과 반 수를 확인해 주세요.', 'err');
-    return;
-  }
-  $('btnCreateGrade').disabled = true;
-  hint('hintCreateGrade', '개설하고 있습니다.');
-  try {
-    const { made, skipped } = await createGrade(db, { year: state.year, grade, count });
-    const parts = [];
-    if (made.length)    parts.push(`${made.length}개 반을 개설했습니다`);
-    if (skipped.length) parts.push(`이미 있던 ${skipped.length}개 반은 그대로 두었습니다`);
-    hint('hintCreateGrade', parts.join('. ') + '.', 'ok');
-    await reloadCourses();
-  } catch (e) {
-    console.warn('[createGrade]', e);
-    hint('hintCreateGrade', '개설하지 못했습니다. ' + e.message, 'err');
-  } finally {
-    $('btnCreateGrade').disabled = false;
-  }
-}
+function renderClasses() {
+  const yearObj = state.years.find(y => y.year === state.year);
 
-async function doAddOne() {
-  const grade = prompt('학년을 입력해 주세요.');
-  if (grade === null) return;
-  const classNo = prompt('반을 입력해 주세요.');
-  if (classNo === null) return;
-  const g = +grade, c = +classNo;
-  if (!(g >= 1 && g <= 6) || !(c >= 1 && c <= 20)) { alert('학년과 반을 확인해 주세요.'); return; }
-  try {
-    const r = await createCourse(db, { year: state.year, grade: g, classNo: c });
-    if (!r.created) alert('이미 있는 반입니다.');
-    await reloadCourses();
-  } catch (e) {
-    console.warn('[addOne]', e);
-    alert('개설하지 못했습니다. ' + e.message);
-  }
-}
+  $('yearBar').innerHTML = state.years.map(y => `
+    <button type="button" class="pick${y.year === state.year ? ' on' : ''}" data-act="pick-year" data-year="${y.year}">
+      ${y.year}학년도
+    </button>`).join('') + ib('add-year', 'plus', '학년도 추가', '', 'ib-round');
 
-/* 학년 명단 통째 업로드 — 학번에서 반을 읽어 반별로 나눠 넣는다.
-   2026에서는 전교생 명단을 한 덩어리로 통째 교체했는데, 지금은 올린
-   학년의 반들만 바뀐다. 다른 학년 명단은 건드리지 않는다. */
-function doUploadGradeRoster(ev) {
-  const file = ev.target.files[0];
-  if (!file) return;
-  const grade = +$('inpGradeUp').value;
-  if (!(grade >= 1 && grade <= 6)) {
-    hint('hintUpload', '학년을 확인해 주세요.', 'err');
-    ev.target.value = '';
+  $('yearTools').innerHTML = yearObj
+    ? ib('edit-year', 'pencil', `${yearObj.year}학년도 수정`) + ib('del-year', 'trash-2', `${yearObj.year}학년도 삭제`, '', 'ib-danger')
+    : '';
+
+  if (!yearObj) {
+    $('gradeList').innerHTML = '<p class="empty">학년도가 없습니다.</p>';
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      const rows = raw.slice(1)  // 1행은 머리글로 보고 건너뛴다
-        .filter(r => r[0] !== '' && r[1] !== '')
-        .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1]).trim() }))
-        .filter(s => parseStudentNo(s.studentNo) && s.name);
-
-      if (!rows.length) { hint('hintUpload', '읽을 수 있는 줄이 없습니다.', 'err'); return; }
-
-      // 어느 반이 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다(명단 교체는 되돌릴 수 없다).
-      const preview = {};
-      rows.forEach(r => {
-        const p = parseStudentNo(r.studentNo);
-        if (p.grade === grade) preview[p.classNo] = (preview[p.classNo] || 0) + 1;
-      });
-      const classNos = Object.keys(preview).map(Number).sort((a, b) => a - b);
-      if (!classNos.length) {
-        hint('hintUpload', `${grade}학년 학번이 없습니다. 학년을 확인해 주세요.`, 'err');
-        return;
-      }
-      const summary = classNos.map(n => `${n}반 ${preview[n]}명`).join(', ');
-      if (!confirm(`${state.year}학년도 ${grade}학년\n${summary}\n\n해당 반의 기존 명단을 교체합니다. 진행하시겠습니까?`)) return;
-
-      hint('hintUpload', '올리고 있습니다.');
-      const { classes, foreign } = await replaceGradeRoster(db, { year: state.year, grade, rows });
-      const done = classes.map(c => `${c.classNo}반 ${c.count}명`).join(', ');
-      const extra = foreign.length ? ` 다른 학년 학번 ${foreign.length}줄은 넣지 않았습니다.` : '';
-      hint('hintUpload', `${done}.${extra}`, 'ok');
-      await reloadCourses();
-    } catch (err) {
-      console.warn('[uploadRoster]', err);
-      hint('hintUpload', '올리지 못했습니다. ' + err.message, 'err');
-    } finally {
-      ev.target.value = '';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-/* 반별 명단 업로드 — 2026의 일괄 업로드와 같은 흐름이다. 다른 점은 지우는
-   범위가 그 반뿐이라는 것(2026에서는 전교생 명단을 통째로 지웠다).
-   학번에서 읽은 학년과 반이 그 반과 다른 줄은 넣지 않고 몇 줄인지만 알려 준다. */
-function doUploadClassRoster(ev) {
-  const file = ev.target.files[0];
-  const cid  = state.uploadTarget;
-  ev.target.value = '';
-  if (!file || !cid) return;
-  const c = state.courses.find(x => x.id === cid);
-  if (!c) return;
-
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      const all = raw.slice(1)  // 1행은 머리글로 보고 건너뛴다
-        .filter(r => r[0] !== '' && r[1] !== '')
-        .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1]).trim() }))
-        .filter(s => parseStudentNo(s.studentNo) && s.name);
-
-      const mine = all.filter(s => {
-        const p = parseStudentNo(s.studentNo);
-        return p.grade === c.grade && p.classNo === c.classNo;
-      });
-      if (!mine.length) {
-        hint('hintClassUpload', `${courseShort(c)} 학번이 없습니다. 파일을 확인해 주세요.`, 'err');
-        return;
-      }
-      if (!confirm(`${courseShort(c)} ${mine.length}명\n\n기존 명단을 교체합니다. 진행하시겠습니까?`)) {
-        hint('hintClassUpload', '');
-        return;
-      }
-      hint('hintClassUpload', '올리고 있습니다.');
-      await replaceRoster(db, cid, mine);
-      const skipped = all.length - mine.length;
-      hint('hintClassUpload',
-        `${courseShort(c)} ${mine.length}명을 올렸습니다.` +
-        (skipped ? ` 다른 반 학번 ${skipped}줄은 넣지 않았습니다.` : ''), 'ok');
-      await reloadCourses();
-    } catch (err) {
-      console.warn('[uploadClassRoster]', err);
-      hint('hintClassUpload', '올리지 못했습니다. ' + err.message, 'err');
-    } finally {
-      state.uploadTarget = null;
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function renderClassList() {
-  const box = $('classList');
-  if (!state.courses.length) {
-    box.innerHTML = `<p class="empty">${state.year}학년도에 개설된 반이 없습니다. 위에서 학년을 통째로 개설해 보세요.</p>`;
-    return;
-  }
-  box.innerHTML = state.courses.map(c => {
-    const arch = c.status === 'archived';
-    const n  = state.studentCount[c.id] || 0;
-    const lc = state.lessonCount[c.id] || { total: 0, open: 0 };
+  $('gradeList').innerHTML = yearObj.grades.map(g => {
+    const rows = state.courses.filter(c => c.grade === g);
+    const students = rows.reduce((s, c) => s + (state.studentCount[c.id] || 0), 0);
+    const ga = `data-grade="${g}"`;
     return `
-      <div class="cls-row${arch ? ' arch' : ''}">
-        <span class="cls-name">${esc(courseShort(c))}</span>
-        ${arch ? '<span class="badge">아카이브</span>' : ''}
-        <span class="cls-meta">학생 ${n}명, 강의 ${lc.total}개 중 ${lc.open}개 공개</span>
-        <span class="cls-actions">
-          <button type="button" class="btn btn-ghost btn-sm" data-act="roster" data-id="${esc(c.id)}">명단</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-act="upload" data-id="${esc(c.id)}">명단 올리기</button>
-          ${arch
-            ? `<button type="button" class="btn btn-ghost btn-sm" data-act="unarchive" data-id="${esc(c.id)}">되돌리기</button>`
-            : `<button type="button" class="btn btn-ghost btn-sm" data-act="archive" data-id="${esc(c.id)}">아카이브</button>`}
-          <button type="button" class="btn btn-danger btn-sm" data-act="delete" data-id="${esc(c.id)}">삭제</button>
-        </span>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">${g}학년<span class="card-meta">${rows.length}개 반, 학생 ${students}명</span></h2>
+          <span class="acts">
+            ${ib('add-class', 'plus', `${g}학년에 반 추가`, ga)}
+            ${ib('upload-grade', 'upload', `${g}학년 명단 올리기`, ga)}
+            ${ib('edit-grade', 'pencil', `${g}학년 수정`, ga)}
+            ${ib('del-grade', 'trash-2', `${g}학년 삭제`, ga, 'ib-danger')}
+          </span>
+        </div>
+        <div class="card-body">
+          ${rows.length ? rows.map(classRow).join('') : '<p class="empty">반이 없습니다.</p>'}
+        </div>
       </div>`;
-  }).join('');
+  }).join('') + `
+    <button type="button" class="add-block" data-act="add-grade" title="학년 추가" aria-label="학년 추가">${icon('plus', 20)}</button>`;
 }
 
-async function onClassListClick(ev) {
+function classRow(c) {
+  const arch = c.status === 'archived';
+  const n  = state.studentCount[c.id] || 0;
+  const lc = state.lessonCount[c.id] || { total: 0, open: 0 };
+  const name = courseShort(c);
+  const ca = `data-id="${esc(c.id)}"`;
+  return `
+    <div class="cls-row${arch ? ' arch' : ''}">
+      <span class="cls-name">${c.classNo}반</span>
+      ${arch ? '<span class="badge">아카이브</span>' : ''}
+      <span class="cls-meta">학생 ${n}명, 강의 ${lc.total}개 중 ${lc.open}개 공개</span>
+      <span class="acts">
+        ${ib('roster', 'users', `${name} 명단`, ca)}
+        ${ib('upload-class', 'upload', `${name} 명단 올리기`, ca)}
+        ${arch ? ib('unarchive', 'archive-restore', `${name} 아카이브 해제`, ca)
+               : ib('archive', 'archive', `${name} 아카이브`, ca)}
+        ${ib('edit-class', 'pencil', `${name} 수정`, ca)}
+        ${ib('del-class', 'trash-2', `${name} 삭제`, ca, 'ib-danger')}
+      </span>
+    </div>`;
+}
+
+async function onClassesClick(ev) {
   const btn = ev.target.closest('[data-act]');
   if (!btn) return;
-  const id = btn.dataset.id;
-  const c  = state.courses.find(x => x.id === id);
-  if (!c) return;
+  const act   = btn.dataset.act;
+  const grade = btn.dataset.grade != null ? +btn.dataset.grade : null;
+  const c     = btn.dataset.id ? state.courses.find(x => x.id === btn.dataset.id) : null;
+  const year  = state.year;
+  const yearObj = state.years.find(y => y.year === year);
 
   try {
-    if (btn.dataset.act === 'roster') {
-      const rows = await listStudents(db, id);
-      alert(rows.length
-        ? `${courseShort(c)} 명단 ${rows.length}명\n\n` +
-          rows.map(r => `${r.studentNo} ${r.name}`).join('\n')
-        : `${courseShort(c)} 명단이 비어 있습니다.`);
-      return;
+    switch (act) {
+      case 'pick-year':
+        state.year = +btn.dataset.year;
+        state.pickedCourse = null;
+        await reloadCourses();
+        return;
+
+      case 'add-year': {
+        const top = state.years[0]?.year ?? schoolYear();
+        const v = await ask({
+          title: '학년도 추가',
+          fields: [{ key: 'year', label: '학년도', type: 'number', value: state.years.length ? top + 1 : schoolYear() }],
+          check: v => !validYear(v.year) ? '학년도를 확인해 주세요.'
+            : state.years.some(y => y.year === v.year) ? `${v.year}학년도가 이미 있습니다.` : '',
+        });
+        if (!v) return;
+        await createYear(db, v.year);
+        state.year = v.year;
+        toast(`${v.year}학년도를 만들었습니다.`);
+        break;
+      }
+
+      case 'edit-year': {
+        const v = await ask({
+          title: `${year}학년도 수정`,
+          fields: [{ key: 'year', label: '학년도', type: 'number', value: year }],
+          check: v => !validYear(v.year) ? '학년도를 확인해 주세요.'
+            : (v.year !== year && state.years.some(y => y.year === v.year)) ? `${v.year}학년도가 이미 있습니다.` : '',
+        });
+        if (!v || v.year === year) return;
+        await renameYear(db, year, v.year);
+        state.year = v.year;
+        toast(`${v.year}학년도로 바꿨습니다.`);
+        break;
+      }
+
+      case 'del-year': {
+        const n = state.courses.reduce((s, x) => s + (state.studentCount[x.id] || 0), 0);
+        if (!await askDelete(`${year}학년도`, `반 ${state.courses.length}개와 명단 ${n}명, 강의 연결, 학생 비밀번호가`)) return;
+        await deleteYear(db, year);
+        state.year = null;
+        toast(`${year}학년도를 삭제했습니다.`);
+        break;
+      }
+
+      case 'add-grade': {
+        const grades = yearObj?.grades || [];
+        const next = grades.length ? Math.max(...grades) + 1 : 1;
+        const prevCount = grades.length ? state.courses.filter(x => x.grade === Math.max(...grades)).length : 0;
+        const v = await ask({
+          title: `${year}학년도 학년 추가`,
+          fields: [
+            { key: 'grade', label: '학년', type: 'number', value: next },
+            { key: 'count', label: '반 수', type: 'number', value: prevCount || 6 },
+          ],
+          check: v => !validGrade(v.grade) ? '학년을 확인해 주세요.'
+            : grades.includes(v.grade) ? `${v.grade}학년이 이미 있습니다.`
+            : !(Number.isInteger(v.count) && v.count >= 0 && v.count <= 30) ? '반 수를 확인해 주세요.' : '',
+        });
+        if (!v) return;
+        const { made } = await createGrade(db, { year, grade: v.grade, count: v.count });
+        toast(`${v.grade}학년을 만들었습니다${made.length ? ` (반 ${made.length}개)` : ''}.`);
+        break;
+      }
+
+      case 'edit-grade': {
+        const v = await ask({
+          title: `${grade}학년 수정`,
+          fields: [{ key: 'grade', label: '학년', type: 'number', value: grade }],
+          check: v => !validGrade(v.grade) ? '학년을 확인해 주세요.'
+            : (v.grade !== grade && yearObj.grades.includes(v.grade)) ? `${v.grade}학년이 이미 있습니다.` : '',
+        });
+        if (!v || v.grade === grade) return;
+        await renameGrade(db, year, grade, v.grade);
+        toast(`${v.grade}학년으로 바꿨습니다.`);
+        break;
+      }
+
+      case 'del-grade': {
+        const rows = state.courses.filter(x => x.grade === grade);
+        const n = rows.reduce((s, x) => s + (state.studentCount[x.id] || 0), 0);
+        if (!await askDelete(`${grade}학년`, `반 ${rows.length}개와 명단 ${n}명, 강의 연결, 학생 비밀번호가`)) return;
+        await deleteGrade(db, year, grade);
+        toast(`${grade}학년을 삭제했습니다.`);
+        break;
+      }
+
+      case 'add-class': {
+        const taken = state.courses.filter(x => x.grade === grade).map(x => x.classNo);
+        const v = await ask({
+          title: `${grade}학년 반 추가`,
+          fields: [{ key: 'classNo', label: '반', type: 'number', value: taken.length ? Math.max(...taken) + 1 : 1 }],
+          check: v => !validClass(v.classNo) ? '반을 확인해 주세요.'
+            : taken.includes(v.classNo) ? `${grade}학년 ${v.classNo}반이 이미 있습니다.` : '',
+        });
+        if (!v) return;
+        await createCourse(db, { year, grade, classNo: v.classNo });
+        toast(`${grade}학년 ${v.classNo}반을 만들었습니다.`);
+        break;
+      }
+
+      case 'edit-class': {
+        const taken = state.courses.filter(x => x.grade === c.grade && x.id !== c.id).map(x => x.classNo);
+        const v = await ask({
+          title: `${courseShort(c)} 수정`,
+          fields: [{ key: 'classNo', label: '반', type: 'number', value: c.classNo }],
+          check: v => !validClass(v.classNo) ? '반을 확인해 주세요.'
+            : taken.includes(v.classNo) ? `${c.grade}학년 ${v.classNo}반이 이미 있습니다.` : '',
+        });
+        if (!v || v.classNo === c.classNo) return;
+        await renameCourse(db, c.id, v.classNo);
+        toast(`${c.grade}학년 ${v.classNo}반으로 바꿨습니다.`);
+        break;
+      }
+
+      case 'del-class': {
+        const n = state.studentCount[c.id] || 0;
+        if (!await askDelete(courseShort(c), `명단 ${n}명과 강의 연결, 학생 비밀번호가`)) return;
+        await deleteCourse(db, c.id);
+        toast(`${courseShort(c)}을 삭제했습니다.`);
+        break;
+      }
+
+      case 'archive':
+        await archiveCourse(db, c.id);
+        toast(`${courseShort(c)}을 아카이브했습니다.`);
+        break;
+
+      case 'unarchive':
+        await unarchiveCourse(db, c.id);
+        toast(`${courseShort(c)} 아카이브를 해제했습니다.`);
+        break;
+
+      case 'roster': {
+        const rows = await listStudents(db, c.id);
+        await ask({
+          title: `${courseShort(c)} 명단 ${rows.length}명`,
+          body: rows.length
+            ? `<div class="roster">${rows.map(r =>
+                `<div class="roster-row"><span class="roster-no">${esc(r.studentNo)}</span><span>${esc(r.name)}</span></div>`).join('')}</div>`
+            : '<p class="empty">명단이 비어 있습니다.</p>',
+          info: true,
+        });
+        return;
+      }
+
+      case 'upload-grade':
+        state.upload = { kind: 'grade', grade };
+        $('fileRoster').click();
+        return;
+
+      case 'upload-class':
+        state.upload = { kind: 'class', id: c.id };
+        $('fileRoster').click();
+        return;
+
+      default:
+        return;
     }
-    if (btn.dataset.act === 'upload') {
-      // 어느 반에 올리는지 담아 두고 숨겨 둔 파일 칸을 연다.
-      state.uploadTarget = id;
-      hint('hintClassUpload', `${courseShort(c)} 명단을 고르세요.`);
-      $('fileClassRoster').click();
-      return;
-    }
-    if (btn.dataset.act === 'archive') {
-      if (!confirm(`${courseShort(c)}을 아카이브하시겠습니까?\n기록은 남고 학생은 더 들어올 수 없습니다.`)) return;
-      await archiveCourse(db, id);
-    }
-    if (btn.dataset.act === 'unarchive') {
-      await unarchiveCourse(db, id);
-    }
-    if (btn.dataset.act === 'delete') {
-      // 되돌릴 수 없는 작업이라 반 이름을 직접 적게 한다.
-      const n = state.studentCount[id] || 0;
-      const want = courseShort(c);
-      const typed = prompt(
-        `${want}을 삭제하면 명단 ${n}명과 강의 연결까지 함께 지워집니다.\n` +
-        `되돌릴 수 없습니다. 삭제하려면 "${want}"을 그대로 입력해 주세요.`);
-      if (typed === null) return;
-      if (typed.trim() !== want) { alert('입력이 달라 삭제하지 않았습니다.'); return; }
-      await deleteCourse(db, id);
-    }
-    await reloadCourses();
+    await reloadAll();
   } catch (e) {
-    console.warn('[classAction]', e);
-    alert('처리하지 못했습니다. ' + e.message);
+    console.warn('[classes]', act, e);
+    toast('처리하지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+/* 엑셀 한 장을 읽어 { studentNo, name } 줄로. A열 학번, B열 이름, 1행은 머리글로 보고 건너뛴다. */
+function readRoster(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = e => {
+      try {
+        const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+        resolve(raw.slice(1)
+          .filter(r => r[0] !== '' && r[1] !== '')
+          .map(r => ({ studentNo: String(r[0]).trim(), name: String(r[1]).trim() }))
+          .filter(s => parseStudentNo(s.studentNo) && s.name));
+      } catch (err) { reject(err); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* 명단 올리기 — 학년 카드에서 누르면 학번에서 반을 읽어 반별로 흩어 넣고(없는 반은 개설),
+   반 줄에서 누르면 그 반 학번만 넣는다. 어느 쪽이든 지우는 범위는 해당 반뿐이다
+   (2026에서는 전교생 명단을 통째로 지웠다). 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다. */
+async function onRosterFile(ev) {
+  const file = ev.target.files[0];
+  const target = state.upload;
+  ev.target.value = '';
+  state.upload = null;
+  if (!file || !target) return;
+
+  try {
+    const rows = await readRoster(file);
+    if (!rows.length) { toast('읽을 수 있는 줄이 없습니다.', 'err'); return; }
+
+    if (target.kind === 'grade') {
+      const g = target.grade;
+      const per = {};
+      rows.forEach(r => { const p = parseStudentNo(r.studentNo); if (p.grade === g) per[p.classNo] = (per[p.classNo] || 0) + 1; });
+      const nos = Object.keys(per).map(Number).sort((a, b) => a - b);
+      if (!nos.length) { toast(`${g}학년 학번이 없습니다.`, 'err'); return; }
+      const ok = await ask({
+        title: `${state.year}학년도 ${g}학년 명단 교체`,
+        body: `<div class="roster">${nos.map(n =>
+          `<div class="roster-row"><span class="roster-no">${n}반</span><span>${per[n]}명</span></div>`).join('')}</div>`,
+      });
+      if (!ok) return;
+      const { classes, foreign } = await replaceGradeRoster(db, { year: state.year, grade: g, rows });
+      toast(`${classes.map(c => `${c.classNo}반 ${c.count}명`).join(', ')}을 올렸습니다.` +
+        (foreign.length ? ` 다른 학년 학번 ${foreign.length}줄은 넣지 않았습니다.` : ''));
+    } else {
+      const c = state.courses.find(x => x.id === target.id);
+      if (!c) return;
+      const mine = rows.filter(s => { const p = parseStudentNo(s.studentNo); return p.grade === c.grade && p.classNo === c.classNo; });
+      if (!mine.length) { toast(`${courseShort(c)} 학번이 없습니다.`, 'err'); return; }
+      const ok = await ask({ title: `${courseShort(c)} 명단 교체`, body: `${mine.length}명` });
+      if (!ok) return;
+      await replaceRoster(db, c.id, mine);
+      const skipped = rows.length - mine.length;
+      toast(`${courseShort(c)} ${mine.length}명을 올렸습니다.` + (skipped ? ` 다른 반 학번 ${skipped}줄은 넣지 않았습니다.` : ''));
+    }
+    await reloadAll();
+  } catch (e) {
+    console.warn('[roster]', e);
+    toast('올리지 못했습니다. ' + e.message, 'err');
   }
 }
 
@@ -420,11 +566,10 @@ async function onClassListClick(ev) {
 
 function renderPickClass() {
   const bar = $('pickClassBar');
-  const active = state.courses.filter(c => c.status !== 'archived');
+  const active = activeCourses();
   if (!active.length) {
     bar.innerHTML = '';
-    $('byClassBody').innerHTML =
-      `<p class="empty">${state.year}학년도에 개설된 반이 없습니다. 반 관리에서 먼저 개설해 주세요.</p>`;
+    $('byClassBody').innerHTML = '<p class="empty">반이 없습니다.</p>';
     return;
   }
   bar.innerHTML = active.map(c => `
@@ -445,9 +590,9 @@ $('pickClassBar').addEventListener('click', ev => {
    MENUS 표를 읽으므로 어드민과 학생 화면의 메뉴가 어긋나지 않는다. */
 function renderByClassBody() {
   const box = $('byClassBody');
-  if (!state.pickedCourse) { box.innerHTML = '<p class="empty">위에서 반을 골라 주세요.</p>'; return; }
+  if (!state.pickedCourse) { box.innerHTML = ''; return; }
   const c = state.courses.find(x => x.id === state.pickedCourse);
-  if (!c) { box.innerHTML = '<p class="empty">반을 찾을 수 없습니다.</p>'; return; }
+  if (!c) { box.innerHTML = ''; return; }
 
   const n  = state.studentCount[c.id] || 0;
   const lc = state.lessonCount[c.id] || { total: 0, open: 0 };
@@ -463,7 +608,6 @@ function renderByClassBody() {
             <span class="cell-ic">${icon(m.icon, 20)}</span>
             <span class="cell-name">${esc(m.label)}</span>
           </span>
-          <span class="cell-sub">${esc(courseShort(c))}</span>
           <span class="cell-state">준비 중</span>
         </button>`).join('')}
     </div>`;
@@ -486,17 +630,13 @@ $('pickMenuBar').addEventListener('click', ev => {
   renderPickMenu();
 });
 
-/* 메뉴 하나를 고르면 그 메뉴를 쓰는 반들을 보여 준다. 반별 보기와 칸 모양이
-   같은 것은 들어가는 방향만 다르고 도착하는 자리가 같기 때문이다. */
+/* 메뉴 하나를 고르면 그 메뉴를 쓰는 반들을 보여 준다. */
 function renderByMenuBody() {
   const box = $('byMenuBody');
-  if (!state.pickedMenu) { box.innerHTML = '<p class="empty">위에서 메뉴를 골라 주세요.</p>'; return; }
+  if (!state.pickedMenu) { box.innerHTML = ''; return; }
   const m = menuByKey(state.pickedMenu);
-  const active = state.courses.filter(c => c.status !== 'archived');
-  if (!active.length) {
-    box.innerHTML = `<p class="empty">${state.year}학년도에 개설된 반이 없습니다. 반 관리에서 먼저 개설해 주세요.</p>`;
-    return;
-  }
+  const active = activeCourses();
+  if (!active.length) { box.innerHTML = '<p class="empty">반이 없습니다.</p>'; return; }
   box.innerHTML = `
     <div class="ctx">
       <span>${esc(m.label)}</span>
@@ -522,6 +662,7 @@ function renderByMenuBody() {
 
 function wireLibrary() {
   $('btnAddLesson').addEventListener('click', doAddLesson);
+  $('inpLessonTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) doAddLesson(); });
   $('libraryList').addEventListener('click', onLibraryClick);
 }
 
@@ -534,9 +675,9 @@ async function reloadLibrary() {
           <div class="lib-row">
             <span class="lib-no">${esc(lessonTag(r.lessonNo))}</span>
             <span class="lib-title">${esc(r.title || '제목 없음')}</span>
-            <button type="button" class="btn btn-danger btn-sm" data-act="del" data-id="${esc(r.id)}">삭제</button>
+            ${ib('del', 'trash-2', `${lessonTag(r.lessonNo)} 삭제`, `data-id="${esc(r.id)}" data-name="${esc(r.title || '')}"`, 'ib-danger')}
           </div>`).join('')
-      : '<p class="empty">아직 강의가 없습니다.</p>';
+      : '<p class="empty">강의가 없습니다.</p>';
   } catch (e) {
     console.warn('[reloadLibrary]', e);
     box.innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
@@ -546,18 +687,18 @@ async function reloadLibrary() {
 async function doAddLesson() {
   const lessonNo = $('inpLessonNo').value.trim();
   const title    = $('inpLessonTitle').value.trim();
-  if (!lessonNo || !title) { hint('hintLesson', '강 번호와 제목을 입력해 주세요.', 'err'); return; }
+  if (!lessonNo || !title) { toast('강 번호와 제목을 입력해 주세요.', 'err'); return; }
   $('btnAddLesson').disabled = true;
   try {
     // order는 2026과 같은 규칙으로 강 번호에서 뽑는다(OT 같은 비숫자는 맨 아래).
     await addLibraryLesson(db, { lessonNo, title, order: lessonOrderKey(lessonNo) });
     $('inpLessonNo').value = '';
     $('inpLessonTitle').value = '';
-    hint('hintLesson', '추가했습니다.', 'ok');
+    toast(`${lessonTag(lessonNo)}을 추가했습니다.`);
     await reloadLibrary();
   } catch (e) {
     console.warn('[addLesson]', e);
-    hint('hintLesson', '추가하지 못했습니다. ' + e.message, 'err');
+    toast('추가하지 못했습니다. ' + e.message, 'err');
   } finally {
     $('btnAddLesson').disabled = false;
   }
@@ -566,12 +707,17 @@ async function doAddLesson() {
 async function onLibraryClick(ev) {
   const btn = ev.target.closest('[data-act="del"]');
   if (!btn) return;
-  if (!confirm('이 강의를 라이브러리에서 삭제하시겠습니까?\n이미 반에 붙여 쓰고 있으면 그 연결은 남습니다.')) return;
+  const ok = await ask({
+    title: '강의 삭제',
+    body: `${esc(btn.dataset.name || '이 강의')}을 라이브러리에서 지웁니다. 이미 반에 붙인 연결은 남습니다.`,
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await deleteLibraryLesson(db, btn.dataset.id);
     await reloadLibrary();
   } catch (e) {
     console.warn('[delLesson]', e);
-    alert('삭제하지 못했습니다. ' + e.message);
+    toast('삭제하지 못했습니다. ' + e.message, 'err');
   }
 }

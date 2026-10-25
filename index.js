@@ -23,12 +23,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./shared/firebase-config.js";
-import { icon } from "./shared/icons.js?v=20260918";
+import { icon } from "./shared/icons.js?v=20261025a";
 import {
   MENUS, schoolYear, courseLabel, getCourse, loadYearRoster, clearRosterCache,
   getAuthHash, setPw, hashPw, isHash, hasConsent, saveConsent,
   listCourseLessons, lessonTag
-} from "./model.js?v=20261023c";
+} from "./model.js?v=20261025a";
 
 // 여기까지 왔으면 모듈은 다 받았다. 디자인(index.css)도 들어왔는지 확인해서 본문을 연다.
 // 디자인이 빠졌으면 깨진 화면 대신 새로고침 안내를 띄운다(index.html의 bootFail).

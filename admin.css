@@ -51,13 +51,7 @@ svg{vertical-align:middle}
 .adm-title-main{font-weight:900;font-size:17px;letter-spacing:.5px;color:var(--text)}
 .adm-title-lms{font-weight:900;font-size:17px;color:var(--primary)}
 .adm-sub{margin-top:2px;font-size:11.5px;font-weight:600;color:var(--faint)}
-.adm-header-right{display:flex;align-items:center;gap:8px}
-.adm-logout-btn,.adm-menu-btn{
-  padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;
-  font:inherit;font-size:12.5px;color:var(--sub);cursor:pointer;
-}
-.adm-logout-btn:hover,.adm-menu-btn:hover{background:var(--surface)}
-.adm-menu-btn{display:none;padding:7px 10px;line-height:1}
+.adm-header-right{display:flex;align-items:center;gap:6px}
 
 .adm-body{display:flex;min-height:calc(100vh - 57px)}
 
@@ -85,17 +79,16 @@ svg{vertical-align:middle}
 /* ── 페이지 머리 ── */
 .page-head{margin-bottom:20px}
 .page-title{margin:0;font-size:22px;font-weight:800}
-.page-desc{margin:7px 0 0;font-size:13.5px;color:var(--sub);word-break:keep-all}
 
 /* ── 학년도 줄 ── */
-.year-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.year-label{font-size:13px;font-weight:700}
+.year-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.year-bar .pick-bar{margin-bottom:0}
+.year-tools{display:flex;gap:4px}
 .sel,.inp{
   padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;
   font:inherit;font-size:14px;color:var(--text);
 }
 .sel:focus,.inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l)}
-.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--sub);cursor:pointer}
 
 /* ── 카드 ── */
 .card{
@@ -116,11 +109,6 @@ svg{vertical-align:middle}
 .f-no .inp{width:80px}
 .f-grow{flex:1;min-width:180px}
 .f-grow .inp{width:100%}
-.file{font:inherit;font-size:13px}
-.upload-desc{margin-top:10px;font-size:12px;color:var(--faint)}
-.hint{margin:10px 0 0;font-size:12.5px;font-weight:600;color:var(--sub);word-break:keep-all}
-.hint.ok{color:var(--primary-deep)}
-.hint.err{color:var(--critical)}
 
 .btn{
   padding:9px 16px;border:1px solid transparent;border-radius:8px;
@@ -144,10 +132,10 @@ svg{vertical-align:middle}
 }
 .cls-row:last-child{margin-bottom:0}
 .cls-row.arch{background:var(--surface);color:var(--faint)}
-.cls-name{font-size:14.5px;font-weight:700;min-width:96px}
+.cls-name{font-size:14.5px;font-weight:700;min-width:44px}
 .cls-meta{flex:1;font-size:12.5px;color:var(--sub)}
 .cls-row.arch .cls-meta{color:var(--faint)}
-.cls-actions{display:flex;gap:6px;flex-wrap:wrap}
+.acts{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
 .badge{
   padding:3px 8px;border-radius:999px;background:var(--point-l);
   font-size:11px;font-weight:700;color:var(--point);
@@ -199,6 +187,67 @@ svg{vertical-align:middle}
   background:var(--primary);color:#fff;font-size:12px;font-weight:800;text-align:center;
 }
 .lib-title{flex:1;font-size:14px;font-weight:600;word-break:keep-all}
+
+/* ── 아이콘 버튼 ──
+   설명이 필요 없는 액션은 글자 없이 아이콘만 둔다(CLAUDE.md 화면 규칙).
+   이름은 title과 aria-label로만 단다. */
+.ib{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--sub);cursor:pointer;flex-shrink:0;
+}
+.ib:hover{background:var(--surface);color:var(--text)}
+.ib:disabled{opacity:.5;cursor:default}
+.ib-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.ib-primary:hover{background:var(--primary-deep);border-color:var(--primary-deep);color:#fff}
+.ib-danger{color:var(--critical)}
+.ib-danger:hover{background:var(--critical-l);color:var(--critical)}
+.modal-foot .ib-danger{background:var(--critical);border-color:var(--critical);color:#fff}
+.modal-foot .ib-danger:hover{background:#B91C1C;border-color:#B91C1C;color:#fff}
+.ib-round{border-radius:999px;width:38px;height:38px}
+.adm-menu-btn{display:none}
+
+/* 학년 카드 머리의 숫자(반 수, 학생 수). 설명이 아니라 데이터다. */
+.card-meta{margin-left:10px;font-size:13px;font-weight:600;color:var(--sub)}
+
+/* 학년 추가 — 학년 카드들 맨 뒤의 빈 칸 */
+.add-block{
+  display:flex;align-items:center;justify-content:center;width:100%;height:56px;
+  border:1.5px dashed var(--border);border-radius:13px;background:transparent;
+  color:var(--faint);cursor:pointer;
+}
+.add-block:hover{border-color:var(--primary);color:var(--primary)}
+
+/* ── 모달 ── */
+.modal-scrim{
+  position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(0,0,0,.35);
+}
+.modal{
+  width:100%;max-width:380px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+  border-radius:14px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+.modal-head{padding:18px 20px 0}
+.modal-title{margin:0;font-size:16px;font-weight:800;word-break:keep-all}
+.modal-body{display:flex;flex-direction:column;gap:12px;padding:14px 20px 4px;overflow:auto}
+.modal-body .f .inp{width:100%}
+.modal-text{font-size:14px;line-height:1.55;color:var(--text);word-break:keep-all}
+.modal-err{min-height:18px;font-size:13px;font-weight:600;color:var(--critical)}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:8px 20px 18px}
+
+.roster{display:flex;flex-direction:column;border:1px solid var(--hairline-soft);border-radius:9px;max-height:50vh;overflow:auto}
+.roster-row{display:flex;gap:14px;padding:8px 12px;font-size:14px;border-bottom:1px solid var(--hairline-soft)}
+.roster-row:last-child{border-bottom:0}
+.roster-no{min-width:52px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+
+/* ── 토스트 ── 방금 한 일의 결과와 오류 */
+.toast{
+  position:fixed;left:50%;bottom:24px;z-index:110;transform:translateX(-50%);
+  max-width:calc(100vw - 32px);padding:11px 18px;border-radius:10px;
+  background:var(--point);color:#fff;font-size:14px;font-weight:600;
+  box-shadow:var(--shadow);word-break:keep-all;text-align:center;
+}
+.toast.err{background:var(--critical)}
 
 @media (max-width:860px){
   .adm-menu-btn{display:inline-flex}
