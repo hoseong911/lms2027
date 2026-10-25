@@ -22,8 +22,8 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig } from "../shared/firebase-config.js";
-import { icon } from "../shared/icons.js?v=20260918";
+import { firebaseConfig } from "./shared/firebase-config.js";
+import { icon } from "./shared/icons.js?v=20260918";
 import {
   MENUS, schoolYear, courseLabel, getCourse, loadYearRoster, clearRosterCache,
   getAuthHash, setPw, hashPw, isHash, hasConsent, saveConsent,

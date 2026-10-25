@@ -20,12 +20,11 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <link rel="stylesheet" href="index.css?v=20261023c">
-<!-- 개발 중에는 /hoistory/lms2027/ 스코프를 쓴다. 학년 전환 때 lms/ 자리로 옮기면서
-     manifest의 id, start_url, scope를 /hoistory/lms/로 되돌린다(LMS2027.md 참고). -->
-<link rel="manifest" href="/hoistory/lms2027/manifest.json">
+<!-- 독립 레포(hoseong911/lms2027)라 주소는 /lms2027/이다. 경로는 모두 상대경로로 둔다. -->
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#FF6B3D">
 <meta name="apple-mobile-web-app-title" content="IDY History LMS">
-<script src="/hoistory/pwa.js"></script>
+<script src="pwa.js"></script>
 </head>
 <body>
 
@@ -89,7 +88,7 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
   </div>
   <div class="emoji-links">
     <a href="admin.html" title="관리자"><span data-icon="settings" data-icon-size="20"></span></a>
-    <a href="../index.html" title="홈"><span data-icon="home" data-icon-size="20"></span></a>
+    <a href="https://hoseong911.github.io/hoistory/" title="홈"><span data-icon="home" data-icon-size="20"></span></a>
     <a href="https://open.kakao.com/o/smm3ixqi" target="_blank" rel="noopener" title="카카오 오픈채팅"><span data-icon="message-square" data-icon-size="20"></span></a>
   </div>
   <button id="installBtn" class="install-btn" type="button" style="display:none">

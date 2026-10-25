@@ -23,8 +23,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { firebaseConfig } from "../shared/firebase-config.js";
-import { icon } from "../shared/icons.js?v=20260918";
+import { firebaseConfig } from "./shared/firebase-config.js";
+import { icon } from "./shared/icons.js?v=20260918";
 import {
   MENUS, menuByKey, schoolYear, parseStudentNo,
   courseLabel, courseShort, listCourses, listYears,
