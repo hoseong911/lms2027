@@ -30,10 +30,10 @@ import {
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
-  countStudentsByCourse, listYearStudents, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
+  countStudentsByCourse, listYearStudents, addStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025e";
+} from "./model.js?v=20261025f";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -601,6 +601,7 @@ function wireStudents() {
   });
   $('stuTools').addEventListener('click', ev => {
     if (ev.target.closest('[data-act="upload-all"]')) $('fileRoster').click();
+    if (ev.target.closest('[data-act="add-student"]')) doAddStudent();
   });
   $('fileRoster').addEventListener('change', onRosterFile);
 }
@@ -608,7 +609,9 @@ function wireStudents() {
 async function renderStudents() {
   $('stuYearBar').innerHTML = state.years.map(y => `
     <button type="button" class="pick${y === state.year ? ' on' : ''}" data-year="${y}">${y}학년도</button>`).join('');
-  $('stuTools').innerHTML = state.year != null ? ib('upload-all', 'upload', '명단 올리기', '', 'ib-primary') : '';
+  $('stuTools').innerHTML = state.year != null
+    ? ib('add-student', 'plus', '학생 추가', '', 'ib-primary') + ib('upload-all', 'upload', '명단 올리기')
+    : '';
 
   const box = $('stuList');
   if (state.year == null) { box.innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
@@ -628,6 +631,35 @@ async function renderStudents() {
     </div>`).join('') : '<p class="empty">학생이 없습니다.</p>';
 }
 
+
+/* 학생 직접 추가 — 엑셀 한 줄과 같은 칸(과목, 학년, 반, 번호, 이름). 강의실이 없으면 만든다. */
+async function doAddStudent() {
+  const v = await ask({
+    title: `${state.year}학년도 학생 추가`,
+    fields: [
+      { key: 'subject', type: 'choice', options: subjectOptions(), value: '', placeholder: '과목' },
+      { key: 'grade',   type: 'num',  placeholder: '학년 (숫자 입력)', suffix: '학년' },
+      { key: 'classNo', type: 'num',  placeholder: '반 (숫자 입력)',   suffix: '반' },
+      { key: 'num',     type: 'num',  placeholder: '번호 (숫자 입력)', suffix: '번' },
+      { key: 'name',    type: 'text', placeholder: '이름' },
+    ],
+    check: async v => {
+      if (!validSubject(v.subject)) return '과목을 고르거나 적어 주세요.';
+      if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
+      if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
+      if (!(num(v.num) >= 1 && num(v.num) <= 99)) return '번호를 확인해 주세요.';
+      if (!v.name) return '이름을 입력해 주세요.';
+      try {
+        await addStudent(db, { year: state.year, ...v });
+        return '';
+      } catch (e) { return e.message; }
+    },
+  });
+  if (!v) return;
+  toast(`${v.subject} ${v.grade}학년 ${v.classNo}반 ${v.num}번 ${v.name}을 추가했습니다.`);
+  await reloadAll();
+  renderStudents();
+}
 /* 명단 올리기 — 엑셀 A열 과목, B열 학년, C열 반, D열 번호, E열 이름. 줄마다 강의실이 정해지므로
  * 따로 묻지 않는다. 없는 강의실은 만든다. 한 학생이 두 과목 줄에 있으면 두 강의실에 다 들어간다.
  * 파일에 나온 강의실의 명단만 교체하고, 다른 강의실은 건드리지 않는다.

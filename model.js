@@ -312,6 +312,18 @@ export async function loadYearRoster(db, year = schoolYear(), { fresh = false } 
   return data;
 }
 
+// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 칸은 엑셀 명단과 같다 — 과목, 학년, 반, 번호, 이름.
+// 엑셀 올리기와 같게 강의실이 없으면 만든다. 그 강의실에 같은 학번이 이미 있으면 막는다.
+export async function addStudent(db, { year, subject, grade, classNo, num, name }) {
+  const row = rosterRowFromSheet([subject, grade, classNo, num, name]);
+  if (!row) throw new Error('과목, 학년, 반, 번호, 이름을 확인해 주세요.');
+  const { id } = await createCourse(db, { year, subject: row.subject, grade: row.grade, classNo: row.classNo });
+  const ref = doc(db, COLL.courseStudents, studentDocId(id, row.studentNo));
+  if ((await getDoc(ref)).exists()) throw new Error(`${row.subject} ${row.grade}학년 ${row.classNo}반에 ${row.studentNo}이 이미 있습니다.`);
+  await setDoc(ref, { courseId: id, studentNo: row.studentNo, name: row.name });
+  return row;
+}
+
 // 학생 관리 화면 — 그 학년도 학생 전부와 각자 든 강의실(아카이브 포함). 학번 순.
 export async function listYearStudents(db, year) {
   const courses = await listCourses(db, { year, includeArchived: true });
