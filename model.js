@@ -227,7 +227,7 @@ export async function updateCourse(db, id, { subject, grade, classNo }) {
   checkCourse({ year: c.year, subject, grade, classNo });
   if (sameCourse(c, subject, grade, classNo)) return;
   const dup = await findCourse(db, c.year, subject, grade, classNo);
-  if (dup && dup.id !== id) throw new Error(`${subject} ${roomNo(grade, classNo)}이 이미 있습니다.`);
+  if (dup && dup.id !== id) throw new Error(`${subject} ${roomNo(grade, classNo)} 강의실이 이미 있습니다.`);
   await updateDoc(doc(db, COLL.courses, id), { subject, grade, classNo });
 }
 
@@ -332,7 +332,7 @@ export async function addStudent(db, { year, grade, classNo, num, name }) {
     await setDoc(ref, { courseId: c.id, studentNo: row.studentNo, name: row.name });
     added.push(c);
   }
-  if (!added.length) throw new Error(`${row.studentNo}은 ${roomNo(row.grade, row.classNo)} 강의실에 이미 다 있습니다.`);
+  if (!added.length) throw new Error(`${row.studentNo} 학생은 ${roomNo(row.grade, row.classNo)} 강의실에 이미 다 있습니다.`);
   return { row, added, skipped };
 }
 

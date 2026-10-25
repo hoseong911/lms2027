@@ -33,7 +33,7 @@ import {
   countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025i";
+} from "./model.js?v=20261025j";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -210,7 +210,7 @@ function askDelete(name, what) {
     title: `${name} 삭제`,
     body: `${esc(what)} 함께 지워지고 되돌릴 수 없습니다.`,
     fields: [{ key: 'name', type: 'text', placeholder: `${name} (그대로 입력)` }],
-    check: v => v.name === name ? '' : `"${name}"을 그대로 입력해 주세요.`,
+    check: v => v.name === name ? '' : `이름이 다릅니다. "${name}" 그대로 입력해 주세요.`,
     danger: true,
   });
 }
@@ -522,14 +522,14 @@ async function onClassesClick(ev) {
             const nos = parseClassNos(v.classNo);
             if (!nos) return '반을 확인해 주세요.';
             const taken = nos.filter(n => state.courses.some(x => (x.subject || '') === v.subject && x.grade === num(v.grade) && x.classNo === n));
-            return taken.length === nos.length ? `${v.subject} ${taken.map(n => roomNo(num(v.grade), n)).join(', ')}이 이미 있습니다.` : '';
+            return taken.length === nos.length ? `${v.subject} ${taken.map(n => roomNo(num(v.grade), n)).join(', ')} 강의실이 이미 있습니다.` : '';
           },
         });
         if (!v) return;
         const { made, skipped } = await createCourses(db, { year, subject: v.subject, grade: num(v.grade), classNos: parseClassNos(v.classNo) });
         const rn = n => roomNo(num(v.grade), n);
-        toast(`${v.subject} ${made.map(rn).join(', ')}을 만들었습니다.` +
-          (skipped.length ? ` 이미 있던 ${skipped.map(rn).join(', ')}은 그대로 두었습니다.` : ''));
+        toast(`${v.subject} ${made.map(rn).join(', ')} 강의실을 만들었습니다.` +
+          (skipped.length ? ` 이미 있던 ${skipped.map(rn).join(', ')} 강의실은 그대로 두었습니다.` : ''));
         break;
       }
 
@@ -542,7 +542,7 @@ async function onClassesClick(ev) {
             if (!validGrade(num(v.grade))) return '학년을 확인해 주세요.';
             if (!validClass(num(v.classNo))) return '반을 확인해 주세요.';
             const dup = state.courses.some(x => x.id !== c.id && (x.subject || '') === v.subject && x.grade === num(v.grade) && x.classNo === num(v.classNo));
-            return dup ? `${v.subject} ${roomNo(num(v.grade), num(v.classNo))}이 이미 있습니다.` : '';
+            return dup ? `${v.subject} ${roomNo(num(v.grade), num(v.classNo))} 강의실이 이미 있습니다.` : '';
           },
         });
         if (!v) return;
@@ -555,13 +555,13 @@ async function onClassesClick(ev) {
         const n = state.studentCount[c.id] || 0;
         if (!await askDelete(courseShort(c), `명단 ${n}명과 강의 연결, 학생 비밀번호가`)) return;
         await deleteCourse(db, c.id);
-        toast(`${courseShort(c)}을 삭제했습니다.`);
+        toast(`${courseShort(c)} 강의실을 삭제했습니다.`);
         break;
       }
 
       case 'archive':
         await archiveCourse(db, c.id);
-        toast(`${courseShort(c)}을 아카이브했습니다.`);
+        toast(`${courseShort(c)} 강의실을 아카이브했습니다.`);
         break;
 
       case 'unarchive':
@@ -670,12 +670,12 @@ async function onStudentClick(ev) {
       });
       if (!v) return;
       const row = await updateStudent(db, state.year, no, v);
-      toast(`${row.studentNo} ${row.name}으로 저장했습니다.`);
+      toast(`${row.studentNo} ${row.name} 학생으로 저장했습니다.`);
     }
     if (btn.dataset.act === 'del-student') {
       if (!await askDelete(name, `${no} ${name}이 이 학년도 강의실 전부에서 빠지고 비밀번호도`)) return;
       await deleteStudent(db, state.year, no);
-      toast(`${no} ${name}을 삭제했습니다.`);
+      toast(`${no} ${name} 학생을 삭제했습니다.`);
     }
     await reloadAll();
     renderStudents();
@@ -713,7 +713,7 @@ async function doAddStudent() {
     },
   });
   if (!v || !result) return;
-  toast(`${v.name}을 ${result.added.map(courseShort).join(', ')}에 추가했습니다.`);
+  toast(`${v.name} 학생을 ${result.added.map(courseShort).join(', ')}에 추가했습니다.`);
   await reloadAll();
   renderStudents();
 }
@@ -887,7 +887,7 @@ async function doAddLesson() {
     await addLibraryLesson(db, { lessonNo, title, order: lessonOrderKey(lessonNo) });
     $('inpLessonNo').value = '';
     $('inpLessonTitle').value = '';
-    toast(`${lessonTag(lessonNo)}을 추가했습니다.`);
+    toast(`${lessonTag(lessonNo)} 강의를 추가했습니다.`);
     await reloadLibrary();
   } catch (e) {
     console.warn('[addLesson]', e);
@@ -902,7 +902,7 @@ async function onLibraryClick(ev) {
   if (!btn) return;
   const ok = await ask({
     title: '강의 삭제',
-    body: `${esc(btn.dataset.name || '이 강의')}을 라이브러리에서 지웁니다. 이미 반에 붙인 연결은 남습니다.`,
+    body: `${esc(btn.dataset.name || '이 강의')} 강의를 라이브러리에서 지웁니다. 이미 반에 붙인 연결은 남습니다.`,
     danger: true,
   });
   if (!ok) return;
