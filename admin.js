@@ -30,7 +30,7 @@ import {
   listYears, createYear, renameYear, deleteYear,
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
-  countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
+  countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, clearPw, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLibraryLesson,
   countLessonsByCourse, lessonTag, lessonOrderKey
 } from "./model.js?v=20261025j";
@@ -67,6 +67,8 @@ const state = {
   filter: { subject: new Set(), grade: new Set(), classNo: new Set() },
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
+  students: [],         // 학생 관리 목록(고른 학년도)
+  stuRooms: new Set(),  // 학생 관리 반별 구분에서 켠 반(301 등)
 };
 
 const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
@@ -614,6 +616,13 @@ function wireStudents() {
   });
   $('fileRoster').addEventListener('change', onRosterFile);
   $('stuList').addEventListener('click', onStudentClick);
+  $('stuTagBar').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-room]');
+    if (!b) return;
+    const r = b.dataset.room;
+    state.stuRooms.has(r) ? state.stuRooms.delete(r) : state.stuRooms.add(r);
+    drawStudents();
+  });
 }
 
 async function renderStudents() {
@@ -624,28 +633,47 @@ async function renderStudents() {
     : '';
 
   const box = $('stuList');
-  if (state.year == null) { box.innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
+  if (state.year == null) { $('stuTagBar').innerHTML = ''; box.innerHTML = '<p class="empty">학년도가 없습니다.</p>'; return; }
   box.innerHTML = '<p class="empty">불러오는 중입니다.</p>';
-  let rows;
-  try { rows = await listYearStudents(db, state.year); }
+  try { state.students = await listYearStudents(db, state.year); }
   catch (e) {
     console.warn('[students]', e);
     box.innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
     return;
   }
-  box.innerHTML = rows.length ? rows.map(s => `
+  drawStudents();
+}
+
+// 학생 반(학번의 앞 세 자리, 예: 301). 반별 구분 줄이 쓴다.
+const stuRoom = s => String(s.studentNo).slice(0, 3);
+
+/* 반별 구분 줄 + 학생 목록. 반은 여러 개를 함께 켤 수 있고, 아무것도 안 켜면 전부 보인다
+   (강의실 관리의 태그와 같은 방식). */
+function drawStudents() {
+  const rooms = [...new Set(state.students.map(stuRoom))].sort();
+  [...state.stuRooms].forEach(r => { if (!rooms.includes(r)) state.stuRooms.delete(r); });
+  $('stuTagBar').innerHTML = rooms.length ? `
+    <div class="tag-row">${rooms.map(r => `
+      <button type="button" class="tag${state.stuRooms.has(r) ? ' on' : ''}" data-room="${r}">${r}</button>`).join('')}
+    </div>` : '';
+
+  const rows = state.students.filter(s => !state.stuRooms.size || state.stuRooms.has(stuRoom(s)));
+  const sd = s => `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`;
+  $('stuList').innerHTML = !state.students.length ? '<p class="empty">학생이 없습니다.</p>'
+    : rows.map(s => `
     <div class="stu-row">
       <span class="stu-no">${esc(s.studentNo)}</span>
       <span class="stu-name">${esc(s.name)}</span>
       <span class="stu-courses">${s.courses.map(c => `<span class="stu-course">${esc(courseShort(c))}</span>`).join('')}</span>
       <span class="acts">
-        ${ib('edit-student', 'pencil', `${s.studentNo} ${s.name} 수정`, `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`)}
-        ${ib('del-student', 'trash-2', `${s.studentNo} ${s.name} 삭제`, `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`, 'ib-danger')}
+        ${ib('reset-pw', 'key', `${s.studentNo} ${s.name} 비밀번호 초기화`, sd(s))}
+        ${ib('edit-student', 'pencil', `${s.studentNo} ${s.name} 수정`, sd(s))}
+        ${ib('del-student', 'trash-2', `${s.studentNo} ${s.name} 삭제`, sd(s), 'ib-danger')}
       </span>
-    </div>`).join('') : '<p class="empty">학생이 없습니다.</p>';
+    </div>`).join('');
 }
 
-/* 학생 줄의 수정과 삭제. 학생은 학번으로 그 학년도 강의실 전부에 묶여 있어서 한꺼번에 고치고 지운다. */
+/* 학생 줄의 비밀번호 초기화, 수정, 삭제. 학생은 학번으로 그 학년도 강의실 전부에 묶여 있어서 한꺼번에 고치고 지운다. */
 async function onStudentClick(ev) {
   const btn = ev.target.closest('[data-act]');
   if (!btn) return;
@@ -672,8 +700,19 @@ async function onStudentClick(ev) {
       const row = await updateStudent(db, state.year, no, v);
       toast(`${row.studentNo} ${row.name} 학생으로 저장했습니다.`);
     }
+    // 비밀번호 초기화 — 비밀번호 문서를 지운다. 학생이 다음에 로그인할 때 새로 정한다(로그인 화면의 "처음이시네요").
+    if (btn.dataset.act === 'reset-pw') {
+      const ok = await ask({
+        title: `${no} ${name} 비밀번호 초기화`,
+        body: '다음 로그인 때 학생이 새 비밀번호를 정합니다.',
+      });
+      if (!ok) return;
+      await clearPw(db, state.year, no);
+      toast(`${no} ${name} 학생의 비밀번호를 초기화했습니다.`);
+      return;
+    }
     if (btn.dataset.act === 'del-student') {
-      if (!await askDelete(name, `${no} ${name}이 이 학년도 강의실 전부에서 빠지고 비밀번호도`)) return;
+      if (!await askDelete(name, `${no} ${name} 학생이 이 학년도 강의실 전부에서 빠지고 비밀번호도`)) return;
       await deleteStudent(db, state.year, no);
       toast(`${no} ${name} 학생을 삭제했습니다.`);
     }

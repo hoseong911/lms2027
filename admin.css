@@ -82,7 +82,7 @@ svg{vertical-align:middle}
 
 /* ── 학년도 줄 ── */
 .year-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:34px;margin-bottom:16px}
-.year-bar .pick-bar{margin-bottom:0}
+.year-bar .pick-bar{flex:1;margin-bottom:0}
 .year-tools{display:flex;gap:4px}
 .sel,.inp{
   padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;
@@ -142,21 +142,29 @@ svg{vertical-align:middle}
 }
 
 /* ── 축 고르기 줄 (반별 / 메뉴별 공용) ── */
-/* ── 고르기 줄(학년도, 반별 관리의 반, 메뉴별 관리의 메뉴) ──
-   카테고리와 정렬 토글은 테두리 없는 글자로 두고 사이에 구분선을 넣는다(선생님 지시 2026-10-25).
-   켜진 것은 진한 색 굵은 글씨. 알약 모양 테두리는 쓰지 않는다. */
-.pick-bar{display:flex;align-items:center;flex-wrap:wrap;row-gap:8px;margin-bottom:18px}
-.pick{
-  display:inline-flex;align-items:center;gap:7px;height:20px;padding:0 14px;
-  border:0;border-radius:0;background:none;
-  font:inherit;font-size:14px;font-weight:600;color:var(--faint);cursor:pointer;
+/* ── 고르기 줄과 태그 줄 ──
+   학년도, 반별 관리의 반, 메뉴별 관리의 메뉴(.pick)와 과목, 학년, 반 거르기(.tag) 모두 같은 모양이다
+   (선생님 지시 2026-10-25, 쇼핑몰 카테고리 줄처럼). 테두리와 배경 없이 글자만 두고 줄 아래에 얇은 구분선.
+   켜진 것은 진한 글씨에 아래 굵은 선. 배경색은 배지(.badge, .stu-course)에만 쓴다.
+   켜질 때 굵기를 font-weight로 바꾸면 글자 폭이 늘어 옆 항목이 밀린다. 그래서 글자 테두리(text-stroke)로
+   굵어 보이게만 한다 — 폭이 그대로라 들썩이지 않는다. */
+.pick-bar, .tag-row{
+  display:flex;align-items:flex-end;flex-wrap:wrap;column-gap:22px;
+  border-bottom:1px solid var(--border);
 }
-.pick:first-child{padding-left:0}
-.pick + .pick{border-left:1px solid var(--border)}
-.pick:hover{color:var(--text)}
-.pick.on{color:var(--primary-deep);font-weight:800}
+.pick-bar{margin-bottom:18px}
+.pick, .tag{
+  position:relative;display:inline-flex;align-items:center;gap:6px;
+  padding:9px 0;border:0;border-radius:0;background:none;
+  font:inherit;font-size:14.5px;font-weight:600;color:var(--sub);cursor:pointer;white-space:nowrap;
+}
+.pick:hover, .tag:hover{color:var(--text)}
+.pick.on, .tag.on{color:var(--text);-webkit-text-stroke:.45px currentColor}
+.pick.on::after, .tag.on::after{
+  content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--text);
+}
 .pick-ic{display:inline-flex}
-.pick-bar .ib{margin-left:10px}
+.pick-bar .ib{align-self:center;margin:4px 0}
 
 /* ── 반 x 메뉴 칸 ──
    반별 보기와 메뉴별 보기가 같은 칸 모양을 쓴다. 들어가는 방향만 다르고
@@ -253,15 +261,8 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 /* ── 학급 관리 태그 ──
    줄 셋(과목, 학년, 반). 여러 개를 함께 켤 수 있다. */
 .tag-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.tag-bar{display:flex;flex-direction:column;gap:8px;min-width:0}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap}
-/* 태그는 테두리 없이 배경으로 구분한다(선생님 지시 2026-10-25). 켜진 것은 진한 배경. */
-.tag{
-  padding:6px 12px;border:0;border-radius:6px;background:#F1F1F1;
-  font:inherit;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer;
-}
-.tag:hover{background:#E6E6E6;color:var(--text)}
-.tag.on{background:var(--point);color:#fff}
+.tag-bar{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stu-tag-bar{margin-bottom:14px}
 
 /* ── 모달 입력 칸 ──
    이름표를 위에 달지 않는다. placeholder로 무엇을 적는지, 옆의 단위로 무슨 숫자인지 보인다. */
@@ -269,7 +270,7 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .fld .inp{flex:1;min-width:0}
 .fld-suffix{flex-shrink:0;font-size:14px;font-weight:600;color:var(--text)}
 .choice{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.choice .tag{padding:8px 14px;font-size:14px}
+.choice .tag{margin-right:16px}
 .choice-inp{flex:1;min-width:90px;padding:8px 11px}
 
 @media (max-width:860px){
@@ -291,7 +292,7 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 }
 
 /* 과목 태그와 학년 태그 사이 간격(같은 줄) */
-.tag-gap{width:14px}
+.tag-gap{width:6px}
 
 /* ── 학생 관리 ── */
 .stu-row{
