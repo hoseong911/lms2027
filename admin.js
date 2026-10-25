@@ -68,7 +68,7 @@ const state = {
   pickedCourse: null,   // 반별 관리에서 고른 반
   pickedMenu: null,     // 메뉴별 관리에서 고른 메뉴
   students: [],         // 학생 관리 목록(고른 학년도)
-  stuRooms: new Set(),  // 학생 관리 반별 구분에서 켠 반(301 등)
+  stuRoom: '',          // 학생 관리 반별 구분에서 고른 반(301 등). 빈 값이 전체
 };
 
 const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
@@ -618,7 +618,7 @@ function wireStudents() {
     const b = ev.target.closest('[data-room]');
     if (!b) return;
     const r = b.dataset.room;
-    state.stuRooms.has(r) ? state.stuRooms.delete(r) : state.stuRooms.add(r);
+    state.stuRoom = r;
     drawStudents();
   });
 }
@@ -645,17 +645,17 @@ async function renderStudents() {
 // 학생 반(학번의 앞 세 자리, 예: 301). 반별 구분 줄이 쓴다.
 const stuRoom = s => String(s.studentNo).slice(0, 3);
 
-/* 반별 구분 줄 + 학생 목록. 반은 여러 개를 함께 켤 수 있고, 아무것도 안 켜면 전부 보인다
-   (강의실 관리의 태그와 같은 방식). */
+/* 반별 구분 줄 + 학생 목록. 한 번에 한 반만 보인다. 맨 끝의 "전체"가 처음 값이다
+   (선생님 지시 2026-10-25 — 누적해서 켜지 않고 한 반씩). */
 function drawStudents() {
   const rooms = [...new Set(state.students.map(stuRoom))].sort();
-  [...state.stuRooms].forEach(r => { if (!rooms.includes(r)) state.stuRooms.delete(r); });
+  if (state.stuRoom && !rooms.includes(state.stuRoom)) state.stuRoom = '';
   $('stuTagBar').innerHTML = rooms.length ? `
-    <div class="tag-row">${rooms.map(r => `
-      <button type="button" class="tag${state.stuRooms.has(r) ? ' on' : ''}" data-room="${r}">${r}</button>`).join('')}
+    <div class="tag-row">${[...rooms, ''].map(r => `
+      <button type="button" class="tag${state.stuRoom === r ? ' on' : ''}" data-room="${r}">${r || '전체'}</button>`).join('')}
     </div>` : '';
 
-  const rows = state.students.filter(s => !state.stuRooms.size || state.stuRooms.has(stuRoom(s)));
+  const rows = state.students.filter(s => !state.stuRoom || stuRoom(s) === state.stuRoom);
   const sd = s => `data-no="${esc(s.studentNo)}" data-name="${esc(s.name)}"`;
   $('stuList').innerHTML = !state.students.length ? '<p class="empty">학생이 없습니다.</p>'
     : rows.map(s => `
