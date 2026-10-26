@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한눈에 보는 2027 LMS</title>
+<!-- 선생님 요청 2026-10-27: "설계도가 아직 이해가 잘 안 간다. 중3이 이해할 수준으로 다시."
+     그림 위주로, 전문 용어는 처음 나올 때 괄호로 풀어 쓴다.
+     원본 설계는 LMS2027.md와 LMS2027_요구사항.md 10번 칸. 저기를 고치면 여기도 같이 고쳐야 한다. -->
+<style>
+:root{
+  --navy:#041E42; --red:#D00F31;
+  --navy-600:#1B4B84; --navy-400:#5A7BA6; --navy-100:#E8EDF4;
+  --bg:#fff; --card:#fff; --text:#041E42; --sub:#68727F; --line:#DDE2E9; --soft:#F4F6F9;
+  --gray:#8A94A3;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0B1420;--card:#0F1C2B;--text:#DCE3EC;--sub:#8E99A8;--line:#1F2D3F;--soft:#101D2C;
+        --navy:#7FA6D8;--navy-600:#5E8ECB;--navy-400:#4B7097;--navy-100:#152336;--red:#FF5571;--gray:#6B7788}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.75 "Pretendard","Malgun Gothic",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:48px 24px 120px}
+
+h1{font-size:32px;line-height:1.3;margin:0 0 8px;letter-spacing:-.5px}
+.sub{color:var(--sub);font-size:15px;margin:0 0 10px}
+.oneline{border-left:4px solid var(--red);background:var(--soft);padding:16px 20px;margin:28px 0 0;
+  font-size:18px;line-height:1.7}
+
+section{margin-top:56px}
+h2{font-size:22px;margin:0 0 6px;display:flex;align-items:center;gap:12px;letter-spacing:-.3px}
+h2 .n{flex:none;width:30px;height:30px;background:var(--navy);color:#fff;display:grid;place-items:center;
+  font-size:15px;font-weight:700;border-radius:4px}
+@media (prefers-color-scheme:dark){h2 .n{color:#0B1420}}
+h3{font-size:16.5px;margin:30px 0 4px}
+p{margin:10px 0}
+.lead{color:var(--sub);margin:0 0 18px;padding-left:42px;font-size:14.5px}
+
+figure{margin:22px 0;padding:0}
+svg{display:block;width:100%;height:auto;max-width:100%}
+figcaption{font-size:13px;color:var(--sub);margin-top:8px;text-align:center}
+
+.note{background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:14px 18px;margin:18px 0}
+.note b{color:var(--red)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media (max-width:640px){.cmp{grid-template-columns:1fr}}
+.cmp>div{border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:var(--card)}
+.cmp h4{margin:0 0 6px;font-size:15px}
+.cmp .t{font-size:13px;color:var(--sub);margin:0}
+.x{color:var(--red);font-weight:700}
+.o{color:var(--navy-600);font-weight:700}
+
+table{border-collapse:collapse;width:100%;font-size:14px;margin:16px 0}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:700;white-space:nowrap}
+code{background:var(--soft);padding:1.5px 6px;border-radius:3px;font-size:13.5px;
+  font-family:ui-monospace,Consolas,monospace}
+ul{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+.foot{margin-top:70px;padding-top:22px;border-top:1px solid var(--line);font-size:13.5px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>한눈에 보는 2027 LMS</h1>
+<p class="sub">설계를 그림으로 다시 그렸습니다. 전문 용어는 처음 나올 때 괄호로 풀었습니다.</p>
+
+<div class="oneline">
+  <b>강의실</b>은 <b>강의</b>와 <b>복습</b>을 담고,<br>
+  <b>강의 하나</b>는 <b>개념노트, 미션, 질문노트, 형성평가</b> 네 칸을<br>
+  각각 <b>있거나 없거나</b>로 채웁니다.
+</div>
+
+<!-- ══════════════════ 1 ══════════════════ -->
+<section>
+<h2><span class="n">1</span> 큰 그림은 서랍장입니다</h2>
+<p class="lead">큰 서랍 안에 작은 서랍이 들어가는 구조입니다. 네 겹입니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 300" role="img" aria-label="학년도 안에 강의실, 강의실 안에 강의, 강의 안에 칸이 들어가는 네 겹 구조">
+  <!-- 학년도 -->
+  <rect x="8" y="8" width="804" height="284" rx="4" fill="none" stroke="var(--navy)" stroke-width="2"/>
+  <text x="24" y="34" font-size="15" font-weight="700" fill="var(--navy)">2027학년도</text>
+  <text x="124" y="34" font-size="12.5" fill="var(--sub)">해가 바뀌면 통째로 새로 만듭니다</text>
+
+  <!-- 강의실 1 -->
+  <rect x="26" y="50" width="520" height="226" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+  <text x="44" y="74" font-size="14.5" font-weight="700" fill="var(--navy)">강의실 — 사회 301</text>
+  <text x="200" y="74" font-size="12" fill="var(--sub)">(3학년 1반 사회 수업)</text>
+
+  <!-- 강의 1 -->
+  <rect x="44" y="88" width="484" height="76" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="60" y="110" font-size="13.5" font-weight="700" fill="var(--text)">1강 — 붕당정치의 전개</text>
+  <rect x="60" y="120" width="92" height="28" rx="3" fill="var(--navy)"/>
+  <text x="106" y="139" font-size="12" fill="#fff" text-anchor="middle">개념노트</text>
+  <rect x="160" y="120" width="70" height="28" rx="3" fill="var(--red)"/>
+  <text x="195" y="139" font-size="12" fill="#fff" text-anchor="middle">미션</text>
+  <rect x="238" y="120" width="92" height="28" rx="3" fill="var(--navy-600)"/>
+  <text x="284" y="139" font-size="12" fill="#fff" text-anchor="middle">질문노트</text>
+  <rect x="338" y="120" width="92" height="28" rx="3" fill="var(--gray)"/>
+  <text x="384" y="139" font-size="12" fill="#fff" text-anchor="middle">형성평가</text>
+
+  <!-- 강의 2 -->
+  <rect x="44" y="174" width="484" height="56" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="60" y="196" font-size="13.5" font-weight="700" fill="var(--text)">2강 — 예송논쟁</text>
+  <rect x="300" y="186" width="92" height="28" rx="3" fill="var(--navy)"/>
+  <text x="346" y="205" font-size="12" fill="#fff" text-anchor="middle">개념노트</text>
+  <text x="404" y="205" font-size="12" fill="var(--sub)">네 칸 중 하나만 썼습니다</text>
+
+  <!-- 복습 -->
+  <rect x="44" y="240" width="484" height="22" rx="3" fill="var(--card)" stroke="var(--navy-400)" stroke-dasharray="4 3"/>
+  <text x="60" y="256" font-size="12.5" fill="var(--sub)">복습 — 강의와 나란히 서는 별도 메뉴입니다</text>
+
+  <!-- 강의실 2 -->
+  <rect x="562" y="50" width="228" height="226" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+  <text x="580" y="74" font-size="14.5" font-weight="700" fill="var(--navy)">강의실 — 역사 301</text>
+  <text x="580" y="100" font-size="12.5" fill="var(--sub)">같은 3학년 1반이라도</text>
+  <text x="580" y="120" font-size="12.5" fill="var(--sub)">과목이 다르면 다른 강의실</text>
+  <text x="580" y="140" font-size="12.5" fill="var(--sub)">입니다. 강의도 따로 담깁</text>
+  <text x="580" y="160" font-size="12.5" fill="var(--sub)">니다.</text>
+</svg>
+<figcaption>학년도 → 강의실 → 강의 → 칸. 바깥에서 안으로 네 겹입니다.</figcaption>
+</figure>
+
+<table>
+  <tr><th>겹</th><th>무엇</th><th>교실에 빗대면</th></tr>
+  <tr><td>1</td><td><b>학년도</b></td><td>2027년이라는 한 해</td></tr>
+  <tr><td>2</td><td><b>강의실</b></td><td>"3학년 1반 사회 시간". 과목이 다르면 다른 강의실</td></tr>
+  <tr><td>3</td><td><b>강의</b></td><td>그 수업의 한 차시. "오늘 1교시에 할 것"</td></tr>
+  <tr><td>4</td><td><b>칸</b></td><td>그 한 시간 안의 활동. 최대 네 개</td></tr>
+</table>
+</section>
+
+<!-- ══════════════════ 2 ══════════════════ -->
+<section>
+<h2><span class="n">2</span> 강의 하나는 레고 네 칸입니다</h2>
+<p class="lead">고정된 차례표가 아니라, 필요한 블록만 끼우고 순서도 마음대로 바꿉니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 230" role="img" aria-label="네 종류의 칸을 골라 끼우는 모습">
+  <text x="10" y="22" font-size="13" font-weight="700" fill="var(--sub)">끼울 수 있는 블록 네 종류</text>
+
+  <rect x="10" y="34" width="180" height="62" rx="4" fill="var(--navy)"/>
+  <text x="26" y="58" font-size="14" font-weight="700" fill="#fff">개념노트</text>
+  <text x="26" y="78" font-size="11.5" fill="#fff" opacity=".85">수업 내용. 사료, 사진, 영상도 여기</text>
+
+  <rect x="202" y="34" width="180" height="62" rx="4" fill="var(--red)"/>
+  <text x="218" y="58" font-size="14" font-weight="700" fill="#fff">미션</text>
+  <text x="218" y="78" font-size="11.5" fill="#fff" opacity=".85">따로 만든 미니 웹앱이 열립니다</text>
+
+  <rect x="394" y="34" width="180" height="62" rx="4" fill="var(--navy-600)"/>
+  <text x="410" y="58" font-size="14" font-weight="700" fill="#fff">질문노트</text>
+  <text x="410" y="78" font-size="11.5" fill="#fff" opacity=".85">오늘의 질문에 학생이 답을 씁니다</text>
+
+  <rect x="586" y="34" width="180" height="62" rx="4" fill="var(--gray)"/>
+  <text x="602" y="58" font-size="14" font-weight="700" fill="#fff">형성평가</text>
+  <text x="602" y="78" font-size="11.5" fill="#fff" opacity=".85">확인용 퀴즈. 성적에 안 들어갑니다</text>
+
+  <line x1="10" y1="118" x2="810" y2="118" stroke="var(--line)"/>
+
+  <text x="10" y="146" font-size="13" font-weight="700" fill="var(--sub)">규칙 세 가지</text>
+  <circle cx="18" cy="170" r="3" fill="var(--navy)"/>
+  <text x="32" y="175" font-size="13.5" fill="var(--text)">같은 종류는 한 강의에 하나까지</text>
+  <circle cx="18" cy="196" r="3" fill="var(--navy)"/>
+  <text x="32" y="201" font-size="13.5" fill="var(--text)">안 쓰는 블록은 안 끼우면 됩니다 (네 개 다 채울 필요 없음)</text>
+  <circle cx="18" cy="222" r="3" fill="var(--navy)"/>
+  <text x="32" y="227" font-size="13.5" fill="var(--text)">순서는 선생님이 끌어서 바꿉니다</text>
+</svg>
+</figure>
+
+<div class="note">
+  <b>이게 왜 중요한가.</b> 2026 LMS는 메뉴가 <code>표지, Dive, 개념, 미션, 생각</code>으로
+  <b>코드에 못 박혀</b> 있었습니다. 그래서 역사가 아닌 과목을 가르치거나 메뉴를 하나 더하려면
+  프로그램을 뜯어야 했습니다. 2027은 <b>블록을 끼우는 방식</b>이라 수업마다 다르게 짤 수 있습니다.
+  (요구사항 52, 53, 68)
+</div>
+</section>
+
+<!-- ══════════════════ 3 ══════════════════ -->
+<section>
+<h2><span class="n">3</span> 창고와 교실을 나눴습니다</h2>
+<p class="lead">가장 헷갈리는 부분입니다. 레시피와 요리로 생각하면 쉽습니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 320" role="img" aria-label="강의 창고에서 강의를 꺼내 여러 강의실에 꽂는 모습">
+  <!-- 창고 -->
+  <rect x="8" y="30" width="290" height="260" rx="4" fill="none" stroke="var(--navy)" stroke-width="2"/>
+  <text x="24" y="22" font-size="14" font-weight="700" fill="var(--navy)">창고 — 해마다 남습니다</text>
+
+  <rect x="26" y="52" width="254" height="48" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="42" y="74" font-size="13.5" font-weight="700" fill="var(--text)">붕당정치의 전개</text>
+  <text x="42" y="91" font-size="11.5" fill="var(--sub)">개념노트 + 미션 + 질문노트 + 형성평가</text>
+
+  <rect x="26" y="112" width="254" height="48" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="42" y="134" font-size="13.5" font-weight="700" fill="var(--text)">예송논쟁</text>
+  <text x="42" y="151" font-size="11.5" fill="var(--sub)">개념노트</text>
+
+  <rect x="26" y="172" width="254" height="48" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="42" y="194" font-size="13.5" font-weight="700" fill="var(--text)">환국</text>
+  <text x="42" y="211" font-size="11.5" fill="var(--sub)">미션 + 형성평가</text>
+
+  <text x="26" y="248" font-size="12.5" fill="var(--sub)">한 번 만들면 2028년에도</text>
+  <text x="26" y="268" font-size="12.5" fill="var(--sub)">그대로 다시 씁니다.</text>
+
+  <!-- 화살표 -->
+  <line x1="306" y1="76" x2="376" y2="110" stroke="var(--red)" stroke-width="2"/>
+  <polygon points="376,110 366,105 367,113" fill="var(--red)"/>
+  <line x1="306" y1="76" x2="376" y2="222" stroke="var(--red)" stroke-width="2"/>
+  <polygon points="376,222 367,215 363,223" fill="var(--red)"/>
+  <text x="312" y="152" font-size="12.5" font-weight="700" fill="var(--red)">꽂기</text>
+
+  <!-- 교실 -->
+  <rect x="390" y="30" width="422" height="260" rx="4" fill="none" stroke="var(--navy)" stroke-width="2"/>
+  <text x="406" y="22" font-size="14" font-weight="700" fill="var(--navy)">교실 — 올해만 쓰고 사라집니다</text>
+
+  <rect x="408" y="52" width="386" height="96" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+  <text x="426" y="76" font-size="13.5" font-weight="700" fill="var(--navy)">사회 301</text>
+  <rect x="426" y="88" width="350" height="24" rx="3" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="438" y="105" font-size="12" fill="var(--text)">1번째 — 붕당정치의 전개</text>
+  <rect x="678" y="92" width="44" height="16" rx="2" fill="var(--navy)"/>
+  <text x="700" y="104" font-size="10.5" fill="#fff" text-anchor="middle">공개</text>
+  <rect x="426" y="118" width="350" height="24" rx="3" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="438" y="135" font-size="12" fill="var(--text)">2번째 — 예송논쟁</text>
+  <rect x="678" y="122" width="44" height="16" rx="2" fill="none" stroke="var(--sub)"/>
+  <text x="700" y="134" font-size="10.5" fill="var(--sub)" text-anchor="middle">비공개</text>
+
+  <rect x="408" y="164" width="386" height="68" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+  <text x="426" y="188" font-size="13.5" font-weight="700" fill="var(--navy)">역사 301</text>
+  <rect x="426" y="200" width="350" height="24" rx="3" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="438" y="217" font-size="12" fill="var(--text)">1번째 — 붕당정치의 전개</text>
+  <rect x="678" y="204" width="44" height="16" rx="2" fill="var(--navy)"/>
+  <text x="700" y="216" font-size="10.5" fill="#fff" text-anchor="middle">공개</text>
+
+  <text x="408" y="256" font-size="12.5" fill="var(--sub)">같은 강의를 두 강의실에 꽂았습니다. 순서와 공개 여부는</text>
+  <text x="408" y="276" font-size="12.5" fill="var(--sub)">강의실마다 따로 정합니다.</text>
+</svg>
+</figure>
+
+<div class="cmp">
+  <div>
+    <h4>강의 (창고에 있는 것)</h4>
+    <p class="t"><b>레시피</b>입니다. "붕당정치의 전개"라는 수업 내용 한 벌.
+    몇 반에서 쓰는지는 레시피가 모릅니다. 해가 바뀌어도 남습니다.</p>
+  </div>
+  <div>
+    <h4>꽂힌 강의 (교실에 있는 것)</h4>
+    <p class="t"><b>그 레시피로 오늘 만든 요리</b>입니다. "사회 301의 1번째 강의, 공개함."
+    학생 답안과 점수가 여기 붙습니다. 1년 쓰고 끝납니다.</p>
+  </div>
+</div>
+
+<p>그래서 이름도 이렇게 갈라 둡니다. 컴퓨터 안 서랍 이름(컬렉션)입니다.</p>
+<table>
+  <tr><th>이름</th><th>뜻</th><th>해가 바뀌면</th></tr>
+  <tr><td><code>lessons</code></td><td>강의 창고</td><td>남습니다</td></tr>
+  <tr><td><code>quizzes</code></td><td>복습 문제 창고</td><td>남습니다</td></tr>
+  <tr><td><code>course_lessons</code></td><td>강의실에 꽂힌 강의</td><td>사라집니다</td></tr>
+  <tr><td><code>course_students</code></td><td>그 강의실 명단</td><td>사라집니다</td></tr>
+  <tr><td><code>course_submissions</code></td><td>학생이 낸 것 전부</td><td>사라집니다(아카이브로 옮김)</td></tr>
+</table>
+<p class="sub" style="padding-left:0;font-size:13.5px">
+  규칙은 간단합니다. <b>강의실 한 곳에만 매인 것은 앞에 <code>course_</code>를 붙이고</b>,
+  해마다 남는 창고는 안 붙입니다.
+</p>
+</section>
+
+<!-- ══════════════════ 4 ══════════════════ -->
+<section>
+<h2><span class="n">4</span> 성적은 세 개만 들어갑니다</h2>
+<p class="lead">칸이 네 개인데 성적에 들어가는 것은 셋입니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 250" role="img" aria-label="개념노트, 미션, 질문노트가 성적에 합쳐지고 형성평가와 복습은 빠지는 그림">
+  <rect x="10" y="20" width="210" height="58" rx="4" fill="var(--navy)"/>
+  <text x="28" y="44" font-size="14" font-weight="700" fill="#fff">개념노트</text>
+  <text x="28" y="64" font-size="11.5" fill="#fff" opacity=".85">활동지에 손으로 씀, 선생님이 점수 입력</text>
+
+  <rect x="10" y="88" width="210" height="58" rx="4" fill="var(--red)"/>
+  <text x="28" y="112" font-size="14" font-weight="700" fill="#fff">미션</text>
+  <text x="28" y="132" font-size="11.5" fill="#fff" opacity=".85">잘했나보다 참여했나를 봅니다</text>
+
+  <rect x="10" y="156" width="210" height="58" rx="4" fill="var(--navy-600)"/>
+  <text x="28" y="180" font-size="14" font-weight="700" fill="#fff">질문노트</text>
+  <text x="28" y="200" font-size="11.5" fill="#fff" opacity=".85">AI가 1차 채점, 선생님이 확인</text>
+
+  <path d="M228 49 L300 110" stroke="var(--navy-400)" stroke-width="2" fill="none"/>
+  <path d="M228 117 L300 117" stroke="var(--navy-400)" stroke-width="2" fill="none"/>
+  <path d="M228 185 L300 124" stroke="var(--navy-400)" stroke-width="2" fill="none"/>
+
+  <rect x="308" y="86" width="190" height="62" rx="4" fill="var(--card)" stroke="var(--navy)" stroke-width="2"/>
+  <text x="403" y="112" font-size="14.5" font-weight="700" fill="var(--navy)" text-anchor="middle">포트폴리오 수행평가</text>
+  <text x="403" y="133" font-size="12" fill="var(--sub)" text-anchor="middle">학생이 실시간으로 확인합니다</text>
+
+  <line x1="560" y1="20" x2="560" y2="230" stroke="var(--line)" stroke-dasharray="4 4"/>
+  <text x="586" y="44" font-size="13" font-weight="700" fill="var(--sub)">성적에 안 들어가는 것</text>
+  <rect x="586" y="60" width="200" height="40" rx="4" fill="none" stroke="var(--gray)" stroke-dasharray="5 3"/>
+  <text x="604" y="85" font-size="13.5" fill="var(--gray)">형성평가 — 확인용 퀴즈</text>
+  <rect x="586" y="112" width="200" height="40" rx="4" fill="none" stroke="var(--gray)" stroke-dasharray="5 3"/>
+  <text x="604" y="137" font-size="13.5" fill="var(--gray)">복습 — 순수 복습용</text>
+  <text x="586" y="182" font-size="12" fill="var(--sub)">점수 부담 없이 쓰라고</text>
+  <text x="586" y="200" font-size="12" fill="var(--sub)">일부러 뺐습니다.</text>
+</svg>
+</figure>
+
+<div class="note">
+  세 가지 중 <b>개념노트만 LMS 밖</b>에서 일어납니다. 학생은 종이 활동지에 손으로 쓰고,
+  선생님이 점수만 입력합니다. <b>미션과 질문노트만 LMS가 걷고 AI가 1차 채점</b>합니다. (요구사항 70)
+</div>
+</section>
+
+<!-- ══════════════════ 5 ══════════════════ -->
+<section>
+<h2><span class="n">5</span> 학생과 선생님이 걷는 길</h2>
+<p class="lead">같은 시스템을 양쪽에서 다르게 씁니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 300" role="img" aria-label="학생이 걷는 길과 선생님이 걷는 길">
+  <text x="10" y="22" font-size="14" font-weight="700" fill="var(--navy)">학생</text>
+  <g font-size="12.5" fill="var(--text)">
+    <rect x="10" y="34" width="140" height="42" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+    <text x="80" y="52" text-anchor="middle" font-weight="700">로그인</text>
+    <text x="80" y="68" text-anchor="middle" font-size="11" fill="var(--sub)">학번, 이름, 비번</text>
+
+    <line x1="154" y1="55" x2="188" y2="55" stroke="var(--navy-400)" stroke-width="2"/>
+    <polygon points="188,55 180,51 180,59" fill="var(--navy-400)"/>
+
+    <rect x="192" y="34" width="140" height="42" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+    <text x="262" y="52" text-anchor="middle" font-weight="700">강의실 고르기</text>
+    <text x="262" y="68" text-anchor="middle" font-size="11" fill="var(--sub)">사회 301 / 역사 301</text>
+
+    <line x1="336" y1="55" x2="370" y2="55" stroke="var(--navy-400)" stroke-width="2"/>
+    <polygon points="370,55 362,51 362,59" fill="var(--navy-400)"/>
+
+    <rect x="374" y="34" width="140" height="42" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+    <text x="444" y="52" text-anchor="middle" font-weight="700">강의 고르기</text>
+    <text x="444" y="68" text-anchor="middle" font-size="11" fill="var(--sub)">공개된 것만 보입니다</text>
+
+    <line x1="518" y1="55" x2="552" y2="55" stroke="var(--navy-400)" stroke-width="2"/>
+    <polygon points="552,55 544,51 544,59" fill="var(--navy-400)"/>
+
+    <rect x="556" y="34" width="140" height="42" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+    <text x="626" y="52" text-anchor="middle" font-weight="700">칸 넘기며 참여</text>
+    <text x="626" y="68" text-anchor="middle" font-size="11" fill="var(--sub)">보고, 하고, 제출</text>
+
+    <line x1="700" y1="55" x2="734" y2="55" stroke="var(--navy-400)" stroke-width="2"/>
+    <polygon points="734,55 726,51 726,59" fill="var(--navy-400)"/>
+
+    <rect x="738" y="34" width="72" height="42" rx="4" fill="var(--navy-100)" stroke="var(--navy-400)"/>
+    <text x="774" y="59" text-anchor="middle" font-weight="700">성적 확인</text>
+  </g>
+
+  <line x1="10" y1="110" x2="810" y2="110" stroke="var(--line)"/>
+
+  <text x="10" y="142" font-size="14" font-weight="700" fill="var(--red)">선생님</text>
+  <g font-size="12.5" fill="var(--text)">
+    <rect x="10" y="154" width="150" height="42" rx="4" fill="var(--card)" stroke="var(--red)"/>
+    <text x="85" y="172" text-anchor="middle" font-weight="700">강의실 만들기</text>
+    <text x="85" y="188" text-anchor="middle" font-size="11" fill="var(--sub)">과목, 학년, 반</text>
+
+    <line x1="164" y1="175" x2="198" y2="175" stroke="var(--red)" stroke-width="2"/>
+    <polygon points="198,175 190,171 190,179" fill="var(--red)"/>
+
+    <rect x="202" y="154" width="150" height="42" rx="4" fill="var(--card)" stroke="var(--red)"/>
+    <text x="277" y="172" text-anchor="middle" font-weight="700">학생 명단 넣기</text>
+    <text x="277" y="188" text-anchor="middle" font-size="11" fill="var(--sub)">엑셀 또는 한 명씩</text>
+
+    <line x1="356" y1="175" x2="390" y2="175" stroke="var(--red)" stroke-width="2"/>
+    <polygon points="390,175 382,171 382,179" fill="var(--red)"/>
+
+    <rect x="394" y="154" width="150" height="42" rx="4" fill="var(--card)" stroke="var(--red)"/>
+    <text x="469" y="172" text-anchor="middle" font-weight="700">강의 만들기</text>
+    <text x="469" y="188" text-anchor="middle" font-size="11" fill="var(--sub)">칸을 끼웁니다</text>
+
+    <line x1="548" y1="175" x2="582" y2="175" stroke="var(--red)" stroke-width="2"/>
+    <polygon points="582,175 574,171 574,179" fill="var(--red)"/>
+
+    <rect x="586" y="154" width="150" height="42" rx="4" fill="var(--card)" stroke="var(--red)"/>
+    <text x="661" y="172" text-anchor="middle" font-weight="700">강의실에 꽂기</text>
+    <text x="661" y="188" text-anchor="middle" font-size="11" fill="var(--sub)">여러 반에 한 번에</text>
+
+    <path d="M661 200 L661 224" stroke="var(--red)" stroke-width="2" fill="none"/>
+    <polygon points="661,224 657,216 665,216" fill="var(--red)"/>
+
+    <rect x="394" y="230" width="342" height="42" rx="4" fill="var(--card)" stroke="var(--red)"/>
+    <text x="565" y="248" text-anchor="middle" font-weight="700">걷힌 것 채점하고 잘한 것 공유</text>
+    <text x="565" y="264" text-anchor="middle" font-size="11" fill="var(--sub)">AI가 1차로 매기면 선생님이 확인합니다</text>
+  </g>
+</svg>
+</figure>
+</section>
+
+<!-- ══════════════════ 6 ══════════════════ -->
+<section>
+<h2><span class="n">6</span> 로그인을 왜 이렇게 만들었나</h2>
+<p class="lead">보통 쓰는 방식을 일부러 안 썼습니다.</p>
+
+<div class="cmp">
+  <div>
+    <h4><span class="x">안 씁니다</span> 구글 로그인(Firebase Auth)</h4>
+    <p class="t">학생이 한 명씩 가입을 해야 합니다. 이메일을 받아야 하니
+    <b>개인정보 부담</b>이 큽니다.</p>
+  </div>
+  <div>
+    <h4><span class="o">씁니다</span> 학번 + 이름 + 비밀번호</h4>
+    <p class="t">선생님이 명단을 올려 두면, 학생은 <b>자기 학번과 이름을 치고 비밀번호만 정하면</b>
+    끝입니다. 가입이 없습니다.</p>
+  </div>
+</div>
+
+<p>대신 지켜야 할 것이 하나 있습니다. 명단에 없는 학번으로는 못 들어오므로,
+<b>선생님이 명단을 먼저 올려야</b> 학생이 로그인할 수 있습니다. (요구사항 13)</p>
+</section>
+
+<!-- ══════════════════ 7 ══════════════════ -->
+<section>
+<h2><span class="n">7</span> 미션만 왜 따로 만드나</h2>
+<p class="lead">미션 칸은 LMS 안에서 만들지 않고, 작은 웹앱을 따로 만들어 연결합니다.</p>
+
+<figure>
+<svg viewBox="0 0 820 180" role="img" aria-label="LMS가 미션 미니앱을 주소로 불러와 화면 안에 띄우는 그림">
+  <rect x="10" y="30" width="300" height="120" rx="4" fill="var(--navy-100)" stroke="var(--navy)" stroke-width="2"/>
+  <text x="30" y="56" font-size="14" font-weight="700" fill="var(--navy)">LMS 강의 화면</text>
+  <rect x="30" y="68" width="260" height="62" rx="4" fill="var(--card)" stroke="var(--red)" stroke-dasharray="4 3"/>
+  <text x="160" y="94" font-size="12.5" fill="var(--sub)" text-anchor="middle">미션 칸 — 여기에 앱이</text>
+  <text x="160" y="114" font-size="12.5" fill="var(--sub)" text-anchor="middle">그대로 들어와 열립니다</text>
+
+  <line x1="318" y1="90" x2="396" y2="90" stroke="var(--red)" stroke-width="2"/>
+  <polygon points="396,90 386,85 386,95" fill="var(--red)"/>
+  <text x="330" y="80" font-size="11.5" fill="var(--red)">주소로 부름</text>
+
+  <rect x="404" y="20" width="190" height="56" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="499" y="44" font-size="13" font-weight="700" fill="var(--text)" text-anchor="middle">사화 네컷</text>
+  <text x="499" y="62" font-size="11" fill="var(--sub)" text-anchor="middle">만화 그리기 앱</text>
+
+  <rect x="404" y="86" width="190" height="56" rx="4" fill="var(--card)" stroke="var(--navy-400)"/>
+  <text x="499" y="110" font-size="13" font-weight="700" fill="var(--text)" text-anchor="middle">두뇌 풀가동</text>
+  <text x="499" y="128" font-size="11" fill="var(--sub)" text-anchor="middle">키워드 맞히기 앱</text>
+
+  <text x="614" y="48" font-size="12.5" fill="var(--sub)">앱 하나하나가</text>
+  <text x="614" y="68" font-size="12.5" fill="var(--sub)">독립된 작은 사이트</text>
+  <text x="614" y="88" font-size="12.5" fill="var(--sub)">입니다. 2026년에</text>
+  <text x="614" y="108" font-size="12.5" fill="var(--sub)">이렇게 열세 개를</text>
+  <text x="614" y="128" font-size="12.5" fill="var(--sub)">만들었습니다.</text>
+</svg>
+</figure>
+
+<p><b>왜 합치지 않나.</b> 미션은 수업마다 하는 일이 완전히 다릅니다. 만화를 그리는 것,
+지도에 표시하는 것, 토론하는 것. 이걸 전부 LMS 안에 넣으려면 LMS가 끝없이 무거워집니다.
+따로 만들면 <b>앱 하나를 만드는 데 LMS를 건드릴 필요가 없습니다.</b>
+2026년에 이 방식으로 앱 열세 개를 만들 수 있었습니다. (요구사항 61, 62)</p>
+</section>
+
+<!-- ══════════════════ 8 ══════════════════ -->
+<section>
+<h2><span class="n">8</span> 지금 어디까지 왔나</h2>
+<p class="lead">2026-10-27 기준입니다.</p>
+
+<table>
+  <tr><th>단계</th><th>무엇</th><th>상태</th></tr>
+  <tr><td>1</td><td>뼈대 — 위에 그린 구조대로 화면 만들기</td><td><b style="color:var(--red)">하는 중</b></td></tr>
+  <tr><td>2</td><td>질문노트 한 바퀴 — 제출부터 성적까지 한 번 통과시켜 뼈대 검증</td><td>다음</td></tr>
+  <tr><td>3</td><td>미션 미니앱 연결(실시간 공유 포함)</td><td>대기</td></tr>
+  <tr><td>4</td><td>강의 슬라이드 엔진(활동지에서 화면으로)</td><td>방학으로 미룸</td></tr>
+  <tr><td>5</td><td>복습 허브</td><td>대기</td></tr>
+  <tr><td>6</td><td>경험치, 뽑기 같은 게임 요소</td><td>아무 때나</td></tr>
+</table>
+
+<div class="note">
+  <b>지금 화면은 가짜 데이터로 돕니다.</b> 아직 진짜 데이터베이스(Firestore)에 연결하지 않았습니다.
+  <code>model.js</code>라는 파일 안에 연습용 데이터가 들어 있고, 나중에 그 파일의 함수만 바꾸면
+  화면은 손대지 않고 진짜 데이터로 넘어갑니다.
+</div>
+</section>
+
+<p class="foot">
+  이 문서는 <code>LMS2027.md</code>(설계)와 <code>LMS2027_요구사항.md</code>를 쉬운 말로 다시 쓴 것입니다.
+  정확한 내용이 필요하면 그 두 문서를 봅니다. 설계가 바뀌면 이 문서도 같이 고쳐야 합니다.
+</p>
+
+</div>
+</body>
+</html>
