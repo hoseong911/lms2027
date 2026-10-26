@@ -7,7 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
-<link rel="stylesheet" href="admin.css?v=20261025h">
+<!-- 개념 노트 미리보기는 수업 화면과 같은 slide-style.css로 그린다(모양이 어긋나지 않게).
+     **admin.css보다 먼저 불러야 한다** — 두 파일의 :root에 --text와 --border가 겹쳐 있어서
+     뒤에 오는 쪽이 이긴다. 어드민 화면 색은 admin.css 것이어야 하므로 이 파일이 앞이다.
+     슬라이드 미리보기는 ceSetSlideVars가 그 칸에 직접 값을 걸어 주므로 영향받지 않는다.
+     2026 어드민도 같은 순서다(lms/admin.html). -->
+<link rel="stylesheet" href="slide-style.css?v=20261026a">
+<link rel="stylesheet" href="admin.css?v=20261026a">
 <meta name="theme-color" content="#FF6B3D">
 </head>
 <body>
@@ -173,6 +179,246 @@
         </div>
       </section>
 
+      <!-- ══════ 개념 노트 ══════ (2026-10-26)
+           사이드바에는 없다. 반별 관리와 메뉴별 관리의 "개념 노트" 칸에서 들어온다.
+           2026 "개념 체크"에서 가져온 것은 **콘텐츠 올리는 기능과 디자인 조절뿐**이고
+           강의 내용은 2027에서 새로 만든다(선생님 지시 2026-10-26).
+           강의를 만든 뒤 올릴 강의실을 고른다 — 강의 하나를 여러 강의실에 함께 올릴 수 있다.
+
+           이 화면만 인라인 onclick을 쓴다. 편집기(concept-note.js)가 2026 코드를 그대로
+           옮겨 온 것이라 그 2,000줄을 data-act 위임으로 다시 짜면 옮기는 중에 동작이
+           틀어질 위험이 크다. 새로 붙이는 화면은 이 방식을 따르지 말 것(CLAUDE.md). -->
+      <section class="panel-page" data-page="concept" hidden>
+        <div class="page-head">
+          <h1 class="page-title">개념 노트</h1>
+        </div>
+
+        <div class="pick-bar" id="ceSubBar">
+          <button type="button" class="pick on" data-ce="content">콘텐츠</button>
+          <button type="button" class="pick" data-ce="design">디자인</button>
+        </div>
+
+        <!-- ── 콘텐츠 ── -->
+        <div id="cePageContent">
+          <div class="th-lecbar-card">
+            <div class="th-lecbar">
+              <span class="lesson-bar-title">강의 선택</span>
+              <select id="lesson-select" onchange="onLessonChange(this.value)"></select>
+              <button type="button" class="th-icon-btn" title="강의 추가" aria-label="강의 추가"
+                onclick="addLesson()"><span data-icon="plus" data-icon-size="16"></span></button>
+              <button type="button" class="th-icon-btn" id="ce-file-btn" title="활동지 올리기" aria-label="활동지 올리기"
+                onclick="document.getElementById('ce-file-input').click()"><span data-icon="upload" data-icon-size="16"></span></button>
+              <input type="file" id="ce-file-input" accept=".hwpx,.pdf" hidden onchange="ceHandleFileUpload(this.files[0])">
+
+              <span class="th-lecbar-div"></span>
+              <!-- 공개 스위치는 강의 하나에 하나다. 켜면 올려 둔 강의실 전부에 같이 열린다. -->
+              <div class="th-toggle" id="ce-open-toggle" title="공개, 비공개" onclick="ceToggleLessonOpen()"></div>
+              <span class="th-lecbar-toglbl" id="ce-open-toglbl"></span>
+
+              <span class="th-lecbar-div"></span>
+              <button type="button" class="th-icon-btn" title="올릴 강의실" aria-label="올릴 강의실"
+                onclick="cePickRooms()"><span data-icon="school" data-icon-size="16"></span></button>
+              <span class="th-lecbar-rooms" id="ce-room-label"></span>
+
+              <span class="th-lecbar-div"></span>
+              <button type="button" class="th-icon-btn" title="위로 이동" aria-label="위로 이동"
+                onclick="ceMoveCurrentLesson('up')"><span data-icon="chevron-up" data-icon-size="16"></span></button>
+              <button type="button" class="th-icon-btn" title="아래로 이동" aria-label="아래로 이동"
+                onclick="ceMoveCurrentLesson('down')"><span data-icon="chevron-down" data-icon-size="16"></span></button>
+              <button type="button" class="th-icon-btn" id="ce-preview-btn" title="미리보기" aria-label="미리보기"
+                onclick="ceLessonPreview()"><span data-icon="eye" data-icon-size="16"></span></button>
+              <button type="button" class="th-icon-btn th-icon-danger" title="강의 삭제" aria-label="강의 삭제"
+                onclick="deleteLesson()"><span data-icon="trash-2" data-icon-size="16"></span></button>
+            </div>
+          </div>
+
+          <!-- 활동지 올리기 진행 상태. 선택 줄 안에 두면 글이 뜨는 순간 줄이 접혀
+               버튼들이 두 번째 줄로 밀린다. 줄 바깥에 세우고 빈 자리를 늘 지킨다. -->
+          <div id="ce-file-status" class="ce-upload-status"></div>
+
+          <div class="concept-embed">
+            <div id="ce-editor-area" style="display:none">
+              <div class="sub-tab-bar">
+                <button type="button" class="sub-tab active" data-sub="cover"   onclick="switchSubTab('cover')">표지</button>
+                <button type="button" class="sub-tab"        data-sub="dive"    onclick="switchSubTab('dive')">Dive</button>
+                <button type="button" class="sub-tab"        data-sub="concept" onclick="switchSubTab('concept')">개념</button>
+                <button type="button" class="sub-tab"        data-sub="mission" onclick="switchSubTab('mission')">미션</button>
+                <button type="button" class="sub-tab"        data-sub="think"   onclick="switchSubTab('think')">생각</button>
+              </div>
+
+              <div id="sub-cover" class="sub-panel active">
+                <div class="s-card">
+                  <div class="s-head">표지</div>
+                  <div class="s-body" id="cover-form"></div>
+                </div>
+              </div>
+
+              <div id="sub-dive" class="sub-panel">
+                <div class="s-card">
+                  <div class="s-head">
+                    <div class="s-head-row">
+                      <span>초성 퀴즈</span>
+                      <div class="th-toggle" id="chosung-toggle" onclick="toggleChosungEnabled()" title="초성 퀴즈 사용"></div>
+                    </div>
+                  </div>
+                  <div class="s-body" id="chosung-form"></div>
+                </div>
+                <div class="s-card">
+                  <div class="s-head">
+                    <div class="s-head-row">
+                      <span>Opening Question</span>
+                      <div class="th-toggle" id="opening-toggle" onclick="toggleOpeningEnabled()" title="Opening Question 사용"></div>
+                    </div>
+                  </div>
+                  <div class="s-body" id="dive-form"></div>
+                </div>
+                <div class="s-card">
+                  <div class="s-head">학습 목표</div>
+                  <div class="s-body" id="objectives-form"></div>
+                </div>
+              </div>
+
+              <div id="sub-concept" class="sub-panel">
+                <div class="s-card">
+                  <div class="s-head">개념 콘텐츠</div>
+                  <div class="s-body">
+                    <div id="content-lines"></div>
+                    <div class="btn-row cl-add-row">
+                      <button type="button" class="cl-add-slide" title="새 슬라이드" aria-label="새 슬라이드"
+                        onclick="addSlide('concept')"><span data-icon="plus" data-icon-size="16"></span></button>
+                      <button type="button" class="cbtn-sm cbtn-ic" title="이미지 슬라이드" aria-label="이미지 슬라이드"
+                        onclick="addImageSlide('concept')"><span data-icon="image" data-icon-size="16"></span></button>
+                      <!-- 이미지 슬라이드와 아이콘이 겹쳐 뜻이 갈리지 않으므로 이것만 글자로 둔다. -->
+                      <button type="button" class="cbtn-sm" onclick="addFullImageSlide('concept')">전면 이미지</button>
+                      <button type="button" class="cbtn-sm cbtn-ic" title="영상" aria-label="영상"
+                        onclick="addVideoSlide('concept')"><span data-icon="video" data-icon-size="16"></span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="sub-mission" class="sub-panel">
+                <div class="s-card">
+                  <div class="s-head">미션 콘텐츠</div>
+                  <div class="s-body">
+                    <div id="mission-content-lines"></div>
+                    <div class="btn-row cl-add-row">
+                      <button type="button" class="cl-add-slide" title="새 슬라이드" aria-label="새 슬라이드"
+                        onclick="addSlide('mission')"><span data-icon="plus" data-icon-size="16"></span></button>
+                      <button type="button" class="cbtn-sm cbtn-ic" title="이미지 슬라이드" aria-label="이미지 슬라이드"
+                        onclick="addImageSlide('mission')"><span data-icon="image" data-icon-size="16"></span></button>
+                      <button type="button" class="cbtn-sm" onclick="addFullImageSlide('mission')">전면 이미지</button>
+                      <button type="button" class="cbtn-sm cbtn-ic" title="영상" aria-label="영상"
+                        onclick="addVideoSlide('mission')"><span data-icon="video" data-icon-size="16"></span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="sub-think" class="sub-panel">
+                <div class="s-card">
+                  <div class="s-head">생각</div>
+                  <div class="s-body" id="think-form"></div>
+                </div>
+              </div>
+
+              <div class="btn-row">
+                <span class="toast-inline" id="toast-content">저장되었습니다.</span>
+                <button type="button" class="cbtn cbtn-ghost" title="내용 초기화" aria-label="내용 초기화"
+                  onclick="resetContent()"><span data-icon="rotate-ccw" data-icon-size="16"></span></button>
+                <button type="button" class="cbtn cbtn-primary" title="저장" aria-label="저장"
+                  onclick="saveContent()"><span data-icon="check" data-icon-size="16"></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 디자인 ──
+             글꼴과 색은 강의별이 아니라 전체 공통이라 settings/concept_note_design 문서 하나에 있다.
+             수업 화면(lecture.html)이 같은 문서를 읽으므로 여기서 바꾸면 모든 강의가 같이 바뀐다. -->
+        <div id="cePageDesign" hidden>
+          <div class="concept-embed">
+            <div class="s-card">
+              <div class="s-head">미리보기</div>
+              <div class="s-body">
+                <div class="pv-solo" id="design-pv-solo">
+                  <div class="pv-solo-outer" id="design-pv-outer">
+                    <div class="pv-solo-inner" id="design-pv-inner"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="design-stack">
+              <div class="s-card">
+                <div class="s-head">글꼴 종류</div>
+                <div class="s-body">
+                  <div class="fs-row">
+                    <span class="fs-name">기본 글꼴</span>
+                    <select class="ff-select" id="ff-family" onchange="onColorChange()">
+                      <option value="'Pretendard', 'Apple SD Gothic Neo', sans-serif">프리텐다드</option>
+                      <option value="'Paperlogy', 'Pretendard', sans-serif">페이퍼로지</option>
+                      <option value="'Gowun Batang', serif">고운바탕</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="s-card">
+                <div class="s-head">글꼴 크기</div>
+                <!-- 항목이 50개 가까워서 slide-render.js의 FONT_SPEC에서 만든다(ceRenderFontPanel). -->
+                <div class="s-body"><div id="fs-panel"></div></div>
+              </div>
+
+              <div class="fs-side2">
+                <div class="s-card">
+                  <div class="s-head">줄간격</div>
+                  <div class="s-body">
+                    <div class="fs-row"><span class="fs-name">본문 내용</span><input type="range" class="fs-slider" id="lh-body" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhSliderInput('body')"><input type="number" class="fs-val" id="lv-body" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhNumberInput('body')"></div>
+                    <div class="fs-row"><span class="fs-name">행 라벨</span><input type="range" class="fs-slider" id="lh-label" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhSliderInput('label')"><input type="number" class="fs-val" id="lv-label" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhNumberInput('label')"></div>
+                    <div class="fs-row"><span class="fs-name">학습 목표</span><input type="range" class="fs-slider" id="lh-obj" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhSliderInput('obj')"><input type="number" class="fs-val" id="lv-obj" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhNumberInput('obj')"></div>
+                    <div class="fs-row"><span class="fs-name">생각 질문</span><input type="range" class="fs-slider" id="lh-think" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhSliderInput('think')"><input type="number" class="fs-val" id="lv-think" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhNumberInput('think')"></div>
+                    <div class="fs-row"><span class="fs-name">생각 안내문구</span><input type="range" class="fs-slider" id="lh-thinkGuide" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhSliderInput('thinkGuide')"><input type="number" class="fs-val" id="lv-thinkGuide" min="1" max="2.5" step="0.05" value="1.6" oninput="onLhNumberInput('thinkGuide')"></div>
+                  </div>
+                </div>
+
+                <div class="s-card">
+                  <div class="s-head">자간, 장평</div>
+                  <div class="s-body">
+                    <div class="fs-row"><span class="fs-name">자간</span><input type="range" class="fs-slider" id="ls-global" min="-20" max="10" step="1" value="-15" oninput="onLsSliderInput()"><input type="number" class="fs-val" id="lsv-global" min="-20" max="10" step="1" value="-15" oninput="onLsNumberInput()"></div>
+                    <div class="fs-row"><span class="fs-name">장평</span><input type="range" class="fs-slider" id="tw-global" min="50" max="150" step="1" value="95" oninput="onTwSliderInput()"><input type="number" class="fs-val" id="twv-global" min="50" max="150" step="1" value="95" oninput="onTwNumberInput()"><span class="fs-unit">%</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="s-card">
+                <div class="s-head">색 조합</div>
+                <div class="s-body">
+                  <div class="color-grid">
+                    <div class="color-row"><p class="color-name">네이비</p><input type="color" class="color-pick" id="c-navy" value="#27384F" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">강조</p><input type="color" class="color-pick" id="c-red" value="#FF6B3D" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">페이지 배경</p><input type="color" class="color-pick" id="c-bg" value="#F0F0EF" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">슬라이드 배경</p><input type="color" class="color-pick" id="c-slidebg" value="#F0F0EF" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">개념 행 배경</p><input type="color" class="color-pick" id="c-rowbg" value="#FFFFFF" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">본문 색</p><input type="color" class="color-pick" id="c-text" value="#1E293B" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">안내문 색</p><input type="color" class="color-pick" id="c-thinkGuide" value="#6b675e" oninput="onColorChange()"></div>
+                    <div class="color-row"><p class="color-name">라벨 배경 색</p><input type="color" class="color-pick" id="c-badge" value="#27384F" oninput="onColorChange()"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <span class="toast-inline" id="toast-design">저장되었습니다.</span>
+              <button type="button" class="cbtn cbtn-ghost" title="기본값으로 초기화" aria-label="기본값으로 초기화"
+                onclick="resetDesign()"><span data-icon="rotate-ccw" data-icon-size="16"></span></button>
+              <button type="button" class="cbtn cbtn-primary" title="저장" aria-label="저장"
+                onclick="saveDesign()"><span data-icon="check" data-icon-size="16"></span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 </div>
@@ -201,6 +447,10 @@
 
 <!-- 엑셀 명단 업로드용. 2026 어드민과 같은 버전을 쓴다. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script type="module" src="admin.js?v=20261025m"></script>
+<!-- 활동지(hwpx)는 zip이라 JSZip으로 푼다. 2026 어드민과 같은 버전. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- 개념 노트 미리보기 렌더러. 수업 화면(lecture.html)과 같은 파일을 쓴다. -->
+<script src="slide-render.js?v=20261026a"></script>
+<script type="module" src="admin.js?v=20261026a"></script>
 </body>
 </html>

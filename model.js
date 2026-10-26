@@ -40,7 +40,7 @@ export const COLL = {
 /* 관리 축의 한쪽 — 메뉴. 2026 어드민의 사이드바 항목을 그대로 옮겼다.
  * 반별 보기와 메뉴별 보기가 같은 표를 읽으므로 항목을 늘리려면 여기 한 줄만 더한다. */
 export const MENUS = [
-  { key: 'concept',  label: '개념 체크',   icon: 'book-open' },
+  { key: 'concept',  label: '개념 노트',   icon: 'book-open' },
   { key: 'mission',  label: '미션 체크',   icon: 'layout-grid' },
   { key: 'think',    label: '생각 체크',   icon: 'feather' },
   { key: 'grade',    label: '성적',        icon: 'clipboard-list' },
@@ -552,18 +552,76 @@ export async function getLibraryLesson(db, lessonId) {
 export const addLibraryLesson = (db, data) =>
   addDoc(collection(db, COLL.lessonLibrary), { ...data, createdAt: serverTimestamp() });
 
-export const deleteLibraryLesson = (db, id) => deleteDoc(doc(db, COLL.lessonLibrary, id));
+/* 강의 하나를 붙이고 떼고 열던 attachLesson, detachLesson, setLessonOpen,
+   deleteLibraryLesson은 지웠다(2026-10-26). 올릴 강의실을 한 번에 맞추는
+   setLessonCourses와 공개를 함께 반영하는 syncLessonRows, 올린 줄까지 지우는
+   deleteLessonEverywhere가 그 일을 한다. 같은 일을 두 길로 두면 한쪽만 고치게 된다. */
 
-// 라이브러리 강의를 반에 붙인다. 클래스룸의 수업 재사용에 해당하는 자리.
-export const attachLesson = (db, { courseId: cid, lessonId, lessonNo, title }) =>
-  addDoc(collection(db, COLL.courseLessons), {
-    courseId: cid, lessonId, lessonNo, title, isOpen: false, createdAt: serverTimestamp()
+/* ── 강의를 강의실에 올리기 (선생님 지시 2026-10-26) ──
+ *
+ * 강의 내용은 lesson_library 문서 하나에만 둔다. 그 강의를 어느 강의실에서 쓸지는
+ * course_lessons 한 줄로 잇는다 — 강의를 만든 뒤 올릴 강의실을 고르는 자리다.
+ * 강의 하나를 여러 강의실(사회 301, 사회 302)에 함께 올릴 수 있다.
+ *
+ * 공개 스위치는 강의 하나에 하나다(선생님 지시). 켜면 올려 둔 강의실 전부에 같이 열린다.
+ * 학생 화면이 강의실 하나만 읽고 끝나도록 isOpen과 표시용 강 번호, 제목을 올린 줄에도
+ * 같이 적어 둔다. 라이브러리 문서를 강의실마다 다시 읽으면 읽기 수가 강의 수만큼 늘어난다.
+ * 그래서 강의 쪽이 바뀔 때마다 syncLessonRows로 올린 줄들을 같이 고친다.
+ */
+
+// 이 강의를 올려 둔 강의실 줄들.
+export async function listLessonCourses(db, lessonId) {
+  const snap = await getDocs(query(collection(db, COLL.courseLessons), where('lessonId', '==', lessonId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/* 올릴 강의실 목록을 고른 그대로 맞춘다. 빠진 강의실은 떼고 새로 고른 강의실은 붙인다.
+ * lesson은 { id, lessonNo, title, isOpen } — 라이브러리 문서다.
+ *
+ * scopeIds는 고르기 창이 실제로 보여 준 강의실들이다. 강의는 연도와 무관하게 남으므로
+ * 한 강의가 2027 강의실과 2028 강의실에 함께 올라가 있을 수 있다. 창에 없던 강의실 줄까지
+ * 지우면 다른 학년도에서 강의가 조용히 사라진다 — 그래서 뗄 수 있는 범위를 받는다.
+ * 넘기지 않으면 고른 것 전부가 범위다(뗄 것이 없다). */
+export async function setLessonCourses(db, lesson, courseIds, scopeIds = courseIds) {
+  const want = new Set(courseIds);
+  const scope = new Set(scopeIds);
+  const rows = await listLessonCourses(db, lesson.id);
+  const batch = writeBatch(db);
+  let added = 0, removed = 0;
+  rows.forEach(r => {
+    if (want.has(r.courseId)) want.delete(r.courseId);   // 이미 올라가 있다
+    else if (scope.has(r.courseId)) { batch.delete(doc(db, COLL.courseLessons, r.id)); removed++; }
   });
+  want.forEach(cid => {
+    batch.set(doc(collection(db, COLL.courseLessons)), {
+      courseId: cid, lessonId: lesson.id,
+      lessonNo: lesson.lessonNo, title: lesson.title,
+      isOpen: lesson.isOpen === true, createdAt: serverTimestamp(),
+    });
+    added++;
+  });
+  await batch.commit();
+  return { added, removed };
+}
 
-export const setLessonOpen = (db, id, on) =>
-  updateDoc(doc(db, COLL.courseLessons, id), { isOpen: !!on });
+// 강의 쪽이 바뀌면(공개 스위치, 강 번호, 제목) 올려 둔 줄들의 같은 칸도 고친다.
+export async function syncLessonRows(db, lessonId, fields) {
+  const rows = await listLessonCourses(db, lessonId);
+  if (!rows.length) return 0;
+  const batch = writeBatch(db);
+  rows.forEach(r => batch.update(doc(db, COLL.courseLessons, r.id), fields));
+  await batch.commit();
+  return rows.length;
+}
 
-export const detachLesson = (db, id) => deleteDoc(doc(db, COLL.courseLessons, id));
+// 강의를 라이브러리에서 지우면 올려 둔 줄도 함께 지운다(학생 화면에 유령 강의가 남지 않게).
+export async function deleteLessonEverywhere(db, lessonId) {
+  const rows = await listLessonCourses(db, lessonId);
+  const batch = writeBatch(db);
+  rows.forEach(r => batch.delete(doc(db, COLL.courseLessons, r.id)));
+  batch.delete(doc(db, COLL.lessonLibrary, lessonId));
+  await batch.commit();
+}
 
 // 강 번호 정렬 키 — 2026 admin.js의 lecOrderKey와 같은 규칙.
 // "28강. ..."은 28, OT 같은 비숫자는 맨 아래(-1).

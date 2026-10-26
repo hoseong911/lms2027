@@ -20,13 +20,18 @@ import {
   collection, getDocs, getDoc, doc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { CLAUDE_PROXY_URL } from "./shared/util.js?v=20261025a";
-import { lessonOrderKey as lecOrderKey, lessonTag as lecTag } from "./model.js?v=20261025k";
+import {
+  lessonOrderKey as lecOrderKey, lessonTag as lecTag, courseShort, listCourses,
+  listLessonCourses, setLessonCourses, syncLessonRows, deleteLessonEverywhere
+} from "./model.js?v=20261026a";
 
 const LIB = 'lesson_library';
 const DESIGN_REF = () => doc(db, 'settings', 'concept_note_design');
 
-// 어드민이 넘겨 주는 것들. initConceptNote가 채운다.
+// 어드민이 넘겨 주는 것들. initConceptNote가 채운다(파일 맨 끝).
 let db = null, ask = null, toast = null, esc = s => String(s ?? '');
+// 올릴 강의실을 고르는 창은 그 학년도의 강의실만 보여야 해서 어드민이 고른 학년도를 받아 온다.
+let getYear = () => null;
 
 // 2026의 lecLabel — "N강. 제목"
 const lecLabel = (num, title) => `${lecTag(num)}${title ? '. ' + title : ''}`;
@@ -310,6 +315,82 @@ async function ceGetLessonsFromFirestore() {
   return ceLessonsCache;
 }
 
+/* ── 올릴 강의실 (선생님 지시 2026-10-26) ──
+ *
+ * 강의를 만든 뒤 그 강의를 올릴 강의실을 고른다. 강의 내용은 라이브러리에 하나만 있고,
+ * 올린다는 것은 course_lessons에 그 강의실과 잇는 줄 하나를 두는 일이다. 강의 하나를
+ * 여러 강의실(사회 301, 사회 302)에 함께 올릴 수 있다.
+ *
+ * 공개 스위치는 강의 하나에 하나다. 켜면 올려 둔 강의실 전부에 같이 열린다.
+ * 그래서 스위치를 누를 때와 강 번호, 제목을 고칠 때 올린 줄들을 같이 고쳐 준다(syncLessonRows).
+ */
+const ceCurrentLesson = () => ceLessonsCache.find(l => l.num === ceCurrentLessonNum) || null;
+
+let ceLessonRooms = [];   // 지금 고른 강의가 올라가 있는 course_lessons 줄들
+let ceCourses = [];       // 어드민이 고른 학년도의 강의실(아카이브 제외)
+
+async function ceLoadCourses() {
+  const year = getYear();
+  ceCourses = year == null ? [] : await listCourses(db, { year });
+  return ceCourses;
+}
+
+async function ceLoadLessonRooms() {
+  const lesson = ceCurrentLesson();
+  try {
+    ceLessonRooms = lesson ? await listLessonCourses(db, lesson.docId) : [];
+  } catch (e) {
+    console.warn('[lessonRooms]', e);
+    ceLessonRooms = [];
+  }
+  ceRenderRoomLabel();
+}
+
+// 강의 선택 줄에 올라간 강의실 이름을 그대로 적는다(실제 데이터라 안내문이 아니다).
+// 이 학년도에 없는 강의실(다른 해에 올려 둔 줄)은 개수로만 센다.
+function ceRenderRoomLabel() {
+  const el = document.getElementById('ce-room-label');
+  if (!el) return;
+  if (!ceCurrentLesson()) { el.textContent = ''; return; }
+  const byId = new Map(ceCourses.map(c => [c.id, courseShort(c)]));
+  const here = [], other = [];
+  ceLessonRooms.forEach(r => byId.has(r.courseId) ? here.push(byId.get(r.courseId)) : other.push(r));
+  const parts = [];
+  if (here.length) parts.push(here.join(', '));
+  if (other.length) parts.push(`다른 학년도 ${other.length}개`);
+  el.textContent = parts.length ? parts.join(', ') : '올린 강의실 없음';
+}
+
+window.cePickRooms = async function() {
+  const lesson = ceCurrentLesson();
+  if (!lesson) { notify('강의를 먼저 골라 주세요.'); return; }
+  const year = getYear();
+  if (year == null) { notify('학년도가 없습니다.'); return; }
+  await ceLoadCourses();
+  if (!ceCourses.length) { notify(`${year}학년도 강의실이 없습니다.`); return; }
+  const on = new Set(ceLessonRooms.map(r => r.courseId));
+  const v = await ask({
+    title: `${lecTag(lesson.num)} 올릴 강의실`,
+    fields: [{
+      key: 'rooms', type: 'picks',
+      options: ceCourses.map(c => ({ value: c.id, label: courseShort(c) })),
+      value: ceCourses.filter(c => on.has(c.id)).map(c => c.id),
+    }],
+  });
+  if (!v) return;
+  try {
+    const { added, removed } = await setLessonCourses(
+      db,
+      { id: lesson.docId, lessonNo: lesson.num, title: lesson.title, isOpen: lesson.isOpen === true },
+      v.rooms, ceCourses.map(c => c.id));
+    await ceLoadLessonRooms();
+    notify(added || removed ? `올린 강의실을 ${ceLessonRooms.length}개로 맞췄습니다.` : '바뀐 것이 없습니다.', 'ok');
+  } catch (e) {
+    console.warn('[pickRooms]', e);
+    notify('강의실을 맞추지 못했습니다. ' + e.message);
+  }
+};
+
 // ── 강의 선택 드롭다운 공통 정렬 ──
 // 개념·성적(class_lessons)·생각(think_lectures) 세 체크의 강의 선택 드롭다운은 모두
 // 이 비교 함수 하나만 쓴다: order 필드 내림차순(최신 강의가 위, OT/인트로처럼 order 낮은 건 맨 아래).
@@ -339,8 +420,8 @@ function renderCeLessonOrder() {
     return `<div class="item-row">
         <div class="item-info"><div class="item-label">${lecLabel(esc(String(l.num)), esc(clean))}</div></div>
         <div class="item-meta">
-          <button class="edit-btn" ${idx===0?'disabled':''} title="위로" onclick="ceMoveLesson('${l.docId}','up',${idx})">▲</button>
-          <button class="edit-btn" ${idx===list.length-1?'disabled':''} title="아래로" onclick="ceMoveLesson('${l.docId}','down',${idx})">▼</button>
+          <button class="edit-btn" ${idx===0?'disabled':''} title="위로" aria-label="위로" onclick="ceMoveLesson('${l.docId}','up',${idx})">${ceIconUp()}</button>
+          <button class="edit-btn" ${idx===list.length-1?'disabled':''} title="아래로" aria-label="아래로" onclick="ceMoveLesson('${l.docId}','down',${idx})">${ceIconDown()}</button>
         </div>
       </div>`;
   }).join('');
@@ -402,6 +483,7 @@ function onLessonChange(num) {
   }
   ceCurrentLessonNum = num;
   ceLoadLessonData(num);
+  ceLoadLessonRooms();
   if (area) area.style.display = '';
   if (prevBtn) prevBtn.style.display = '';
 }
@@ -435,19 +517,25 @@ async function addLesson() {
   if (area) area.style.display = '';
   const prevBtn = document.getElementById('ce-preview-btn');
   if (prevBtn) prevBtn.style.display = '';
-  notify(`${lecTag(num)}을 추가했습니다.`, 'ok');
+  // 만든 다음 올릴 강의실을 고르게 한다(선생님 지시 2026-10-26). 취소하면 올린 곳 없이 남는다.
+  ceLessonRooms = [];
+  ceRenderRoomLabel();
+  await window.cePickRooms();
 }
 
 async function deleteLesson() {
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (!lesson) return;
   // 2026 문구는 "슬라이드 내용은 삭제되지 않습니다"였지만 내용이 강의 문서 안에 있어 함께 지워진다.
-  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용까지 함께 지워지고 되돌릴 수 없습니다.', true)) return;
-  await deleteDoc(doc(db, LIB, lesson.docId));
+  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용과 올린 강의실까지 함께 지워지고 되돌릴 수 없습니다.', true)) return;
+  // 올려 둔 줄을 남기면 학생 화면에 내용 없는 강의가 뜬다.
+  await deleteLessonEverywhere(db, lesson.docId);
   await ceGetLessonsFromFirestore();
   ceCurrentLessonNum = '';
+  ceLessonRooms = [];
   cePopulateLessonSelect();
   renderCeLessonOrder();
+  ceRenderRoomLabel();
   const area = document.getElementById('ce-editor-area');
   if (area) area.style.display = 'none';
 }
@@ -589,8 +677,13 @@ async function ceToggleLessonOpen() {
   if (!lesson) return;
   const next = lesson.isOpen !== true;
   await updateDoc(doc(db, LIB, lesson.docId), { isOpen: next });
+  // 학생 화면은 강의실 줄(course_lessons)만 읽으므로 올려 둔 줄의 isOpen도 같이 고친다.
+  // 스위치는 강의 하나에 하나이고, 올린 강의실 전부가 같이 열리고 닫힌다.
+  try { await syncLessonRows(db, lesson.docId, { isOpen: next }); }
+  catch (e) { console.warn('[syncOpen]', e); notify('올린 강의실에 반영하지 못했습니다. ' + e.message); }
   lesson.isOpen = next;
   ceRenderOpenToggle();
+  await ceLoadLessonRooms();
 }
 
 // ── 개념/미션 Check 콘텐츠 (구분선 + 행, 드래그로 순서 변경) ──
@@ -608,8 +701,8 @@ function ceMoveButtons(target, i) {
   const last = ceLinesFor(target).length - 1;
   return `
     <span class="cl-move">
-      <button class="cl-move-btn" onclick="moveLine('${target}',${i},-1)" ${i === 0 ? 'disabled' : ''} title="위로 이동">↑</button>
-      <button class="cl-move-btn" onclick="moveLine('${target}',${i},1)" ${i === last ? 'disabled' : ''} title="아래로 이동">↓</button>
+      <button class="cl-move-btn" onclick="moveLine('${target}',${i},-1)" ${i === 0 ? 'disabled' : ''} title="위로 이동" aria-label="위로 이동">${ceIconUp()}</button>
+      <button class="cl-move-btn" onclick="moveLine('${target}',${i},1)" ${i === last ? 'disabled' : ''} title="아래로 이동" aria-label="아래로 이동">${ceIconDown()}</button>
     </span>`;
 }
 function moveLine(target, i, dir) {
@@ -789,7 +882,6 @@ function ceColsEditor(target, i, line) {
       <button class="cl-fmt-del" onclick="removeCol('${target}',${i},${j})">삭제</button>
     </div>`).join('');
   return `<div class="cl-fmt-fields">
-      <div class="cl-fmt-hint">상단 배지 헤더는 위 슬라이드 제목칸 / 아래 대제목은 본문 가운데 큰 제목(선택) / 항목은 가로로 균등 배치 / **글자**로 감싸면 강조색</div>
       <input type="text" class="cl-fmt-sm" style="width:100%" placeholder="대제목 (본문 가운데 큰 제목, 선택)" value="${esc(line.colsTitle||'')}" oninput="updateLine('${target}',${i},'colsTitle',this.value)">
       ${rows}
       <div class="cl-fmt-row">
@@ -812,7 +904,7 @@ function ceColsMergeUpBtn(target, i) {
   const prev = pd > -1 ? lines[pd] : null;
   if (!prev || (prev.format && prev.format !== 'rows')) return '';
   if ((prev.bottomCols || []).length || (prev.bottomColsTitle || '').trim()) return '';  // 이미 블록이 있으면 덮어쓰지 않는다
-  return `<button type="button" class="cbtn-sm" onclick="mergeColsIntoPrevPage('${target}',${i})">↑ 위 행 나열 페이지에 합치기</button>`;
+  return `<button type="button" class="cbtn-sm" onclick="mergeColsIntoPrevPage('${target}',${i})">위 행 나열 페이지에 합치기</button>`;
 }
 async function mergeColsIntoPrevPage(target, i) {
   const lines = ceLinesFor(target);
@@ -846,7 +938,6 @@ function removeCol(target,i,j){ ceLinesFor(target)[i].cols.splice(j,1); ceRender
 function ceNoticeEditor(target, i, line) {
   return `
     <div class="cl-fmt-fields">
-      <div class="cl-fmt-hint">한 줄 = 한 문단 / 줄 앞에 "- "를 붙이면 불릿 / 빈 줄은 간격 / **굵게**/{빈칸} 문법 사용 가능</div>
       <textarea class="cl-fmt-grow" placeholder="예)&#10;- 수행평가 안내&#10;- 제출 기한: 다음 주 금요일&#10;&#10;**모둠별**로 발표 자료를 준비하세요." oninput="updateLine('${target}',${i},'noticeText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.noticeText||'')}</textarea>
     </div>`;
 }
@@ -880,7 +971,6 @@ function ceBottomColsEditor(target, i, line) {
     <details class="cl-bq" ${hasAny ? 'open' : ''}>
       <summary class="cl-bq-summary">중앙 나열 블록 (선택)</summary>
       <div class="cl-fmt-fields">
-        <div class="cl-fmt-hint">행들 아래에 중앙 나열이 한 구역으로 붙는다 / 항목을 다 비우면 안 붙음 / **글자**로 감싸면 강조색</div>
         <input type="text" class="cl-fmt-sm" style="width:100%" placeholder="대제목 (블록 가운데 큰 제목, 선택)" value="${esc(line.bottomColsTitle||'')}" oninput="updateLine('${target}',${i},'bottomColsTitle',this.value)">
         ${rows}
         <div class="cl-fmt-row">
@@ -993,7 +1083,7 @@ function ceRenderContentLines(target) {
   const lines = ceLinesFor(target);
   const container = document.getElementById(ceContainerIdFor(target));
   if (!lines.length) {
-    container.innerHTML = '<p class="field-hint">아직 내용이 없습니다. 아래 버튼으로 구분선과 행을 추가하세요.</p>';
+    container.innerHTML = '<p class="cl-empty">아직 내용이 없습니다.</p>';
     return;
   }
   const groups = ceBuildGroups(lines);
@@ -1607,7 +1697,7 @@ function ceRenderDiveForm() {
     tog.classList.toggle('on', d.openingEnabled !== false && hasContent);
     tog.classList.toggle('disabled', !hasContent);
   }
-  el.innerHTML = ceFTextarea('질문', d.guide || d.title || '', `updateDive('guide',this.value)`, 3, '사료처럼 큰 따옴표와 함께 크게 표시됩니다.');
+  el.innerHTML = ceFTextarea('질문', d.guide || d.title || '', `updateDive('guide',this.value)`, 3);
   ceRenderChosungForm();
 }
 function updateDive(f,v){ ceCd.dive[f]=v; ceRenderPreview(); }
@@ -1625,7 +1715,7 @@ function ceRenderChosungForm() {
   if (tog) tog.classList.toggle('on', !!d.chosungEnabled);
   const el = document.getElementById('chosung-form');
   el.innerHTML = d.chosungEnabled
-    ? ceFTextarea('초성 퀴즈 항목', d.chosungItems.join('\n'), `updateChosungItems(this.value)`, 4, '한 줄 = 항목 하나, 학습 목표 슬라이드와 같은 번호 목록으로 표시됩니다.')
+    ? ceFTextarea('초성 퀴즈 항목', d.chosungItems.join('\n'), `updateChosungItems(this.value)`, 4)
     : '';
 }
 function toggleChosungEnabled()  { updateChosungEnabled(!ceCd.dive.chosungEnabled); }
@@ -1645,9 +1735,9 @@ function updateThink(f,v){ ceCd.think[f]=v; ceRenderPreview(); }
 function ceFInputInline(label, val, handler) {
   return `<div class="field-inline"><label class="field-inline-label">${label}</label><input class="field-input" type="text" value="${esc(val)}" oninput="${handler}"></div>`;
 }
-function ceFTextarea(label, val, handler, rows=2, hint='') {
-  const h = hint ? ` <span class="field-hint">${hint}</span>` : '';
-  return `<div class="field-group"><div class="field-label">${label}${h}</div><textarea class="field-input" rows="${rows}" oninput="${handler};autoResizeTa(this)">${esc(val)}</textarea></div>`;
+// 작은 글씨 설명을 붙이지 않는다(CLAUDE.md 화면 규칙). 2026에 있던 hint 인자를 뺐다.
+function ceFTextarea(label, val, handler, rows=2) {
+  return `<div class="field-group"><div class="field-label">${label}</div><textarea class="field-input" rows="${rows}" oninput="${handler};autoResizeTa(this)">${esc(val)}</textarea></div>`;
 }
 
 // ceCd({lesson, contentLines, think})를 현재 강의의 Firestore 문서에 그대로 저장.
@@ -1676,6 +1766,9 @@ async function saveContent() {
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (!lesson) return;
   await ceSaveContentToFirestore(lesson.docId, ceCd);
+  // 올린 강의실 줄이 강 번호와 제목을 복사해 들고 있다(학생 화면이 한 번만 읽게). 같이 고친다.
+  try { await syncLessonRows(db, lesson.docId, { lessonNo: ceCd.lesson.num, title: ceCd.lesson.title }); }
+  catch (e) { console.warn('[syncRows]', e); }
   await ceGetLessonsFromFirestore();
   ceCurrentLessonNum = ceCd.lesson.num;
   cePopulateLessonSelect();
@@ -2034,3 +2127,65 @@ function ceShowToast(id) {
   clearTimeout(ceToastTimers[id]);
   ceToastTimers[id] = setTimeout(() => el.classList.remove('show'), 2500);
 }
+
+/* ══════ 어드민이 부르는 입구 ══════
+ *
+ * 2026 어드민은 이 코드가 10,382줄 한 파일 안에 있어서 db와 전역 함수를 그냥 집어 썼다.
+ * 2027은 파일을 갈라 두었으므로 필요한 것을 주입받는다.
+ *   db       Firestore
+ *   ask      확인 창(admin.js). alert/confirm/prompt를 쓰지 않는다
+ *   toast    방금 한 일의 결과와 오류
+ *   esc      HTML 이스케이프
+ *   getYear  어드민이 고른 학년도. 올릴 강의실 목록을 이 해에서 뽑는다
+ *
+ * 강의 목록과 디자인은 한 번만 읽으면 되므로 두 번째 호출부터는 주입만 갈아 끼운다
+ * (학년도를 바꾸고 다시 들어왔을 때 강의실 목록만 새로 읽는다).
+ */
+let _ceInited = false;
+export async function initConceptNote(deps = {}) {
+  if (deps.db)      db      = deps.db;
+  if (deps.ask)     ask     = deps.ask;
+  if (deps.toast)   toast   = deps.toast;
+  if (deps.esc)     esc     = deps.esc;
+  if (deps.getYear) getYear = deps.getYear;
+
+  await ceLoadCourses();          // 학년도가 바뀌었을 수 있으니 매번 읽는다
+  if (_ceInited) { ceRenderRoomLabel(); return; }
+  _ceInited = true;
+  await ceInitContent();
+  await ceInitDesign();
+}
+
+/* 2026에서 옮겨 온 편집기는 인라인 onclick/oninput을 쓴다. 그래서 여기 적은 함수들은
+ * window에 올라가 있어야 눌렸을 때 불린다 — 빠지면 오류 없이 조용히 아무 일도 안 난다
+ * (2026에서 실제로 다섯 개가 빠져 있었다).
+ * 새로 붙이는 코드는 이 방식을 따르지 말고 data-act 위임을 쓸 것(CLAUDE.md 코드 규칙).
+ * 아래 목록은 2026 admin.js의 Object.assign(window, ...)에서 개념 체크 몫만 가져온 것이다. */
+Object.assign(window, {
+  switchSubTab, addLesson, deleteLesson, onLessonChange,
+  addSlide, addDivider, addContentRow, addImageSlide, toggleDividerImg, deleteLine, deletePair, moveLine,
+  addRowToGroup, addPageToGroup, addTitledPageAfter, moveSlideBlock, ceShowAddMenu, deleteGroup, deleteRow,
+  updateGroupTitle, ceToggleFmt,
+  setLineFormat, toggleLabelPos, toggleHideBadge, toggleAlign, setLineFontSize, setColsTitleSize, updateImgLayout,
+  setFocusEvent,
+  updateEventField, updateEventContent, addEvent, removeEvent,
+  updateCompareField, updateCompareItems,
+  updateStageField, addStage, removeStage,
+  updateColField, addCol, removeCol,
+  updateBottomColField, addBottomCol, removeBottomCol, setBottomColsSize,
+  mergeColsIntoPrevPage,
+  updateImageItem, addImageItem, removeImageItem,
+  addFullImageSlide, deleteFullImage, addVideoSlide, updateVideoUrl,
+  updateLesson, updateObjectives, updateLine, updateLineItems, updateThink,
+  updateDive, updateDiveImg, toggleOpeningEnabled, toggleChosungEnabled, updateChosungEnabled, updateChosungItems,
+  ceToggleLessonOpen,
+  resetContent, saveContent, ceHandleFileUpload,
+  onFsSliderInput, onFsNumberInput, onLhSliderInput, onLhNumberInput,
+  onLsSliderInput, onLsNumberInput, onTwSliderInput, onTwNumberInput,
+  onColorChange, resetDesign, saveDesign,
+  handleContentKeydown, handleItemsKeydown,
+  // textarea 자동 높이. 2026에서 노출이 빠져 입력할 때 칸이 안 늘어났다.
+  autoResizeTa,
+  // 미리보기 다시 그리기와 크기 맞추기 — 탭을 바꿀 때 부른다.
+  ceRenderPreview, rescalePreview,
+});

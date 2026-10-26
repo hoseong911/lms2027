@@ -23,12 +23,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./shared/firebase-config.js";
-import { icon } from "./shared/icons.js?v=20261025a";
+import { icon } from "./shared/icons.js?v=20261026a";
 import {
   MENUS, schoolYear, courseLabel, getCourse, loadYearRoster, clearRosterCache,
   getAuthHash, setPw, hashPw, isHash, hasConsent, saveConsent, listStudentCourses,
   listCourseLessons, lessonTag
-} from "./model.js?v=20261025j";
+} from "./model.js?v=20261026a";
 
 // 여기까지 왔으면 모듈은 다 받았다. 디자인(index.css)도 들어왔는지 확인해서 본문을 연다.
 // 디자인이 빠졌으면 깨진 화면 대신 새로고침 안내를 띄운다(index.html의 bootFail).
@@ -377,7 +377,9 @@ async function enterHub(cid, no, name) {
     }
     $('courseBadge').textContent = `${course.year}학년도`;
     $('courseTitle').textContent = courseLabel(course);
-    renderLessons(await listCourseLessons(db, cid, { openOnly: true }));
+    const lessons = await listCourseLessons(db, cid, { openOnly: true });
+    renderLessons(lessons);
+    renderMenus(lessons.length);
   } catch (e) {
     console.warn('[enterHub]', e);
     $('lessonList').innerHTML =
@@ -399,14 +401,25 @@ function backToLogin(message) {
 /* 메뉴 칸 — 아직 내용이 없는 메뉴는 "준비 중"으로 둔다. 빈 칸을 숨기지 않는 쪽을
    고른 것은, 어드민에서 메뉴별로 관리할 때 학생 화면에 무엇이 있는지가 한눈에
    보여야 하기 때문이다. */
-function renderMenus() {
-  $('menuGrid').innerHTML = MENUS.map(m => `
-    <button type="button" class="menu-card" data-menu="${esc(m.key)}" disabled>
+// conceptCount가 null이면 아직 강의를 못 읽은 것이라 개념 노트도 "준비 중"으로 둔다.
+function renderMenus(conceptCount = null) {
+  $('menuGrid').innerHTML = MENUS.map(m => {
+    const open = m.key === 'concept' && conceptCount != null;
+    return `
+    <button type="button" class="menu-card" data-menu="${esc(m.key)}"${open ? '' : ' disabled'}>
       <span class="menu-ic">${icon(m.icon, 22)}</span>
       <span class="menu-label">${esc(m.label)}</span>
-      <span class="menu-state">준비 중</span>
-    </button>`).join('');
+      <span class="menu-state">${open ? `강의 ${conceptCount}개` : '준비 중'}</span>
+    </button>`;
+  }).join('');
 }
+
+// 열린 메뉴를 누르면 그 메뉴 칸으로 내려간다. 지금 열리는 것은 개념 노트뿐이다.
+$('menuGrid').addEventListener('click', e => {
+  const b = e.target.closest('.menu-card:not([disabled])');
+  if (!b || b.dataset.menu !== 'concept') return;
+  $('conceptPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 function renderLessons(rows) {
   const box = $('lessonList');
@@ -414,11 +427,15 @@ function renderLessons(rows) {
     box.innerHTML = '<p class="empty">아직 공개된 강의가 없습니다.</p>';
     return;
   }
-  box.innerHTML = rows.map(r => `
-    <div class="lesson">
-      <span class="lesson-no">${esc(lessonTag(r.lessonNo))}</span>
-      <span class="lesson-title">${esc(r.title || '제목 없음')}</span>
-    </div>`).join('');
+  // 강의 내용은 lesson_library에 있고 이 줄은 그것을 가리킨다(lessonId).
+  // 내용이 없는 줄(강의가 지워진 경우)은 열 수 없으므로 누를 수 없게 둔다.
+  box.innerHTML = rows.map(r => {
+    const no    = `<span class="lesson-no">${esc(lessonTag(r.lessonNo))}</span>`;
+    const title = `<span class="lesson-title">${esc(r.title || '제목 없음')}</span>`;
+    return r.lessonId
+      ? `<a class="lesson" href="lecture.html?id=${encodeURIComponent(r.lessonId)}&course=${encodeURIComponent(r.courseId)}&mode=complete" target="_blank" rel="noopener">${no}${title}</a>`
+      : `<div class="lesson">${no}${title}</div>`;
+  }).join('');
 }
 
 $('btnLogout').addEventListener('click', () => backToLogin(''));

@@ -23,7 +23,8 @@ import {
   EmailAuthProvider, reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./shared/firebase-config.js";
-import { icon } from "./shared/icons.js?v=20261025a";
+import { icon } from "./shared/icons.js?v=20261026a";
+import { initConceptNote } from "./concept-note.js?v=20261026a";
 import {
   MENUS, menuByKey, schoolYear, roomNo,
   validYear, validGrade, validClass, validSubject,
@@ -31,9 +32,9 @@ import {
   courseLabel, courseShort, listCourses,
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
   countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, clearPw, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
-  listLibrary, addLibraryLesson, deleteLibraryLesson,
+  listLibrary, addLibraryLesson, deleteLessonEverywhere,
   countLessonsByCourse, lessonTag, lessonOrderKey
-} from "./model.js?v=20261025j";
+} from "./model.js?v=20261026a";
 
 const app  = initializeApp(firebaseConfig);
 // 학생 화면과 같은 이유로 롱폴링 자동 감지를 켠다(index.js 주석 참고).
@@ -91,6 +92,8 @@ function toast(text, kind = 'ok') {
  *     type 'text' | 'email' | 'password'
  *     type 'choice'  칩 하나 고르기(options) + 직접 적는 칸. 과목 고르기에 쓴다
  *     type 'pick'    칩 하나 고르기만(options: [{ value, label }]). 학생 추가의 강의실 고르기에 쓴다
+ *     type 'picks'   칩 여러 개 함께 고르기(options: [{ value, label }], value: 켜 둘 값 배열).
+ *                    개념 노트를 올릴 강의실을 고르는 데 쓴다. 돌려주는 값도 배열이다
  *   입력 칸 위에 이름표를 달지 않는다. 무엇을 적는 칸인지는 placeholder로, 단위는 suffix로.
  *   check(values): 문제가 있으면 오류 문구를 돌려준다(Promise도 된다). 모달 안에 띄우고 닫지 않는다.
  *   info: 확인 버튼 하나만(명단 보기처럼 보기만 하는 창).
@@ -104,6 +107,15 @@ function fieldHtml(f) {
       <div class="choice" data-key="${esc(f.key)}">
         ${opts.map(o => `<button type="button" class="tag${o === f.value ? ' on' : ''}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}
         <input class="inp choice-inp" type="text" placeholder="${esc(f.placeholder || "직접 입력")}" autocomplete="off">
+      </div>`;
+  }
+  /* 'picks' — 정해진 것 중에서 여러 개를 함께 고른다. 'pick'과 달리 켜고 끄기가 각각 따로다.
+     강의 하나를 여러 강의실에 올릴 수 있어서 생긴 칸이다(2026-10-26). */
+  if (f.type === 'picks') {
+    const on = new Set(f.value || []);
+    return `
+      <div class="picks" data-key="${esc(f.key)}">
+        ${(f.options || []).map(o => `<button type="button" class="tag${on.has(o.value) ? ' on' : ''}" data-pick="${esc(o.value)}">${esc(o.label)}</button>`).join('')}
       </div>`;
   }
   // 'pick' — 정해진 것 중에서만 고른다(직접 입력 칸 없음). options: [{ value, label }]
@@ -131,6 +143,10 @@ function readFields() {
     const typed = box.querySelector('.choice-inp')?.value.trim() || '';
     const on = box.querySelector('.tag.on');
     vals[box.dataset.key] = typed || (on ? on.dataset.choice : '');
+  });
+  // 여러 개 고르기는 배열로 돌려준다(아무것도 안 고르면 빈 배열).
+  $('modalBody').querySelectorAll('.picks').forEach(box => {
+    vals[box.dataset.key] = [...box.querySelectorAll('.tag.on')].map(b => b.dataset.pick);
   });
   return vals;
 }
@@ -172,6 +188,11 @@ $('modalBody').addEventListener('click', e => {
   const box = b.closest('.choice');
   box.querySelectorAll('.tag').forEach(p => p.classList.toggle('on', p === b));
   const inp = box.querySelector('.choice-inp'); if (inp) inp.value = '';
+});
+// 여러 개 고르기 — 누른 칩만 켜고 끈다(나머지는 그대로).
+$('modalBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]');
+  if (b) b.classList.toggle('on');
 });
 $('modalBody').addEventListener('input', e => {
   if (!e.target.classList.contains('choice-inp')) return;
@@ -315,7 +336,41 @@ function showPage(nav) {
   if (nav === 'byclass') renderPickClass();
   if (nav === 'bymenu')  renderPickMenu();
   if (nav === 'library') reloadLibrary();
+  if (nav === 'concept') openConcept();
 }
+
+/* ══════ 개념 노트 ══════
+ * 사이드바에는 없다. 반별 관리와 메뉴별 관리의 "개념 노트" 칸에서 들어온다 —
+ * 두 관리 축이 같은 자리에 도착한다는 규칙 그대로다.
+ *
+ * 편집기는 concept-note.js에 따로 있다(2026 lms/admin.js의 개념 체크를 옮긴 2,000줄).
+ * 그 코드는 db와 모달, 토스트를 주입받고, 올릴 강의실 목록을 어드민이 고른 학년도에서 뽑는다.
+ */
+let _conceptBusy = false;
+async function openConcept() {
+  if (_conceptBusy) return;
+  _conceptBusy = true;
+  try {
+    await initConceptNote({ db, ask, toast, esc, getYear: () => state.year });
+  } catch (e) {
+    console.warn('[openConcept]', e);
+    toast('개념 노트를 불러오지 못했습니다. ' + e.message, 'err');
+  } finally {
+    _conceptBusy = false;
+  }
+}
+
+// 콘텐츠와 디자인 — 디자인은 강의별이 아니라 전체 공통 설정이라 강의를 고르지 않아도 열린다.
+$('ceSubBar').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-ce]');
+  if (!b) return;
+  const which = b.dataset.ce;
+  $('ceSubBar').querySelectorAll('.pick').forEach(p => p.classList.toggle('on', p === b));
+  $('cePageContent').hidden = which !== 'content';
+  $('cePageDesign').hidden  = which !== 'design';
+  // 미리보기는 숨어 있는 동안 폭이 0이라 배율이 틀어진다. 보일 때 다시 맞춘다.
+  if (which === 'design' && window.rescalePreview) requestAnimationFrame(window.rescalePreview);
+});
 
 /* ── 공통: 다시 읽기 ──
  * 학생 수와 강의 수를 반마다 따로 묻지 않고 컬렉션을 한 번씩만 읽어 센다. */
@@ -832,7 +887,14 @@ function renderByClassBody() {
       <span class="ctx-sub">학생 ${n}명, 강의 ${lc.total}개 중 ${lc.open}개 공개</span>
     </div>
     <div class="cell-grid">
-      ${MENUS.map(m => `
+      ${MENUS.map(m => m.key === 'concept' ? `
+        <button type="button" class="cell" data-act="open-menu" data-mkey="concept">
+          <span class="cell-top">
+            <span class="cell-ic">${icon(m.icon, 20)}</span>
+            <span class="cell-name">${esc(m.label)}</span>
+          </span>
+          <span class="cell-state">강의 ${lc.total}개</span>
+        </button>` : `
         <button type="button" class="cell" disabled>
           <span class="cell-top">
             <span class="cell-ic">${icon(m.icon, 20)}</span>
@@ -842,6 +904,16 @@ function renderByClassBody() {
         </button>`).join('')}
     </div>`;
 }
+
+/* 메뉴 칸을 누르면 그 메뉴 화면으로 간다. 지금 열리는 것은 개념 노트뿐이고
+   나머지는 disabled라 눌리지 않는다. 두 관리 축이 같은 핸들러를 쓴다. */
+function onMenuCellClick(ev) {
+  const b = ev.target.closest('[data-act="open-menu"]');
+  if (!b) return;
+  showPage(b.dataset.mkey);
+}
+$('byClassBody').addEventListener('click', onMenuCellClick);
+$('byMenuBody').addEventListener('click', onMenuCellClick);
 
 /* ══════ 축 2: 메뉴별 관리 ══════ */
 
@@ -866,6 +938,21 @@ function renderByMenuBody() {
   if (!state.pickedMenu) { box.innerHTML = ''; return; }
   const m = menuByKey(state.pickedMenu);
   const active = activeCourses();
+  /* 개념 노트는 강의실마다 따로 만들지 않는다. 강의를 하나 만들고 올릴 강의실을 고르는
+     구조라(선생님 지시 2026-10-26) 강의실 칸을 늘어놓지 않고 편집 화면 하나로 보낸다. */
+  if (m.key === 'concept') {
+    box.innerHTML = `
+      <div class="cell-grid">
+        <button type="button" class="cell" data-act="open-menu" data-mkey="concept">
+          <span class="cell-top">
+            <span class="cell-ic">${icon(m.icon, 20)}</span>
+            <span class="cell-name">${esc(m.label)}</span>
+          </span>
+          <span class="cell-sub">${state.year}학년도 강의실 ${active.length}개</span>
+        </button>
+      </div>`;
+    return;
+  }
   if (!active.length) { box.innerHTML = '<p class="empty">반이 없습니다.</p>'; return; }
   box.innerHTML = `
     <div class="ctx">
@@ -939,12 +1026,13 @@ async function onLibraryClick(ev) {
   if (!btn) return;
   const ok = await ask({
     title: '강의 삭제',
-    body: `${esc(btn.dataset.name || '이 강의')} 강의를 라이브러리에서 지웁니다. 이미 반에 붙인 연결은 남습니다.`,
+    // 올려 둔 줄을 남기면 학생 화면에 내용 없는 강의가 뜬다. 그래서 함께 지운다(2026-10-26).
+    body: `${esc(btn.dataset.name || '이 강의')} 강의를 지웁니다. 올려 둔 강의실에서도 함께 사라집니다.`,
     danger: true,
   });
   if (!ok) return;
   try {
-    await deleteLibraryLesson(db, btn.dataset.id);
+    await deleteLessonEverywhere(db, btn.dataset.id);
     await reloadLibrary();
   } catch (e) {
     console.warn('[delLesson]', e);

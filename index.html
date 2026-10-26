@@ -176,10 +176,12 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
          어드민에서 보는 메뉴와 학생이 보는 메뉴가 어긋나지 않는다. -->
     <section class="menu-grid" id="menuGrid"></section>
 
-    <section class="panel">
+    <!-- 개념 노트 — 선생님이 이 강의실에 올리고 공개한 강의만 나온다.
+         한 줄을 누르면 수업 화면(lecture.html)이 새 탭으로 열린다. -->
+    <section class="panel" id="conceptPanel">
       <div class="panel-head">
         <span class="panel-ic" data-icon="book-open" data-icon-size="18"></span>
-        <h2 class="panel-title">공개된 강의</h2>
+        <h2 class="panel-title">개념 노트</h2>
       </div>
       <div id="lessonList" class="lesson-list">
         <p class="empty">불러오는 중입니다.</p>
@@ -189,6 +191,6 @@ html.lms-fail:not(.lms-ready) #bootFail{display:flex;position:fixed;inset:0;z-in
   </main>
 </div>
 
-<script type="module" src="index.js?v=20261025k"></script>
+<script type="module" src="index.js?v=20261026a"></script>
 </body>
 </html>
