@@ -90,7 +90,7 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
 }
 
 /* 다크 인트로 슬라이드 — 색 변수 재매핑으로 밝은 규칙을 그대로 어둡게 재사용 */
-.slide-cover, .slide-dive, .slide-objectives, .slide-chosung {
+.slide-cover, .slide-dive, .slide-objectives {
   --ink: var(--dk-fg);
   --text: var(--dk-fg);
   --navy: var(--dk-fg);
@@ -103,7 +103,7 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
   background:
     radial-gradient(120% 120% at 50% 40%, #1a2130 0%, var(--dk-bg) 55%, #0b0d12 100%);
 }
-.slide-cover::after, .slide-dive::after, .slide-objectives::after, .slide-chosung::after {
+.slide-cover::after, .slide-dive::after, .slide-objectives::after {
   content:''; position:absolute; inset:0; z-index:5; pointer-events:none;
   background: radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,0.4) 100%);
 }
@@ -117,7 +117,7 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
   0%{transform:translate(-42%,-8%)} 50%{transform:translate(45%,10%)} 100%{transform:translate(-42%,-8%)}
 }
 /* 인트로 빈칸(초성 등)은 모드와 무관하게 항상 강조색으로 보이게 */
-.slide-cover .blank, .slide-dive .blank, .slide-objectives .blank, .slide-chosung .blank {
+.slide-cover .blank, .slide-dive .blank, .slide-objectives .blank {
   color: var(--dk-accent) !important;
   background: transparent !important;
   cursor: default !important;
@@ -230,10 +230,10 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
    같지만(.slide의 기본 여백), 아래 본문(.obj-list)이 절대 배치라 머리줄만 흐름에 남겨 둘
    이유가 없고 자리를 명시해 두는 편이 다른 슬라이드와 견주기 쉽다.
    이 슬라이드에서 흐름에 남는 것은 없다(.intro-sweep과 .obj-list 둘 다 절대 배치). */
-.slide-objectives .slide-header, .slide-chosung .slide-header {
+.slide-objectives .slide-header {
   position: absolute; top: 40px; left: 80px; z-index: 3; flex-shrink: 0;
 }
-.slide-objectives .obj-list, .slide-chosung .obj-list {
+.slide-objectives .obj-list {
   position: absolute; top: 150px; bottom: 60px; left: 96px; right: 96px;
   display: flex; flex-direction: column; justify-content: center; gap: 0; z-index: 3;
 }
@@ -253,12 +253,11 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
   transform: scaleX(var(--tw-global)); transform-origin: left;
 }
 .obj-text em, .obj-text strong { font-style:normal; color: var(--dk-accent); font-weight: 900; }
-/* 초성 퀴즈: 문단이라 살짝 작게, 초성 빈칸은 밑줄 */
-.slide-chosung .obj-item { align-items: flex-start; }
-/* 크기는 어드민 디자인 탭(초성 퀴즈 그룹)에서 조절한다. 값이 없으면 기존 기본값 그대로. */
-.slide-chosung .obj-text { font-weight: 500; font-size: var(--fs-chosung, 48px); line-height: 1.55; text-align: justify; text-justify: inter-character; }
-.slide-chosung .obj-num { font-size: var(--fs-chosung-num, 110px); }
-.slide-chosung .blank {
+/* 번호 목록의 빈칸({...})은 밑줄로 보여 준다 — 초성 퀴즈처럼 답을 가리는 자리다.
+   2026에는 .slide-chosung 전용 규칙이었는데, 학습 목표와 초성 퀴즈가 번호 목록 섹션
+   하나로 합쳐지면서(2026-10-26) 목록 전체에 걸린다. 크기는 디자인 탭의 번호 목록 그룹에서,
+   글자가 많을 때는 섹션 글자 배율(%)로 줄인다. */
+.slide-objectives .blank {
   border-bottom: 4px solid var(--dk-accent); letter-spacing: .12em; padding: 0 3px 2px;
 }
 
@@ -528,29 +527,10 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
 .fmt-quote .qt-text { font-family: 'Gowun Batang', serif; font-size: var(--fs-qt-text, 60px); line-height: 1.65; color: var(--ink); width: 100%; position: relative; text-align: justify; text-justify: inter-character; }
 .fmt-quote .qt-src { align-self: flex-end; text-align: right; margin-top: 22px; font-size: var(--fs-qt-src, 40px); color: var(--text-sub); font-weight: 600; }
 .fmt-quote.oq-quote .qt-text { font-family: 'Paperlogy', var(--font); font-weight: 700; }
-/* 미션 Check는 개념 Check와 같은 CSS 규칙을 쓰므로, 여기서 크기 변수만 미션 값(-m)으로
-   갈아끼운다. 어드민 디자인 탭의 "미션 Check" 섹션이 이 -m 변수들을 채운다.
-   -m 값이 없으면(예전 설정) 개념 값을 그대로 따라가 화면이 지금과 같다. */
-.slide-mission {
-  --fs-body: var(--fs-body-mission, var(--fs-body));
-  --fs-slide-title: var(--fs-slide-title-m, var(--fs-slide-title));
-  --fs-rows-label:  var(--fs-rows-label-m,  var(--fs-rows-label));
-  --fs-rows-body:   var(--fs-rows-body-m,   var(--fs-rows-body));
-  --fs-tl-year:     var(--fs-tl-year-m,     var(--fs-tl-year));
-  --fs-tlv-memo:    var(--fs-tlv-memo-m,    var(--fs-tlv-memo));
-  --fs-tl-text:     var(--fs-tl-text-m,     var(--fs-tl-text));
-  --fs-cmp-head:    var(--fs-cmp-head-m,    var(--fs-cmp-head));
-  --fs-cmp-body:    var(--fs-cmp-body-m,    var(--fs-cmp-body));
-  --fs-qt-sub:      var(--fs-qt-sub-m,      var(--fs-qt-sub));
-  --fs-qt-text:     var(--fs-qt-text-m,     var(--fs-qt-text));
-  --fs-qt-src:      var(--fs-qt-src-m,      var(--fs-qt-src));
-  --fs-fl-label:    var(--fs-fl-label-m,    var(--fs-fl-label));
-  --fs-fl-text:     var(--fs-fl-text-m,     var(--fs-fl-text));
-  --fs-notice:      var(--fs-notice-m,      var(--fs-notice));
-  --fs-cols-title:  var(--fs-cols-title-m,  var(--fs-cols-title));
-  --fs-cols-head:   var(--fs-cols-head-m,   var(--fs-cols-head));
-  --fs-cols-body:   var(--fs-cols-body-m,   var(--fs-cols-body));
-}
+/* 2026에는 여기에 .slide-mission 규칙이 있었다 — 미션 Check의 글자 크기를 따로 두려고
+   변수 한 벌을 -m 이름으로 복사해 둔 것이다. 섹션을 몇 개든 만들 수 있게 되면서(2026-10-26)
+   섹션마다 변수 한 벌을 여기 더할 수가 없어, 섹션의 글자 배율(%) 한 칸으로 바꿨다.
+   배율이 걸린 섹션의 슬라이드에는 slide-render.js가 계산한 px를 인라인으로 건다. */
 
 /* 본문 양쪽 정렬(오른쪽 끝을 맞춘다). 기본은 개념·미션 모두 왼쪽 정렬이고, 어드민의
    "형식 변경 / 페이지 설정"에서 [양쪽 정렬]을 켠 페이지에만 .align-justify가 붙는다.

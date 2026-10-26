@@ -3,7 +3,7 @@
    똑같이 이 파일을 불러써서, 슬라이드 HTML 생성 로직이 항상 일치하도록 한다.
    ════════════════════════════════════════════════════════ */
 (function (global) {
-  console.log('[SlideRender] v20261001a loaded');
+  console.log('[SlideRender] v20261026a loaded');
 
   // 스페이스를 2칸 이상 연달아 쓰면 브라우저가 하나로 줄여버리므로, 짝수 번째
   // 스페이스를 &nbsp;로 바꿔 타이핑한 칸 수 그대로 보이게 한다(홀수 번째는 일반
@@ -265,22 +265,24 @@
       </div>
     `;
   }
-  function objectivesHTML(lesson) { return numberedListHTML(lesson.objectives, 'Dive into History', '학습 목표'); }
-  function chosungHTML(slide, lesson) {
-    return numberedListHTML(slide.items, 'Dive into History', '지난 수업 시간에는?', (slide.numOffset || 0) + 1);
+  /* 번호 목록 슬라이드(학습 목표, 초성 퀴즈). 배지와 제목은 섹션이 들고 있는 값을 쓴다 —
+     2026에는 'Dive into History', '학습 목표', '지난 수업 시간에는?'이 코드에 박혀 있어서
+     역사 수업 말고는 쓸 수가 없었다(선생님 지시 2026-10-26, 범용화). */
+  function listHTML(slide) {
+    return numberedListHTML(slide.items || [], slide.badge || '', slide.title || '', (slide.numOffset || 0) + 1);
   }
 
   /* 초성 퀴즈 문항이 많으면 한 화면(약 8줄)을 넘기 전에 다음 페이지로 넘긴다.
      글자수로 줄바꿈 줄 수를 어림잡는 방식은 실제 폭·폰트와 안 맞아 문항 하나가 이미
      8줄로 잡혀 "한 줄짜리 문항도 페이지 하나를 통째로 차지"하는 문제가 있었다. 대신
-     실제 프로덕션과 똑같은 DOM(.slide-chosung .obj-item .obj-text)을 화면 밖에
+     실제 프로덕션과 똑같은 DOM(.slide-objectives .obj-item .obj-text)을 화면 밖에
      그대로 만들어 각 문항을 진짜로 렌더해보고 줄바꿈 줄 수를 측정한다 — 폭·폰트가
      나중에 바뀌어도 이 숫자가 항상 실제와 일치한다. */
   let _chosungMeasureP = null;
   function ensureChosungMeasureP() {
     if (_chosungMeasureP) return _chosungMeasureP;
     const wrap = document.createElement('div');
-    wrap.className = 'slide slide-chosung';
+    wrap.className = 'slide slide-objectives';
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1920px;height:1080px;visibility:hidden;pointer-events:none;';
     const list = document.createElement('div');
     list.className = 'obj-list';
@@ -299,24 +301,31 @@
     _chosungMeasureP = p;
     return p;
   }
-  function measureChosungLines(text) {
+  function measureChosungLines(text, scale) {
     // document가 없는 극히 예외적인 상황(테스트 등) 대비 안전장치 — 글자수로 대략 추정.
     if (typeof document === 'undefined') {
       const len = String(text || '').replace(/[{}]/g, '').length;
       return Math.max(1, Math.ceil(len / 28));
     }
     const p = ensureChosungMeasureP();
+    /* 섹션 글자 배율이 걸려 있으면 그 크기로 재야 쪽 나눔이 실제 화면과 같다.
+       배율만 걸고 기본 크기로 재면 한 장에 들어갈 항목 수가 어긋난다. */
+    const base = _lastFonts && _lastFonts.obj != null ? _lastFonts.obj : null;
+    p.style.fontSize = (scale && scale !== 100 && base) ? Math.round(base * scale / 100) + 'px' : '';
     p.innerHTML = parseText(text || '');
     const lineHeight = parseFloat(getComputedStyle(p).lineHeight) || 74;
     const h = p.getBoundingClientRect().height;
     return Math.max(1, Math.round(h / lineHeight));
   }
-  function buildChosungSlides(items) {
+  /* 번호 목록 섹션을 한 화면(약 8줄)씩 끊어 여러 장으로 만든다.
+     2026에는 초성 퀴즈 전용이었는데(buildChosungSlides), 학습 목표도 같은 모양이라
+     번호 목록 섹션 하나로 합쳤다. 항목이 적으면 그대로 한 장이다. */
+  function buildListSlides(sec) {
     const MAX_LINES = 8;
     const pages = [];
     let cur = [], curLines = 0;
-    (items || []).forEach(it => {
-      const ln = measureChosungLines(it);
+    (sec.items || []).forEach(it => {
+      const ln = measureChosungLines(it, sec.fontScale);
       if (cur.length && curLines + ln > MAX_LINES) { pages.push(cur); cur = []; curLines = 0; }
       cur.push(it);
       curLines += ln;
@@ -324,7 +333,9 @@
     if (cur.length) pages.push(cur);
     let offset = 0;
     return pages.map(group => {
-      const s = { type: 'chosung', items: group, numOffset: offset };
+      const s = { type: 'list', items: group, numOffset: offset,
+        sectionId: sec.id, badge: sec.badge || '', title: sec.title || '' };
+      if (sec.fontScale != null && sec.fontScale !== 100) s.fontScale = sec.fontScale;
       offset += group.length;
       return s;
     });
@@ -777,21 +788,22 @@
     return wrapWithImg(`${header}${rows}${colsBlock}`, slide, lesson);
   }
 
-  function conceptHTML(slide, lesson) { return checkStyleHTML(slide, lesson, '개념 Check'); }
-  function missionHTML(slide, lesson) { return checkStyleHTML(slide, lesson, '미션 Check'); }
+  /* 슬라이드 묶음 섹션의 한 장. 2026에는 개념과 미션 두 함수가 배지 글자만 다르게 같은
+     코드를 불렀다. 섹션을 몇 개든 만들 수 있게 됐으므로 배지를 슬라이드에서 받는다. */
+  function blockHTML(slide, lesson) { return checkStyleHTML(slide, lesson, slide.badge || ''); }
 
-  function diveHTML(slide, lesson) {
-    // 질문 앞뒤를 따옴표로 감싸 사료 인용처럼. 질문 아래 고정 안내 문구를 붙인다.
-    const q = slide.guide || slide.title || '';
+  /* 여는 질문 슬라이드. 질문 앞뒤를 따옴표로 감싸 인용처럼 크게 띄운다.
+     배지, 작은 라벨, 아래 안내 문구를 전부 섹션에서 받는다(2026에는 셋 다 코드에 박혀 있었다). */
+  function openingHTML(slide) {
     return `
       <div class="intro-sweep"></div>
       <div class="dive-head">
-        <span class="check-badge">Dive into History</span>
-        <span class="dive-kicker">Opening Question</span>
+        ${slide.badge ? `<span class="check-badge">${preserveSpaces(slide.badge)}</span>` : ''}
+        ${slide.kicker ? `<span class="dive-kicker">${preserveSpaces(slide.kicker)}</span>` : ''}
       </div>
       <div class="dive-body">
-        <p class="dive-q"><span class="qt-open">&ldquo;</span>${renderWithBreaks(q)}<span class="qt-close">&rdquo;</span></p>
-        <p class="dive-guide">질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 보세요.</p>
+        <p class="dive-q"><span class="qt-open">&ldquo;</span>${renderWithBreaks(slide.question || '')}<span class="qt-close">&rdquo;</span></p>
+        ${slide.guide ? `<p class="dive-guide">${renderWithBreaks(slide.guide)}</p>` : ''}
       </div>
     `;
   }
@@ -824,11 +836,12 @@
     `;
   }
 
-  function thinkHTML(slide, lesson) {
+  /* 학생이 답을 쓰는 질문 슬라이드. 배지는 섹션에서 받고, 제목을 비우면 강 번호를 쓴다. */
+  function promptHTML(slide, lesson) {
     return `
       <div class="slide-header">
-        <span class="check-badge think">생각 Check</span>
-        <h2 class="slide-title">${lessonNumTag(lesson.num)}</h2>
+        ${slide.badge ? `<span class="check-badge think">${preserveSpaces(slide.badge)}</span>` : ''}
+        <h2 class="slide-title">${preserveSpaces(slide.title || lessonNumTag(lesson.num))}</h2>
       </div>
       <p class="think-question">${linesWithBullets(slide.question, s => boldOnly(preserveSpaces(s)))}</p>
       <div class="think-body">
@@ -859,7 +872,8 @@
 
   /* contentLines(구분선/행/이미지 배열)를 slide 배열로 변환. 개념 체크·미션 체크가
      같은 구조를 쓰므로 type만 다르게 해서 공유한다. */
-  function buildCheckSlides(lines, type) {
+  function buildCheckSlides(lines, sec) {
+    const type = 'block';
     const raw = [];
     let current = null;
     (lines || []).forEach(line => {
@@ -929,6 +943,14 @@
         current.rows.push({ label: line.label, items: line.items });
       }
     });
+    /* 섹션이 들고 있는 값(배지, 글자 배율, 복습 포함)을 슬라이드마다 복사한다.
+       renderSlideHTML은 슬라이드 하나만 받아 그리므로 섹션을 되짚을 방법이 없다. */
+    if (sec) raw.forEach(s => {
+      if (s.badge == null && sec.badge) s.badge = sec.badge;
+      if (sec.fontScale != null && sec.fontScale !== 100) s.fontScale = sec.fontScale;
+      s.sectionId = sec.id;
+      s.review = sec.review === true;
+    });
     // 내용이 비어 있는 슬라이드(제목만 있고 본문이 없는 사료·행 등)는 렌더하지 않는다.
     return raw.filter(s => {
       if (s.type === 'image' || s.type === 'fullimage' || s.type === 'video') return true;
@@ -945,27 +967,114 @@
     });
   }
 
-  /* 어드민 콘텐츠 편집 데이터({lesson, dive, contentLines, mission, think})를 실제
-     화면이 쓰는 slides 배열 형태로 변환한다. 어드민 미리보기와 실제 학생 페이지
-     (lesson.html)가 동일한 이 함수를 써서 두 화면이 항상 일치하도록 한다. */
-  function buildSlidesFromData(d) {
-    // 표지 → [Dive into History: 초성 퀴즈 → Opening Question → 학습 목표] → 개념 → 미션 → 생각
-    const slides = [{ type: 'cover' }];
-    // opening{question,guide}은 dive{title,guide}로 바뀌기 전 필드명. 예전 강의도 보이게 대비.
+  /* ══════ 섹션 (2026-10-26 범용화) ══════
+   *
+   * 2026 구조는 표지, Dive, 개념, 미션, 생각 다섯 칸이 코드에 못 박혀 있었다. 역사 수업
+   * 한 가지에만 맞는 틀이라 선생님이 메뉴를 직접 짤 수 없었다(선생님 지시 2026-10-26).
+   * 이제 강의 내용은 섹션 배열이고, 선생님이 섹션을 더하고 빼고 이름을 바꾸고 순서를 바꾼다.
+   *
+   *   content.sections = [{ id, type, title, badge, enabled, ... }]
+   *
+   * "개념"과 "미션"은 더 이상 특별한 것이 아니라 slides 섹션 두 개의 이름일 뿐이다.
+   * 국어면 "작품 읽기 / 활동 / 감상", 과학이면 "원리 / 실험 / 정리"로 짜면 된다.
+   *
+   * 섹션 종류는 화면에 그려지는 방식이 실제로 다른 것만 둔다. 더 늘리려면 여기에 한 줄,
+   * buildSlidesFromData에 한 갈래, renderSlideHTML에 한 갈래를 더한다.
+   */
+  const SECTION_TYPES = [
+    { type: 'cover',      name: '표지',        once: true, fixed: true,
+      desc: '강 번호, 제목, 단원, 교과서 쪽수' },
+    { type: 'list',       name: '번호 목록',   badge: '',
+      desc: '학습 목표, 지난 시간 복습처럼 번호가 붙는 목록' },
+    { type: 'opening',    name: '여는 질문',   badge: '',
+      desc: '큰 따옴표로 감싸 크게 띄우는 질문 하나' },
+    { type: 'slides',     name: '슬라이드',    badge: '',
+      desc: '본문. 행 나열, 이미지, 영상, 인용, 연표, 비교, 단계' },
+    { type: 'prompt',     name: '질문',        badge: '',
+      desc: '학생이 답을 쓰는 질문' },
+  ];
+  const sectionType = t => SECTION_TYPES.find(s => s.type === t) || null;
+
+  let _secSeq = 0;
+  function newSectionId() { return 's' + Date.now().toString(36) + (_secSeq++).toString(36); }
+
+  function blankSection(type, title) {
+    const spec = sectionType(type);
+    const s = { id: newSectionId(), type, title: title || (spec ? spec.name : type), badge: '', enabled: true };
+    if (type === 'list')    { s.items = []; s.fontScale = 100; }
+    if (type === 'opening') { s.question = ''; s.guide = ''; s.kicker = ''; }
+    if (type === 'slides')  { s.lines = []; s.review = false; s.fontScale = 100; }
+    if (type === 'prompt')  { s.question = ''; s.guide = ''; }
+    return s;
+  }
+
+  /* 2026 구조({dive, contentLines, mission, think})를 섹션 배열로 옮긴다.
+     2027에 아직 실제 강의 내용이 없어서 옮길 데이터는 사실상 없지만, 10-25에 만들어 본
+     강의가 남아 있을 수 있고 옛 모양으로 저장된 문서가 열리면 화면이 비기 때문에 둔다.
+     원본 칸은 지우지 않는다 — 저장하기 전까지는 되돌릴 수 있어야 한다. */
+  function migrateToSections(d) {
+    if (!d || Array.isArray(d.sections)) return d;
+    const out = [];
+    out.push(Object.assign(blankSection('cover'), { title: '표지' }));
     const dive = d.dive || (d.opening ? { title: d.opening.question, guide: d.opening.guide } : null);
-    // 1. 초성 퀴즈 — 토글 ON + 항목 있을 때만
-    if (d.dive && d.dive.chosungEnabled && d.dive.chosungItems && d.dive.chosungItems.length) {
-      slides.push(...buildChosungSlides(d.dive.chosungItems));
+    if (d.dive && d.dive.chosungEnabled && (d.dive.chosungItems || []).length) {
+      out.push(Object.assign(blankSection('list'), {
+        title: '지난 시간', badge: 'Dive into History', items: d.dive.chosungItems.slice(),
+      }));
     }
-    // 2. Opening Question — 내용 있고 토글 ON일 때만(openingEnabled 없으면 기본 ON)
-    if (dive && (dive.title || dive.guide || dive.img != null) && dive.openingEnabled !== false) {
-      slides.push({ type: 'dive', title: dive.title || '', guide: dive.guide || '', headerTitle: dive.headerTitle || '', img: dive.img != null ? dive.img : null, imgCaption: dive.imgCaption || '', imgLayout: dive.imgLayout || 'right', guideBox: dive.guideBox !== false });
+    if (dive && (dive.title || dive.guide)) {
+      out.push(Object.assign(blankSection('opening'), {
+        title: '여는 질문', badge: 'Dive into History', kicker: 'Opening Question',
+        question: dive.guide || dive.title || '',
+        guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 보세요.',
+        enabled: dive.openingEnabled !== false,
+      }));
     }
-    // 3. 학습 목표 — 항상
-    slides.push({ type: 'objectives' });
-    slides.push(...buildCheckSlides(d.contentLines, 'concept'));
-    if (d.mission) slides.push(...buildCheckSlides(d.mission.contentLines, 'mission'));
-    slides.push({ type: 'think', question: d.think.question, guide: d.think.guide });
+    out.push(Object.assign(blankSection('list'), {
+      title: '학습 목표', badge: 'Dive into History',
+      items: ((d.lesson && d.lesson.objectives) || []).slice(),
+    }));
+    out.push(Object.assign(blankSection('slides'), {
+      title: '개념', badge: '개념 Check', lines: (d.contentLines || []).slice(), review: true,
+    }));
+    if (d.mission && (d.mission.contentLines || []).length) {
+      out.push(Object.assign(blankSection('slides'), {
+        title: '미션', badge: '미션 Check', lines: d.mission.contentLines.slice(), review: false,
+      }));
+    }
+    if (d.think && (d.think.question || d.think.guide)) {
+      out.push(Object.assign(blankSection('prompt'), {
+        title: '오늘의 질문', badge: '오늘의 질문',
+        question: d.think.question || '', guide: d.think.guide || '',
+      }));
+    }
+    d.sections = out;
+    return d;
+  }
+
+  /* 섹션 배열을 실제 화면이 쓰는 slides 배열로 편다. 어드민 미리보기와 학생 수업 화면이
+     이 함수 하나를 같이 써서 두 화면이 언제나 일치한다. */
+  function buildSlidesFromData(d) {
+    if (!d) return [];
+    if (!Array.isArray(d.sections)) migrateToSections(d);
+    const slides = [];
+    (d.sections || []).forEach(sec => {
+      if (sec.enabled === false) return;
+      const tag = { sectionId: sec.id, badge: sec.badge || '', title: sec.title || '' };
+      if (sec.type === 'cover') {
+        slides.push({ type: 'cover', sectionId: sec.id });
+      } else if (sec.type === 'list') {
+        if ((sec.items || []).length) slides.push(...buildListSlides(sec));
+      } else if (sec.type === 'opening') {
+        if (sec.question) slides.push(Object.assign({ type: 'opening', kicker: sec.kicker || '',
+          question: sec.question, guide: sec.guide || '' }, tag));
+      } else if (sec.type === 'slides') {
+        slides.push(...buildCheckSlides(sec.lines, sec));
+      } else if (sec.type === 'prompt') {
+        if (sec.question || sec.guide) slides.push(Object.assign({ type: 'prompt',
+          question: sec.question || '', guide: sec.guide || '' }, tag));
+      }
+    });
     return slides;
   }
 
@@ -987,23 +1096,19 @@
   function renderSlideHTML(slide, lesson) {
     let extraClass = '';
     let inner = '';
+    /* CSS 클래스 이름은 2026 것을 그대로 쓴다(slide-objectives, slide-dive,
+       slide-think). slide-style.css를 건드리지 않으려는 것이고, 뜻은 섹션 종류와 같다. */
     if (slide.type === 'cover') {
       extraClass = ' slide-cover';
       inner = coverHTML(lesson);
-    } else if (slide.type === 'objectives') {
+    } else if (slide.type === 'list') {
       extraClass = ' slide-objectives';
-      inner = objectivesHTML(lesson);
-    } else if (slide.type === 'dive') {
-      extraClass = ' slide-dive'; // 다크 무빙 포스터 톤(인트로 4연작)
-      inner = diveHTML(slide, lesson);
-    } else if (slide.type === 'chosung') {
-      extraClass = ' slide-chosung';
-      inner = chosungHTML(slide, lesson);
-    } else if (slide.type === 'concept') {
-      inner = conceptHTML(slide, lesson);
-    } else if (slide.type === 'mission') {
-      extraClass = ' slide-mission';
-      inner = missionHTML(slide, lesson);
+      inner = listHTML(slide);
+    } else if (slide.type === 'opening') {
+      extraClass = ' slide-dive'; // 다크 무빙 포스터 톤
+      inner = openingHTML(slide);
+    } else if (slide.type === 'block') {
+      inner = blockHTML(slide, lesson);
     } else if (slide.type === 'image') {
       inner = imageHTML(slide, lesson);
     } else if (slide.type === 'fullimage') {
@@ -1027,9 +1132,9 @@
         // start= 를 붙이면 유튜브 주소에 적힌 시작 시간부터 재생된다(없으면 0이라 붙이지 않는다).
         ? `<iframe class="video-frame" data-vsrc="https://www.youtube-nocookie.com/embed/${slide.videoId}?rel=0&modestbranding=1${slide.videoStart ? '&start=' + slide.videoStart : ''}" src="" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
         : `<div class="slide-media-empty" style="color:#fff">영상 URL 없음</div>`;
-    } else if (slide.type === 'think') {
+    } else if (slide.type === 'prompt') {
       extraClass = ' slide-think';
-      inner = thinkHTML(slide, lesson);
+      inner = promptHTML(slide, lesson);
     }
     // 페이지별 본문 정렬. 기본은 왼쪽이고, 어드민에서 켠 페이지에만 클래스가 붙는다.
     // justify는 행 나열·안내문(오른쪽 끝 맞춤), center는 비교표(가운데)에 쓴다.
@@ -1050,6 +1155,18 @@
       (PAGE_FS_VARS[slide.format || 'rows'] || []).forEach(v => decls.push(`${v}:${slide.fontSize}px`));
     }
     if (slide.colsTitleSize) decls.push(`--fs-cols-title:${slide.colsTitleSize}px`);
+    /* 섹션 글자 배율 — 2026에는 미션 Check만 글자 크기를 따로 둘 수 있었다. 그러려고
+       CSS에 -m 변수 한 벌(.slide-mission)을 박아 뒀는데, 섹션을 몇 개든 만들 수 있게 된
+       지금은 그 방식이 안 된다(섹션마다 변수 한 벌을 CSS에 더할 수는 없다).
+       섹션마다 배율(%) 한 칸으로 바꾸고, 그 섹션 슬라이드에만 계산한 px를 인라인으로 건다.
+       100이면 아무것도 걸지 않으므로 기본 모양은 그대로다. */
+    if (slide.fontScale != null && slide.fontScale !== 100 && _lastFonts) {
+      const k = slide.fontScale / 100;
+      SCALABLE_KEYS.forEach(key => {
+        const v = _lastFonts[key];
+        if (v != null && FONT_VARS[key]) decls.push(`${FONT_VARS[key]}:${Math.round(v * k)}px`);
+      });
+    }
     if (decls.length) fsStyle = ` style="${decls.join(';')}"`;
     return `<div class="slide${extraClass}"${fsStyle}>${inner}</div>`;
   }
@@ -1165,22 +1282,20 @@
         { key: 'coverNum',     label: '강 숫자',      v: '--fs-cover-num',    max: 260 },
       ]},
     ]},
-    { name: 'Dive', groups: [
-      { name: 'Opening Question', rows: [
+    { name: '여는 질문', groups: [
+      { name: '여는 질문', rows: [
         { key: 'diveQ',      label: '질문',       v: '--fs-dive-q' },
         { key: 'diveGuide',  label: '안내 문구',  v: '--fs-dive-guide' },
         { key: 'diveKicker', label: '라벨',       v: '--fs-dive-kicker' },
       ]},
-      { name: '학습 목표', rows: [
+    ]},
+    { name: '번호 목록', groups: [
+      { name: '번호 목록', rows: [
         { key: 'obj',    label: '항목', v: '--fs-obj' },
         { key: 'objNum', label: '번호', v: '--fs-obj-num', max: 240 },
       ]},
-      { name: '초성 퀴즈', rows: [
-        { key: 'chosung',    label: '항목', v: '--fs-chosung' },
-        { key: 'chosungNum', label: '번호', v: '--fs-chosung-num', max: 240 },
-      ]},
     ]},
-    { name: '개념 Check', groups: [
+    { name: '슬라이드', groups: [
       { name: '공통', rows: [
         { key: 'title', label: '슬라이드 제목', v: '--fs-slide-title' },
       ]},
@@ -1215,43 +1330,12 @@
         { key: 'colsBody',  label: '내용',   v: '--fs-cols-body' },
       ]},
     ]},
-    { name: '미션 Check', groups: [
-      { name: '공통', rows: [
-        { key: 'mTitle', label: '슬라이드 제목', v: '--fs-slide-title-m' },
-      ]},
-      { name: '행 나열', rows: [
-        { key: 'mRowsLabel', label: '행 라벨', v: '--fs-rows-label-m' },
-        { key: 'mRowsBody',  label: '본문',    v: '--fs-rows-body-m' },
-      ]},
-      { name: '연표 (가로/세로)', rows: [
-        { key: 'mTlYear',  label: '연도',      v: '--fs-tl-year-m' },
-        { key: 'mTlvMemo', label: '세로 라벨', v: '--fs-tlv-memo-m' },
-        { key: 'mTlText',  label: '내용',      v: '--fs-tl-text-m' },
-      ]},
-      { name: '비교표', rows: [
-        { key: 'mCmpHead', label: '머리', v: '--fs-cmp-head-m' },
-        { key: 'mCmpBody', label: '내용', v: '--fs-cmp-body-m' },
-      ]},
-      { name: '사료 인용', rows: [
-        { key: 'mQtSub',  label: '소제목', v: '--fs-qt-sub-m' },
-        { key: 'mQtText', label: '본문',   v: '--fs-qt-text-m' },
-        { key: 'mQtSrc',  label: '출처',   v: '--fs-qt-src-m' },
-      ]},
-      { name: '플로우 (가로/세로)', rows: [
-        { key: 'mFlLabel', label: '단계 라벨', v: '--fs-fl-label-m' },
-        { key: 'mFlText',  label: '내용',      v: '--fs-fl-text-m' },
-      ]},
-      { name: '안내 (OT/수행)', rows: [
-        { key: 'mNotice', label: '본문', v: '--fs-notice-m' },
-      ]},
-      { name: '중앙 나열', rows: [
-        { key: 'mColsTitle', label: '대제목', v: '--fs-cols-title-m' },
-        { key: 'mColsHead',  label: '소제목', v: '--fs-cols-head-m' },
-        { key: 'mColsBody',  label: '내용',   v: '--fs-cols-body-m' },
-      ]},
-    ]},
-    { name: '생각 Check', groups: [
-      { name: '생각 Check', rows: [
+    /* 2026에는 여기에 "미션 Check" 한 벌(m*로 시작하는 키 19개)이 통째로 더 있었다.
+       개념과 미션의 글자 크기를 따로 두려고 CSS 변수를 -m으로 복사해 둔 것인데,
+       섹션을 몇 개든 만들 수 있게 된 지금은 섹션마다 한 벌씩 늘어나 감당이 안 된다.
+       섹션의 글자 배율(%) 한 칸으로 바꿨다(renderSlideHTML의 SCALABLE_KEYS). */
+    { name: '질문', groups: [
+      { name: '질문', rows: [
         { key: 'think',      label: '질문',      v: '--fs-question' },
         { key: 'thinkGuide', label: '안내 문구', v: '--fs-think-guide' },
       ]},
@@ -1278,11 +1362,17 @@
     const f = Object.assign({}, fonts || {});
     const label = f.label != null ? f.label : 70;
     const body  = f.body  != null ? f.body  : 60;
-    const mBody = f.bodyMission != null ? f.bodyMission : body;
     const put = (k, v) => { if (f[k] == null) f[k] = v; };
 
+    /* 슬라이드 글자 크기는 디자인 문서에서 오는데, 그 문서가 아직 없거나 칸이 비어 있으면
+       slide-style.css의 :root 기본값으로 떨어진다. 그 값들은 옛 화면에서 쓰던 작은 수치라
+       (--fs-obj가 17px이다) 슬라이드가 깨알같이 나온다. 2026에는 디자인 문서가 늘 있어서
+       드러나지 않던 구멍인데, 번호 목록 섹션을 누구나 만들 수 있게 되면서 눈에 띈다.
+       렌더러가 스스로 제 기본값을 채워 어떤 경우에도 읽을 만한 크기가 되게 한다. */
+    put('title', 40); put('obj', 70); put('think', 80); put('thinkGuide', 50);
     put('objNum', 130);
-    put('chosung', 48); put('chosungNum', 110);   // slide-style.css의 기본값과 같은 값
+    // 2026에는 초성 퀴즈 전용 크기(chosung 48, chosungNum 110)가 따로 있었다. 번호 목록
+    // 섹션 하나로 합쳐지면서 obj/objNum 한 벌만 쓰고, 글자가 많으면 섹션 배율로 줄인다.
     // 개념 — 예전엔 라벨 계열은 전부 --fs-label, 본문 계열은 전부 --fs-body를 썼다.
     put('rowsLabel', label);        put('rowsBody', body);
     put('tlYear', Math.round(label * 1.1)); put('tlText', body);   // 연표 연도는 라벨의 1.1배였다
@@ -1292,22 +1382,24 @@
     put('notice', body);
     put('qtSub', 40); put('qtText', 60); put('qtSrc', 40);
     put('colsTitle', label); put('colsHead', body); put('colsBody', body);
-    // 미션 — 본문 계열만 bodyMission을 따랐고 나머지는 개념과 같은 값을 썼다.
-    put('mTitle', f.title != null ? f.title : 40);
-    put('mRowsLabel', label);       put('mRowsBody', mBody);
-    put('mTlYear', Math.round(label * 1.1)); put('mTlText', mBody);
-    put('mTlvMemo', f.mTlYear);
-    put('mCmpHead', label);         put('mCmpBody', mBody);
-    put('mFlLabel', label);         put('mFlText', mBody);
-    put('mNotice', mBody);
-    put('mQtSub', f.qtSub); put('mQtText', f.qtText); put('mQtSrc', f.qtSrc);
-    put('mColsTitle', f.colsTitle); put('mColsHead', f.colsHead); put('mColsBody', f.colsBody);
+    // 미션 전용 한 벌(m*)은 섹션 글자 배율로 바뀌어 없앴다(2026-10-26).
     return f;
   }
+
+  /* 섹션 배율이 걸린 슬라이드에서 다시 계산할 본문 글자 변수들.
+     곁다리(표지, 여는 질문, 번호 목록, 배지)는 섹션 종류가 하나뿐이라 배율을 걸지 않는다. */
+  const SCALABLE_KEYS = ['title', 'rowsLabel', 'rowsBody', 'tlYear', 'tlvMemo', 'tlText',
+    'cmpHead', 'cmpBody', 'qtSub', 'qtText', 'qtSrc', 'flLabel', 'flText', 'notice',
+    'colsTitle', 'colsHead', 'colsBody', 'obj', 'objNum'];
+
+  /* 마지막으로 건 글꼴 값. renderSlideHTML은 슬라이드 하나만 받아서 디자인 설정을 모르는데,
+     섹션 배율을 px로 계산하려면 기준값이 필요하다. */
+  let _lastFonts = null;
 
   /* fonts 객체를 CSS 변수로 el(문서 루트 또는 미리보기 컨테이너)에 건다. */
   function applyFontVars(el, fonts) {
     const f = normalizeFonts(fonts);
+    _lastFonts = f;
     FONT_KEYS.forEach(k => { if (f[k] != null) el.style.setProperty(FONT_VARS[k], f[k] + 'px'); });
     // 예전 변수도 남겨 둔다 — 혹시 스펙에 안 올라온 규칙이 있어도 예전처럼 동작하도록.
     if (f.label != null) el.style.setProperty('--fs-label', f.label + 'px');
@@ -1316,6 +1408,7 @@
   }
 
   global.SlideRender = { parseText, renderWithBreaks, parseItemText, renderSlideHTML, wireLightbox, closeLightbox, buildSlidesFromData, buildCheckSlides, circledGroups, lessonNumTag, lessonTitleLabel, ensureSlideFonts,
+    SECTION_TYPES, sectionType, blankSection, newSectionId, migrateToSections,
     FONT_SPEC, FONT_KEYS, FONT_VARS, normalizeFonts, applyFontVars };
 
 })(window);

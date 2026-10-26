@@ -567,3 +567,21 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .concept-embed .cbtn svg{width:16px;height:16px;display:block}
 /* 숫자 단위는 칸 오른쪽에 보통 크기로(CLAUDE.md 입력 칸 규칙). */
 .concept-embed .fs-unit{font-size:.86rem;color:var(--ctext);margin-left:2px}
+
+/* ── 섹션 (2026-10-26 범용화) ──
+   탭 한 줄이 섹션 목록이고, 그 아래가 고른 섹션의 설정과 내용이다. */
+.concept-embed .sub-tab.off{opacity:.45}
+.concept-embed .sub-tab-add{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px}
+.concept-embed .sub-tab-add svg{width:15px;height:15px;display:block}
+/* 섹션 설정 줄 — 왼쪽은 이름과 배지 같은 칸, 오른쪽은 켜기와 순서와 삭제. */
+.concept-embed .sec-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:14px 18px;margin-bottom:12px;border:1px solid var(--cborder);border-radius:10px;background:var(--cwhite);
+}
+.concept-embed .sec-fields{flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px}
+.concept-embed .sec-fields .field-inline{margin:0}
+.concept-embed .sec-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;padding-top:4px}
+.concept-embed .sec-check{display:inline-flex;align-items:center;gap:5px;font-size:.84rem;font-weight:600;color:var(--ctext);cursor:pointer;white-space:nowrap}
+.concept-embed .sec-check input{width:15px;height:15px;margin:0;accent-color:var(--cnavy);cursor:pointer}
+.concept-embed .sec-num{max-width:76px;text-align:right}
+.concept-embed .sec-unit{font-size:.86rem;color:var(--ctext);margin-left:6px}

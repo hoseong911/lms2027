@@ -502,7 +502,9 @@ async function init() {
     if (!attached) { showError('이 반에 올라온 강의가 아닙니다.'); return; }
   }
   const content = lessonDoc.content;
-  if (!content || !content.lesson || !Array.isArray(content.contentLines)) {
+  // 섹션 구조(2026-10-26 이후)이거나 2026 모양(contentLines)이면 그린다.
+  // 2026 모양은 buildSlidesFromData가 섹션으로 옮겨서 그려 준다.
+  if (!content || !content.lesson || !(Array.isArray(content.sections) || Array.isArray(content.contentLines))) {
     showError('아직 등록된 콘텐츠가 없습니다.');
     return;
   }
@@ -523,7 +525,9 @@ async function init() {
   const modeParam  = new URLSearchParams(location.search).get('mode');
   const reviewMode = modeParam === 'typing';
   let rawSlides = SlideRender.buildSlidesFromData(content);
-  if (reviewMode) rawSlides = rawSlides.filter(s => s.type === 'concept');
+  // 복습(타이핑) 모드는 "복습"을 켜 둔 섹션의 슬라이드만 보여 준다. 2026에는 개념 체크로
+  // 못 박혀 있었는데, 섹션을 몇 개든 만들 수 있게 되면서 섹션마다 켜고 끈다(2026-10-26).
+  if (reviewMode) rawSlides = rawSlides.filter(s => s.review === true);
 
   // 실제 렌더링 높이 기준 자동 분할: 숨겨진 ruler에서 overflow 여부 측정
   const ruler = document.createElement('div');

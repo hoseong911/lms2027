@@ -42,7 +42,7 @@ export const COLL = {
 export const MENUS = [
   { key: 'concept',  label: '개념 노트',   icon: 'book-open' },
   { key: 'mission',  label: '미션 체크',   icon: 'layout-grid' },
-  { key: 'think',    label: '생각 체크',   icon: 'feather' },
+  { key: 'think',    label: '오늘의 질문', icon: 'feather' },
   { key: 'grade',    label: '성적',        icon: 'clipboard-list' },
   { key: 'contents', label: '각종 콘텐츠', icon: 'compass' },
   { key: 'xp',       label: '경험치',      icon: 'trophy' },
