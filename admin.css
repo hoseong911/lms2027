@@ -585,3 +585,45 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .concept-embed .sec-check input{width:15px;height:15px;margin:0;accent-color:var(--cnavy);cursor:pointer}
 .concept-embed .sec-num{max-width:76px;text-align:right}
 .concept-embed .sec-unit{font-size:.86rem;color:var(--ctext);margin-left:6px}
+
+/* ══════ 미션 체크 ══════ (2026-10-26)
+   줄 모양은 강의 라이브러리(.lib-row)와 같다. 오른쪽에 올린 강의실 이름과
+   공개 스위치, 그리고 앱 어드민을 여는 톱니가 선다. */
+.mi-row{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;
+}
+.mi-row:last-child{margin-bottom:0}
+.mi-no{
+  flex-shrink:0;min-width:48px;padding:4px 8px;border-radius:7px;
+  background:var(--primary);color:#fff;font-size:12px;font-weight:800;text-align:center;
+}
+.mi-no.off{background:var(--border);color:var(--sub)}
+.mi-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.mi-title{font-size:14px;font-weight:600;word-break:keep-all}
+.mi-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--sub)}
+.mi-key{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--faint)}
+.mi-acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
+/* 공개 스위치 — 알약 모양 테두리를 쓰지 않는 규칙은 버튼과 배지에 대한 것이고,
+   스위치는 켜고 끄는 물건이라 그 모양이 곧 뜻이다. 개념 노트의 .th-toggle과 같다. */
+.mi-sw{
+  width:38px;height:21px;border:0;border-radius:11px;background:var(--border);
+  position:relative;cursor:pointer;flex-shrink:0;transition:background .15s;
+}
+.mi-sw::after{
+  content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;
+  background:#fff;transition:transform .15s;
+}
+.mi-sw.on{background:var(--primary)}
+.mi-sw.on::after{transform:translateX(17px)}
+
+/* ══════ 앱 어드민 오버레이 ══════ (2026 lms/admin.css에서 옮김)
+   본문 자리를 통째로 덮는다. 바 높이는 앱 어드민의 자체 헤더(54px)와 맞춰
+   경계선 없이 이어 붙는다. */
+#appAdminOverlay{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--surface)}
+#appAdminOverlay[hidden]{display:none}
+.app-admin-bar{
+  height:54px;flex-shrink:0;display:flex;align-items:center;
+  padding:0 20px;background:var(--canvas);
+}
+#appAdminFrame{flex:1;width:100%;min-height:0;border:0;background:#fff}

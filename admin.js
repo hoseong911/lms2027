@@ -35,7 +35,10 @@ import {
   createCourses, updateCourse, archiveCourse, unarchiveCourse, deleteCourse,
   countStudentsByCourse, listYearStudents, addStudent, updateStudent, deleteStudent, clearPw, rosterRowFromSheet, groupRosterRows, replaceRosterRows,
   listLibrary, addLibraryLesson, deleteLessonEverywhere,
-  countLessonsByCourse, lessonTag, lessonOrderKey
+  listMissionLibrary, addMission, updateMission, listMissionCourses,
+  setMissionCourses, syncMissionRows, deleteMissionEverywhere,
+  resolveAppUrl, appKeyFromUrl,
+  countLessonsByCourse, countMissionsByCourse, lessonTag, lessonOrderKey
 } from "./model.js?v=20261026a";
 
 const app  = initializeApp(firebaseConfig);
@@ -71,6 +74,8 @@ const state = {
   pickedCourse: null,   // 반별 관리에서 고른 반
   students: [],         // 학생 관리 목록(고른 학년도)
   stuRoom: '',          // 학생 관리 반별 구분에서 고른 반(301 등). 빈 값이 전체
+  missions: [],         // 미션 라이브러리 목록
+  missionCount: {},     // courseId 별 { total, open }
 };
 
 const activeCourses = () => state.courses.filter(c => c.status !== 'archived');
@@ -370,6 +375,8 @@ function toggleSidebar() {
 }
 
 function showPage(nav) {
+  // 앱 어드민을 띄워 둔 채 다른 메뉴를 누르면 오버레이를 먼저 닫는다.
+  if (!$('appAdminOverlay').hidden) closeAppAdmin();
   document.querySelectorAll('.nav-item').forEach(el =>
     el.classList.toggle('active', el.dataset.nav === nav));
   document.querySelectorAll('.panel-page').forEach(el =>
@@ -380,6 +387,7 @@ function showPage(nav) {
   if (nav === 'byclass') renderPickClass();
   if (nav === 'library') reloadLibrary();
   if (nav === 'concept') openConcept();
+  if (nav === 'mission') reloadMissions();
 }
 
 /* ══════ 개념 노트 ══════
@@ -434,14 +442,16 @@ async function reloadAll() {
 
 async function reloadCourses() {
   try {
-    const [courses, sc, lc] = await Promise.all([
+    const [courses, sc, lc, mc] = await Promise.all([
       state.year != null ? listCourses(db, { year: state.year, includeArchived: true }) : [],
       countStudentsByCourse(db),
       countLessonsByCourse(db),
+      countMissionsByCourse(db),
     ]);
     state.courses = courses;
     state.studentCount = sc;
     state.lessonCount = lc;
+    state.missionCount = mc;
   } catch (e) {
     console.warn('[reloadCourses]', e);
     $('classList').innerHTML = '<p class="empty">불러오지 못했습니다. 새로고침해 주세요.</p>';
@@ -929,13 +939,13 @@ function renderByClassBody() {
       <span class="ctx-sub">학생 ${n}명, 강의 ${lc.total}개 중 ${lc.open}개 공개</span>
     </div>
     <div class="cell-grid">
-      ${MENUS.map(m => m.key === 'concept' ? `
-        <button type="button" class="cell" data-act="open-menu" data-mkey="concept">
+      ${MENUS.map(m => (m.key === 'concept' || m.key === 'mission') ? `
+        <button type="button" class="cell" data-act="open-menu" data-mkey="${m.key}">
           <span class="cell-top">
             <span class="cell-ic">${icon(m.icon, 20)}</span>
             <span class="cell-name">${esc(m.label)}</span>
           </span>
-          <span class="cell-state">강의 ${lc.total}개</span>
+          <span class="cell-state">${m.key === 'concept' ? `강의 ${lc.total}개` : `미션 ${(state.missionCount[c.id] || { total: 0 }).total}개`}</span>
         </button>` : `
         <button type="button" class="cell" disabled>
           <span class="cell-top">
@@ -1021,3 +1031,239 @@ async function onLibraryClick(ev) {
     toast('삭제하지 못했습니다. ' + e.message, 'err');
   }
 }
+
+/* ══════ 미션 체크 ══════ (2026-10-26)
+ *
+ * 미션은 따로 만든 웹앱이고 LMS는 주소로만 잇는다 — 2026에서 잘 돌던 구조를 그대로 가져왔다.
+ * 다만 2026이 어드민 코드에 앱 목록을 박아 두던 것(MISSION_SOURCES)은 가져오지 않는다.
+ * 앱 키를 미션 문서에 적어 두고 성적 쪽이 그 키로 공용 제출 컬렉션을 조회한다.
+ *
+ * 줄의 톱니 버튼이 그 앱의 어드민을 이 화면 안에서 바로 연다(선생님 지시).
+ * 앱을 고치러 다른 탭으로 나갈 일이 없다.
+ */
+
+async function reloadMissions() {
+  const box = $('missionList');
+  try {
+    state.missions = await listMissionLibrary(db);
+  } catch (e) {
+    console.warn('[missions]', e);
+    box.innerHTML = '<p class="empty">미션을 불러오지 못했습니다.</p>';
+    return;
+  }
+  if (!state.missions.length) { box.innerHTML = '<p class="empty">미션이 없습니다.</p>'; renderMissionRooms(); return; }
+
+  box.innerHTML = state.missions.map(m => `
+    <div class="mi-row" data-id="${esc(m.id)}">
+      <span class="mi-no${m.isOpen ? '' : ' off'}">${esc(m.missionNo ? lessonTag(m.missionNo) : '미션')}</span>
+      <span class="mi-main">
+        <span class="mi-title">${esc(m.title || '(제목 없음)')}</span>
+        <span class="mi-meta">
+          <span class="mi-key">${esc(m.appKey || appKeyFromUrl(m.url) || '앱 키 없음')}</span>
+          <span data-rooms="${esc(m.id)}"></span>
+        </span>
+      </span>
+      <span class="mi-acts">
+        <button type="button" class="mi-sw${m.isOpen ? ' on' : ''}" data-act="mi-open" data-id="${esc(m.id)}"
+          title="${m.isOpen ? '공개 중' : '비공개'}" aria-label="공개 전환"></button>
+        <button type="button" class="ib" data-act="mi-rooms" data-id="${esc(m.id)}" title="올릴 강의실" aria-label="올릴 강의실">${icon('school', 18)}</button>
+        <button type="button" class="ib" data-act="mi-admin" data-id="${esc(m.id)}" title="앱 어드민 열기" aria-label="앱 어드민 열기"${m.adminUrl ? '' : ' disabled'}>${icon('settings', 18)}</button>
+        <button type="button" class="ib" data-act="mi-open-app" data-id="${esc(m.id)}" title="학생 화면 보기" aria-label="학생 화면 보기"${m.url ? '' : ' disabled'}>${icon('eye', 18)}</button>
+        <button type="button" class="ib" data-act="mi-edit" data-id="${esc(m.id)}" title="수정" aria-label="수정">${icon('pencil', 18)}</button>
+        <button type="button" class="ib ib-danger" data-act="mi-del" data-id="${esc(m.id)}" title="삭제" aria-label="삭제">${icon('trash-2', 18)}</button>
+      </span>
+    </div>`).join('');
+
+  renderMissionRooms();
+}
+
+/* 올린 강의실 이름을 줄마다 적는다. 실제 데이터라 안내문이 아니다(CLAUDE.md 화면 규칙).
+   이 학년도에 없는 강의실(다른 해에 올려 둔 줄)은 개수로만 센다 — 개념 노트와 같은 규칙. */
+async function renderMissionRooms() {
+  if (!state.missions.length) return;
+  let rows = [];
+  try {
+    const all = await Promise.all(state.missions.map(m => listMissionCourses(db, m.id)));
+    rows = all;
+  } catch (e) { console.warn('[missionRooms]', e); return; }
+
+  const byId = new Map(state.courses.map(c => [c.id, courseShort(c)]));
+  state.missions.forEach((m, i) => {
+    const el = document.querySelector(`[data-rooms="${CSS.escape(m.id)}"]`);
+    if (!el) return;
+    const here = [], other = [];
+    (rows[i] || []).forEach(r => byId.has(r.courseId) ? here.push(byId.get(r.courseId)) : other.push(r));
+    const parts = [];
+    if (here.length) parts.push(here.join(', '));
+    if (other.length) parts.push(`다른 학년도 ${other.length}개`);
+    el.textContent = parts.length ? parts.join(', ') : '올린 강의실 없음';
+  });
+}
+
+/* 미션 추가와 수정은 같은 창을 쓴다. 칸이 같아서 둘로 나눌 이유가 없다. */
+function missionFields(m = {}) {
+  return [
+    { key: 'title',    type: 'text', placeholder: '미션 제목',  value: m.title ?? '' },
+    { key: 'missionNo',type: 'text', placeholder: '강 번호 (비워도 됨)', value: m.missionNo ?? '' },
+    { key: 'appKey',   type: 'text', placeholder: '앱 키 (폴더 이름, 예: j_interview)', value: m.appKey ?? '' },
+    { key: 'url',      type: 'text', placeholder: '학생 주소 (apps/앱이름/index.html)', value: m.url ?? '' },
+    { key: 'adminUrl', type: 'text', placeholder: '어드민 주소 (apps/앱이름/admin.html)', value: m.adminUrl ?? '' },
+  ];
+}
+
+const missionCheck = v => !String(v.title || '').trim() ? '미션 제목을 적어 주세요.'
+                        : !String(v.url || '').trim()   ? '학생 주소를 적어 주세요.' : '';
+
+// 앱 키를 안 적었으면 주소에서 뽑아 채운다(둘 다 비면 빈 값).
+function missionData(v) {
+  const url = String(v.url || '').trim();
+  return {
+    title:     String(v.title || '').trim(),
+    missionNo: String(v.missionNo || '').trim(),
+    appKey:    String(v.appKey || '').trim() || appKeyFromUrl(url),
+    url,
+    adminUrl:  String(v.adminUrl || '').trim(),
+  };
+}
+
+async function doAddMission() {
+  const v = await ask({ title: '미션 추가', fields: missionFields(), check: missionCheck });
+  if (!v) return;
+  try {
+    await addMission(db, { ...missionData(v), isOpen: false });
+    await reloadMissions();
+    toast('미션을 추가했습니다.');
+  } catch (e) {
+    console.warn('[addMission]', e);
+    toast('추가하지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+async function doEditMission(m) {
+  const v = await ask({ title: '미션 수정', fields: missionFields(m), check: missionCheck });
+  if (!v) return;
+  const data = missionData(v);
+  try {
+    await updateMission(db, m.id, data);
+    // 올려 둔 줄에도 표시용 칸을 복사해 두었으므로 같이 고친다(학생 화면이 올린 줄만 읽는다).
+    await syncMissionRows(db, m.id, {
+      title: data.title, missionNo: data.missionNo, appKey: data.appKey, url: data.url,
+    });
+    await reloadMissions();
+    toast('미션을 고쳤습니다.');
+  } catch (e) {
+    console.warn('[editMission]', e);
+    toast('고치지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+// 공개 스위치는 미션 하나에 하나다. 켜면 올려 둔 강의실 전부가 같이 열린다(강의와 같은 규칙).
+async function toggleMissionOpen(m) {
+  const next = !(m.isOpen === true);
+  try {
+    await updateMission(db, m.id, { isOpen: next });
+    await syncMissionRows(db, m.id, { isOpen: next });
+    await reloadMissions();
+  } catch (e) {
+    console.warn('[missionOpen]', e);
+    toast('공개를 바꾸지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+async function pickMissionRooms(m) {
+  if (state.year == null) { toast('학년도가 없습니다.', 'err'); return; }
+  if (!state.courses.length) { toast(`${state.year}학년도 강의실이 없습니다.`, 'err'); return; }
+  let on = new Set();
+  try { on = new Set((await listMissionCourses(db, m.id)).map(r => r.courseId)); }
+  catch (e) { console.warn('[missionRooms]', e); }
+
+  const v = await ask({
+    title: `${m.title} 올릴 강의실`,
+    wide: true,
+    fields: [{
+      key: 'rooms', type: 'rooms',
+      options: state.courses.map(c => ({
+        value: c.id, label: courseShort(c),
+        subject: c.subject ?? '', grade: c.grade, classNo: c.classNo,
+      })),
+      value: state.courses.filter(c => on.has(c.id)).map(c => c.id),
+    }],
+  });
+  if (!v) return;
+  try {
+    const { added, removed } = await setMissionCourses(db, m, v.rooms, state.courses.map(c => c.id));
+    await reloadMissions();
+    toast(added || removed ? '올릴 강의실을 맞췄습니다.' : '바뀐 것이 없습니다.');
+  } catch (e) {
+    console.warn('[setMissionRooms]', e);
+    toast('강의실을 맞추지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+async function doDeleteMission(m) {
+  const ok = await ask({
+    title: '미션 삭제',
+    body: `${esc(m.title || '이 미션')}을 지웁니다. 올려 둔 강의실에서도 함께 사라집니다.`,
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await deleteMissionEverywhere(db, m.id);
+    await reloadMissions();
+  } catch (e) {
+    console.warn('[delMission]', e);
+    toast('삭제하지 못했습니다. ' + e.message, 'err');
+  }
+}
+
+$('btnAddMission').addEventListener('click', doAddMission);
+$('missionList').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-act]');
+  if (!b) return;
+  const m = state.missions.find(x => x.id === b.dataset.id);
+  if (!m) return;
+  const act = b.dataset.act;
+  if (act === 'mi-open')     toggleMissionOpen(m);
+  if (act === 'mi-rooms')    pickMissionRooms(m);
+  if (act === 'mi-admin')    openAppAdmin(m.adminUrl, m.title);
+  if (act === 'mi-open-app') window.open(resolveAppUrl(m.url), '_blank', 'noopener');
+  if (act === 'mi-edit')     doEditMission(m);
+  if (act === 'mi-del')      doDeleteMission(m);
+});
+
+/* ── 앱 어드민 오버레이 (2026 lms/admin.js에서 옮김) ──
+ * 본문 자리를 덮고 그 앱의 admin.html을 iframe으로 띄운다. 앱이
+ * <html class="has-own-back">를 스스로 달아 두면 자기 헤더에 "목록으로"가 이미
+ * 있다는 뜻이라 위쪽 바를 숨긴다. 같은 origin이라 안을 읽을 수 있고, 못 읽으면
+ * 그냥 바를 둔다(버튼이 둘인 편이 하나도 없는 것보다 낫다).
+ */
+function openAppAdmin(adminUrl, title) {
+  const url = resolveAppUrl(adminUrl);
+  if (!url) { toast('어드민 주소가 없습니다.', 'err'); return; }
+  const frame = $('appAdminFrame');
+  $('appAdminBar').hidden = false;
+  frame.onload = () => {
+    try {
+      const html = frame.contentDocument && frame.contentDocument.documentElement;
+      if (html && html.classList.contains('has-own-back')) $('appAdminBar').hidden = true;
+    } catch (e) { /* 다른 origin이면 못 읽는다. 바를 그대로 둔다. */ }
+  };
+  frame.src = url;
+  $('appAdminOverlay').hidden = false;
+  $('admMain').hidden = true;
+  if (title) document.title = `${title} : 관리자 모드`;
+}
+
+function closeAppAdmin() {
+  $('appAdminOverlay').hidden = true;
+  $('appAdminFrame').src = 'about:blank';
+  $('admMain').hidden = false;
+  document.title = '2027 : 관리자 모드';
+  // 앱 어드민에서 채점하고 돌아오면 목록 상태가 달라졌을 수 있다.
+  if (!$('missionPage').hidden) reloadMissions();
+}
+
+$('appAdminClose').addEventListener('click', closeAppAdmin);
+// 앱이 자기 헤더의 "목록으로"에서 부를 수 있게 한 곳만 노출한다.
+// (앱은 2026 그대로 window.parent.closeAppAdmin()을 부른다 — 그 규약을 지킨다.)
+window.closeAppAdmin = closeAppAdmin;

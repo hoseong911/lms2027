@@ -33,6 +33,8 @@ export const COLL = {
   courseStudents: 'course_students',
   courseLessons:  'course_lessons',
   lessonLibrary:  'lesson_library',
+  courseMissions: 'course_missions',
+  missionLibrary: 'mission_library',
   courseAuth:     'course_auth',     // 학생이 스스로 정한 비밀번호(해시)
   courseConsent:  'course_consent',  // 개인정보 수집 동의
 };
@@ -632,6 +634,129 @@ export function lessonOrderKey(v) {
 
 // 강 번호 표기 — 숫자면 "N강", 문자(OT 등)면 그대로. 2026 규칙 유지.
 export const lessonTag = n => /^\d+$/.test(String(n ?? '').trim()) ? `${n}강` : `${n}`;
+
+/* ══════ 미션 ══════
+ *
+ * 미션은 **따로 만든 웹앱**이고 LMS는 주소로만 잇는다(선생님 지시 2026-10-26).
+ * 이 구조를 그대로 간다 — 연결 비용이 카드 한 장이라 앱을 빨리 만들 수 있다.
+ *
+ * 강의(lesson_library + course_lessons)와 **똑같은 두 층**이다.
+ *   mission_library  미션 하나. 제목, 앱 키, 학생 주소, 어드민 주소.
+ *   course_missions  그 미션을 올린 강의실 한 줄.
+ * 미션 하나를 여러 강의실에 올릴 수 있고, 공개 스위치는 미션 하나에 하나다.
+ * 학생 화면이 강의실 하나만 읽고 끝나도록 표시에 쓰는 칸을 올린 줄에도 복사한다.
+ *
+ * appKey는 앱 폴더 이름이다(j_interview 등). 성적 자동 채점이 이 키로
+ * mission_submissions를 조회한다 — 2026처럼 어드민 코드에 앱 목록을 적어 두지 않는다.
+ */
+
+// 앱이 제출 요약을 남기는 공용 컬렉션. 앱마다 컬렉션을 새로 파지 않는다.
+// 문서 id는 missionSubmitId(appKey, year, studentNo).
+export const MISSION_SUBMISSIONS = 'mission_submissions';
+export const missionSubmitId = (appKey, year, studentNo) => `${appKey}_${year}_${studentNo}`;
+
+export async function listMissionLibrary(db) {
+  const snap = await getDocs(collection(db, COLL.missionLibrary));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => lessonOrderKey(a.missionNo) - lessonOrderKey(b.missionNo)
+                 || String(a.title || '').localeCompare(String(b.title || '')));
+}
+
+export const addMission = (db, data) =>
+  addDoc(collection(db, COLL.missionLibrary), { ...data, createdAt: serverTimestamp() });
+
+export const updateMission = (db, id, data) =>
+  updateDoc(doc(db, COLL.missionLibrary, id), data);
+
+export async function listCourseMissions(db, cid, { openOnly = false } = {}) {
+  const snap = await getDocs(query(collection(db, COLL.courseMissions), where('courseId', '==', cid)));
+  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (openOnly) rows = rows.filter(r => r.isOpen);
+  return rows.sort((a, b) => lessonOrderKey(a.missionNo) - lessonOrderKey(b.missionNo));
+}
+
+export async function countMissionsByCourse(db) {
+  const snap = await getDocs(collection(db, COLL.courseMissions));
+  const n = {};
+  snap.docs.forEach(d => {
+    const c = d.data().courseId;
+    if (!c) return;
+    n[c] ||= { total: 0, open: 0 };
+    n[c].total++;
+    if (d.data().isOpen) n[c].open++;
+  });
+  return n;
+}
+
+// 이 미션을 올려 둔 강의실 줄들.
+export async function listMissionCourses(db, missionId) {
+  const snap = await getDocs(query(collection(db, COLL.courseMissions), where('missionId', '==', missionId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/* 올릴 강의실을 고른 그대로 맞춘다. 강의 쪽 setLessonCourses와 같은 규칙이고,
+   scopeIds(고르기 창이 보여 준 범위) 밖의 줄은 건드리지 않는 것도 같다 —
+   미션도 연도와 무관하게 남아 다른 학년도 강의실에 올라가 있을 수 있다. */
+export async function setMissionCourses(db, mission, courseIds, scopeIds = courseIds) {
+  const want = new Set(courseIds);
+  const scope = new Set(scopeIds);
+  const rows = await listMissionCourses(db, mission.id);
+  const batch = writeBatch(db);
+  let added = 0, removed = 0;
+  rows.forEach(r => {
+    if (want.has(r.courseId)) want.delete(r.courseId);
+    else if (scope.has(r.courseId)) { batch.delete(doc(db, COLL.courseMissions, r.id)); removed++; }
+  });
+  want.forEach(cid => {
+    batch.set(doc(collection(db, COLL.courseMissions)), {
+      courseId: cid, missionId: mission.id,
+      missionNo: mission.missionNo ?? '', title: mission.title,
+      appKey: mission.appKey ?? '', url: mission.url ?? '', icon: mission.icon ?? '',
+      isOpen: mission.isOpen === true, createdAt: serverTimestamp(),
+    });
+    added++;
+  });
+  await batch.commit();
+  return { added, removed };
+}
+
+// 미션 쪽이 바뀌면 올려 둔 줄의 같은 칸도 고친다(학생 화면이 올린 줄만 읽으므로).
+export async function syncMissionRows(db, missionId, fields) {
+  const rows = await listMissionCourses(db, missionId);
+  if (!rows.length) return 0;
+  const batch = writeBatch(db);
+  rows.forEach(r => batch.update(doc(db, COLL.courseMissions, r.id), fields));
+  await batch.commit();
+  return rows.length;
+}
+
+export async function deleteMissionEverywhere(db, missionId) {
+  const rows = await listMissionCourses(db, missionId);
+  const batch = writeBatch(db);
+  rows.forEach(r => batch.delete(doc(db, COLL.courseMissions, r.id)));
+  batch.delete(doc(db, COLL.missionLibrary, missionId));
+  await batch.commit();
+}
+
+/* 앱 주소를 푼다. 전체 주소("https://…")면 그대로 쓰고,
+   아니면 이 레포(lms2027) 뿌리에 붙인다 — 2027 앱은 lms2027/apps/ 밑에 둔다.
+   2026 hoistory 앱을 그대로 쓸 때는 전체 주소를 적는다(깃허브 페이지에서 같은 origin이라
+   iframe 안을 읽는 데 문제가 없다). 2026 lms/admin.js의 resolveAppUrl을 이 레포 구조로 옮긴 것. */
+export function resolveAppUrl(u) {
+  const s = String(u || '').trim();
+  if (!s) return s;
+  if (/^(https?:)?\/\//i.test(s) || s.startsWith('/') || s.startsWith('#')) return s;
+  const root = location.pathname.replace(/\/[^/]*$/, '/');
+  return root + s.replace(/^\.?\//, '');
+}
+
+// 앱 키를 주소에서 뽑는다("apps/j_interview/index.html" -> "j_interview").
+// 미션 문서에 appKey를 직접 적는 게 원칙이고, 이건 옛 줄이나 빈 칸을 메우는 보조다.
+export function appKeyFromUrl(url) {
+  const parts = String(url || '').split(/[/?#]/).filter(Boolean);
+  const i = parts.indexOf('apps');
+  return i >= 0 ? (parts[i + 1] || '') : '';
+}
 
 /* ── firestore.rules 상태 (2026-10-25 배포) ──
  * 위 여섯 컬렉션 모두 전용 블록이 있다("2027 LMS" 구역).

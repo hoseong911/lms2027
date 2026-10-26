@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 어드민 제목은 "앱 이름 : 관리자 모드" (LMS 계열 공통 표기) -->
+<title>활동 이름 : 관리자 모드</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../../shared/app-base.css?v=20261026a">
+</head>
+<body class="app app-admin">
+
+<!-- 머리 줄은 3열이다. 왼쪽 로고와 오른쪽 로그아웃은 LMS 안에 임베드되면 숨고,
+     그 자리에 "목록으로"가 선다. 각 칸에 grid-column이 박혀 있어 숨겨도 탭이 밀리지 않는다. -->
+<header class="app-head">
+  <div class="app-head-left app-hide-embedded">
+    <span class="app-title">활동 이름</span>
+    <span class="app-title-sub">관리자 모드</span>
+  </div>
+  <nav class="app-head-mid app-tabs" id="tabs">
+    <button type="button" class="app-tab on" data-tab="answer">ANSWER</button>
+    <button type="button" class="app-tab" data-tab="setting">SETTING</button>
+  </nav>
+  <div class="app-head-right">
+    <!-- LMS 안에서 열렸을 때만 보인다. 위쪽 중복 바는 has-own-back 표시로 숨는다. -->
+    <button type="button" class="app-ib" id="backBtn" title="목록으로" aria-label="목록으로" hidden></button>
+  </div>
+</header>
+
+<main class="app-main app-main-wide">
+
+  <!-- ── 제출 목록과 채점 ── -->
+  <section data-page="answer">
+    <div class="app-card">
+      <div class="app-card-head">
+        <h2 class="app-card-title">제출</h2>
+        <span class="app-title-sub" id="count"></span>
+      </div>
+      <div class="app-card-body">
+        <div class="app-table-shell">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th scope="col">학번</th>
+                <th scope="col">이름</th>
+                <th scope="col">제출</th>
+                <th scope="col">채점</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"><tr><td colspan="5" class="app-empty">불러오는 중입니다.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 이 앱의 설정 ── -->
+  <section data-page="setting" hidden>
+    <div class="app-card">
+      <div class="app-card-head">
+        <h2 class="app-card-title">설정</h2>
+      </div>
+      <div class="app-card-body">
+        <p class="app-empty">이 앱의 설정을 여기 둔다.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="app-toast" id="toast" hidden></div>
+
+<script type="module">
+/* 미션 앱 어드민 뼈대.
+   채점은 공용 컬렉션(mission_submissions)의 status 한 칸이다 —
+   앱마다 채점 저장 자리를 새로 만들지 않는다. 자세한 건 APP_규약.md. */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "../../shared/firebase-config.js";
+import { icon } from "../../shared/icons.js?v=20261026a";
+import { markEmbedded, backToLms } from "../../shared/lms-session.js?v=20261026a";
+import { listSubmissions, setStatus } from "../../shared/lms-submit.js?v=20261026a";
+
+const APP_KEY = '_template';
+// 어느 해를 보고 있는지. 3월 시작이라 1월과 2월은 전년도다(model.js의 schoolYear와 같은 셈).
+const now = new Date();
+const kst = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000);
+const YEAR = kst.getMonth() + 1 <= 2 ? kst.getFullYear() - 1 : kst.getFullYear();
+
+const app = initializeApp(firebaseConfig);
+const db  = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const toast = (text, kind = 'ok') => {
+  const t = $('toast');
+  t.textContent = text; t.classList.toggle('err', kind === 'err'); t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2600);
+};
+
+/* LMS 어드민 안에 열렸으면 자기 로고와 로그인 게이트를 숨기고 "목록으로"를 띄운다.
+   (이미 LMS에 로그인돼 있으므로 여기서 다시 묻지 않는다) */
+if (markEmbedded()) {
+  $('backBtn').hidden = false;
+  $('backBtn').innerHTML = icon('chevron-left', 18);
+  $('backBtn').addEventListener('click', backToLms);
+}
+
+$('tabs').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-tab]');
+  if (!b) return;
+  $('tabs').querySelectorAll('.app-tab').forEach(t => t.classList.toggle('on', t === b));
+  document.querySelectorAll('[data-page]').forEach(p => { p.hidden = p.dataset.page !== b.dataset.tab; });
+});
+
+const fmt = v => {
+  const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null);
+  if (!d || isNaN(d)) return '';
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+let rows = [];
+load();
+
+async function load() {
+  try {
+    rows = (await listSubmissions(db, APP_KEY, YEAR))
+      .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
+  } catch (e) {
+    console.warn('[load]', e);
+    $('rows').innerHTML = '<tr><td colspan="5" class="app-empty">불러오지 못했습니다.</td></tr>';
+    return;
+  }
+  render();
+}
+
+function render() {
+  $('count').textContent = rows.length ? `${rows.length}명` : '';
+  $('rows').innerHTML = rows.length ? rows.map(r => `
+    <tr data-sid="${esc(r.studentId)}">
+      <td class="num">${esc(r.studentId)}</td>
+      <td>${esc(r.studentName)}</td>
+      <td>${esc(fmt(r.submittedAt))}</td>
+      <td>${r.status === 'pass' ? '<span class="app-badge app-badge-pass">통과</span>'
+           : r.status === 'fail' ? '<span class="app-badge app-badge-fail">미흡</span>'
+           : '<span class="app-badge app-badge-wait">미채점</span>'}</td>
+      <td>
+        <button type="button" class="app-ib" data-act="pass" title="통과" aria-label="통과">${icon('check', 17)}</button>
+        <button type="button" class="app-ib app-ib-danger" data-act="fail" title="미흡" aria-label="미흡">${icon('x', 17)}</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="5" class="app-empty">제출이 없습니다.</td></tr>';
+}
+
+$('rows').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-act]');
+  if (!b) return;
+  const sid = b.closest('tr').dataset.sid;
+  const want = b.dataset.act === 'pass' ? 'pass' : 'fail';
+  const row = rows.find(r => String(r.studentId) === sid);
+  if (!row) return;
+  const next = row.status === want ? null : want;   // 같은 걸 다시 누르면 미채점으로
+  try {
+    await setStatus(db, APP_KEY, YEAR, sid, next);
+    row.status = next;
+    render();
+  } catch (e) {
+    console.warn('[grade]', e);
+    toast('채점하지 못했습니다. ' + e.message, 'err');
+  }
+});
+</script>
+</body>
+</html>
