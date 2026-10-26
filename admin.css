@@ -71,7 +71,9 @@ svg{vertical-align:middle}
 .nav-label{white-space:nowrap}
 .adm-sidebar-scrim{display:none}
 
-.adm-main{flex:1;min-width:0;padding:26px 28px 70px;max-width:1000px}
+/* 내용 너비는 1000px이었는데 강의 선택 줄의 버튼들과 디자인 패널이 두 줄로 접혔다.
+   화면이 넓으면 넓은 대로 쓰고, 글줄만 너무 길어지지 않게 1680px에서 멈춘다(선생님 지시 2026-10-26). */
+.adm-main{flex:1;min-width:0;padding:26px 32px 70px;max-width:1680px}
 
 /* 페이지 한 칸. 숨기는 것은 위의 [hidden] 규칙이 맡는다. */
 .panel-page{display:block}
@@ -230,6 +232,8 @@ svg{vertical-align:middle}
   width:100%;max-width:380px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;
   border-radius:14px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.18);
 }
+/* 강의실 고르기처럼 목록이 긴 창. 좁은 창에 체크 줄을 넣으면 한 줄에 하나씩만 들어간다. */
+.modal.wide{max-width:720px}
 .modal-head{padding:18px 20px 0}
 .modal-title{margin:0;font-size:16px;font-weight:800;word-break:keep-all}
 .modal-body{display:flex;flex-direction:column;gap:12px;padding:14px 20px 4px;overflow:auto}
@@ -271,9 +275,25 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .fld-suffix{flex-shrink:0;font-size:14px;font-weight:600;color:var(--text)}
 .choice{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .choice .tag{margin-right:16px}
-/* 여러 개 함께 고르기(개념 노트를 올릴 강의실). 칩 모양은 태그와 같다. */
-.picks{display:flex;align-items:center;gap:6px;flex-wrap:wrap;row-gap:2px}
-.picks .tag{margin-right:16px}
+/* ── 올릴 강의실 고르기 (2026-10-26) ──
+   위에 과목, 학년, 반 일괄 선택 줄(태그 규칙 그대로 글자와 아래 구분선), 아래에 체크 목록.
+   강의실이 열 개를 넘으면 하나씩 누르는 게 일이라 일괄 줄을 뒀다(선생님 지시). */
+.rooms{display:flex;flex-direction:column;gap:10px}
+.rooms-bulk{
+  display:flex;align-items:flex-end;flex-wrap:wrap;column-gap:22px;
+  border-bottom:1px solid var(--border);
+}
+/* 체크 목록 — 창을 넓게 열어 여러 열로 깐다. 한 열이면 열 몇 개만 봐도 스크롤이 길어진다. */
+.rooms-list{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 14px;
+  max-height:46vh;overflow:auto;margin-top:2px;
+}
+.rooms-item{
+  display:flex;align-items:center;gap:8px;padding:7px 2px;
+  font-size:14.5px;font-weight:600;color:var(--text);cursor:pointer;
+}
+.rooms-item:hover{color:var(--primary)}
+.rooms-item input{width:16px;height:16px;margin:0;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
 .choice-inp{flex:1;min-width:90px;padding:8px 11px}
 
 @media (max-width:860px){
@@ -315,7 +335,11 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 
 /* ── 강의 선택 줄 ── */
 .th-lecbar-card{background:var(--canvas);border:1px solid var(--hairline-soft);border-radius:16px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:18px}
+/* 한 줄로 세운다. 폭이 모자랄 때만 접히게 두되(flex-wrap), 드롭다운이 먼저 줄어들어
+   버튼들이 두 번째 줄로 밀려 내려가지 않게 한다. */
 .th-lecbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.th-lecbar > *{flex-shrink:0}
+.th-lecbar > select{flex:1 1 240px;min-width:160px}
 .th-lecbar .lesson-bar-title{color:var(--primary);font-weight:600;font-size:1rem;white-space:nowrap;margin-right:2px}
 .th-lecbar > select{flex:0 1 320px;min-width:200px;padding:9px 12px;border:1.5px solid var(--hairline);border-radius:8px;font-family:inherit;font-size:16px;background:var(--canvas);outline:none}
 .th-lecbar > select:focus{border-color:var(--primary)}

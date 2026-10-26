@@ -371,9 +371,14 @@ window.cePickRooms = async function() {
   const on = new Set(ceLessonRooms.map(r => r.courseId));
   const v = await ask({
     title: `${lecTag(lesson.num)} 올릴 강의실`,
+    wide: true,
     fields: [{
-      key: 'rooms', type: 'picks',
-      options: ceCourses.map(c => ({ value: c.id, label: courseShort(c) })),
+      key: 'rooms', type: 'rooms',
+      // 과목, 학년, 반을 같이 넘겨야 일괄 선택 줄을 만들 수 있다(선생님 지시 2026-10-26).
+      options: ceCourses.map(c => ({
+        value: c.id, label: courseShort(c),
+        subject: c.subject ?? '', grade: c.grade, classNo: c.classNo,
+      })),
       value: ceCourses.filter(c => on.has(c.id)).map(c => c.id),
     }],
   });
