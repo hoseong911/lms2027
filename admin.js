@@ -72,7 +72,7 @@ function pageRooms(){
         <div class="s">${M.getStudentsByCourse(c.id).length}명</div></div>
       <div class="tools">
         <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-        <button class="ib" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+        <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`).join('') : `<div class="empty">강의실이 없습니다.</div>`;
 
   const addForm = `<div class="formrow">
@@ -121,7 +121,7 @@ function pageStudents(){
       <div class="tools">
         <button class="ib" data-act="stu-edit" data-no="${sno}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib" data-act="stu-reset" data-no="${sno}" title="비밀번호 초기화" aria-label="비밀번호 초기화">${icon('rotate-ccw',16)}</button>
-        <button class="ib" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+        <button class="ib ib-danger" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
 
@@ -163,7 +163,7 @@ function lessonEditor(l){
     return `<div class="partrow">
       <span class="dot" style="background:var(--${k})"></span>
       <div class="grow"><div class="t">${esc(d.name)}</div>
-        <div class="s">${esc(l.parts[k]?.title || '')}${d.portfolio?'':' · 성적 무관'}</div></div>
+        <div class="s">${esc(l.parts[k]?.title || '')}${d.portfolio?'':' (성적 무관)'}</div></div>
       <div class="tools">
         <button class="ib" data-act="part-up" data-k="${k}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',16)}</button>
         <button class="ib" data-act="part-down" data-k="${k}" ${i===order.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',16)}</button>
@@ -181,9 +181,9 @@ function lessonEditor(l){
   return `<div class="editor">
     <div class="deck"><div class="sectionlabel">이 강의의 칸 (순서 자유)</div>${deck}</div>
     <div class="palette"><div class="sectionlabel">칸 넣고 빼기</div>${palette}
-      <div class="s" style="font-size:12px;color:var(--sub);margin-top:6px">형성평가·복습은 성적에 안 들어감</div>
       <div class="formrow" style="margin-top:10px;flex-direction:column;align-items:stretch">
-        <button class="ib ib-primary" data-act="lesson-import" style="width:100%" title="활동지 업로드">${icon('upload',16)}<span style="margin-left:8px;font-size:13px">활동지 업로드 → 개념노트</span></button>
+        <button class="btn-text" data-act="lesson-import" style="display:flex;align-items:center;justify-content:center;gap:8px"
+          title="활동지를 올려 개념노트를 만듭니다">${icon('upload',16)}<span>활동지 올리기</span></button>
       </div>
     </div></div>`;
 }
@@ -203,7 +203,7 @@ function lessonPlacer(l){
 function pageReview(){
   const list = M.getQuizzes().map(q => `<div class="row">
     <div class="grow"><div class="t">${esc(q.title)}</div>
-      <div class="s">${q.source === 'auto' ? '자동 생성' : '외부 문제'} · 성적 무관</div></div>
+      <div class="s">${q.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div>
     <div class="tools"><button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button></div>
   </div>`).join('');
   return `<div class="pagehead"><h2>복습</h2></div>
@@ -270,7 +270,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'part-off': M.setLessonPart(state.lessonId, k, false); render(); break;
     case 'part-up': M.moveLessonPart(state.lessonId, k, -1); render(); break;
     case 'part-down': M.moveLessonPart(state.lessonId, k, 1); render(); break;
-    case 'lesson-import': toast('활동지 업로드 → 개념노트 변환은 다음 단계.'); break;
+    case 'lesson-import': toast('활동지 올리기와 개념노트 변환은 다음 단계.'); break;
     case 'place-toggle': {
       // 데모: 꽂기만(해제는 다음 단계). 꽂혀 있지 않으면 꽂는다.
       const already = M.getCourseLessons(id).some(cl => cl.lessonId === state.lessonId);

@@ -1,0 +1,216 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설계 : LMS2027</title>
+<style>
+:root{--bg:#fff;--text:#1b1d22;--sub:#6b7280;--line:#e5e7eb;--accent:#2563eb;--code:#f3f4f6;--side:#fafafa}
+@media (prefers-color-scheme:dark){:root{--bg:#15171b;--text:#e7e9ee;--sub:#9aa1ad;--line:#2b2f36;--accent:#7aa2f7;--code:#1e2127;--side:#191c21}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 "Pretendard","Malgun Gothic",system-ui,sans-serif;display:flex}
+aside{position:sticky;top:0;height:100vh;width:260px;flex:none;overflow:auto;background:var(--side);border-right:1px solid var(--line);padding:16px 0}
+.docs{display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 12px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.doc{font-size:13px;padding:5px 9px;border-radius:7px;text-decoration:none;color:var(--sub)}
+.doc:hover{color:var(--text)}
+.doc.on{color:var(--text);background:var(--bg);border:1px solid var(--line)}
+.t{display:block;padding:3px 14px;font-size:13px;color:var(--sub);text-decoration:none;line-height:1.5;border-left:2px solid transparent}
+.t:hover{color:var(--accent);border-left-color:var(--accent)}
+.t1{font-weight:700;color:var(--text);margin-top:10px}
+.t2{padding-left:22px}
+.t3{padding-left:34px;font-size:12.5px}
+main{flex:1;min-width:0;padding:34px 44px 140px;max-width:960px}
+h1,h2,h3,h4{line-height:1.35;scroll-margin-top:16px}
+h1{font-size:28px;border-bottom:2px solid var(--line);padding-bottom:10px;margin-top:0}
+h2{font-size:22px;margin-top:44px;border-bottom:1px solid var(--line);padding-bottom:7px}
+h3{font-size:17.5px;margin-top:30px}
+h4{font-size:15.5px;margin-top:22px;color:var(--sub)}
+p{margin:11px 0}
+li{margin:4px 0}
+li.sub{margin-left:18px;list-style-type:circle;color:var(--sub)}
+code{background:var(--code);padding:1.5px 5px;border-radius:5px;font-size:13.5px;font-family:ui-monospace,Consolas,monospace}
+pre{background:var(--code);padding:14px 16px;border-radius:10px;overflow:auto}
+pre code{background:none;padding:0;font-size:13px;line-height:1.6}
+blockquote{margin:12px 0;padding:8px 16px;border-left:3px solid var(--accent);background:var(--code);border-radius:0 8px 8px 0;color:var(--sub)}
+hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+.tw{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;font-size:14px;min-width:100%}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left;vertical-align:top}
+th{background:var(--code);font-weight:700;white-space:nowrap}
+a{color:var(--accent)}
+strong{font-weight:700}
+@media (max-width:860px){aside{display:none}main{padding:20px 16px 100px}}
+</style></head><body>
+<aside><div class="docs"><a class="doc" href="LMS2027_요구사항.html">요구사항</a><a class="doc on" href="LMS2027.html">설계</a><a class="doc" href="LMS2027_작업기록.html">작업기록</a><a class="doc" href="CLAUDE.html">규칙</a></div><a class="t t1" href="#h1">LMS 2027 개편 설계</a><a class="t t2" href="#h2">요구사항 (선생님 지시)</a><a class="t t2" href="#h3">1. 왜 지금 구조로는 안 되는가</a><a class="t t2" href="#h4">2. 클래스룸 스타일 데이터 모델</a><a class="t t3" href="#h5">2.1 반과 명단</a><a class="t t3" href="#h6">2.2 강의는 내용과 쓰임을 가른다</a><a class="t t3" href="#h7">2.3 학번이 반을 알려 준다</a><a class="t t3" href="#h8">2.4 관리 축이 둘이다</a><a class="t t2" href="#h9">3. 만들어 둔 것 (lms2027/)</a><a class="t t3" href="#h10">학생 화면</a><a class="t t3" href="#h11">어드민</a><a class="t t3" href="#h12">2026에서 얻은 것은 처음부터 넣었다</a><a class="t t3" href="#h13">아직 없는 것</a><a class="t t2" href="#h14">4. 로그인 방식 (결정됨)</a><a class="t t3" href="#h15">Auth 없이 비밀번호를 지키는 길</a><a class="t t2" href="#h16">5. 정해야 할 것</a><a class="t t2" href="#h17">6. 이행 계획</a><a class="t t3" href="#h18">폴더 전략</a><a class="t t3" href="#h19">단계</a><a class="t t3" href="#h20">범위에서 빼는 것</a><a class="t t2" href="#h21">부록 — 조사에서 나온 기타 부채</a></aside>
+<main><h1 id="h1">LMS 2027 개편 설계</h1>
+<blockquote><strong>⚠ 2026-10-26 제로베이스 재설계로 상당 부분이 갱신됨.</strong> 아래 2~6의 데이터 모델</blockquote>
+<blockquote>(<code>lesson_library</code>, 평면 메뉴 등)은 옛 안이다. **현행 설계는 <code>LMS2027_요구사항.md</code>의 68~78,</blockquote>
+<blockquote><code>CLAUDE.md</code>의 "조직 원리/컬렉션", <code>model.js</code> 머리 주석을 따른다.** 아래 1(왜 안 되는가)과</blockquote>
+<blockquote>4(로그인)는 그대로 유효하다.</blockquote>
+<blockquote>작업 제목: <strong>2027</strong> · 작성 2026-10-23</blockquote>
+<blockquote>대상: <code>lms/</code> 전체(학생 화면 + 어드민 + 수업 화면) · 개발 위치: 독립 레포 <code>hoseong911/lms2027</code> (2026-10-25에 <code>hoistory/lms2027/</code>에서 옮김)</blockquote>
+<h2 id="h2">요구사항 (선생님 지시)</h2>
+<ol>
+<li><strong>구글 클래스룸 스타일.</strong> 연도가 바뀌든 학년이 바뀌든 반이 생기든 없어지든 계속 쓸 수 있는 시스템</li>
+<li><strong>지금 쓰는 방식은 유지.</strong> 강의 생성, 학생 일괄 업로드 같은 운영 흐름은 그대로</li>
+<li><strong>학생은 1년 단위로 재생성해도 된다.</strong> 클래스룸도 반을 개설하고 그 안에 학생을 불러와 넣는 방식이니, 202n년도 n학년 n반은 1년만 유효하면 된다</li>
+<li><strong>1년 단위로 반을 개설하고 없애는 기능.</strong> 1개 학년이면 통으로 만드는 기능도</li>
+<li><strong>학생 화면 기능은 지금과 동일</strong> (생각 체크, 미션 체크 등)</li>
+<li><strong>관리는 반별 또는 메뉴별 두 방향으로</strong> 가능하게</li>
+<li><strong>일단 큰 틀부터.</strong> 디자인은 현행 유지하고 맨 나중에 한꺼번에 바꾼다</li>
+</ol>
+<p>전제: 2026학년도는 현재 <code>lms/</code>로 2027년 2월까지 그대로 간다. 개편은 <code>lms2027/</code>에서 병행 개발하고 학년 경계에서 자리를 바꾼다.</p>
+<hr>
+<h2 id="h3">1. 왜 지금 구조로는 안 되는가</h2>
+<p>지금 시스템은 <strong>학교 전체가 하나의 반</strong>이라는 전제로 짜여 있다. 담을 그릇이 하나뿐이다.</p>
+<div class="tw"><table><thead><tr><th>지금</th><th>문제</th></tr></thead><tbody><tr><td>명단이 RTDB <code>students/</code> <strong>하나</strong></td><td>엑셀 업로드가 <code>remove(stuRef)</code> 후 전체 교체(<code>admin.js:7729</code>). 작년 명단은 사라진다</td></tr><tr><td>문서 ID = <strong>5자리 학번</strong></td><td><code>lms_auth</code>, <code>think_submissions</code>, <code>j_brain_works</code>, <code>xp/students/{학번}</code> … 2027년 10101번이 2026년 10101번의 비밀번호, 제출물, 성적, 경험치를 물려받는다</td></tr><tr><td>강의가 <code>class_lessons</code>에 <strong>1부터 N까지 평면 목록</strong></td><td>연도와 반 구분이 없다. 2027년 1강과 2026년 1강이 같은 자리를 다툰다</td></tr><tr><td>성적이 <code>grade_records</code> 등 <strong>6개 컬렉션에 평면</strong></td><td>"어느 반의 성적인가"를 담을 칸이 없다</td></tr><tr><td>반은 성적 표의 <strong>숫자 하나</strong>(<code>classNum</code>)</td><td>반이 생기거나 없어지는 걸 표현할 수 없다</td></tr></tbody></table></div>
+<p>즉 <strong>반이라는 그릇 자체가 데이터에 없다.</strong> 파일을 새로 만들어서 해결되는 문제가 아니라 그릇을 바꿔야 한다.</p>
+<hr>
+<h2 id="h4">2. 클래스룸 스타일 데이터 모델</h2>
+<p>클래스룸은 <strong>반을 개설하고 그 안에 학생을 불러와 넣는다.</strong> 반이 단위이고, 반은 그 해에만 유효하다. 그래서 필요한 것은 두 가지뿐이다.</p>
+<h3 id="h5">2.1 반과 명단</h3>
+<pre><code>
+school_years/{2027}        { year }
+courses/{자동 id}           { year, subject, grade, classNo, status: 'active'|'archived' }
+course_students/{id}       { courseId, studentNo, name }
+</code></pre>
+<ul>
+<li><strong>반 하나 = 학년도 + 과목 + 학년 + 반</strong>(2026-10-25). 과목은 선생님이 직접 적는다. 정해 둔 과목 목록은 없고(선생님 지시 2026-10-25), 한 번 만든 과목은 다음부터 칩으로 나온다. 같은 1학년 3반이라도 과목이 다르면 다른 반이다.</li>
+<li><strong>학년도는 반이 없어도 있다.</strong> 선생님이 학년도를 먼저 만들고 반을 채운다. 학년은 따로 저장하지 않는다(처음엔 학년도 문서에 학년 목록을 두었다가, 학년 묶음을 태그로 바꾸면서 뺐다).</li>
+<li><strong>반 문서 id는 자동 id다.</strong> 처음에는 <code>y2027g1c3</code>로 못박아 중복을 구조로 막았지만, 학년도와 학년과 반 번호를 선생님이 자유롭게 고칠 수 있어야 해서(2026-10-25) 바꿨다. id가 이름을 들고 있으면 이름을 고칠 때마다 명단, 비밀번호, 동의 문서를 전부 새 id로 옮겨야 한다. 중복은 만들 때와 고칠 때 <code>model.js</code>가 막는다.</li>
+<li>학년도나 학년 번호를 고치면 그에 속한 반 문서의 <code>year</code>, <code>grade</code>를 같이 고친다. 반 id는 그대로라 명단과 비밀번호가 따라온다.</li>
+<li><strong>명단 문서 id는 <code>반id_학번</code>.</strong> 같은 학생이 한 반에 두 번 들어가지 않는다.</li>
+<li>학생 활동 데이터(제출, 성적, 경험치)는 <strong><code>courseId</code>와 학번을 함께 들고</strong> 저장한다. 학번만으로 저장하면 2026 구조처럼 다음 해 같은 학번이 작년 기록을 물려받는다. 반이 1년짜리여도 그릇은 반 단위로 갈려 있어야 한다.</li>
+<li><strong>학생의 영구 신원(Person)은 두지 않는다.</strong> 해마다 다시 만들면 되므로 그 층이 필요 없다(요구사항 3). 설계 초안에 있던 <code>people</code> 컬렉션과 이름 대조 매칭 단계는 폐기했다.</li>
+</ul>
+<h3 id="h6">2.2 강의는 내용과 쓰임을 가른다</h3>
+<pre><code>
+lesson_library/{lessonId}  { lessonNo, title, content(슬라이드 본문) }   &lt;- 연도 무관, 남는다
+course_lessons/{id}        { courseId, lessonId, lessonNo, title, isOpen }
+</code></pre>
+<p>클래스룸의 <strong>수업 재사용</strong>에 해당한다. 반은 사라지지만 강의 내용은 남아서 다음 해 반에 다시 붙여 쓴다. 한 해 걸려 만든 슬라이드를 해마다 다시 만들 이유가 없다.</p>
+<p>요구사항 2의 "강의 생성 유지"는 여기서 지켜진다. 선생님이 쓰는 <strong>강의 만들기 화면은 그대로</strong>고, 저장되는 곳이 평면 목록에서 라이브러리로 바뀔 뿐이다.</p>
+<p><strong>올릴 강의실을 고른다</strong>(요구사항 47, 2026-10-26). 강의를 만든 뒤 그 강의를 쓸 강의실을 고르면 <code>course_lessons</code>에 줄이 하나씩 생긴다. 강의 하나를 사회 301과 사회 302에 함께 올릴 수 있다. 이 선택이 <strong>과목 문제도 함께 푼다</strong> — 강의에 과목 칸을 두지 않아도 사회 학생에게 역사 강의가 보이지 않는다.</p>
+<p><strong>공개 스위치는 강의 하나에 하나다</strong>(선생님 지시). 켜면 올려 둔 강의실 전부에 같이 열린다. 학생 화면이 강의실 하나만 읽고 끝나도록 <code>isOpen</code>과 표시용 <code>lessonNo</code>, <code>title</code>을 올린 줄에도 적어 둔다 (라이브러리 문서를 강의마다 또 읽으면 읽기 수가 강의 수만큼 늘어난다). 강의 쪽이 바뀌면 <code>syncLessonRows</code>가 올린 줄들을 같이 고친다. 강의를 지우면 <code>deleteLessonEverywhere</code>가 올린 줄도 지운다 — 남기면 학생 화면에 내용 없는 강의가 뜬다.</p>
+<p>수업 화면(<code>lecture.html</code>)은 <code>?id=</code>와 <code>?course=</code>를 함께 받아 <strong>그 강의실에 올라와 있고 공개인지</strong>를 본다. 공개 여부만 보면 주소를 아는 학생이 다른 강의실 강의를 열 수 있다. 어드민 미리보기(<code>?preview=1</code>)는 둘 다 건너뛴다.</p>
+<h3 id="h7">2.3 학번이 반을 알려 준다</h3>
+<p>학번 5자리는 <code>1자리 학년, 2~3자리 반, 4~5자리 번호</code>다(CLAUDE.md 공통 스택). <strong>학번만 보면 어느 반인지 알 수 있다.</strong> 이게 두 가지를 공짜로 만들어 준다.</p>
+<ul>
+<li><strong>학년 명단 통째 업로드</strong> — 엑셀 한 장을 올리면 학번에서 반을 읽어 반별로 흩어 넣는다. 반이 없으면 함께 개설한다. 학년 하나가 파일 한 장으로 끝난다(요구사항 4).</li>
+<li><strong>학생 로그인</strong> — 학번을 입력하면 해당하는 반을 먼저 찾아보고, 없으면 나머지 반을 훑는다.</li>
+</ul>
+<h3 id="h8">2.4 관리 축이 둘이다</h3>
+<p>같은 자리(<strong>반 × 메뉴</strong>)에 두 방향으로 들어간다(요구사항 6).</p>
+<ul>
+<li><strong>반별</strong> — 반을 먼저 고르고 그 반의 메뉴들을 본다. "1학년 3반 수업 준비하자"</li>
+<li><strong>메뉴별</strong> — 메뉴를 먼저 고르고 그 메뉴의 반들을 본다. "생각 체크 채점 몰아서 하자"</li>
+</ul>
+<p>메뉴 목록은 <code>lms2027/model.js</code>의 <strong><code>MENUS</code> 표 한 곳</strong>에만 있다. 학생 화면과 어드민이 같은 표를 읽으므로 한쪽만 늘어나는 일이 없다.</p>
+<hr>
+<h2 id="h9">3. 만들어 둔 것 (<code>lms2027/</code>)</h2>
+<div class="tw"><table><thead><tr><th>파일</th><th>내용</th></tr></thead><tbody><tr><td><code>model.js</code></td><td>데이터 모델과 조회, 반 개설/아카이브/삭제, 명단 교체, 라이브러리. <code>MENUS</code> 표</td></tr><tr><td><code>index.html</code> / <code>index.js</code> / <code>index.css</code></td><td>학생 화면. 제목 <strong>2027</strong></td></tr><tr><td><code>admin.html</code> / <code>admin.js</code> / <code>admin.css</code></td><td>어드민</td></tr><tr><td><code>manifest.json</code></td><td>스코프 <code>/lms2027/</code></td></tr><tr><td><code>pwa.js</code> / <code>sw.js</code></td><td>이 레포 전용. hoistory 서비스워커는 스코프가 <code>/hoistory/</code>라 여기를 못 덮는다</td></tr><tr><td><code>shared/</code></td><td>hoistory에서 복사한 <code>icons.js</code>, <code>firebase-config.js</code>. 이제 따로 간다</td></tr></tbody></table></div>
+<h3 id="h10">학생 화면</h3>
+<p><strong>로그인 화면은 2026 <code>lms/</code>에서 그대로 가져왔다</strong>(선생님 지시). 구조, 문구, 순서, CSS 규칙 모두 — 2026 로그인 영역의 id 23개와 class 42개가 전부 옮겨졌다.</p>
+<p>같은 것:</p>
+<ul>
+<li>입력 중에는 학번과 이름의 일치 여부를 <strong>표시하지 않고 조용히 대조만</strong> 한다. 맞을 때만 비밀번호 안내(설정 또는 입력)를 띄우고, 에러는 [입장하기]를 눌렀을 때만 낸다</li>
+<li>비밀번호는 SHA-256(학번 소금), 처음이면 4자 이상으로 설정. 해시 앞머리까지 2026과 같은 값을 만든다</li>
+<li>자동 로그인 카드, 개인정보 동의 팝업, 비밀번호 초기화 안내, 홈 화면에 추가 버튼과 iOS 안내 시트</li>
+<li>폰트도 같다 (Paperlogy 브랜드, Gowun Batang 태그라인)</li>
+</ul>
+<p>달라진 것:</p>
+<ul>
+<li><strong>명단을 찾는 곳.</strong> 2026은 RTDB 명단 하나를 봤고 지금은 그 해 개설된 반들의 명단에서 찾는다. 학번과 함께 어느 반인지도 같이 나온다</li>
+<li><strong>비밀번호와 동의 문서 id는 <code>학년도_학번</code>이다</strong>(2026-10-25). 한 학생이 여러 반(사회 반, 역사 반)에 들 수 있어서 반이 아니라 학년도에 붙였다. 해가 바뀌면 같은 학번이라도 작년 비밀번호를 물려받지 않는다</li>
+<li><strong>로그인 뒤 클래스를 고른다</strong>(선생님 지시 2026-10-25). 학생이 든 반이 "3학년 사회", "3학년 역사"처럼 카드로 나오고, 누르면 그 반의 메뉴 화면으로 간다. 메뉴 화면 왼쪽 위 버튼으로 클래스 목록에 돌아간다. 세션은 학번, 이름, 학년도이고 반(<code>lms_cid</code>)은 고를 때 정해진다</li>
+<li>닫기 버튼의 유니코드 기호를 <code>shared/icons.js</code>의 SVG로 바꿨다 (CLAUDE.md 아이콘 규칙)</li>
+<li>고른 반이 아카이브됐거나 지워졌으면 클래스 고르기로 돌려보내고, 든 반이 하나도 없으면 로그인으로 돌려보낸다. 클래스 목록은 캐시 대신 학번으로 바로 묻는다(<code>listStudentCourses</code>), 선생님이 반을 더하면 바로 보이게</li>
+</ul>
+<p>로그인 화면이 글자를 칠 때마다 조용히 명단과 대조하므로, 그때마다 Firestore에 물으면 읽기가 타이핑 수만큼 늘어난다. 2026은 <code>shared/auth.js</code>가 RTDB 명단을 24시간 캐시해 풀었고, 여기서도 같은 방식을 쓴다(<code>loadYearRoster</code>). 표에 <code>courseId</code>가 함께 들어가는 점만 다르다.</p>
+<p>메뉴 칸은 <code>MENUS</code>로 그리고, 아직 내용이 없는 메뉴도 자리를 비우지 않고 "준비 중"으로 둔다. 어드민에서 메뉴별로 관리할 때 학생 화면에 무엇이 있는지 한눈에 보여야 하기 때문이다.</p>
+<h3 id="h11">어드민</h3>
+<p><strong>강의실 관리</strong> (2026-10-25 "반 관리", "학급 관리"를 거쳐 이 이름으로. 명단은 학생 관리로 옮김)</p>
+<ul>
+<li>학년도 줄, 그 아래 <strong>태그 두 줄 — 과목 한 줄, 학년+반(301, 302 …) 한 줄</strong>(학생 관리의 반별 구분과 같게, 선생님 지시 2026-10-25), 그 아래 강의실 목록 한 줄씩. <strong>학년 아래로 묶지 않는다</strong></li>
+<li>태그는 여러 개를 함께 켤 수 있다. 같은 줄 안에서는 하나라도 맞으면, 줄끼리는 모두 맞아야 보인다(역사 + 2학년이면 역사 2학년 반들, 사회 + 역사면 둘 다). 아무것도 안 켠 줄은 거르지 않는다</li>
+<li>학년도 — 칩 줄 끝의 추가, 고른 학년도의 수정과 삭제. <strong>삭제는 관리자 이메일과 비밀번호로 재인증</strong>해야 된다</li>
+<li>반 만들기 — 과목(칩 또는 직접 입력), 학년, 반. 반 칸에 <code>1~6</code>이나 <code>1,3,5</code>를 적으면 여러 반을 한 번에 만든다. 이미 있는 반은 건너뛴다</li>
+<li>강의실 — 아카이브와 해제, 수정(과목, 학년, 반), 삭제(이름 입력). 명단 버튼은 없다(학생 관리에서 한꺼번에)</li>
+</ul>
+<p><strong>학생 관리</strong> (2026-10-25 신설. "명단은 따로 학생 관리 메뉴에서 정리한다", 선생님 지시)</p>
+<ul>
+<li>학년도 고르기(강의실 관리와 같은 학년도), <strong>반별 구분 줄</strong>(학번 앞 세 자리 301, 302 …, 맨 끝 "전체". 한 번에 한 반만 보인다, 처음은 전체), 학생 목록(학번, 이름, 든 강의실, 수정, 비밀번호 초기화, 삭제 버튼 순)</li>
+<li><strong>비밀번호 초기화</strong>(열쇠) — 그 학생의 비밀번호 문서(학년도_학번)를 지운다. 다음 로그인 때 학생이 새로 정한다(<code>clearPw</code>)</li>
+<li><strong>학생 수정</strong> — 학년, 반, 번호, 이름. 그 반 강의실 전부에 다시 등록하고, 학번이 바뀌면 비밀번호와 동의(학년도_학번)도 새 학번으로 옮긴다(<code>updateStudent</code>)</li>
+<li><strong>학생 삭제</strong> — 이름을 그대로 입력해 확인. 그 학년도 강의실 전부에서 빼고 비밀번호와 동의도 지운다(<code>deleteStudent</code>)</li>
+<li><strong>학생 추가</strong>(+) — <strong>학년, 반, 번호, 이름만</strong> 적으면 그 학년도에 만든 그 반 강의실 전부(과목 무관, 아카이브 제외)에 등록된다(선생님 지시 2026-10-25, 3학년 1반 홍길동이면 사회 3학년 1반과 역사 3학년 1반에 다). 그 반 강의실이 없으면 막고, 이미 들어 있는 강의실은 건너뛴다(<code>addStudent</code>)</li>
+<li><strong>명단 올리기</strong> — 엑셀 <strong>A열 과목, B열 학년, C열 반, D열 번호, E열 이름</strong>(선생님 지시 2026-10-25). 줄마다 반이 정해지므로 과목을 묻지 않는다. 학번은 학년 + 반 두 자리 + 번호 두 자리(1학년 2반 3번 = 10203). <strong>이미 만든 강의실에만 넣는다</strong> — 없는 강의실 줄은 미리 보기에 "없는 강의실이라 넣지 않음"으로 표시하고 건너뛴다. 파일에 나온 강의실은 명단이 통째로 교체된다. 한 학생이 사회 줄과 역사 줄에 다 있으면 두 반에 다 들어간다. 읽지 못한 줄은 몇 개인지 알리고 넣지 않는다. 어느 반이 몇 명으로 바뀌는지 먼저 보여 주고 확인받는다</li>
+</ul>
+<p><strong>공통</strong></p>
+<ul>
+<li>강의실을 지우면 명단과 강의 연결이 함께 지워지고 되돌릴 수 없다. 학생 비밀번호와 동의는 학년도에 붙어 있어 학년도를 지울 때 지워진다(학년도 숫자를 고치면 따라 옮겨진다)</li>
+<li>입력 칸 위에 이름표가 없다. 칸 안의 placeholder와 오른쪽 단위(학년도, 학년, 반)로 보인다. 숫자 칸에 스크롤 화살표가 없다</li>
+<li>버튼은 전부 아이콘이고, 결과는 화면 아래 토스트로 잠깐 뜬다. <code>alert</code>, <code>confirm</code>, <code>prompt</code> 대신 공용 모달 <code>ask()</code></li>
+</ul>
+<p><strong>반별 관리 / 메뉴별 관리</strong> — 위 2.4의 두 축. 칸 모양을 같게 둔 것은 들어가는 방향만 다르고 도착하는 자리가 같기 때문이다.</p>
+<p><strong>강의 라이브러리</strong> — 강의 추가와 목록.</p>
+<h3 id="h12">2026에서 얻은 것은 처음부터 넣었다</h3>
+<ul>
+<li><strong>부트 가드</strong> — <code>index.css</code>의 <code>--lms-css-ok</code>를 <code>index.js</code>가 확인하고 <code>lms-ready</code>를 붙인다. 안 붙으면 깨진 화면 대신 새로고침 안내만 보인다. <code>--lms-css-ok</code>를 지우지 말 것</li>
+<li><strong><code>experimentalAutoDetectLongPolling</code></strong> — iOS 사파리와 학교 와이파이 조합에서 쓰기가 영영 pending으로 남던 문제</li>
+<li><strong>인라인 <code>onclick</code>과 <code>window</code> 노출을 쓰지 않는다</strong> — 전부 <code>data-act</code> + 이벤트 위임. 2026 <code>admin.js</code>는 <code>window</code> 노출이 181곳이고 빠뜨리면 조용히 실패해서 CLAUDE.md에 별도 규칙까지 있었다</li>
+<li><strong>모듈 최상위 상태를 <code>state</code> 하나로 모았다</strong> — 2026은 여기에 81개가 흩어져 있었다</li>
+</ul>
+<h3 id="h13">아직 없는 것</h3>
+<ul>
+<li>각 메뉴의 실제 작업 화면 — 개념 편집, 미션 카드, 생각 체크 채점, 성적 표 (지금은 전부 "준비 중" 칸)</li>
+<li>공지, 뽑기, 경험치</li>
+<li>수업 화면과 슬라이드 (<code>lecture.html</code>, <code>slide-render.js</code>)</li>
+<li><strong>비밀번호 초기화</strong> — <code>model.js</code>의 <code>clearPw</code>는 만들어 두고 어드민에 아직 안 붙였다. 로그인 화면이 "선생님만 초기화"라고 안내하므로 붙여야 한다</li>
+</ul>
+<hr>
+<h2 id="h14">4. 로그인 방식 (결정됨)</h2>
+<p><strong>학생에게 Firebase Auth 계정을 만들지 않는다.</strong> 아이들이 일일이 가입해야 하고 그건 개인정보상 부담이라는 것이 선생님 결정이다(2026-10-23). 로그인은 지금처럼 <strong>학번과 이름과 본인이 정한 비밀번호의 일치 여부만</strong> 본다. 이 방식은 그대로 간다.</p>
+<p>→ 가짜 이메일 계정(<code>학번@2027.idy.local</code>), 익명 로그인, 커스텀 토큰 같은 제안은 <strong>다시 꺼내지 않는다.</strong> 설계 초안에 있던 "Person 기반 Firebase Auth"는 폐기했다.</p>
+<h3 id="h15">Auth 없이 비밀번호를 지키는 길</h3>
+<p>학생을 서버가 식별하지 못하므로 규칙에 "본인 것만"을 쓸 수 없다. Auth를 쓰지 않고도 좁힐 수 있는 길이 세 가지 있고, <strong>셋 다 학생 쪽 로그인 흐름은 지금과 똑같다.</strong> 첫 줄은 2026-10-25에 배포했다.</p>
+<div class="tw"><table><thead><tr><th>방법</th><th>효과</th><th>드는 일</th></tr></thead><tbody><tr><td><strong>규칙을 create 전용으로</strong> (완료) — <code>allow create</code>는 명단에 있는 <code>반id_학번</code>에만 열고 <code>update</code>와 <code>delete</code>는 관리자만. 목록(<code>list</code>)도 관리자만</td><td><strong>덮어쓰기(탈취)가 막힌다.</strong> 해시를 통째로 긁어 가는 길도 닫힌다. 아직 비밀번호를 안 정한 학생을 선점하는 길만 남고, 그건 선생님이 초기화하면 된다</td><td><code>firestore.rules</code></td></tr><tr><td><strong>해시를 PBKDF2로</strong> (반복 횟수 10만 이상)</td><td>해시가 새어도 짧은 비밀번호를 되짚기 어려워진다. 지금 SHA-256 한 번은 숫자 몇 자리면 금방 뚫린다</td><td><code>model.js</code>의 <code>hashPw</code> 한 곳. 기존 비밀번호는 다음 로그인 때 새 방식으로 다시 저장</td></tr><tr><td><strong>검증을 Cloud Function으로</strong></td><td>해시를 <strong>아예 내려보내지 않는다.</strong> 규칙에서 읽기까지 관리자 전용으로 닫을 수 있다</td><td><code>functions/</code>에 callable 하나. 이미 <code>claudeProxy</code>가 있어 틀은 있다</td></tr></tbody></table></div>
+<p><strong>규칙 쓸 때 주의</strong> — 규칙은 겹치면 OR로 합쳐진다. 맨 끝 catch-all이 읽기를 전부 열어 두므로, 위에서 <code>list</code>를 닫아도 catch-all이 다시 연다. 그래서 catch-all을 <code>/{coll}/{document=**}</code>로 바꾸고 <code>course_auth</code>와 <code>course_consent</code>를 뺐다. 읽기를 닫을 컬렉션이 늘면 그 목록에 더한다.</p>
+<p>비밀번호가 이미 있는 문서에 학생이 쓰면 update라 막힌다. 그래서 <code>setPw</code>는 비밀번호가 없을 때만 부르고, 실패하면 들여보내지 않는다(비밀번호 없는 계정이 남으면 아무나 선점할 수 있으므로).</p>
+<hr>
+<h2 id="h16">5. 정해야 할 것</h2>
+<ul>
+<li><strong>경험치</strong> — 반마다 새로 시작할지(학년별로 공평), 학년이 올라가도 이어갈지. 이어가려면 학번이 바뀌는 문제를 풀어야 한다</li>
+<li><strong>2026 데이터</strong> — 2026 반으로 옮겨 아카이브할지, 선생님만 보는 내보내기로 둘지, 폐기할지</li>
+<li><strong>성적과 제출물의 읽기 범위</strong> — 학생을 식별하지 못하므로 "본인 성적만 읽기"는 규칙으로 못 쓴다. 공개 읽기로 둘지(2026과 같음), 검증을 Cloud Function으로 옮길 때 같이 닫을지. 성적 화면을 만들기 전에 정한다</li>
+<li><strong>강의 라이브러리 페이지를 남길지</strong> — 개념 노트의 강의 추가가 같은 <code>lesson_library</code>에 더 많은 것(내용 틀, 공개 스위치, 올릴 강의실)을 갖춰 만든다. 라이브러리 페이지는 강 번호와 제목만 만드는 반쪽짜리가 됐다. 지울지 보기 전용으로 둘지 선생님께 물어볼 것</li>
+<li><strong>진도 일정에 따른 자동 공개</strong> — 요구사항 46의 "진도 스케줄에 따라 켜지기"는 아직 없다. 2027에 진도표가 없어서 그 기능을 옮기지 않았다. 진도표를 만든 뒤에 붙인다</li>
+</ul>
+<hr>
+<h2 id="h17">6. 이행 계획</h2>
+<h3 id="h18">폴더 전략</h3>
+<p><strong>2026-10-25 바뀜 — 독립 레포로 옮겼다</strong>(선생님 지시). 주소가 <code>https://hoseong911.github.io/lms2027/</code>이 됐다.</p>
+<p>원래 계획은 2027년 2월에 <code>hoistory/lms/</code> 자리로 옮기는 것이었다. 학생들 홈 화면 PWA가 <code>/hoistory/lms/</code>에 고정돼 있어서다(<code>lms/manifest.json</code>의 <code>id</code>, <code>start_url</code>, <code>scope</code>). 레포가 갈렸으니 <strong>이 문제는 다시 정해야 한다.</strong></p>
+<ul>
+<li>2027 학생은 새로 홈 화면에 추가하게 한다(학생을 해마다 새로 받으므로 자연스럽다). <code>hoistory/lms/</code>는 새 주소로 넘겨 주는 안내 페이지로 바꾼다</li>
+<li>또는 나중에 이 레포 내용을 다시 <code>hoistory/lms/</code>로 옮긴다</li>
+</ul>
+<p>미션 앱(<code>hoistory/apps/</code> 13개)은 그 자리에 두고 LMS만 바뀐다. 같은 <code>hoseong911.github.io</code> 출처라 선생님 로그인과 localStorage는 두 레포가 함께 쓴다.</p>
+<h3 id="h19">단계</h3>
+<div class="tw"><table><thead><tr><th>단계</th><th>내용</th><th>상태</th></tr></thead><tbody><tr><td>0</td><td>요구사항 수집과 설계</td><td>완료</td></tr><tr><td>1</td><td>데이터 모델, 학생 화면 큰 틀, 어드민 큰 틀</td><td>완료</td></tr><tr><td>2</td><td><code>firestore.rules</code> 작성 (<code>course_auth</code>는 create 전용으로)</td><td>완료 (2026-10-25 배포)</td></tr><tr><td>3</td><td>메뉴별 작업 화면 — 개념, 미션, 생각, 성적</td><td></td></tr><tr><td>4</td><td>공지, 뽑기, 경험치</td><td></td></tr><tr><td>5</td><td>수업 화면과 슬라이드 이관</td><td></td></tr><tr><td>6</td><td>디자인 일괄 교체</td><td></td></tr><tr><td>7</td><td>2026 아카이브와 자리 교체</td><td></td></tr></tbody></table></div>
+<p><strong>규칙 배포 주의</strong> — <code>firestore.rules</code>는 <strong>hoistory 레포에 있다</strong>(Firebase 프로젝트 하나에 규칙 파일 하나). GitHub Pages로 안 올라가므로 hoistory에서 <code>firebase deploy --only firestore:rules --project ho0911seong-56638</code>을 따로 하고 hoistory에도 커밋한다.</p>
+<h3 id="h20">범위에서 빼는 것</h3>
+<ul>
+<li>13개 미션 앱(<code>apps/</code>) 내부 — LMS 연동 규약만 맞춘다</li>
+<li><code>hismile/</code>, <code>survey/</code>, <code>ox/</code> — LMS 연동이지만 별도 앱</li>
+<li>루트 <code>index.html</code> 허브 — 아카이브 성격이라 현행 유지</li>
+</ul>
+<hr>
+<h2 id="h21">부록 — 조사에서 나온 기타 부채</h2>
+<p>개편의 동기는 아니지만 새로 지을 때 같이 털 것.</p>
+<ul>
+<li>미션 자동 집계가 카드 <code>url</code>의 <code>apps/&lt;앱키&gt;/</code>를 정규식으로 뽑아 하드코딩 표 <code>MISSION_SOURCES</code>를 찾는다(<code>lms/admin.js:4758</code>). 13개 앱 중 4개만 연동. 카드에 <code>appKey</code> 필드를 두고 표를 Firestore 설정으로 옮긴다</li>
+<li>Firestore와 RTDB 이원화 — RTDB에 명단, 경험치, 마일리지, 아카이브 설정만 남아 있다. 명단이 Firestore로 옮겨 가므로 경험치만 결정하면 RTDB를 뺄 수 있다</li>
+<li>규칙 누락과 위반 — <code>gradeOverrides</code>는 camelCase 금지 위반, <code>class_progress</code>는 <code>firestore.rules</code>에 블록이 없다</li>
+<li>Firebase SDK 3종 혼용 — 10.12.2(66곳), 10.7.1(30곳), 10.8.1(13곳)</li>
+<li>캐시 무효화 <code>?v=</code> 수동 관리</li>
+<li>CLAUDE.md 드리프트 — "config는 각 HTML에 인라인 복붙"이라 적혀 있지만 <code>shared/firebase-config.js</code>로 모였고 인라인은 3곳만. 서브앱도 11개로 적혀 있지만 실제 13개</li>
+</ul></main>
+</body></html>

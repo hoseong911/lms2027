@@ -1,16 +1,11 @@
-/* 2027 LMS 학생 화면 — 제로베이스 뼈대 (2026-10-26)
-   디자인은 맨 나중에 한꺼번에 바꾼다. 지금은 구조를 보기 위한 중립 스타일. */
-:root{
-  --lms-css-ok:1; /* index.js가 이 값으로 디자인 적용 여부를 확인한다(html의 lms-ready). 지우지 말 것 */
-  --bg:#f4f5f7; --ink:#1f2328; --sub:#6b7280; --line:#e3e6ea; --card:#fff;
-  --accent:#3b6ef2; --accent-soft:#eaf0ff;
-  --concept:#2f8f6b; --mission:#e4572e; --question:#7a4fd6; --formative:#c99000; --review:#4a7fb5;
-}
+@import url("shared/theme.css?v=20261027a");
+/* 2027 LMS 학생 화면 — 제로베이스 뼈대 (2026-10-26, 색과 형태 2026-10-27)
+   색은 shared/theme.css 한 곳에서. 기조는 플랫 + 미니멀(그림자, 그라데이션, 알약 없음). */
+/* 부트 가드 --lms-css-ok는 위의 shared/theme.css로 옮겼다(2026-10-27).
+   이 파일이 와도 테마가 안 오면 색이 없는 화면이 뜨므로, 제일 끝 고리에서 확인하는 것이 맞다. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--ink);
-  font-family:"Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;line-height:1.5;
-  -webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
 
 /* 부트 가드 */
 .boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--sub);font-size:15px}
@@ -21,58 +16,63 @@ html:not(.lms-ready) #app{display:none}
 
 /* 공통 */
 .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;min-height:38px}
-.topbar h1{font-size:18px;margin:0;flex:1}
+.topbar h1{font-size:18px;margin:0;flex:1;letter-spacing:-.2px}
 .topbar .who{font-size:12px;color:var(--sub)}
 .hi-ic{vertical-align:middle}
 .iconbtn{display:inline-grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);
-  border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
-.iconbtn:hover{background:#f0f2f5}
+  border-radius:var(--r-btn);background:var(--card);color:var(--sub);cursor:pointer}
+.iconbtn:hover{background:var(--hover);color:var(--ink);border-color:var(--line-strong)}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;
   cursor:pointer;display:flex;align-items:center;gap:12px}
-.card:hover{border-color:#c7ccd4}
-.card .ic{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
+.card:hover{border-color:var(--navy);}
+.card .ic{width:38px;height:38px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
 .card .body{flex:1;min-width:0}
 .card .t{font-weight:700;font-size:15px}
 .card .s{font-size:12px;color:var(--sub);margin-top:2px}
 .card .chev{color:var(--sub)}
 
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
-.tag{font-size:11px;color:var(--sub);background:#eef0f3;border-radius:6px;padding:2px 8px}
+.tag{font-size:11px;color:var(--navy-600);background:var(--accent-soft);border-radius:3px;padding:2px 8px}
 
-.sectionlabel{font-size:12px;color:var(--sub);font-weight:700;margin:18px 2px 8px}
+.sectionlabel{font-size:12px;color:var(--sub);font-weight:700;margin:18px 2px 8px;letter-spacing:.3px}
 .empty{color:var(--sub);font-size:14px;padding:18px 2px}
 
 /* 로그인 */
 .login{max-width:360px;margin:8vh auto 0}
-.login h1{font-size:30px;text-align:center;margin:0 0 4px;letter-spacing:1px}
-.login .lead{text-align:center;color:var(--sub);font-size:13px;margin:0 0 22px}
-.field{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:15px;margin-bottom:10px;
-  background:#fff;color:var(--ink)}
-.field:focus{outline:none;border-color:var(--accent)}
-.primary{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:13px;
-  font-size:15px;font-weight:700;cursor:pointer}
-.primary:hover{filter:brightness(.96)}
+.login h1{font-size:34px;text-align:center;margin:0 0 4px;letter-spacing:1px;color:var(--navy)}
+.login .lead{text-align:center;color:var(--sub);font-size:13px;margin:0 0 22px;letter-spacing:.5px}
+.field{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;font-size:15px;margin-bottom:8px;
+  background:var(--card);color:var(--ink);font-family:inherit}
+.field::placeholder{color:var(--sub)}
+.field:focus{outline:none;border-color:var(--navy)}
+.primary{width:100%;background:var(--navy);color:#fff;border:none;border-radius:var(--r-btn);padding:13px;
+  font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
+.primary:hover{background:var(--navy-800)}
 .hint{color:var(--sub);font-size:12px;text-align:center;margin-top:12px}
 
 /* 점수 카드 */
-.score{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.score{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
 .score .h{font-weight:700;font-size:14px;margin-bottom:10px}
 .score .row{display:flex;justify-content:space-between;font-size:14px;margin:6px 0}
-.score .row.total{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;font-weight:700}
+.score .row.total{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;font-weight:700;color:var(--navy)}
 
 /* 강의 뷰어 */
 .lessontabs{display:flex;gap:4px;overflow:auto;border-bottom:1px solid var(--line);margin-bottom:14px}
 .lessontab{flex:0 0 auto;padding:9px 12px;font-size:13px;color:var(--sub);border:none;background:none;cursor:pointer;
-  border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px}
-.lessontab.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
-.partview{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;min-height:260px}
+  border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;font-family:inherit}
+.lessontab:hover{color:var(--ink)}
+.lessontab.on{color:var(--navy);-webkit-text-stroke:.5px var(--navy);border-bottom-color:var(--navy)}
+.partview{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;min-height:260px}
 .partview .pt{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
-.partview .bigt{font-size:20px;font-weight:700;margin:6px 0 14px}
-.partview .placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:10px;
+.partview .bigt{font-size:20px;font-weight:700;margin:6px 0 14px;letter-spacing:-.2px}
+.partview .placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:var(--r);
   padding:26px;text-align:center}
-.partview textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;padding:12px;
-  font-size:14px;font-family:inherit;resize:vertical}
+.partview textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:var(--r);padding:12px;
+  font-size:14px;font-family:inherit;resize:vertical;color:var(--ink);background:var(--card)}
+.partview textarea:focus{outline:none;border-color:var(--navy)}
 .lessonnav{display:flex;justify-content:space-between;margin-top:14px}
-.navbtn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:9px 14px;font-size:14px;cursor:pointer}
-.navbtn:disabled{opacity:.4;cursor:default}
+.navbtn{border:1px solid var(--line);background:var(--card);border-radius:var(--r-btn);padding:9px 14px;font-size:14px;
+  cursor:pointer;font-family:inherit;color:var(--ink)}
+.navbtn:hover:not(:disabled){border-color:var(--navy);color:var(--navy)}
+.navbtn:disabled{opacity:.35;cursor:default}

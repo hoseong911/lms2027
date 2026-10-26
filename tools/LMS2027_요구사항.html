@@ -1,0 +1,328 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>요구사항 : LMS2027</title>
+<style>
+:root{--bg:#fff;--text:#1b1d22;--sub:#6b7280;--line:#e5e7eb;--accent:#2563eb;--code:#f3f4f6;--side:#fafafa}
+@media (prefers-color-scheme:dark){:root{--bg:#15171b;--text:#e7e9ee;--sub:#9aa1ad;--line:#2b2f36;--accent:#7aa2f7;--code:#1e2127;--side:#191c21}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 "Pretendard","Malgun Gothic",system-ui,sans-serif;display:flex}
+aside{position:sticky;top:0;height:100vh;width:260px;flex:none;overflow:auto;background:var(--side);border-right:1px solid var(--line);padding:16px 0}
+.docs{display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 12px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.doc{font-size:13px;padding:5px 9px;border-radius:7px;text-decoration:none;color:var(--sub)}
+.doc:hover{color:var(--text)}
+.doc.on{color:var(--text);background:var(--bg);border:1px solid var(--line)}
+.t{display:block;padding:3px 14px;font-size:13px;color:var(--sub);text-decoration:none;line-height:1.5;border-left:2px solid transparent}
+.t:hover{color:var(--accent);border-left-color:var(--accent)}
+.t1{font-weight:700;color:var(--text);margin-top:10px}
+.t2{padding-left:22px}
+.t3{padding-left:34px;font-size:12.5px}
+main{flex:1;min-width:0;padding:34px 44px 140px;max-width:960px}
+h1,h2,h3,h4{line-height:1.35;scroll-margin-top:16px}
+h1{font-size:28px;border-bottom:2px solid var(--line);padding-bottom:10px;margin-top:0}
+h2{font-size:22px;margin-top:44px;border-bottom:1px solid var(--line);padding-bottom:7px}
+h3{font-size:17.5px;margin-top:30px}
+h4{font-size:15.5px;margin-top:22px;color:var(--sub)}
+p{margin:11px 0}
+li{margin:4px 0}
+li.sub{margin-left:18px;list-style-type:circle;color:var(--sub)}
+code{background:var(--code);padding:1.5px 5px;border-radius:5px;font-size:13.5px;font-family:ui-monospace,Consolas,monospace}
+pre{background:var(--code);padding:14px 16px;border-radius:10px;overflow:auto}
+pre code{background:none;padding:0;font-size:13px;line-height:1.6}
+blockquote{margin:12px 0;padding:8px 16px;border-left:3px solid var(--accent);background:var(--code);border-radius:0 8px 8px 0;color:var(--sub)}
+hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+.tw{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;font-size:14px;min-width:100%}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left;vertical-align:top}
+th{background:var(--code);font-weight:700;white-space:nowrap}
+a{color:var(--accent)}
+strong{font-weight:700}
+@media (max-width:860px){aside{display:none}main{padding:20px 16px 100px}}
+</style></head><body>
+<aside><div class="docs"><a class="doc on" href="LMS2027_요구사항.html">요구사항</a><a class="doc" href="LMS2027.html">설계</a><a class="doc" href="LMS2027_작업기록.html">작업기록</a><a class="doc" href="CLAUDE.html">규칙</a></div><a class="t t1" href="#h1">2027 LMS 개편 — 요구사항 받아쓰기</a><a class="t t2" href="#h2">2026-10-23</a><a class="t t2" href="#h3">2026-10-23 (이어서)</a><a class="t t2" href="#h4">2026-10-23 (이어서 2)</a><a class="t t2" href="#h5">2026-10-23 (이어서 3)</a><a class="t t2" href="#h6">2026-10-25</a><a class="t t2" href="#h7">2026-10-25 (이어서)</a><a class="t t2" href="#h8">2026-10-26 (이어서)</a><a class="t t2" href="#h9">2026-10-26 제로베이스 재설계 정리 (선생님이 "정리해서 문서에 넣으라"고 지시)</a><a class="t t3" href="#h10">68. 조직 원리 (한 줄)</a><a class="t t3" href="#h11">69. 여섯 용도 (선생님이 적은 전체 용도)</a><a class="t t3" href="#h12">70. 포트폴리오 수행평가 세 요소</a><a class="t t3" href="#h13">71. 강의 안 네 칸</a><a class="t t3" href="#h14">72. 복습은 독립 메뉴</a><a class="t t3" href="#h15">73. 공유와 아카이브</a><a class="t t3" href="#h16">74. 운영 틀</a><a class="t t3" href="#h17">75. Firestore 컬렉션 (통일)</a><a class="t t3" href="#h18">76. 이름 통일 규칙</a><a class="t t3" href="#h19">77. 칸과 메뉴 내부 키</a><a class="t t3" href="#h20">78. 작업 순서 (제로베이스)</a></aside>
+<main><h1 id="h1">2027 LMS 개편 — 요구사항 받아쓰기</h1>
+<blockquote>선생님이 말씀하신 것을 그대로 모아 두는 곳. <strong>정리·설계는 "정리하라" 지시가 있을 때만 한다.</strong></blockquote>
+<blockquote>그전까지는 항목만 계속 덧붙인다.</blockquote>
+<h2 id="h2">2026-10-23</h2>
+<ol>
+<li><strong>구글 클래스룸 스타일로 가고 싶다.</strong> 연도가 바뀌든, 학년이 바뀌든, 반이 생기든 없어지든</li>
+</ol>
+<p>   계속 <strong>영구적으로</strong> 사용할 수 있는 시스템으로 구축하고 싶다.</p>
+<ol>
+<li><strong>그러면서도 지금 쓰는 방식은 유지하고 싶다</strong> — 강의 생성, 학생 일괄 업로드 같은 것.</li>
+</ol>
+<ol>
+<li>위 <strong>두 축을 기준으로</strong> 시스템을 만든다.</li>
+</ol>
+<h2 id="h3">2026-10-23 (이어서)</h2>
+<ol>
+<li><strong>학생은 1년 단위로 재생성해도 된다.</strong> 클래스룸도 반을 개설하고 그 안에 학생을</li>
+</ol>
+<p>   불러와 넣는 방식이니, 202n년도 n학년 n반은 1년만 유효하면 된다.    → 앞서 설계한 Person(영구 학생 신원)은 폐기한다.</p>
+<ol>
+<li><strong>1년 단위로 반을 개설하고 없애는 기능</strong>을 만든다.</li>
+</ol>
+<ol>
+<li><strong>1개 학년이면 통으로 만드는 기능</strong>도 있으면 좋겠다.</li>
+</ol>
+<ol>
+<li>로그인해서 뜨는 <strong>생각 체크, 미션 체크 같은 기능들은 지금과 동일</strong>하다.</li>
+</ol>
+<ol>
+<li>관리할 때 <strong>반별 또는 메뉴별로 관리가 가능</strong>하게 한다</li>
+</ol>
+<p>   (메뉴 = 지금의 생각 체크, 미션 체크 등).</p>
+<ol>
+<li><strong>일단 큰 틀부터</strong> 만든다.</li>
+</ol>
+<ol>
+<li><strong>디자인은 지금 이대로 유지.</strong> 맨 나중에 한꺼번에 바꾼다.</li>
+</ol>
+<h2 id="h4">2026-10-23 (이어서 2)</h2>
+<ol>
+<li><strong>로그인 화면은 지금 lms 상태를 그대로 차용</strong>해서 쓴다.</li>
+</ol>
+<ol>
+<li><strong>다른 컴퓨터에서도 작업을 이어서</strong> 할 수 있게 처리한다.</li>
+</ol>
+<h2 id="h5">2026-10-23 (이어서 3)</h2>
+<ol>
+<li><strong>로그인에서 Firebase Auth를 쓰지 않는다.</strong> 그렇게 하면 아이들이 일일이 다 가입을</li>
+</ol>
+<p>    해야 하는데 개인정보상 좀 힘들다. 그냥 학번과 이름, 자기가 설정한 비밀번호의     일치 여부만 판단하는 게 지금 방식이고 <strong>이건 그대로 간다.</strong></p>
+<ol>
+<li><strong>커밋한 내용은 항상 프로젝트 파일에도 기록한다.</strong> 컴퓨터를 이리저리 옮겨서</li>
+</ol>
+<p>    작업하므로. (레포의 <code>LMS2027_작업기록.md</code>에 남긴다 — 메모리 파일은 컴퓨터 간에     따라가지 않으므로 git으로 따라가는 레포 안에 둬야 한다.)</p>
+<h2 id="h6">2026-10-25</h2>
+<ol>
+<li><strong>레포를 하나 신설한다.</strong> hoistory 밑이 아니라 lms2027을 독립된 레포로 둔다.</li>
+</ol>
+<ol>
+<li>그다음 <strong>어드민을 하나씩 뜯는다.</strong> 먼저 <strong>반 관리를 학급 관리로</strong> 바꾸고,</li>
+</ol>
+<p>    <strong>학년도, 학년, 반은 선생님이 임의로 다 생성, 수정, 삭제</strong>할 수 있게 한다.</p>
+<ol>
+<li><strong>규칙 추가.</strong></li>
+</ol>
+<ul>
+<li class="sub">메뉴 등에 대해 <strong>작은 글씨로 주석처럼 설명해 주는 것은 만들지 않는다.</strong> 개인적으로 싫다.</li>
+<li class="sub"><strong>가운뎃점 연결, 화살표 연결은 금지.</strong></li>
+<li class="sub">이모지를 쓸 때는 <strong>SVG 이모지</strong>를 쓴다.</li>
+<li class="sub">보통 액션 버튼들은 <strong>설명이 필요 없는 경우 SVG 이모지로</strong> 표현한다.</li>
+</ul>
+<h2 id="h7">2026-10-25 (이어서)</h2>
+<ol>
+<li>학년도 만들기 팝업의 <strong>입력 칸 위 작은 "학년도" 글씨는 필요 없다.</strong> 헷갈릴까 봐 적은 거면</li>
+</ol>
+<p>    "학년도(숫자 입력)"처럼 <strong>칸 안에</strong> 적는다. 칸 옆 <strong>스크롤 화살표도 없앤다.</strong></p>
+<ol>
+<li><strong>학년도 삭제는 관리자 메일과 비밀번호로 인증</strong>하게 한다. 지금은 너무 허술하다.</li>
+</ol>
+<ol>
+<li>학년 추가의 학년 칸 옆 스크롤 화살표도 없앤다. <strong>모든 작업에 동일하게 규칙으로</strong> 넣는다.</li>
+</ol>
+<ol>
+<li>만들 때 건드릴 수 있는 것은 <strong>과목, 학년, 반</strong>. 사회와 역사를 다 가르친다.</li>
+</ol>
+<ol>
+<li>3학년 안에 반을 묶지 말고, 위에 <strong>카테고리 태그</strong>를 만들어 <strong>과목별, 학년별, 반별</strong>로 볼 수 있게 한다.</li>
+</ol>
+<p>    태그는 <strong>중복 적용</strong>된다.</p>
+<ol>
+<li><strong>과목도 사회, 역사로 한정 짓지 않는다.</strong> 무엇을 가르칠지 미리 정하지 마라.</li>
+</ol>
+<ol>
+<li><strong>시키는 것 말고 다른 것은 하지 않는다.</strong></li>
+</ol>
+<ol>
+<li>명단 올리기는 <strong>A열 과목, B열 학년, C열 반, D열 번호, E열 이름</strong>으로 한다. 그러면 과목을 따로 묻지 않아도 된다.</li>
+</ol>
+<ol>
+<li><strong>같은 학생이 두 과목 이상 반에 들어가는 것</strong>을 고려한다.</li>
+</ol>
+<ol>
+<li>학생이 로그인하면 <strong>자기가 속한 클래스(예: 3학년 사회, 3학년 역사)를 누른 다음</strong> 우리가 아는 그 메뉴가 뜬다.</li>
+</ol>
+<ol>
+<li>아카이브는 <strong>그대로 둔다.</strong></li>
+</ol>
+<ol>
+<li>위쪽 구분 버튼은 <strong>과목과 학년 한 줄, 반 한 줄.</strong> 반이 어떻게 늘어날지 모르니까.</li>
+</ol>
+<ol>
+<li>명단은 <strong>따로 학생 명단 관리 메뉴</strong>를 만들어 거기서 정리한다. 일일이 학급마다 만들 필요 없이.</li>
+</ol>
+<p>    그러면 학급 관리라고 하면 안 되니 <strong>강의실 관리</strong>라고 한다. <strong>강의실 관리, 학생 관리</strong> 두 개로.     <strong>학생 관리에서 명단을 다 생성</strong>한다.</p>
+<ol>
+<li>학생 관리에서 <strong>엑셀 올리기 말고 스스로 명단을 생성</strong>하는 것도 된다.</li>
+</ol>
+<ol>
+<li>학생 추가 팝업에 과목 버튼과 과목 칸이 따로 있을 이유가 없다. <strong>생성된 강의실에 한정해서 학생을 생성</strong>한다.</li>
+</ol>
+<ol>
+<li>학생 추가는 강의실을 고르는 게 아니라 <strong>"3학년 1반 ooo"만 치면 그 반으로 생성된 강의실에 다 등록</strong>된다.</li>
+</ol>
+<ol>
+<li>강의실 관리와 학생 관리를 번갈아 누르면 <strong>학년도 버튼과 배치가 픽셀 단위로 안 맞는다.</strong> 확인할 것.</li>
+</ol>
+<ol>
+<li>엑셀 명단 올리기도 학생 추가처럼 <strong>학년, 반, 번호, 이름 네 열</strong>로 받아 그 반 강의실 전부에 넣는다. <strong>일단 킵</strong>(보류).</li>
+</ol>
+<ol>
+<li>학생 관리 목록의 <strong>학번 글꼴이 이상하다.</strong> 학번, 이름 다음에 <strong>액션 버튼(수정, 삭제)</strong>이 있어야 한다.</li>
+</ol>
+<ol>
+<li>강의실은 "사회 3학년 1반"이 아니라 <strong>"사회 301"</strong>로 쓴다.</li>
+</ol>
+<ol>
+<li><strong>알약 모양 테두리 버튼은 규칙으로 없앤다.</strong> 버튼 테두리는 <strong>진짜 액션 버튼에만.</strong></li>
+</ol>
+<p>    <strong>태그는 테두리 없는 배경</strong>으로 구분, <strong>카테고리나 정렬 토글은 구분선</strong>으로 구분한다.</p>
+<ol>
+<li>학생 관리에 <strong>비밀번호 초기화 액션 버튼</strong>을 넣는다.</li>
+</ol>
+<ol>
+<li>학생 관리에도 <strong>반별 카테고리</strong>를 둔다.</li>
+</ol>
+<ol>
+<li>(38 정정) <strong>배지는 테두리 없는 배경색.</strong> <strong>태그와 카테고리는 아래 구분선</strong>으로 표시한다. 쇼핑몰 카테고리 줄처럼</li>
+</ol>
+<p>    내용과만 구분하고 <strong>별도 배경색은 두지 않는다.</strong></p>
+<ol>
+<li>강의실 관리 태그도 학생 관리처럼 <strong>과목 한 줄, 학년+반(301, 302) 한 줄</strong> 두 개로.</li>
+</ol>
+<ol>
+<li>학생 관리 목록의 액션 버튼은 <strong>수정, 초기화, 삭제</strong> 순서.</li>
+</ol>
+<ol>
+<li>학생 관리 반별 구분은 눌러서 누적되는 게 아니라 <strong>한 반씩</strong> 보이게. <strong>맨 마지막 구분은 "전체"</strong>.</li>
+</ol>
+<ol>
+<li>메뉴별 관리 수정 시작 — <strong>"개념 체크" 명칭을 바꾸고 싶다.</strong> 학생들에게 강의 자료를 보여 주는 것, 말 그대로 수업 내용이다. (이름은 아직 정하지 않음)</li>
+</ol>
+<ol>
+<li>이름은 <strong>개념 노트</strong>. 원래 lms의 개념 체크 메뉴를 이식해 와서 개념 노트라는 새 메뉴로 옮긴다.</li>
+</ol>
+<p>    2026 강의 내용은 가져오지 않고 <strong>기능만</strong>. 공개는 <strong>강의마다 켜고, 그 강의의 진도 스케줄에 따라 켜지기.</strong></p>
+<ol>
+<li>(46 정리) 개념 노트로 <strong>이식하는 것은 강의 생성 기능과 학생들이 볼 수 있는 기능</strong>이다.</li>
+</ol>
+<p>    강의 내용은 2027에서 다시 만들므로, 가져오는 것은 <strong>콘텐츠 올리는 기능과 디자인 조절 기능뿐</strong>이다.     그래서 <strong>강의 생성 후 업로드되는 강의실을 선택하는 기능을 더해야 한다.</strong> 2027 강의실 구조에 맞게 이식한다.</p>
+<ol>
+<li>메뉴별 관리 하위 항목에 개념 노트를 두지 말 것. <strong>개념 노트는 별도 메뉴로 신설</strong>한다.</li>
+</ol>
+<p>    <strong>메뉴별 관리는 페이지가 아니라</strong> 지금 구분선 놓은 것처럼 <strong>별도 메뉴들의 카테고리</strong>다.</p>
+<ol>
+<li>올릴 강의실 선택은 <strong>체크 표시</strong>로. <strong>과목별, 학년별, 반별 일괄 선택</strong>도 만든다.</li>
+</ol>
+<ol>
+<li><strong>메뉴의 내용 너비를 확 넓힌다.</strong> 내용이 밀려 두 줄이 되지 않게.</li>
+</ol>
+<ol>
+<li>(의견 요청) 미션 체크와 생각 체크도 이름을 바꾸고 싶다. <strong>생각 체크는 "질문"이라는 단어를 넣어서.</strong></li>
+</ol>
+<ol>
+<li>(의견 요청) 콘텐츠 메뉴가 표지, Dive, 개념, 미션, 생각으로 <strong>고정</strong>되어 있는데, 특정 과목에</li>
+</ol>
+<p>    딱 맞춘 구조라 <strong>파워포인트 쓰듯이 범용성 있게</strong> 바꾸고 싶다. <strong>메뉴도 직접 추가</strong>할 수 있고,     <strong>메뉴 안의 콘텐츠도 마음대로 짜고</strong> 싶다. 강의 노트 표시는 적는 방식(원문자 등)에 따라     바뀌게 하거나, 여러 템플릿을 구축해 두는 식으로.</p>
+<ol>
+<li>디자인은 <strong>전면 개편</strong>할 것이다. 지금은 역사에만 맞는 구조라 <strong>여러 가지를 더하고 빼는 기능</strong>이 필요하다.</li>
+</ol>
+<ol>
+<li>생각 체크의 새 이름은 <strong>오늘의 질문</strong>으로 확정. 미션 체크 이름은 의견을 더 받고 나중에 정한다.</li>
+</ol>
+<ol>
+<li>(질문) 여러 과목의 활동지가 다 각자 다른데 <strong>어떻게 AI가 읽고 슬라이드를 만드는가</strong>.</li>
+</ol>
+<p>    → 답변 문서: https://claude.ai/code/artifact/8448a0f8-b95b-44cc-88a4-a5a737a740a7     요지 — 걸림돌은 "과목이 다르다"가 아니라 <strong>양식 규칙이 코드에 박혀 있다</strong>는 것.     지금 프롬프트가 읽는 것은 역사가 아니라 <strong>선생님의 활동지 양식</strong>(회색 칸, 원문자, 점선 박스)이다.     제안: ① 프롬프트를 템플릿에서 생성(AI는 섹션을 만들지 않고 채우기만)          ② 템플릿에 "활동지 읽기 규칙"과 섹션별 힌트 칸 추가          ③ 활동지는 PDF로 올리기(hwpx는 표 구조가 사라짐)          ④ 긴 활동지는 나누기 → 바꾸기 두 단계          ⑤ 검수 표시</p>
+<h2 id="h8">2026-10-26 (이어서)</h2>
+<ol>
+<li><strong>활동지를 AI로 변환하지 말고, 완성된 PDF를 그대로 쪽 단위로 띄우는 방식은 안 되는가.</strong></li>
+</ol>
+<p>    예로 든 파일은 해냄에듀 배움책이지만 <strong>실제로는 선생님이 직접 만들어 올린다</strong>(저작권 문제 없음).     남는 문제는 <strong>빈칸에 들어갈 말을 어떻게 구현하는가</strong>.     → 됨. 학생용과 교사용 PDF가 한 쌍이면 <strong>빈칸 자리와 정답이 자동으로 뽑힌다</strong>.       교사용에만 있는 텍스트 = 정답, 두 쪽의 픽셀이 다른 자리 = 빈칸 상자.       예시 파일 4쪽에서 빈칸 49개를 전사 없이 뽑았고 미매칭 0건.     → 전제: 학생용과 교사용을 <strong>같은 원본에서 답 레이어만 켜고 끄고</strong> 두 번 내보낸다.</p>
+<ol>
+<li><strong>타이핑 복습 기능은 아예 뺀다.</strong> 대신 <strong>OX 퀴즈 등 다른 활동</strong>을 만든다.</li>
+</ol>
+<p>    (글자가 그림이 되면 타이핑 복습은 성립하지 않는다)</p>
+<ol>
+<li>핸드폰 화면 대응은 <strong>나중 문제</strong>. 먼저 <strong>컴퓨터 화면에서 제대로 보이는 것</strong>을 만든다.</li>
+</ol>
+<p>    활동지는 <strong>A4 크기로 제작</strong>된다.</p>
+<ol>
+<li>(요청) 예시 PDF에서 <strong>2~4쪽으로 강의를 하나 만들어 볼 것.</strong></li>
+</ol>
+<p>    → <code>page-lesson.html</code> 시안. 20~23쪽(교재 19~22쪽, 한 주제) 4장, 빈칸 49개.</p>
+<ol>
+<li><strong>강의 교안은 방학 때 다시 한다.</strong> 지금까지 한 것만 정리하고 멈춘다.</li>
+</ol>
+<ol>
+<li>(질문) <strong>미션 활동 웹앱을 별도로 만들어 어드민에 연결하는 지금 방식</strong>의 장단점 분석과 개선 방안.</li>
+</ol>
+<p>    → 답변 문서: https://claude.ai/code/artifact/19ec6d42-5f35-4315-9ea6-523fedbbaf81     요지 — <strong>구조는 맞다. 1년에 앱 13개를 만들 수 있었던 게 이 구조 덕이다.</strong>     갈라진 것은 구조가 아니라 <strong>규약으로 적히지 않은 부분</strong>뿐이다.     <code>CLAUDE.md</code>에 적힌 두 가지(공용 어드민 디자인, pass/fail 채점 형식)는 13개가 거의 다 지켰고,     안 적힌 두 가지(신원 얻는 법, 제출 시각 필드명)만 앱마다 제각각이 됐다.     제안: ① 신원을 <code>shared/lms-session.js</code> 한 곳으로(반나절, 지금 있는 결함이 사라짐)          ② 제출 요약을 <code>mission_submissions</code> 한 컬렉션으로(네컷이 이미 하고 있는 것을 표준으로)          ③ <code>MISSION_SOURCES</code> 하드코딩 표 제거, 카드에 <code>appKey</code>          ④ 보안 규칙을 블록 하나로          ⑤ 2026 앱 13개는 옮기지 않는다(쓸 때 하나씩). 예외는 ①뿐     <strong>열린 질문</strong> — 2027은 반이 생기는데 앱에 <code>courseId</code>를 어떻게 알려 줄지.     주소에 싣기 vs 세션에 적어 두기. 세션 쪽을 권했고 방학 때 정한다.</p>
+<ol>
+<li><strong>별도로 앱을 만들어 연결하는 구조는 그대로 유지한다.</strong> (요구사항 61 검토에 대한 결정)</li>
+</ol>
+<ol>
+<li><strong>연결하는 그 어드민을 이식해서 가지고 와 거기서 바로 수정하게.</strong></li>
+</ol>
+<p>    → 미션 체크 화면을 만들고, 줄의 톱니로 그 앱의 어드민을 화면 안에서 바로 연다.</p>
+<ol>
+<li><strong>앱 만들 때 공통적인 것을 미리 정해 둔다</strong> — 기본 디자인, 프레임, 어드민 구조,</li>
+</ol>
+<p>    파이어스토어 컬렉션 만드는 법까지 동일하게.     → <code>APP_규약.md</code> + <code>apps/_template/</code> + <code>shared/lms-session.js</code>, <code>shared/lms-submit.js</code>, <code>shared/app-base.css</code></p>
+<ol>
+<li><strong>설명서를 더 쉽게 풀어서.</strong> 말이 어렵다.</li>
+</ol>
+<p>    → 요구사항 61의 검토 문서를 쉬운 말로 다시 씀.</p>
+<ol>
+<li><strong>학생 관리 화면을 팝업 말고 인라인 폼으로.</strong></li>
+</ol>
+<p>    지금은 [엑셀 업로드]와 [학생 추가]가 버튼을 누르면 팝업이 떠서 거기 적는 식이다.     그러지 말고 <strong>둘로 나누어 각각 한두 줄짜리 입력 줄</strong>로 화면에 그대로 둔다(기존 어드민과 유사하게).     그 <strong>아래에 등록 학생 명단</strong>이 보이게.     명단의 <strong>각 반 카테고리 옆에 인원 수를 (nn) 꼴로</strong> 표시.</p>
+<ol>
+<li><strong>미션 체크의 앱 어드민을 "같은 창 안의 별도 탭"으로 연다.</strong></li>
+</ol>
+<p>    지금은 오버레이라 화면이 통째로 바뀌는데 그게 불편하다.     미션 목록과 열어 둔 앱 어드민을 <strong>탭으로 나란히 두고 오가게</strong> 한다.</p>
+<hr>
+<h2 id="h9">2026-10-26 제로베이스 재설계 정리 (선생님이 "정리해서 문서에 넣으라"고 지시)</h2>
+<p>지금까지 "필요한 것 위주로 중구난방"으로 쌓였다는 판단에 따라 <strong>제로베이스로 다시 설계</strong>한다(데이터 모델과 개념까지 백지에서). 인터뷰로 뽑은 필요성과 구조를 아래로 확정한다. 1~67은 재료로 남기고, 실제 설계의 기준은 이 68 이후다.</p>
+<h3 id="h10">68. 조직 원리 (한 줄)</h3>
+<p><strong>강의실은 "강의(차시)"와 "복습"을 담고, 강의 하나는 개념노트·미션·질문노트·형성평가 네 칸을 각각 있거나 없거나로 채운다.</strong> 콘텐츠 메뉴를 코드에 못박지 않는다(요구사항 52, 53 해소). 새 종류가 생겨도 틀을 안 뜯는다.</p>
+<h3 id="h11">69. 여섯 용도 (선생님이 적은 전체 용도)</h3>
+<ol>
+<li><strong>강의(PPT 역할)</strong> — 교사가 교실 화면에 투사하는 것이 주, 학생 모바일 복습이 보조. 활동지(글, 사료 위주)를 올리면 HTML 슬라이드로 만든다. 제작 효율이 최우선</li>
+<li><strong>미니 웹앱</strong> — 활동과 공유가 한 몸. 강의 흐름 안에서 슬라이드를 빠져나가지 않고 학생 실시간 제출을 그 자리에서 공유</li>
+<li><strong>활동 취합, AI 채점, 아카이빙</strong> — 포트폴리오 수행평가가 핵심</li>
+<li><strong>성적 창구</strong> — 학생이 항목별과 최종을 실시간 확인</li>
+<li><strong>애플리케이션화</strong> — 홈 화면 앱처럼, 경험치와 포인트와 뽑기 유지, 추가 흥미 요소는 열어 둠</li>
+<li><strong>복습 허브</strong> — 자동 생성과 외부 제작을 모두, 순수 복습(성적 무관)</li>
+</ol>
+<h3 id="h12">70. 포트폴리오 수행평가 세 요소</h3>
+<p>① <strong>개념노트</strong>(활동지에 수기로 작성, LMS 밖, 교사가 점수만 수기 입력) ② <strong>미션</strong>(잘하고 못하고보다 참여, 수행 여부 우선) ③ <strong>질문노트</strong>(수업 중 제시한 질문에 대한 본인 답변). ②와 ③만 LMS에서 취합하고 AI가 1차 채점한다.</p>
+<h3 id="h13">71. 강의 안 네 칸</h3>
+<p>개념노트, 미션, 질문노트, 형성평가. <strong>각 종류는 한 강의에 최대 1개</strong>, 있거나 없거나. <strong>순서는 선생님이 자유롭게 바꾼다.</strong> 사료, 사진, 영상은 별도 칸이 아니라 개념노트 안의 내용. <strong>형성평가는 성적에 반영하지 않는다.</strong></p>
+<h3 id="h14">72. 복습은 독립 메뉴</h3>
+<p>강의와 별개로 선다. 자동 생성 퀴즈와 외부 제작 문제를 모두 담는다. 성적 무관.</p>
+<h3 id="h15">73. 공유와 아카이브</h3>
+<p>미션과 질문노트에서 잘한 것을 실시간으로 띄워 공유한다. 모아 둔 아카이브는 <strong>수정 불가 + 외부인도 볼 수 있게 공개.</strong></p>
+<h3 id="h16">74. 운영 틀</h3>
+<p>구글 클래스룸처럼 영구히 쓴다. 학생이 로그인(학번, 이름, 본인이 정한 비밀번호 일치만, Firebase Auth 없음) → 강의실 선택 → 그 안의 활동에 참여. 역사뿐 아니라 담당하는 어떤 과목이든 강의실을 연다.</p>
+<h3 id="h17">75. Firestore 컬렉션 (통일)</h3>
+<div class="tw"><table><thead><tr><th>그룹</th><th>컬렉션</th><th>문서 id</th><th>내용</th></tr></thead><tbody><tr><td>운영 틀</td><td><code>school_years</code></td><td><code>2027</code></td><td>학년도 <code>{ year }</code></td></tr><tr><td></td><td><code>courses</code></td><td>자동 id</td><td>강의실 "사회 301" <code>{ year, subject, grade, classNo, status }</code></td></tr><tr><td>강의실에 매인 것</td><td><code>course_students</code></td><td><code>강의실id_학번</code></td><td>명단 <code>{ name }</code></td></tr><tr><td></td><td><code>course_auth</code></td><td><code>학년도_학번</code></td><td>로그인 비번 해시</td></tr><tr><td></td><td><code>course_consent</code></td><td><code>학년도_학번</code></td><td>개인정보 동의</td></tr><tr><td></td><td><code>course_lessons</code></td><td>자동 id</td><td>강의실에 꽂힌 강의 <code>{ courseId, lessonId, order, isOpen }</code></td></tr><tr><td></td><td><code>course_quizzes</code></td><td>자동 id</td><td>강의실에 걸린 복습 <code>{ courseId, quizId, isOpen }</code></td></tr><tr><td></td><td><code>course_submissions</code></td><td><code>꽂힌강의id_칸_학번</code></td><td>제출물 전부 여기로 <code>{ type, 학번, payload, score, status, shared }</code></td></tr><tr><td></td><td><code>course_scores</code></td><td><code>강의실id_학번</code></td><td>항목별과 최종 성적 <code>{ items:{concept,mission,question}, total }</code></td></tr><tr><td></td><td><code>course_xp</code></td><td><code>강의실id_학번</code></td><td>경험치, 포인트, 뽑기 <code>{ xp, point }</code></td></tr><tr><td>재사용 창고</td><td><code>lessons</code></td><td>자동 id</td><td>강의 <code>{ title, parts:{ concept?, mission?, question?, formative? } }</code></td></tr><tr><td></td><td><code>quizzes</code></td><td>자동 id</td><td>복습 퀴즈 <code>{ title, items[], source }</code></td></tr><tr><td></td><td><code>mission_apps</code></td><td>appKey</td><td>미니앱 등록부 <code>{ name, url }</code></td></tr></tbody></table></div>
+<h3 id="h18">76. 이름 통일 규칙</h3>
+<p><code>뿌리_세부</code> 꼴. 전부 snake_case, 연도와 차수와 버전 금지(연도는 필드로만). <strong>강의실 하나에 매인 것은 전부 <code>course_</code> 접두</strong>, <strong>해마다 안 사라지는 재사용 창고는 접두 없는 복수형</strong>, 한 기능에서 갈라지는 하위 데이터는 뿌리를 물려받아 <code>_</code>로 나눈다(예: 미션 앱 등록부 <code>mission_apps</code>, 공유 아카이브 <code>grading_archive</code>). 내부 키는 영어 소문자, 화면 글자는 한국어로 한 벌만(<code>model.js</code> 한 곳).</p>
+<h3 id="h19">77. 칸과 메뉴 내부 키</h3>
+<ul>
+<li>강의 안 칸 — <code>concept</code>(개념노트), <code>mission</code>(미션), <code>question</code>(질문노트), <code>formative</code>(형성평가)</li>
+<li>독립 — <code>review</code>(복습)</li>
+<li>어드민 메뉴 — <code>rooms</code>(강의실 관리), <code>students</code>(학생 관리), <code>lessons</code>(강의 라이브러리), <code>review</code>(복습), <code>grading</code>(채점, 공유)</li>
+</ul>
+<h3 id="h20">78. 작업 순서 (제로베이스)</h3>
+<ol>
+<li>뼈대 자체 — 운영 틀과 "강의실은 강의와 복습을 담는다" 플러그 구조, 컬렉션 이름</li>
+<li>질문노트 한 바퀴 — 제출, 취합, 공유, AI 채점, 성적 창구, 아카이브를 가장 단순한 것으로 한 바퀴 통과시켜 뼈대 검증</li>
+<li>미션 미니앱 연결(실시간 공유 포함)</li>
+<li>강의 슬라이드 엔진(활동지에서 HTML, 미지수가 커서 방학으로 미룬 것)</li>
+<li>복습 허브</li>
+<li>경험치, 뽑기 등 게임 요소(아무 때나 얹는 가로축)</li>
+</ol></main>
+</body></html>

@@ -34,7 +34,7 @@ function topbar(title, backAct){
   return `<div class="topbar">
     ${backAct ? `<button class="iconbtn" data-act="${backAct}" aria-label="뒤로" title="뒤로">${icon('chevron-left',20)}</button>` : ''}
     <h1>${esc(title)}</h1>
-    ${state.sno ? `<span class="who">${esc(state.name)} · ${esc(state.sno)}</span>
+    ${state.sno ? `<span class="who">${esc(state.name)} ${esc(state.sno)}</span>
       <button class="iconbtn" data-act="logout" aria-label="로그아웃" title="로그아웃">${icon('log-out',18)}</button>` : ''}
   </div>`;
 }
@@ -48,7 +48,6 @@ function viewLogin(){
     <input class="field" id="f-name" placeholder="이름" value="홍길동">
     <input class="field" id="f-pw" type="password" placeholder="비밀번호">
     <button class="primary" data-act="login">입장하기</button>
-    <p class="hint">데모 — 학번 30101·30102·30103으로 입장해 보세요.</p>
   </div>`;
 }
 
@@ -59,7 +58,7 @@ function viewRooms(){
         <span class="ic" style="background:var(--concept)">${icon('graduation-cap',20)}</span>
         <div class="body"><div class="t">${esc(M.roomName(c))}</div>
           <div class="s">${c.grade}학년 ${c.classNo}반</div></div>
-        <span class="chev">${icon('chevron-left',18,'')}</span></div>`).join('')
+        <span class="chev">${icon('chevron-right',18,'')}</span></div>`).join('')
     : `<div class="empty">든 강의실이 없습니다.</div>`;
   return topbar('강의실 고르기') + `<div class="sectionlabel">내 강의실</div>` + body;
 }
@@ -72,13 +71,13 @@ function viewHome(){
     return `<div class="card" data-act="open-lesson" data-cl="${cl.id}" data-lid="${cl.lessonId}">
       <span class="ic" style="background:var(--concept)">${icon('book-open',20)}</span>
       <div class="body"><div class="t">${esc(cl.lesson.title)}</div><div class="tags">${tags}</div></div>
-      <span class="chev">${icon('chevron-left',18)}</span></div>`;
+      <span class="chev">${icon('chevron-right',18)}</span></div>`;
   }).join('') || `<div class="empty">열린 강의가 없습니다.</div>`;
 
   const review = `<div class="card" data-act="open-review">
     <span class="ic" style="background:var(--review)">${icon('list-ordered',20)}</span>
     <div class="body"><div class="t">복습</div><div class="s">퀴즈로 복습하기</div></div>
-    <span class="chev">${icon('chevron-left',18)}</span></div>`;
+    <span class="chev">${icon('chevron-right',18)}</span></div>`;
 
   return topbar(M.roomName(c), 'back-rooms')
     + `<div class="sectionlabel">강의</div>` + lessons
@@ -146,7 +145,7 @@ function viewReview(){
     ? qs.map(cq => `<div class="card" data-act="noop">
         <span class="ic" style="background:var(--review)">${icon('list-ordered',20)}</span>
         <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
-          <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} · 성적 무관</div></div></div>`).join('')
+          <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div></div>`).join('')
     : `<div class="empty">열린 복습이 없습니다.</div>`;
   return topbar(`${M.roomName(c)} 복습`, 'back-home') + `<div class="sectionlabel">복습 퀴즈</div>` + body;
 }

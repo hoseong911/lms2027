@@ -37,7 +37,7 @@
 ## 코드 규칙
 - 인라인 `onclick`과 `window` 노출을 쓰지 않는다. `data-act` + 이벤트 위임.
 - 모듈 최상위 상태는 `state` 하나에 모은다.
-- `index.css`의 `--lms-css-ok`(부트 가드)를 지우지 않는다.
+- 부트 가드 `--lms-css-ok`를 지우지 않는다. `shared/theme.css`에 있다(@import 체인의 끝). `index.js`, `admin.js`가 이 값을 보고 화면을 띄운다.
 - 브라우저 기본 대화상자(`alert`, `confirm`, `prompt`) 대신 어드민의 `ask()` 모달을 쓴다.
 - 컬렉션 이름에 연도를 넣지 않는다. 연도는 필드로만.
 
