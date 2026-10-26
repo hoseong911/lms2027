@@ -1,768 +1,206 @@
-/* 2027 LMS 데이터 모델 — 반(Course)이 1년 단위로 생기고 없어지는 구조
- *
- * 클래스룸처럼 "반을 개설하고 그 안에 학생을 불러와 넣는다". 그래서
- * 202n년도 n학년 n반은 그 해에만 유효하고, 학생 명단도 그 반에 속한
- * 1년짜리 데이터다. 학생의 영구 신원(Person)은 두지 않는다 —
- * 해마다 다시 만들면 되므로 그 층이 필요 없다(2026-10-23 선생님 결정).
- *
- *   school_years     학년도 하나. 반이 없어도 학년도는 있다.
- *   courses          반 하나. { year, subject, grade, classNo } 가 곧 이름이다(문서 id는 자동).
- *   course_students  그 반의 명단. 학번은 이 반 안에서만 유효하다.
- *   course_lessons   그 반이 쓰는 강의. 몇 강인지, 공개했는지, 수업일.
- *   lesson_library   강의 내용(슬라이드 본문). 연도와 무관하게 남는다.
- *
- * 학생 활동 데이터(제출, 성적, 경험치)는 전부 courseId와 학번을 함께 들고
- * 저장한다. 학번만으로 저장하면 2026 구조처럼 다음 해 같은 학번이 작년
- * 기록을 물려받는다 — 반이 1년짜리여도 그릇은 반 단위로 갈려 있어야 한다.
- *
- * 강의만 lesson_library로 따로 두는 이유는 수업 자료를 해마다 다시 만들
- * 필요가 없게 하려는 것이다(클래스룸의 수업 재사용). 반은 사라지지만
- * 강의 내용은 남아서 다음 해 반에 다시 끌어다 쓴다.
- *
- * 컬렉션 이름에 연도를 넣지 않는다(CLAUDE.md 이름 규칙). 연도는 courses.year로만.
- */
+// model.js — LMS2027 뼈대 (2026-10-26 제로베이스 재설계)
+// ───────────────────────────────────────────────────────────────────────────
+// 데이터 모델의 단일 출처. 컬렉션 이름, 칸/메뉴 표, (지금은) 데모 데이터와 조회를 한곳에 둔다.
+// 학생 화면(index.js)과 어드민(admin.js)이 이 파일 하나만 읽어 같은 표를 쓴다.
+//
+// 조직 원리:
+//   강의실(course)은 "강의(차시)"와 "복습"을 담고,
+//   강의 하나는 개념노트 / 미션 / 질문노트 / 형성평가 네 칸을 각각 있거나 없거나로 채운다.
+//   각 종류 최대 1개, 순서 자유. 사료·사진·영상은 개념노트 안의 내용.
+//
+// ※ 지금은 Firestore 대신 아래 DEMO(메모리)로 돈다. 화면 뼈대를 먼저 보기 위함.
+//   컬렉션 이름과 문서 모양은 실제와 같게 맞춰 두었으므로, 다음 단계에서 이 파일의
+//   조회 함수만 Firestore 호출로 바꾸면 화면은 그대로 둔다.
+// ───────────────────────────────────────────────────────────────────────────
 
-import {
-  collection, query, where, getDocs, getDoc, doc, documentId,
-  addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-export const COLL = {
-  schoolYears:    'school_years',
-  courses:        'courses',
-  courseStudents: 'course_students',
-  courseLessons:  'course_lessons',
-  lessonLibrary:  'lesson_library',
-  courseMissions: 'course_missions',
-  missionLibrary: 'mission_library',
-  courseAuth:     'course_auth',     // 학생이 스스로 정한 비밀번호(해시)
-  courseConsent:  'course_consent',  // 개인정보 수집 동의
+// 컬렉션 이름 — 강의실에 매인 것은 course_ 접두, 재사용 창고는 접두 없는 복수형.
+export const COLLECTIONS = {
+  schoolYears:        'school_years',
+  courses:            'courses',
+  courseStudents:     'course_students',
+  courseAuth:         'course_auth',
+  courseConsent:      'course_consent',
+  courseLessons:      'course_lessons',
+  courseQuizzes:      'course_quizzes',
+  courseSubmissions:  'course_submissions',
+  courseScores:       'course_scores',
+  courseXp:           'course_xp',
+  lessons:            'lessons',
+  quizzes:            'quizzes',
+  missionApps:        'mission_apps',
 };
 
-/* 관리 축의 한쪽 — 메뉴. 2026 어드민의 사이드바 항목을 그대로 옮겼다.
- * 반별 보기와 메뉴별 보기가 같은 표를 읽으므로 항목을 늘리려면 여기 한 줄만 더한다. */
-export const MENUS = [
-  { key: 'concept',  label: '개념 노트',   icon: 'book-open' },
-  { key: 'mission',  label: '미션 체크',   icon: 'layout-grid' },
-  { key: 'think',    label: '오늘의 질문', icon: 'feather' },
-  { key: 'grade',    label: '성적',        icon: 'clipboard-list' },
-  { key: 'contents', label: '각종 콘텐츠', icon: 'compass' },
-  { key: 'xp',       label: '경험치',      icon: 'trophy' },
+// 강의 안 네 칸 — 각 강의에 최대 1개, 순서 자유.
+//   portfolio: 성적(포트폴리오)에 들어가는가   submits: 학생 제출물이 생기는가
+export const PART_TYPES = [
+  { key:'concept',   name:'개념노트',  icon:'book-open',      portfolio:true,  submits:false },
+  { key:'mission',   name:'미션',      icon:'layout-grid',    portfolio:true,  submits:true  },
+  { key:'question',  name:'질문노트',  icon:'message-square', portfolio:true,  submits:true  },
+  { key:'formative', name:'형성평가',  icon:'circle-check',   portfolio:false, submits:true  },
+];
+export const PART_ORDER = PART_TYPES.map(p => p.key);
+export function partDef(key){ return PART_TYPES.find(p => p.key === key) || null; }
+
+// 독립 메뉴
+export const REVIEW = { key:'review', name:'복습', icon:'list-ordered' };
+
+// 어드민 왼쪽 메뉴
+export const ADMIN_MENUS = [
+  { key:'rooms',    name:'강의실 관리',     icon:'graduation-cap' },
+  { key:'students', name:'학생 관리',       icon:'users' },
+  { key:'lessons',  name:'강의 라이브러리', icon:'book-open' },
+  { key:'review',   name:'복습',           icon:'list-ordered' },
+  { key:'grading',  name:'채점, 공유',      icon:'clipboard-check' },
 ];
 
-export const menuByKey = key => MENUS.find(m => m.key === key) || null;
+// 표시 이름 헬퍼
+const pad2 = n => String(n).padStart(2, '0');
+export function roomName(course){ return `${course.subject} ${course.grade}${pad2(course.classNo)}`; }
+export function roomNo(course){ return `${course.grade}${pad2(course.classNo)}`; }
 
-/* ── 학년도 ── */
+// ───────────────────────────────────────────────────────────────────────────
+// 데모 데이터 (Firestore 붙이기 전 임시). 한 세션 안에서는 추가/삭제가 반영된다.
+// ───────────────────────────────────────────────────────────────────────────
+const DEMO = {
+  years: [ { id:'2027', year:2027 } ],
 
-// 3월 시작이므로 1월과 2월은 전년도 학년도로 센다.
-// (2027년 2월은 아직 2026학년도다. 학년 전환 시점을 여기 한 곳에서 판단한다.)
-export function schoolYear(d = new Date()) {
-  const kst = new Date(d.getTime() + (d.getTimezoneOffset() + 540) * 60000);
-  return kst.getMonth() + 1 <= 2 ? kst.getFullYear() - 1 : kst.getFullYear();
+  courses: [
+    { id:'c_s301', year:2027, subject:'사회', grade:3, classNo:1, status:'active' },
+    { id:'c_s302', year:2027, subject:'사회', grade:3, classNo:2, status:'active' },
+    { id:'c_h301', year:2027, subject:'역사', grade:3, classNo:1, status:'active' },
+  ],
+
+  // course_students: id = 강의실id_학번
+  students: [
+    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101', name:'홍길동' },
+    { id:'c_s301_30102', courseId:'c_s301', studentNo:'30102', name:'김영희' },
+    { id:'c_s301_30103', courseId:'c_s301', studentNo:'30103', name:'이철수' },
+    { id:'c_h301_30101', courseId:'c_h301', studentNo:'30101', name:'홍길동' },
+    { id:'c_h301_30102', courseId:'c_h301', studentNo:'30102', name:'김영희' },
+    { id:'c_s302_30201', courseId:'c_s302', studentNo:'30201', name:'박민지' },
+  ],
+
+  // lessons: 재사용 창고. parts에 있는 칸만 그 강의가 가진 칸. order가 칸 순서.
+  lessons: [
+    { id:'L1', title:'붕당정치의 전개',
+      parts:{ concept:{ title:'붕당의 형성과 전개' },
+              mission:{ appKey:'4cut', title:'네컷 만화 그리기' },
+              question:{ title:'오늘의 질문', prompt:'붕당정치의 긍정적 면과 부정적 면은 무엇인가?' },
+              formative:{ title:'OX 5문항' } },
+      order:['concept','mission','question','formative'] },
+    { id:'L2', title:'예송논쟁',
+      parts:{ concept:{ title:'예송논쟁의 쟁점' } },
+      order:['concept'] },
+    { id:'L3', title:'환국',
+      parts:{ mission:{ appKey:'timeline', title:'환국 타임라인' },
+              formative:{ title:'환국 확인 퀴즈' } },
+      order:['mission','formative'] },
+  ],
+
+  // course_lessons: 강의실에 꽂힌 자리
+  courseLessons: [
+    { id:'cl1', courseId:'c_s301', lessonId:'L1', order:1, isOpen:true  },
+    { id:'cl2', courseId:'c_s301', lessonId:'L2', order:2, isOpen:true  },
+    { id:'cl3', courseId:'c_s301', lessonId:'L3', order:3, isOpen:false },
+  ],
+
+  quizzes: [
+    { id:'Q1', title:'붕당정치 복습 OX',        source:'auto',     items:[] },
+    { id:'Q2', title:'조선 후기 외부 문제모음',  source:'external', items:[] },
+  ],
+  courseQuizzes: [
+    { id:'cq1', courseId:'c_s301', quizId:'Q1', isOpen:true },
+  ],
+
+  // course_scores: 강의실id_학번
+  scores: [
+    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101',
+      items:{ concept:18, mission:9, question:14 }, max:{ concept:20, mission:10, question:15 } },
+  ],
+};
+
+// ── 조회 (뒤에 Firestore로 교체할 자리) ──
+export function getYears(){ return [...DEMO.years]; }
+export function getCourses(year){ return DEMO.courses.filter(c => !year || c.year === +year); }
+export function getCourse(id){ return DEMO.courses.find(c => c.id === id) || null; }
+export function getStudentsByCourse(courseId){ return DEMO.students.filter(s => s.courseId === courseId); }
+export function getStudentsByYear(year){
+  const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
+  return DEMO.students.filter(s => ids.has(s.courseId));
+}
+// 한 학년도에서 한 학번이 든 강의실들
+export function getCoursesOfStudent(year, studentNo){
+  const mine = DEMO.students.filter(s => s.studentNo === studentNo);
+  return DEMO.courses.filter(c => c.year === +year && mine.some(m => m.courseId === c.id));
+}
+export function getLessons(){ return [...DEMO.lessons]; }
+export function getLesson(id){ return DEMO.lessons.find(l => l.id === id) || null; }
+// 강의실에 꽂힌 강의 (order 순). 각 항목에 lesson 본체를 붙여 준다.
+export function getCourseLessons(courseId){
+  return DEMO.courseLessons
+    .filter(cl => cl.courseId === courseId)
+    .sort((a,b) => a.order - b.order)
+    .map(cl => ({ ...cl, lesson: getLesson(cl.lessonId) }));
+}
+export function getQuizzes(){ return [...DEMO.quizzes]; }
+export function getCourseQuizzes(courseId){
+  return DEMO.courseQuizzes
+    .filter(cq => cq.courseId === courseId)
+    .map(cq => ({ ...cq, quiz: DEMO.quizzes.find(q => q.id === cq.quizId) }));
+}
+export function getScore(courseId, studentNo){
+  return DEMO.scores.find(s => s.courseId === courseId && s.studentNo === studentNo) || null;
 }
 
-/* ── 학번 ──
- * 5자리 체계: 1자리 학년, 2~3자리 반, 4~5자리 번호 (CLAUDE.md 공통 스택).
- * 학번에서 반을 뽑아낼 수 있으므로 한 학년 명단을 통째로 올려 반별로 흩을 수 있다. */
-export function parseStudentNo(no) {
-  const s = String(no ?? '').trim();
-  if (!/^\d{5}$/.test(s)) return null;
-  return { grade: +s[0], classNo: +s.slice(1, 3), num: +s.slice(3, 5) };
+// ── 변경 (데모: 메모리에만. 다음 단계에서 Firestore 쓰기로 교체) ──
+let seq = 100;
+const nid = p => `${p}${++seq}`;
+export function addCourse({ year, subject, grade, classNo }){
+  const c = { id:nid('c_'), year:+year, subject, grade:+grade, classNo:+classNo, status:'active' };
+  DEMO.courses.push(c); return c;
 }
-
-/* ── 학년도 ──
- *
- * 학년도는 반이 하나도 없어도 있을 수 있어야 한다(선생님이 먼저 만들고 나중에
- * 반을 채운다). 그래서 school_years/{2027} 문서가 따로 있다.
- * 반 문서도 year를 숫자로 들고 있어서, 학년도 숫자를 바꾸면 그 해 반 문서를 같이 고친다. */
-
-export const LIMITS = { yearMin: 2000, yearMax: 2100, gradeMin: 1, gradeMax: 9, classMin: 1, classMax: 99, subjectMax: 20 };
-const inRange = (n, a, b) => Number.isInteger(n) && n >= a && n <= b;
-export const validYear    = n => inRange(n, LIMITS.yearMin,  LIMITS.yearMax);
-export const validGrade   = n => inRange(n, LIMITS.gradeMin, LIMITS.gradeMax);
-export const validClass   = n => inRange(n, LIMITS.classMin, LIMITS.classMax);
-export const validSubject = s => typeof s === 'string' && s.trim().length > 0 && s.trim().length <= LIMITS.subjectMax;
-
-const yearRef = (db, year) => doc(db, COLL.schoolYears, String(year));
-
-async function coursesOfYear(db, year) {
-  const snap = await getDocs(query(collection(db, COLL.courses), where('year', '==', year)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-// 학년도 목록(큰 해부터). school_years에 빠졌어도 반이 있는 해는 넣는다(반이 화면에서 사라지지 않게).
-export async function listYears(db) {
-  const [ys, cs] = await Promise.all([
-    getDocs(collection(db, COLL.schoolYears)),
-    getDocs(collection(db, COLL.courses)),
-  ]);
-  const set = new Set();
-  ys.docs.forEach(d => { const y = d.data().year; if (y != null) set.add(y); });
-  cs.docs.forEach(d => { const y = d.data().year; if (y != null) set.add(y); });
-  return [...set].sort((a, b) => b - a);
-}
-
-export async function createYear(db, year) {
-  if (!validYear(year)) throw new Error('학년도를 확인해 주세요.');
-  if ((await listYears(db)).includes(year)) throw new Error(`${year}학년도가 이미 있습니다.`);
-  await setDoc(yearRef(db, year), { year, createdAt: serverTimestamp() });
-}
-
-export async function renameYear(db, from, to) {
-  if (from === to) return;
-  if (!validYear(to)) throw new Error('학년도를 확인해 주세요.');
-  if ((await listYears(db)).includes(to)) throw new Error(`${to}학년도가 이미 있습니다.`);
-  const courses = await coursesOfYear(db, from);
-  const batch = writeBatch(db);
-  batch.set(yearRef(db, to), { year: to, createdAt: serverTimestamp() });
-  courses.forEach(c => batch.update(doc(db, COLL.courses, c.id), { year: to }));
-  batch.delete(yearRef(db, from));
-  await batch.commit();
-  // 비밀번호와 동의는 문서 id가 "학년도_학번"이라 새 학년도 id로 옮긴다.
-  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
-    const docs = await docsWithPrefix(db, coll, `${from}_`);
-    for (let i = 0; i < docs.length; i += 200) {
-      const b = writeBatch(db);
-      docs.slice(i, i + 200).forEach(d => {
-        b.set(doc(db, coll, `${to}_` + d.id.slice(`${from}_`.length)), d.data());
-        b.delete(d.ref);
-      });
-      await b.commit();
-    }
-  }
-}
-
-// 학년도 삭제 — 그 해의 반을 전부 지운다(명단, 강의 연결, 비밀번호, 동의까지).
-// 어드민이 지우기 전에 선생님 계정 비밀번호로 다시 인증받는다(admin.js).
-export async function deleteYear(db, year) {
-  for (const c of await coursesOfYear(db, year)) await deleteCourse(db, c.id);
-  for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
-    await deleteDocs(db, await docsWithPrefix(db, coll, `${year}_`));
-  }
-  await deleteDoc(yearRef(db, year));
-}
-
-// 문서 id가 prefix로 시작하는 문서들(비밀번호와 동의는 courseId 칸 대신 id에 학년도가 들어 있다).
-async function docsWithPrefix(db, coll, prefix) {
-  const q = query(collection(db, coll),
-    where(documentId(), '>=', prefix), where(documentId(), '<', prefix + ''));
-  return (await getDocs(q)).docs;
-}
-
-/* ── 반(Course) ──
- * 반 하나 = 학년도 + 과목 + 학년 + 반. 과목은 선생님이 직접 적는다(정해 둔 목록이 없다). 그래서
- * 같은 해 같은 1학년 3반이라도 과목이 다르면 다른 반이다(2026-10-25). */
-
-export function courseLabel(c) {
-  if (!c) return '';
-  if (c.title) return c.title;
-  // 가운뎃점은 화면 문구에 쓰지 않는다(CLAUDE.md 화면 규칙).
-  return `${c.year}학년도 ${courseShort(c)}`;
-}
-// 강의실 이름은 "사회 301"처럼 쓴다(학년 한 자리 + 반 두 자리, 선생님 지시 2026-10-25).
-export const roomNo = (grade, classNo) => `${grade}${String(classNo).padStart(2, '0')}`;
-export const courseShort = c => c ? `${c.subject ? c.subject + ' ' : ''}${roomNo(c.grade, c.classNo)}` : '';
-
-// 과목, 학년, 반 순서. 화면의 반 목록과 고르기 줄이 모두 이 순서를 쓴다.
-export const courseOrder = (a, b) =>
-  (b.year - a.year) || String(a.subject || '').localeCompare(String(b.subject || ''), 'ko') ||
-  (a.grade - b.grade) || (a.classNo - b.classNo);
-
-export async function listCourses(db, { year = null, includeArchived = false } = {}) {
-  let rows = year != null
-    ? await coursesOfYear(db, year)
-    : (await getDocs(collection(db, COLL.courses))).docs.map(d => ({ id: d.id, ...d.data() }));
-  if (!includeArchived) rows = rows.filter(r => r.status !== 'archived');
-  return rows.sort(courseOrder);
-}
-
-export async function getCourse(db, cid) {
-  const s = await getDoc(doc(db, COLL.courses, cid));
-  return s.exists() ? { id: s.id, ...s.data() } : null;
-}
-
-/* 반 문서 id는 자동 id다. 처음에는 y2027g1c3처럼 못박았는데, 선생님이 과목과
- * 학년과 반을 자유롭게 고칠 수 있어야 해서(2026-10-25) 바꿨다. id가 이름을
- * 들고 있으면 이름을 고칠 때마다 명단, 비밀번호, 동의 문서를 전부 새 id로 옮겨야 한다.
- * 같은 반이 둘 생기는 것은 만들 때와 고칠 때 이 함수로 막는다. */
-const sameCourse = (c, subject, grade, classNo) =>
-  (c.subject || '') === subject && c.grade === grade && c.classNo === classNo;
-
-async function findCourse(db, year, subject, grade, classNo) {
-  return (await coursesOfYear(db, year)).find(c => sameCourse(c, subject, grade, classNo)) || null;
-}
-
-function checkCourse({ year, subject, grade, classNo }) {
-  if (!validYear(year))       throw new Error('학년도를 확인해 주세요.');
-  if (!validSubject(subject)) throw new Error('과목을 확인해 주세요.');
-  if (!validGrade(grade))     throw new Error('학년을 확인해 주세요.');
-  if (!validClass(classNo))   throw new Error('반을 확인해 주세요.');
-}
-
-// 이미 있으면 그 반을 돌려준다(명단 올리기가 반을 찾거나 만들 때 쓴다).
-export async function createCourse(db, { year, subject, grade, classNo }) {
-  subject = String(subject ?? '').trim();
-  checkCourse({ year, subject, grade, classNo });
-  const found = await findCourse(db, year, subject, grade, classNo);
-  if (found) return { id: found.id, created: false };
-  const ref = await addDoc(collection(db, COLL.courses), {
-    year, subject, grade, classNo, status: 'active', createdAt: serverTimestamp()
+export function addStudent({ year, grade, classNo, studentNo, name }){
+  // 그 학년도, 그 반(과목 무관)의 강의실 전부에 등록
+  const rooms = DEMO.courses.filter(c =>
+    c.year === +year && c.grade === +grade && c.classNo === +classNo && c.status === 'active');
+  const added = [];
+  rooms.forEach(c => {
+    const id = `${c.id}_${studentNo}`;
+    if (DEMO.students.some(s => s.id === id)) return;
+    const s = { id, courseId:c.id, studentNo, name };
+    DEMO.students.push(s); added.push(s);
   });
-  await setDoc(yearRef(db, year), { year }, { merge: true });
-  return { id: ref.id, created: true };
+  return { rooms, added };
 }
-
-// 반 여러 개를 한 번에(반 칸에 "1~6"을 적었을 때). 이미 있는 반은 건너뛴다.
-export async function createCourses(db, { year, subject, grade, classNos }) {
-  const made = [], skipped = [];
-  for (const classNo of classNos) {
-    const r = await createCourse(db, { year, subject, grade, classNo });
-    (r.created ? made : skipped).push(classNo);
-  }
-  return { made, skipped };
+export function removeStudentEverywhere(year, studentNo){
+  const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
+  DEMO.students = DEMO.students.filter(s => !(ids.has(s.courseId) && s.studentNo === studentNo));
 }
-
-export async function updateCourse(db, id, { subject, grade, classNo }) {
-  subject = String(subject ?? '').trim();
-  const c = await getCourse(db, id);
-  if (!c) throw new Error('반을 찾을 수 없습니다.');
-  checkCourse({ year: c.year, subject, grade, classNo });
-  if (sameCourse(c, subject, grade, classNo)) return;
-  const dup = await findCourse(db, c.year, subject, grade, classNo);
-  if (dup && dup.id !== id) throw new Error(`${subject} ${roomNo(grade, classNo)} 강의실이 이미 있습니다.`);
-  await updateDoc(doc(db, COLL.courses, id), { subject, grade, classNo });
+export function addLesson(title){
+  const l = { id:nid('L'), title, parts:{}, order:[] };
+  DEMO.lessons.push(l); return l;
 }
-
-// 아카이브 — 지우지 않고 내린다. 지난 해 반은 이 상태로 남아 기록을 지킨다.
-export const archiveCourse   = (db, id) => updateDoc(doc(db, COLL.courses, id), { status: 'archived' });
-export const unarchiveCourse = (db, id) => updateDoc(doc(db, COLL.courses, id), { status: 'active' });
-
-async function deleteDocs(db, docs) {
-  // 배치 한 번에 500건 제한이 있어 나눠 커밋한다.
-  for (let i = 0; i < docs.length; i += 400) {
-    const batch = writeBatch(db);
-    docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-    await batch.commit();
+export function setLessonPart(lessonId, key, on){
+  const l = getLesson(lessonId); if (!l) return;
+  if (on){
+    if (!l.parts[key]) l.parts[key] = { title:partDef(key).name };
+    if (!l.order.includes(key)) l.order.push(key);
+  } else {
+    delete l.parts[key];
+    l.order = l.order.filter(k => k !== key);
   }
 }
-
-// 반 삭제 — 명단과 강의 연결을 같이 지운다. 되돌릴 수 없으므로 호출부에서 꼭 확인받는다.
-// 비밀번호와 동의는 반이 아니라 "학년도 + 학번"에 붙어 있어서(한 학생이 여러 반에 들어가므로)
-// 반을 지워도 남는다. 학년도를 지울 때 함께 지운다.
-export async function deleteCourse(db, id) {
-  for (const coll of [COLL.courseStudents, COLL.courseLessons]) {
-    await deleteDocs(db, (await getDocs(query(collection(db, coll), where('courseId', '==', id)))).docs);
-  }
-  await deleteDoc(doc(db, COLL.courses, id));
+export function moveLessonPart(lessonId, key, dir){
+  const l = getLesson(lessonId); if (!l) return;
+  const i = l.order.indexOf(key); if (i < 0) return;
+  const j = i + dir; if (j < 0 || j >= l.order.length) return;
+  [l.order[i], l.order[j]] = [l.order[j], l.order[i]];
 }
-
-/* ── 명단(course_students) ── */
-
-// 문서 id를 반과 학번으로 못박아 같은 학생이 두 번 들어가는 것을 막는다.
-export const studentDocId = (cid, studentNo) => `${cid}_${studentNo}`;
-
-export async function listStudents(db, cid) {
-  const snap = await getDocs(query(collection(db, COLL.courseStudents), where('courseId', '==', cid)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => String(a.studentNo).localeCompare(String(b.studentNo)));
+export function placeLesson(courseId, lessonId){
+  const order = DEMO.courseLessons.filter(c => c.courseId === courseId).length + 1;
+  const cl = { id:nid('cl'), courseId, lessonId, order, isOpen:false };
+  DEMO.courseLessons.push(cl); return cl;
 }
-
-// 반마다 몇 명인지. 반 목록 화면이 한 번에 쓰므로 반별로 따로 묻지 않는다.
-export async function countStudentsByCourse(db) {
-  const snap = await getDocs(collection(db, COLL.courseStudents));
-  const n = {};
-  snap.docs.forEach(d => { const c = d.data().courseId; if (c) n[c] = (n[c] || 0) + 1; });
-  return n;
+export function toggleCourseLessonOpen(id){
+  const cl = DEMO.courseLessons.find(c => c.id === id); if (cl) cl.isOpen = !cl.isOpen;
 }
-
-export async function findStudent(db, cid, studentNo) {
-  const s = await getDoc(doc(db, COLL.courseStudents, studentDocId(cid, studentNo)));
-  return s.exists() ? { id: s.id, ...s.data() } : null;
-}
-
-/* 그 해 전체 명단을 한 번에 읽어 로그인용 표로 만든다.
- *   students  학번 -> { name, courseIds: [...] }   한 학생이 여러 반(사회 반, 역사 반)에 들 수 있다
- *   courses   반id -> { subject, grade, classNo } 로그인 뒤 클래스 고르기 화면이 쓴다
- *
- * 로그인 화면이 글자를 칠 때마다 조용히 명단과 대조하는데(2026과 같은 동작),
- * 그때마다 Firestore에 물으면 읽기가 타이핑 수만큼 늘어난다. 2026은
- * shared/auth.js가 RTDB 명단을 localStorage에 24시간 캐시해서 이 문제를 풀었고,
- * 여기서도 같은 방식을 쓴다. */
-const ROSTER_CACHE_KEY = 'lms2027_roster_v2';
-const ROSTER_TTL = 24 * 60 * 60 * 1000;
-
-export async function loadYearRoster(db, year = schoolYear(), { fresh = false } = {}) {
-  if (!fresh) {
-    try {
-      const c = JSON.parse(localStorage.getItem(ROSTER_CACHE_KEY) || 'null');
-      if (c && c.year === year && Date.now() - c.at < ROSTER_TTL) return c.data;
-    } catch (_) {}
-  }
-  const list = await listCourses(db, { year });
-  const courses = {};
-  list.forEach(c => { courses[c.id] = { subject: c.subject || '', grade: c.grade, classNo: c.classNo }; });
-  const snap = await getDocs(collection(db, COLL.courseStudents));
-  const students = {};
-  snap.docs.forEach(d => {
-    const v = d.data();
-    if (!courses[v.courseId]) return;
-    const s = (students[String(v.studentNo)] ||= { name: v.name, courseIds: [] });
-    s.courseIds.push(v.courseId);
-  });
-  const data = { students, courses };
-  try {
-    localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify({ year, at: Date.now(), data }));
-  } catch (_) {}
-  return data;
-}
-
-// 학생 한 명을 직접 넣는다(학생 관리의 추가 버튼). 학년, 반, 번호, 이름만 적으면
-// 그 학년도에 이미 만든 "그 학년 그 반" 강의실 전부(과목 무관, 아카이브 제외)에 등록된다
-// (선생님 지시 2026-10-25 — 3학년 1반 홍길동이면 사회 3학년 1반, 역사 3학년 1반에 다 들어간다).
-// 그 반 강의실이 하나도 없으면 막는다. 이미 들어 있는 강의실은 건너뛴다.
-export async function addStudent(db, { year, grade, classNo, num, name }) {
-  const row = rosterRowFromSheet(['-', grade, classNo, num, name]);
-  if (!row) throw new Error('학년, 반, 번호, 이름을 확인해 주세요.');
-  const rooms = (await coursesOfYear(db, year))
-    .filter(c => c.grade === row.grade && c.classNo === row.classNo && c.status !== 'archived')
-    .sort(courseOrder);
-  if (!rooms.length) throw new Error(`${roomNo(row.grade, row.classNo)} 강의실이 없습니다.`);
-  const added = [], skipped = [];
-  for (const c of rooms) {
-    const ref = doc(db, COLL.courseStudents, studentDocId(c.id, row.studentNo));
-    if ((await getDoc(ref)).exists()) { skipped.push(c); continue; }
-    await setDoc(ref, { courseId: c.id, studentNo: row.studentNo, name: row.name });
-    added.push(c);
-  }
-  if (!added.length) throw new Error(`${row.studentNo} 학생은 ${roomNo(row.grade, row.classNo)} 강의실에 이미 다 있습니다.`);
-  return { row, added, skipped };
-}
-
-
-// 그 학년도에 한 학번이 든 명단 문서들(강의실마다 하나씩).
-async function studentDocsOfYear(db, year, studentNo) {
-  const snap = await getDocs(query(collection(db, COLL.courseStudents), where('studentNo', '==', String(studentNo))));
-  const ids = new Set((await coursesOfYear(db, year)).map(c => c.id));
-  return snap.docs.filter(d => ids.has(d.data().courseId));
-}
-
-// 학생 고치기 — 학년, 반, 번호, 이름. 학생 추가와 같게 그 반 강의실 전부에 다시 등록한다.
-// 학번이 바뀌면 비밀번호와 동의 문서(학년도_학번)도 새 학번으로 옮긴다 — 학생이 다시 정하지 않아도 되게.
-export async function updateStudent(db, year, oldNo, { grade, classNo, num, name }) {
-  const row = rosterRowFromSheet(['-', grade, classNo, num, name]);
-  if (!row) throw new Error('학년, 반, 번호, 이름을 확인해 주세요.');
-  const rooms = (await coursesOfYear(db, year))
-    .filter(c => c.grade === row.grade && c.classNo === row.classNo && c.status !== 'archived');
-  if (!rooms.length) throw new Error(`${roomNo(row.grade, row.classNo)} 강의실이 없습니다.`);
-  if (row.studentNo !== String(oldNo) && (await studentDocsOfYear(db, year, row.studentNo)).length) {
-    throw new Error(`${row.studentNo} 학생이 이미 있습니다.`);
-  }
-  const old = await studentDocsOfYear(db, year, oldNo);
-  const batch = writeBatch(db);
-  old.forEach(d => batch.delete(d.ref));
-  rooms.forEach(c => batch.set(doc(db, COLL.courseStudents, studentDocId(c.id, row.studentNo)),
-    { courseId: c.id, studentNo: row.studentNo, name: row.name }));
-  if (row.studentNo !== String(oldNo)) {
-    for (const coll of [COLL.courseAuth, COLL.courseConsent]) {
-      const s = await getDoc(doc(db, coll, authDocId(year, oldNo)));
-      if (!s.exists()) continue;
-      batch.set(doc(db, coll, authDocId(year, row.studentNo)), { ...s.data(), courseId: rooms[0].id });
-      batch.delete(s.ref);
-    }
-  }
-  await batch.commit();
-  return row;
-}
-
-// 학생 삭제 — 그 학년도 강의실 전부에서 빼고 비밀번호와 동의도 지운다.
-export async function deleteStudent(db, year, studentNo) {
-  const batch = writeBatch(db);
-  (await studentDocsOfYear(db, year, studentNo)).forEach(d => batch.delete(d.ref));
-  batch.delete(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
-  batch.delete(doc(db, COLL.courseConsent, authDocId(year, studentNo)));
-  await batch.commit();
-}
-// 학생 관리 화면 — 그 학년도 학생 전부와 각자 든 강의실(아카이브 포함). 학번 순.
-export async function listYearStudents(db, year) {
-  const courses = await listCourses(db, { year, includeArchived: true });
-  const byId = Object.fromEntries(courses.map(c => [c.id, c]));
-  const snap = await getDocs(collection(db, COLL.courseStudents));
-  const map = {};
-  snap.docs.forEach(d => {
-    const v = d.data();
-    const c = byId[v.courseId];
-    if (!c) return;
-    (map[v.studentNo] ||= { studentNo: String(v.studentNo), name: v.name, courses: [] }).courses.push(c);
-  });
-  return Object.values(map)
-    .map(s => ({ ...s, courses: s.courses.sort(courseOrder) }))
-    .sort((a, b) => a.studentNo.localeCompare(b.studentNo));
-}
-
-// 한 학생이 그 학년도에 든 반들(아카이브 제외). 로그인 뒤 클래스 고르기 화면이 쓴다.
-// 캐시된 명단 대신 학번으로 바로 묻는다 — 선생님이 반을 더하면 바로 보여야 해서다(읽기는 반 수만큼).
-export async function listStudentCourses(db, year, studentNo) {
-  const snap = await getDocs(query(collection(db, COLL.courseStudents), where('studentNo', '==', String(studentNo))));
-  const courses = await Promise.all(snap.docs.map(d => getCourse(db, d.data().courseId)));
-  return courses.filter(c => c && c.year === year && c.status !== 'archived').sort(courseOrder);
-}
-
-export function clearRosterCache() {
-  try { localStorage.removeItem(ROSTER_CACHE_KEY); } catch (_) {}
-}
-
-// 한 반의 명단을 통째로 교체한다. 2026의 엑셀 업로드와 같은 동작이지만
-// 지우는 범위가 그 반으로 제한된다(예전에는 전교생 명단을 지웠다).
-export async function replaceRoster(db, cid, rows) {
-  const old = await getDocs(query(collection(db, COLL.courseStudents), where('courseId', '==', cid)));
-  for (let i = 0; i < old.docs.length; i += 400) {
-    const batch = writeBatch(db);
-    old.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-    await batch.commit();
-  }
-  for (let i = 0; i < rows.length; i += 400) {
-    const batch = writeBatch(db);
-    rows.slice(i, i + 400).forEach(r => {
-      batch.set(doc(db, COLL.courseStudents, studentDocId(cid, r.studentNo)),
-        { courseId: cid, studentNo: String(r.studentNo), name: r.name });
-    });
-    await batch.commit();
-  }
-  return rows.length;
-}
-
-/* 명단 엑셀 한 장 — A열 과목, B열 학년, C열 반, D열 번호, E열 이름(선생님 지시 2026-10-25).
- * 과목까지 줄마다 들어 있으므로 따로 묻지 않는다. 학번은 학년 한 자리 + 반 두 자리 + 번호
- * 두 자리로 만든다(10203 = 1학년 2반 3번). 한 학생이 사회와 역사 줄에 둘 다 있으면 두 반에 다 들어간다. */
-export function rosterRowFromSheet(r) {
-  const subject = String(r[0] ?? '').trim();
-  const grade = +String(r[1] ?? '').trim(), classNo = +String(r[2] ?? '').trim(), num = +String(r[3] ?? '').trim();
-  const name = String(r[4] ?? '').trim();
-  if (!validSubject(subject) || !validGrade(grade) || !validClass(classNo) || !inRange(num, 1, 99) || !name) return null;
-  const studentNo = `${grade}${String(classNo).padStart(2, '0')}${String(num).padStart(2, '0')}`;
-  return { subject, grade, classNo, studentNo, name };
-}
-
-// 과목, 학년, 반이 같은 줄끼리 묶는다.
-export function groupRosterRows(rows) {
-  const by = {};
-  for (const r of rows) {
-    (by[`${r.subject}|${r.grade}|${r.classNo}`] ||= { subject: r.subject, grade: r.grade, classNo: r.classNo, rows: [] }).rows.push(r);
-  }
-  return Object.values(by).sort((a, b) =>
-    a.subject.localeCompare(b.subject, 'ko') || (a.grade - b.grade) || (a.classNo - b.classNo));
-}
-
-// 묶음마다 이미 만든 강의실을 찾아 그 명단을 교체한다. 강의실이 없는 묶음은 넣지 않고 돌려준다
-// (생성된 강의실에 한정해서 학생을 만든다, 선생님 지시 2026-10-25). 파일에 없는 강의실은 건드리지 않는다.
-export async function replaceRosterRows(db, { year, rows }) {
-  const classes = [], missing = [];
-  for (const g of groupRosterRows(rows)) {
-    const c = await findCourse(db, year, g.subject, g.grade, g.classNo);
-    if (!c) { missing.push(g); continue; }
-    const n = await replaceRoster(db, c.id, g.rows);
-    classes.push({ ...g, courseId: c.id, count: n });
-  }
-  return { classes, missing };
-}
-
-/* ── 비밀번호와 동의 ──
- *
- * **학생에게 Firebase Auth 계정을 만들지 않는다.** 아이들이 일일이 가입해야 하고
- * 그건 개인정보상 부담이라는 것이 선생님 결정이다(2026-10-23). 로그인은 지금처럼
- * 학번과 이름과 본인이 정한 비밀번호의 일치 여부만 본다. 이 방식은 그대로 간다 —
- * 가짜 이메일 계정이나 익명 로그인 같은 제안을 다시 꺼내지 말 것.
- *
- * 문서 id는 "학년도_학번"(2027_10203). 한 학생이 사회 반과 역사 반에 다 들어갈 수 있어서
- * 비밀번호를 반이 아니라 학년도에 붙였다(2026-10-25). 반마다 따로면 비밀번호가 둘이 된다.
- * 학년도가 들어 있으니 해가 바뀌어도 같은 학번이 작년 비밀번호를 물려받지 않는다.
- *
- * 학생을 서버가 식별하지 못하므로 규칙에 "본인 것만"을 쓸 수 없다. 대신
- * firestore.rules에서 (1) 그 학년도 어느 반 명단에 있는 학번만 (2) create 한 번만 쓰게 했다.
- * 규칙이 명단을 찾아볼 수 있게 문서에 courseId(학생이 든 반 하나)를 같이 적는다.
- * 덮어쓰기는 선생님만 되고, 초기화는 문서를 지우는 것(clearPw)이다.
- * 읽기는 문서 하나(get)만 열고 목록(list)은 닫았다 — 해시를 통째로 긁어 가지 못한다.
- * 그래서 setPw는 비밀번호가 없을 때만 불러야 한다(있는 문서에 쓰면 update라 막힌다).
- * 남은 길 두 가지 — 해시를 PBKDF2로, 검증을 Cloud Function으로. LMS2027.md 4 참고.
- */
-export const authDocId = (year, studentNo) => `${year}_${studentNo}`;
-
-// SHA-256. 소금은 학번이고 앞머리까지 2026 lms/index.js의 hashPw와 같게 둔다.
-export async function hashPw(pw, salt) {
-  const data = new TextEncoder().encode(`lms:${salt}:${pw}`);
-  const buf  = await crypto.subtle.digest('SHA-256', data);
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-export const isHash = v => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
-
-export async function getAuthHash(db, year, studentNo) {
-  const s = await getDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
-  return s.exists() ? (s.data().pw || '') : '';
-}
-
-export async function setPw(db, year, studentNo, courseId, pw) {
-  await setDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)),
-    { pw: await hashPw(pw, studentNo), courseId });
-}
-
-// 선생님이 초기화하면 문서를 지운다. 다음 로그인 때 새로 정하게 된다.
-export const clearPw = (db, year, studentNo) =>
-  deleteDoc(doc(db, COLL.courseAuth, authDocId(year, studentNo)));
-
-export async function hasConsent(db, year, studentNo) {
-  const s = await getDoc(doc(db, COLL.courseConsent, authDocId(year, studentNo)));
-  return s.exists();
-}
-
-export const saveConsent = (db, year, studentNo, courseId, name) =>
-  setDoc(doc(db, COLL.courseConsent, authDocId(year, studentNo)),
-    { agreedAt: serverTimestamp(), name, courseId });
-
-/* ── 강의 ── */
-
-export async function listCourseLessons(db, cid, { openOnly = false } = {}) {
-  const snap = await getDocs(query(collection(db, COLL.courseLessons), where('courseId', '==', cid)));
-  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (openOnly) rows = rows.filter(r => r.isOpen);
-  return rows.sort((a, b) => lessonOrderKey(a.lessonNo) - lessonOrderKey(b.lessonNo));
-}
-
-export async function countLessonsByCourse(db) {
-  const snap = await getDocs(collection(db, COLL.courseLessons));
-  const n = {};
-  snap.docs.forEach(d => {
-    const c = d.data().courseId;
-    if (!c) return;
-    n[c] ||= { total: 0, open: 0 };
-    n[c].total++;
-    if (d.data().isOpen) n[c].open++;
-  });
-  return n;
-}
-
-export async function listLibrary(db) {
-  const snap = await getDocs(collection(db, COLL.lessonLibrary));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => lessonOrderKey(a.lessonNo) - lessonOrderKey(b.lessonNo));
-}
-
-export async function getLibraryLesson(db, lessonId) {
-  const s = await getDoc(doc(db, COLL.lessonLibrary, lessonId));
-  return s.exists() ? { id: s.id, ...s.data() } : null;
-}
-
-export const addLibraryLesson = (db, data) =>
-  addDoc(collection(db, COLL.lessonLibrary), { ...data, createdAt: serverTimestamp() });
-
-/* 강의 하나를 붙이고 떼고 열던 attachLesson, detachLesson, setLessonOpen,
-   deleteLibraryLesson은 지웠다(2026-10-26). 올릴 강의실을 한 번에 맞추는
-   setLessonCourses와 공개를 함께 반영하는 syncLessonRows, 올린 줄까지 지우는
-   deleteLessonEverywhere가 그 일을 한다. 같은 일을 두 길로 두면 한쪽만 고치게 된다. */
-
-/* ── 강의를 강의실에 올리기 (선생님 지시 2026-10-26) ──
- *
- * 강의 내용은 lesson_library 문서 하나에만 둔다. 그 강의를 어느 강의실에서 쓸지는
- * course_lessons 한 줄로 잇는다 — 강의를 만든 뒤 올릴 강의실을 고르는 자리다.
- * 강의 하나를 여러 강의실(사회 301, 사회 302)에 함께 올릴 수 있다.
- *
- * 공개 스위치는 강의 하나에 하나다(선생님 지시). 켜면 올려 둔 강의실 전부에 같이 열린다.
- * 학생 화면이 강의실 하나만 읽고 끝나도록 isOpen과 표시용 강 번호, 제목을 올린 줄에도
- * 같이 적어 둔다. 라이브러리 문서를 강의실마다 다시 읽으면 읽기 수가 강의 수만큼 늘어난다.
- * 그래서 강의 쪽이 바뀔 때마다 syncLessonRows로 올린 줄들을 같이 고친다.
- */
-
-// 이 강의를 올려 둔 강의실 줄들.
-export async function listLessonCourses(db, lessonId) {
-  const snap = await getDocs(query(collection(db, COLL.courseLessons), where('lessonId', '==', lessonId)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-/* 올릴 강의실 목록을 고른 그대로 맞춘다. 빠진 강의실은 떼고 새로 고른 강의실은 붙인다.
- * lesson은 { id, lessonNo, title, isOpen } — 라이브러리 문서다.
- *
- * scopeIds는 고르기 창이 실제로 보여 준 강의실들이다. 강의는 연도와 무관하게 남으므로
- * 한 강의가 2027 강의실과 2028 강의실에 함께 올라가 있을 수 있다. 창에 없던 강의실 줄까지
- * 지우면 다른 학년도에서 강의가 조용히 사라진다 — 그래서 뗄 수 있는 범위를 받는다.
- * 넘기지 않으면 고른 것 전부가 범위다(뗄 것이 없다). */
-export async function setLessonCourses(db, lesson, courseIds, scopeIds = courseIds) {
-  const want = new Set(courseIds);
-  const scope = new Set(scopeIds);
-  const rows = await listLessonCourses(db, lesson.id);
-  const batch = writeBatch(db);
-  let added = 0, removed = 0;
-  rows.forEach(r => {
-    if (want.has(r.courseId)) want.delete(r.courseId);   // 이미 올라가 있다
-    else if (scope.has(r.courseId)) { batch.delete(doc(db, COLL.courseLessons, r.id)); removed++; }
-  });
-  want.forEach(cid => {
-    batch.set(doc(collection(db, COLL.courseLessons)), {
-      courseId: cid, lessonId: lesson.id,
-      lessonNo: lesson.lessonNo, title: lesson.title,
-      isOpen: lesson.isOpen === true, createdAt: serverTimestamp(),
-    });
-    added++;
-  });
-  await batch.commit();
-  return { added, removed };
-}
-
-// 강의 쪽이 바뀌면(공개 스위치, 강 번호, 제목) 올려 둔 줄들의 같은 칸도 고친다.
-export async function syncLessonRows(db, lessonId, fields) {
-  const rows = await listLessonCourses(db, lessonId);
-  if (!rows.length) return 0;
-  const batch = writeBatch(db);
-  rows.forEach(r => batch.update(doc(db, COLL.courseLessons, r.id), fields));
-  await batch.commit();
-  return rows.length;
-}
-
-// 강의를 라이브러리에서 지우면 올려 둔 줄도 함께 지운다(학생 화면에 유령 강의가 남지 않게).
-export async function deleteLessonEverywhere(db, lessonId) {
-  const rows = await listLessonCourses(db, lessonId);
-  const batch = writeBatch(db);
-  rows.forEach(r => batch.delete(doc(db, COLL.courseLessons, r.id)));
-  batch.delete(doc(db, COLL.lessonLibrary, lessonId));
-  await batch.commit();
-}
-
-// 강 번호 정렬 키 — 2026 admin.js의 lecOrderKey와 같은 규칙.
-// "28강. ..."은 28, OT 같은 비숫자는 맨 아래(-1).
-export function lessonOrderKey(v) {
-  const m = String(v ?? '').trim().match(/^(\d+)/);
-  return m ? parseInt(m[1], 10) : -1;
-}
-
-// 강 번호 표기 — 숫자면 "N강", 문자(OT 등)면 그대로. 2026 규칙 유지.
-export const lessonTag = n => /^\d+$/.test(String(n ?? '').trim()) ? `${n}강` : `${n}`;
-
-/* ══════ 미션 ══════
- *
- * 미션은 **따로 만든 웹앱**이고 LMS는 주소로만 잇는다(선생님 지시 2026-10-26).
- * 이 구조를 그대로 간다 — 연결 비용이 카드 한 장이라 앱을 빨리 만들 수 있다.
- *
- * 강의(lesson_library + course_lessons)와 **똑같은 두 층**이다.
- *   mission_library  미션 하나. 제목, 앱 키, 학생 주소, 어드민 주소.
- *   course_missions  그 미션을 올린 강의실 한 줄.
- * 미션 하나를 여러 강의실에 올릴 수 있고, 공개 스위치는 미션 하나에 하나다.
- * 학생 화면이 강의실 하나만 읽고 끝나도록 표시에 쓰는 칸을 올린 줄에도 복사한다.
- *
- * appKey는 앱 폴더 이름이다(j_interview 등). 성적 자동 채점이 이 키로
- * mission_submissions를 조회한다 — 2026처럼 어드민 코드에 앱 목록을 적어 두지 않는다.
- */
-
-// 앱이 제출 요약을 남기는 공용 컬렉션. 앱마다 컬렉션을 새로 파지 않는다.
-// 문서 id는 missionSubmitId(appKey, year, studentNo).
-export const MISSION_SUBMISSIONS = 'mission_submissions';
-export const missionSubmitId = (appKey, year, studentNo) => `${appKey}_${year}_${studentNo}`;
-
-export async function listMissionLibrary(db) {
-  const snap = await getDocs(collection(db, COLL.missionLibrary));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => lessonOrderKey(a.missionNo) - lessonOrderKey(b.missionNo)
-                 || String(a.title || '').localeCompare(String(b.title || '')));
-}
-
-export const addMission = (db, data) =>
-  addDoc(collection(db, COLL.missionLibrary), { ...data, createdAt: serverTimestamp() });
-
-export const updateMission = (db, id, data) =>
-  updateDoc(doc(db, COLL.missionLibrary, id), data);
-
-export async function listCourseMissions(db, cid, { openOnly = false } = {}) {
-  const snap = await getDocs(query(collection(db, COLL.courseMissions), where('courseId', '==', cid)));
-  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (openOnly) rows = rows.filter(r => r.isOpen);
-  return rows.sort((a, b) => lessonOrderKey(a.missionNo) - lessonOrderKey(b.missionNo));
-}
-
-export async function countMissionsByCourse(db) {
-  const snap = await getDocs(collection(db, COLL.courseMissions));
-  const n = {};
-  snap.docs.forEach(d => {
-    const c = d.data().courseId;
-    if (!c) return;
-    n[c] ||= { total: 0, open: 0 };
-    n[c].total++;
-    if (d.data().isOpen) n[c].open++;
-  });
-  return n;
-}
-
-// 이 미션을 올려 둔 강의실 줄들.
-export async function listMissionCourses(db, missionId) {
-  const snap = await getDocs(query(collection(db, COLL.courseMissions), where('missionId', '==', missionId)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-/* 올릴 강의실을 고른 그대로 맞춘다. 강의 쪽 setLessonCourses와 같은 규칙이고,
-   scopeIds(고르기 창이 보여 준 범위) 밖의 줄은 건드리지 않는 것도 같다 —
-   미션도 연도와 무관하게 남아 다른 학년도 강의실에 올라가 있을 수 있다. */
-export async function setMissionCourses(db, mission, courseIds, scopeIds = courseIds) {
-  const want = new Set(courseIds);
-  const scope = new Set(scopeIds);
-  const rows = await listMissionCourses(db, mission.id);
-  const batch = writeBatch(db);
-  let added = 0, removed = 0;
-  rows.forEach(r => {
-    if (want.has(r.courseId)) want.delete(r.courseId);
-    else if (scope.has(r.courseId)) { batch.delete(doc(db, COLL.courseMissions, r.id)); removed++; }
-  });
-  want.forEach(cid => {
-    batch.set(doc(collection(db, COLL.courseMissions)), {
-      courseId: cid, missionId: mission.id,
-      missionNo: mission.missionNo ?? '', title: mission.title,
-      appKey: mission.appKey ?? '', url: mission.url ?? '', icon: mission.icon ?? '',
-      isOpen: mission.isOpen === true, createdAt: serverTimestamp(),
-    });
-    added++;
-  });
-  await batch.commit();
-  return { added, removed };
-}
-
-// 미션 쪽이 바뀌면 올려 둔 줄의 같은 칸도 고친다(학생 화면이 올린 줄만 읽으므로).
-export async function syncMissionRows(db, missionId, fields) {
-  const rows = await listMissionCourses(db, missionId);
-  if (!rows.length) return 0;
-  const batch = writeBatch(db);
-  rows.forEach(r => batch.update(doc(db, COLL.courseMissions, r.id), fields));
-  await batch.commit();
-  return rows.length;
-}
-
-export async function deleteMissionEverywhere(db, missionId) {
-  const rows = await listMissionCourses(db, missionId);
-  const batch = writeBatch(db);
-  rows.forEach(r => batch.delete(doc(db, COLL.courseMissions, r.id)));
-  batch.delete(doc(db, COLL.missionLibrary, missionId));
-  await batch.commit();
-}
-
-/* 앱 주소를 푼다. 전체 주소("https://…")면 그대로 쓰고,
-   아니면 이 레포(lms2027) 뿌리에 붙인다 — 2027 앱은 lms2027/apps/ 밑에 둔다.
-   2026 hoistory 앱을 그대로 쓸 때는 전체 주소를 적는다(깃허브 페이지에서 같은 origin이라
-   iframe 안을 읽는 데 문제가 없다). 2026 lms/admin.js의 resolveAppUrl을 이 레포 구조로 옮긴 것. */
-export function resolveAppUrl(u) {
-  const s = String(u || '').trim();
-  if (!s) return s;
-  if (/^(https?:)?\/\//i.test(s) || s.startsWith('/') || s.startsWith('#')) return s;
-  const root = location.pathname.replace(/\/[^/]*$/, '/');
-  return root + s.replace(/^\.?\//, '');
-}
-
-// 앱 키를 주소에서 뽑는다("apps/j_interview/index.html" -> "j_interview").
-// 미션 문서에 appKey를 직접 적는 게 원칙이고, 이건 옛 줄이나 빈 칸을 메우는 보조다.
-export function appKeyFromUrl(url) {
-  const parts = String(url || '').split(/[/?#]/).filter(Boolean);
-  const i = parts.indexOf('apps');
-  return i >= 0 ? (parts[i + 1] || '') : '';
-}
-
-/* ── firestore.rules 상태 (2026-10-25 배포) ──
- * 위 여섯 컬렉션 모두 전용 블록이 있다("2027 LMS" 구역).
- *   courses, course_students, course_lessons, lesson_library — 읽기 공개, 쓰기 선생님
- *   course_auth, course_consent — get 공개, list 선생님, 명단 학생의 create 한 번만
- * 규칙은 겹치면 OR로 합쳐지므로 catch-all에서 course_auth와 course_consent를 뺐다.
- * 성적과 제출물 컬렉션을 새로 만들면 공개 읽기로 둘지 그때 따로 정한다 —
- * 블록이 없으면 catch-all(공개 읽기)로 떨어진다.
- */

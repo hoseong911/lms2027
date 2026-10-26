@@ -1,629 +1,90 @@
-/* 2027 LMS 어드민 — 색 토큰은 2026 lms/admin.css에서 그대로 가져왔다.
-   디자인은 맨 나중에 한꺼번에 바꾸기로 했으므로(2026-10-23 선생님 결정)
-   지금은 기존 톤을 유지하고 구조에만 집중한다. */
-
+/* 2027 LMS 어드민 — 제로베이스 뼈대 (2026-10-26)
+   디자인은 맨 나중에 한꺼번에 바꾼다. 지금은 구조 중심의 중립 스타일.
+   화면 규칙: 알약 테두리 금지, 태그/카테고리는 구분선으로, 액션은 아이콘 버튼(.ib),
+   숫자 칸은 스피너 없음, 입력 칸 위 이름표 없음(placeholder로). */
 :root{
-  /* 미니멀 톤: 근백색 바탕 + 오렌지(강조) / 네이비(대비 요소 전용). 2026과 같은 값. */
-  --canvas:#FFFFFF;--surface:#FAFAFA;
-  --border:#E6E6E6;--hairline:#E6E6E6;--hairline-soft:#EFEFEF;
-  --text:#323232;--sub:#5A5A5A;--faint:#9A9A9A;
-  --primary:#FF6B3D;--primary-deep:#E24E1B;--primary-l:rgba(255,107,61,0.10);
-  --point:#27384F;--point-l:rgba(39,56,79,0.12); /* 네이비: 토글 등 대비 요소 전용 */
-  --critical:#DC2626;--critical-l:rgba(220,38,38,.08);
-  --shadow:rgba(20,22,26,0.10) 0px 4px 14px 0px;
+  --lms-css-ok:1;
+  --bg:#f7f8fa; --ink:#1f2328; --sub:#6b7280; --line:#e3e6ea; --card:#fff;
+  --accent:#3b6ef2; --accent-soft:#eaf0ff;
+  --concept:#2f8f6b; --mission:#e4572e; --question:#7a4fd6; --formative:#c99000; --review:#4a7fb5;
 }
-
 *{box-sizing:border-box}
-body{
-  margin:0;background:var(--canvas);color:var(--text);
-  font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
-  -webkit-text-size-adjust:100%;
-}
-svg{vertical-align:middle}
-[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+.boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--sub)}
+html.lms-ready .boot{display:none}
+html:not(.lms-ready) #shell{display:none}
 
-/* ── 로그인 ── */
-#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.login-wrap{width:100%;max-width:340px;text-align:center}
-.login-brand{font-weight:900;font-size:34px;letter-spacing:2px;color:var(--primary)}
-.login-sub{margin-top:6px;font-size:13px;font-weight:600;color:var(--sub)}
-.login-fields{margin-top:24px;display:flex;flex-direction:column;gap:9px}
-.login-input{
-  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:9px;
-  background:#fff;font:inherit;font-size:15px;
-}
-.login-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l)}
-.login-error{min-height:18px;margin-top:10px;font-size:13px;font-weight:600;color:var(--critical)}
-.login-enter-btn{
-  width:100%;margin-top:6px;padding:12px;border:0;border-radius:9px;
-  background:var(--primary);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
-}
-.login-enter-btn:hover{background:var(--primary-deep)}
+#shell{display:flex;min-height:100vh}
+.side{width:220px;flex:0 0 auto;background:var(--card);border-right:1px solid var(--line);padding:16px 12px}
+.side .brand{font-weight:900;font-size:20px;padding:6px 10px 16px;letter-spacing:1px}
+.side .mi{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:9px;color:var(--sub);
+  font-size:14px;cursor:pointer;margin-bottom:3px}
+.side .mi:hover{background:#f0f2f5}
+.side .mi.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.main{flex:1;min-width:0;padding:24px 28px 80px;max-width:1000px}
 
-/* ── 셸 ── */
-.adm-header{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:12px 20px;border-bottom:1px solid var(--border);background:#fff;
-  position:sticky;top:0;z-index:30;
-}
-.adm-header-left{display:flex;align-items:center;gap:12px;min-width:0}
-.adm-title{display:flex;align-items:baseline;gap:7px}
-.adm-title-main{font-weight:900;font-size:17px;letter-spacing:.5px;color:var(--text)}
-.adm-title-lms{font-weight:900;font-size:17px;color:var(--primary)}
-.adm-sub{margin-top:2px;font-size:11.5px;font-weight:600;color:var(--faint)}
-.adm-header-right{display:flex;align-items:center;gap:6px}
+h2{font-size:20px;margin:0 0 4px}
+.pagehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.pagehead h2{flex:1}
 
-.adm-body{display:flex;min-height:calc(100vh - 57px)}
+/* 태그/카테고리 줄 — 구분선으로만 구분, 배경색 없음 */
+.catline{display:flex;gap:18px;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:10px;flex-wrap:wrap}
+.cat{font-size:13px;color:var(--sub);background:none;border:none;cursor:pointer;padding-bottom:7px;margin-bottom:-8px}
+.cat.on{color:var(--ink);-webkit-text-stroke:.5px var(--ink);border-bottom:2px solid var(--ink)}
 
-.adm-sidebar{
-  flex-shrink:0;width:208px;padding:16px 12px;border-right:1px solid var(--border);
-  background:var(--surface);
-}
-.nav-group{display:flex;flex-direction:column;gap:3px}
-.nav-divider{height:1px;margin:12px 4px;background:var(--border)}
-.nav-item{
-  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;
-  font-size:14px;font-weight:600;color:var(--sub);cursor:pointer;
-}
-.nav-item:hover{background:#fff}
-.nav-item.active{background:var(--primary);color:#fff}
-.nav-ic{display:inline-flex}
-.nav-label{white-space:nowrap}
-.adm-sidebar-scrim{display:none}
+/* 목록 줄 */
+.row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);padding:11px 13px;margin-bottom:8px}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600;font-size:14px}
+.row .s{font-size:12px;color:var(--sub);margin-top:2px}
+.badge{font-size:11px;background:#eef0f3;border-radius:6px;padding:2px 8px;color:var(--sub)}
+.mono{font-family:ui-monospace,Consolas,monospace}
 
-/* 내용 너비는 1000px이었는데 강의 선택 줄의 버튼들과 디자인 패널이 두 줄로 접혔다.
-   화면이 넓으면 넓은 대로 쓰고, 글줄만 너무 길어지지 않게 1680px에서 멈춘다(선생님 지시 2026-10-26). */
-.adm-main{flex:1;min-width:0;padding:26px 32px 70px;max-width:1680px}
+/* 액션 아이콘 버튼 — 테두리는 진짜 액션 버튼에만, 모서리 8px, 알약 금지 */
+.ib{display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+.ib:hover{background:#f0f2f5}
+.ib-primary{border-color:var(--accent);color:var(--accent)}
+.tools{display:flex;gap:6px;flex:0 0 auto}
 
-/* 페이지 한 칸. 숨기는 것은 위의 [hidden] 규칙이 맡는다. */
-.panel-page{display:block}
+/* 인라인 폼 줄 */
+.formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
+.f{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;background:#fff;color:var(--ink)}
+.f:focus{outline:none;border-color:var(--accent)}
+.f.w-sm{width:84px}.f.w-md{width:130px}.f.grow{flex:1;min-width:120px}
+/* 숫자 칸 스피너 제거(혹시 type=number가 섞여도) */
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.unit{font-size:13px;color:var(--sub)}
+.btn-text{border:1px solid var(--accent);color:#fff;background:var(--accent);border-radius:8px;
+  padding:9px 14px;font-size:14px;cursor:pointer;font-weight:600}
+.btn-text:hover{filter:brightness(.96)}
 
-/* ── 페이지 머리 ── */
-.page-head{margin-bottom:20px}
-.page-title{margin:0;font-size:22px;font-weight:800}
+.sectionlabel{font-size:12px;color:var(--sub);font-weight:700;margin:20px 2px 8px}
+.empty{color:var(--sub);font-size:14px;padding:16px 2px}
+.hi-ic{vertical-align:middle}
 
-/* ── 학년도 줄 ── */
-.year-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:34px;margin-bottom:16px}
-.year-bar .pick-bar{flex:1;margin-bottom:0}
-.year-tools{display:flex;gap:4px}
-.sel,.inp{
-  padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;
-  font:inherit;font-size:14px;color:var(--text);
-}
-.sel:focus,.inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l)}
+/* 강의 편집기 */
+.editor{display:flex;gap:18px;flex-wrap:wrap}
+.deck{flex:1;min-width:280px}
+.partrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;
+  background:var(--card);padding:11px 13px;margin-bottom:8px}
+.partrow .dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+.partrow .grow{flex:1}
+.partrow.off{opacity:.5}
+.palette{flex:0 0 220px}
+.pchip{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;
+  padding:9px 11px;margin-bottom:7px;cursor:pointer;background:var(--card);font-size:13.5px}
+.pchip .dot{width:11px;height:11px;border-radius:3px}
+.pchip.has{border-color:var(--accent);color:var(--accent)}
+.checkline{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;
+  padding:10px 12px;margin-bottom:7px;background:var(--card);cursor:pointer;font-size:14px}
+.checkline input{width:17px;height:17px}
+.placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:10px;padding:24px;text-align:center}
 
-/* ── 카드 ── */
-.card{
-  margin-bottom:16px;border:1px solid var(--border);border-radius:13px;
-  background:#fff;box-shadow:var(--shadow);overflow:hidden;
-}
-.card-head{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:14px 18px;border-bottom:1px solid var(--hairline-soft);background:var(--surface);
-}
-.card-title{margin:0;font-size:14.5px;font-weight:800}
-.card-body{padding:18px}
-
-.form-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
-.f{display:flex;flex-direction:column;gap:5px}
-.f-label{font-size:12px;font-weight:700;color:var(--sub)}
-.f .inp{width:96px}
-.f-no .inp{width:80px}
-.f-grow{flex:1;min-width:180px}
-.f-grow .inp{width:100%}
-
-.btn{
-  padding:9px 16px;border:1px solid transparent;border-radius:8px;
-  font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;
-}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-deep)}
-.btn-ghost{background:#fff;border-color:var(--border);color:var(--sub)}
-.btn-ghost:hover{background:var(--surface)}
-.btn-danger{background:#fff;border-color:var(--critical);color:var(--critical)}
-.btn-danger:hover{background:var(--critical-l)}
-.btn-sm{padding:6px 11px;font-size:12.5px}
-.btn:disabled{opacity:.5;cursor:default}
-
-.empty{margin:0;padding:22px 4px;color:var(--faint);font-size:13.5px;text-align:center;word-break:keep-all}
-
-/* ── 반 목록 ── */
-.cls-row{
-  display:flex;align-items:center;gap:12px;padding:12px 14px;
-  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;
-}
-.cls-row:last-child{margin-bottom:0}
-.cls-row.arch{background:var(--surface);color:var(--faint)}
-.cls-name{font-size:14.5px;font-weight:700;min-width:120px}
-.cls-meta{flex:1;font-size:12.5px;color:var(--sub)}
-.cls-row.arch .cls-meta{color:var(--faint)}
-.acts{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
-.badge{
-  padding:3px 8px;border-radius:6px;background:var(--point-l);
-  font-size:11px;font-weight:700;color:var(--point);
-}
-
-/* ── 축 고르기 줄 (반별 / 메뉴별 공용) ── */
-/* ── 고르기 줄과 태그 줄 ──
-   학년도, 반별 관리의 반, 메뉴별 관리의 메뉴(.pick)와 과목, 학년, 반 거르기(.tag) 모두 같은 모양이다
-   (선생님 지시 2026-10-25, 쇼핑몰 카테고리 줄처럼). 테두리와 배경 없이 글자만 두고 줄 아래에 얇은 구분선.
-   켜진 것은 진한 글씨에 아래 굵은 선. 배경색은 배지(.badge, .stu-course)에만 쓴다.
-   켜질 때 굵기를 font-weight로 바꾸면 글자 폭이 늘어 옆 항목이 밀린다. 그래서 글자 테두리(text-stroke)로
-   굵어 보이게만 한다 — 폭이 그대로라 들썩이지 않는다. */
-.pick-bar, .tag-row{
-  display:flex;align-items:flex-end;flex-wrap:wrap;column-gap:22px;
-  border-bottom:1px solid var(--border);
-}
-.pick-bar{margin-bottom:18px}
-.pick, .tag{
-  position:relative;display:inline-flex;align-items:center;gap:6px;
-  padding:9px 0;border:0;border-radius:0;background:none;
-  font:inherit;font-size:14.5px;font-weight:600;color:var(--sub);cursor:pointer;white-space:nowrap;
-}
-.pick:hover, .tag:hover{color:var(--text)}
-.pick.on, .tag.on{color:var(--text);-webkit-text-stroke:.45px currentColor}
-.pick.on::after, .tag.on::after{
-  content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--text);
-}
-.pick-ic{display:inline-flex}
-.pick-bar .ib{align-self:center;margin:4px 0}
-
-/* ── 반 x 메뉴 칸 ──
-   반별 보기와 메뉴별 보기가 같은 칸 모양을 쓴다. 들어가는 방향만 다르고
-   도착하는 자리는 같기 때문이다. */
-.cell-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:10px}
-.cell{
-  display:flex;flex-direction:column;gap:8px;padding:15px;
-  border:1px solid var(--border);border-radius:12px;background:#fff;
-  box-shadow:var(--shadow);text-align:left;font:inherit;color:inherit;cursor:pointer;
-}
-.cell:hover{border-color:var(--primary)}
-.cell:disabled{cursor:default;opacity:.6;box-shadow:none}
-.cell-top{display:flex;align-items:center;gap:8px}
-.cell-ic{display:inline-flex;color:var(--primary)}
-.cell-name{font-size:14.5px;font-weight:800}
-.cell-sub{font-size:12px;color:var(--sub)}
-.cell-state{font-size:11.5px;font-weight:700;color:var(--faint)}
-
-.ctx{
-  display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:11px 14px;
-  border:1px solid var(--border);border-radius:10px;background:var(--surface);
-  font-size:13.5px;font-weight:700;
-}
-.ctx-sub{font-weight:600;color:var(--sub)}
-
-/* ── 라이브러리 ── */
-.lib-row{
-  display:flex;align-items:center;gap:12px;padding:11px 14px;
-  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;
-}
-.lib-row:last-child{margin-bottom:0}
-.lib-no{
-  flex-shrink:0;min-width:48px;padding:4px 8px;border-radius:7px;
-  background:var(--primary);color:#fff;font-size:12px;font-weight:800;text-align:center;
-}
-.lib-title{flex:1;font-size:14px;font-weight:600;word-break:keep-all}
-
-/* ── 아이콘 버튼 ──
-   설명이 필요 없는 액션은 글자 없이 아이콘만 둔다(CLAUDE.md 화면 규칙).
-   이름은 title과 aria-label로만 단다. */
-.ib{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:34px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;
-  background:#fff;color:var(--sub);cursor:pointer;flex-shrink:0;
-}
-.ib:hover{background:var(--surface);color:var(--text)}
-.ib:disabled{opacity:.5;cursor:default}
-.ib-primary{background:var(--primary);border-color:var(--primary);color:#fff}
-.ib-primary:hover{background:var(--primary-deep);border-color:var(--primary-deep);color:#fff}
-.ib-danger{color:var(--critical)}
-.ib-danger:hover{background:var(--critical-l);color:var(--critical)}
-.modal-foot .ib-danger{background:var(--critical);border-color:var(--critical);color:#fff}
-.modal-foot .ib-danger:hover{background:#B91C1C;border-color:#B91C1C;color:#fff}
-.adm-menu-btn{display:none}
-
-
-/* ── 모달 ── */
-.modal-scrim{
-  position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
-  padding:16px;background:rgba(0,0,0,.35);
-}
-.modal{
-  width:100%;max-width:380px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;
-  border-radius:14px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.18);
-}
-/* 강의실 고르기처럼 목록이 긴 창. 좁은 창에 체크 줄을 넣으면 한 줄에 하나씩만 들어간다. */
-.modal.wide{max-width:720px}
-.modal-head{padding:18px 20px 0}
-.modal-title{margin:0;font-size:16px;font-weight:800;word-break:keep-all}
-.modal-body{display:flex;flex-direction:column;gap:12px;padding:14px 20px 4px;overflow:auto}
-.modal-body .f .inp{width:100%}
-.modal-text{font-size:14px;line-height:1.55;color:var(--text);word-break:keep-all}
-.modal-err{min-height:18px;font-size:13px;font-weight:600;color:var(--critical)}
-.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:8px 20px 18px}
-
-.roster{display:flex;flex-direction:column;border:1px solid var(--hairline-soft);border-radius:9px;max-height:50vh;overflow:auto}
-.roster-row{display:flex;gap:14px;padding:8px 12px;font-size:14px;border-bottom:1px solid var(--hairline-soft)}
-.roster-row:last-child{border-bottom:0}
-.roster-no{min-width:52px;font-weight:700;color:var(--sub)}
-
-/* ── 토스트 ── 방금 한 일의 결과와 오류 */
-.toast{
-  position:fixed;left:50%;bottom:24px;z-index:110;transform:translateX(-50%);
-  max-width:calc(100vw - 32px);padding:11px 18px;border-radius:10px;
-  background:var(--point);color:#fff;font-size:14px;font-weight:600;
-  box-shadow:var(--shadow);word-break:keep-all;text-align:center;
-}
-.toast.err{background:var(--critical)}
-
-/* 숫자 칸에 스크롤 화살표를 두지 않는다(CLAUDE.md 화면 규칙). 숫자 칸은 원래
-   type="text" + inputmode="numeric"으로 만들지만, 혹시 number가 섞여도 화살표가 안 보이게 막는다. */
-input[type=number]{-moz-appearance:textfield;appearance:textfield}
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-
-/* ── 학급 관리 태그 ──
-   줄 셋(과목, 학년, 반). 여러 개를 함께 켤 수 있다. */
-.tag-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.tag-bar{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
-.stu-tag-bar{margin-bottom:14px}
-
-/* ── 모달 입력 칸 ──
-   이름표를 위에 달지 않는다. placeholder로 무엇을 적는지, 옆의 단위로 무슨 숫자인지 보인다. */
-.fld{display:flex;align-items:center;gap:8px}
-.fld .inp{flex:1;min-width:0}
-.fld-suffix{flex-shrink:0;font-size:14px;font-weight:600;color:var(--text)}
-.choice{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.choice .tag{margin-right:16px}
-/* ── 올릴 강의실 고르기 (2026-10-26) ──
-   위에 과목, 학년, 반 일괄 선택 줄(태그 규칙 그대로 글자와 아래 구분선), 아래에 체크 목록.
-   강의실이 열 개를 넘으면 하나씩 누르는 게 일이라 일괄 줄을 뒀다(선생님 지시). */
-.rooms{display:flex;flex-direction:column;gap:10px}
-.rooms-bulk{
-  display:flex;align-items:flex-end;flex-wrap:wrap;column-gap:22px;
-  border-bottom:1px solid var(--border);
-}
-/* 체크 목록 — 창을 넓게 열어 여러 열로 깐다. 한 열이면 열 몇 개만 봐도 스크롤이 길어진다. */
-.rooms-list{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 14px;
-  max-height:46vh;overflow:auto;margin-top:2px;
-}
-.rooms-item{
-  display:flex;align-items:center;gap:8px;padding:7px 2px;
-  font-size:14.5px;font-weight:600;color:var(--text);cursor:pointer;
-}
-.rooms-item:hover{color:var(--primary)}
-.rooms-item input{width:16px;height:16px;margin:0;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
-.choice-inp{flex:1;min-width:90px;padding:8px 11px}
-
-@media (max-width:860px){
-  .adm-menu-btn{display:inline-flex}
-  .adm-main{padding:20px 16px 60px}
-  .adm-sidebar{
-    position:fixed;top:57px;left:0;bottom:0;z-index:40;width:220px;
-    transform:translateX(-100%);transition:transform .2s;
-  }
-  .adm-sidebar.open{transform:translateX(0)}
-  .adm-sidebar-scrim{
-    display:block;position:fixed;inset:57px 0 0;z-index:35;
-    background:rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s;
-  }
-  .adm-sidebar-scrim.on{opacity:1;pointer-events:auto}
-  .cls-row{flex-wrap:wrap}
-  .cls-name{min-width:auto}
-  .cls-meta{flex-basis:100%;order:3}
-}
-
-
-/* ── 학생 관리 ── */
-.stu-row{
-  display:flex;align-items:center;gap:14px;padding:10px 14px;
-  border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:#fff;
-}
-/* 학번은 이름과 같은 글꼴 크기. 예전엔 크기가 빠져 16px로 커지고 tabular-nums로 숫자 사이가 벌어져 보였다. */
-.stu-no{min-width:52px;font-size:14.5px;font-weight:700;color:var(--text)}
-.stu-name{min-width:72px;font-size:14.5px;font-weight:700}
-.stu-courses{flex:1;display:flex;gap:6px;flex-wrap:wrap}
-.stu-course{padding:4px 9px;border-radius:6px;background:#F1F1F1;font-size:13px;color:var(--sub)}
-.roster-row.off{color:var(--faint)}
-
-/* ══════ 개념 노트 (2026-10-26) ══════
-   2026 lms/admin.css의 생각 체크 강의 선택 줄(.th-lecbar)과 개념 체크 편집기
-   (.concept-embed)를 옮겼다. 색 토큰 이름만 2027 것으로 바꿨고 모양은 그대로다.
-   .concept-embed 안은 자기 토큰(--c*)을 따로 들고 있어서 바깥 디자인과 섞이지 않는다 —
-   디자인을 맨 나중에 한꺼번에 바꿀 때 이 블록만 떼어 손보면 된다. */
-
-/* ── 강의 선택 줄 ── */
-.th-lecbar-card{background:var(--canvas);border:1px solid var(--hairline-soft);border-radius:16px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:18px}
-/* 한 줄로 세운다. 폭이 모자랄 때만 접히게 두되(flex-wrap), 드롭다운이 먼저 줄어들어
-   버튼들이 두 번째 줄로 밀려 내려가지 않게 한다. */
-.th-lecbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.th-lecbar > *{flex-shrink:0}
-.th-lecbar > select{flex:1 1 240px;min-width:160px}
-.th-lecbar .lesson-bar-title{color:var(--primary);font-weight:600;font-size:1rem;white-space:nowrap;margin-right:2px}
-.th-lecbar > select{flex:0 1 320px;min-width:200px;padding:9px 12px;border:1.5px solid var(--hairline);border-radius:8px;font-family:inherit;font-size:16px;background:var(--canvas);outline:none}
-.th-lecbar > select:focus{border-color:var(--primary)}
-.th-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--hairline);border-radius:8px;background:var(--canvas);color:var(--sub);cursor:pointer;transition:all .15s}
-.th-icon-btn:hover{background:var(--surface);color:var(--text)}
-.th-icon-btn svg{width:16px;height:16px;display:block}
-.th-icon-danger{color:var(--critical);border-color:#f0c4c4}
-.th-icon-danger:hover{background:var(--critical-l);color:var(--critical)}
-.th-lecbar-div{width:1px;height:22px;background:var(--hairline);margin:0 2px}
-.th-lecbar-toglbl{font-size:14px;font-weight:700;white-space:nowrap}
-/* 올린 강의실 이름. 실제 데이터라 작은 글씨 설명에 해당하지 않는다. */
-.th-lecbar-rooms{font-size:14px;font-weight:600;color:var(--sub);white-space:nowrap}
-
-/* 공개 스위치. 강의 하나에 하나이고 올려 둔 강의실 전부를 같이 열고 닫는다. */
-.th-toggle{width:40px;height:22px;background:var(--hairline);border-radius:100px;position:relative;transition:background .2s;flex-shrink:0;cursor:pointer}
-.th-toggle.on{background:var(--point)}
-.th-toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
-.th-toggle.on::after{transform:translateX(18px)}
-.th-toggle.disabled{opacity:.4;cursor:not-allowed}
-
-/* 활동지 올리기 상태 줄 — 글이 없어도 자리를 지킨다(min-height). 글이 뜰 때
-   자리를 만드느라 아래 편집 탭이 내려앉으면 화면이 덜컥 움직인다. */
-.ce-upload-status{display:flex;align-items:center;min-height:44px;margin:-8px 0 8px;padding:10px 14px;border-radius:10px;border:1px solid transparent;color:var(--primary-deep);font-size:.85rem;font-weight:600;line-height:1.5;word-break:keep-all}
-.ce-upload-status:not(:empty){background:var(--primary-l);border-color:var(--primary)}
-/* ── 개념 체크 (class/admin.html 이식, .concept-embed로 스코프) ──
-   interview/admin.html과 동일한 팔레트로 리테마: --c* 토큰 값만 interview의 색상으로 교체하고
-   실제 마크업(.s-card/.cbtn 등)과 학생 화면 미리보기 렌더링 로직은 그대로 둔다. */
-.concept-embed{
-  --font: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
-  --cbg: #FAFAFA; --cwhite: #FFFFFF;
-  --cnavy: #FF6B3D; --cnavy-deep: #E24E1B; --cred: #DC2626;
-  --ctext: #323232; --csub: #323232; --cborder: #E6E6E6;
-  --cshadow: rgba(20,22,26,0.08) 0px 2px 10px 0px;
-  font-family: var(--font); color: var(--ctext);
-}
-.concept-embed .page-wrap{padding:0}
-.concept-embed .s-card{background:var(--cwhite);border-radius:20px;border:1px solid var(--cborder);margin-bottom:16px;overflow:hidden;box-shadow:var(--cshadow)}
-.concept-embed .s-head{padding:12px 20px;border-bottom:1px solid var(--cborder);font-size:1rem;font-weight:600;color:var(--cnavy);font-family:var(--font)}
-.concept-embed .s-body{padding:18px 20px}
-.concept-embed .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-/* DESIGN 2단: 폰트(2) / 슬라이드 색조합(1) */
-/* 글꼴 크기 항목이 50개 가까이라 2단 배치로는 답이 안 나와서 박스를 세로로 쌓는다.
-   (글꼴 종류 / 글꼴 크기 / 줄간격+자간 / 색 조합 각각 한 박스) */
-.concept-embed .design-stack{display:flex;flex-direction:column;gap:16px;margin-bottom:20px;min-width:0}
-.concept-embed .design-stack .s-card{margin-bottom:0}
-.concept-embed .ff-select{flex:1;padding:7px 10px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.85rem;color:var(--ctext);background:#fff;cursor:pointer}
-/* 글꼴 크기: 섹션 그룹을 2단으로 흘려 세로 길이 축소 */
-.concept-embed .fs-group{display:block;margin-bottom:2px}
-.concept-embed .fs-group .fs-section{margin-top:0}
-/* 글꼴 크기 패널: 섹션(표지/Dive/개념/미션/생각)은 접었다 편다. 펼친 안쪽은 형식별 그룹을
-   화면 폭에 맞춰 여러 열로 흘린다 — 항목이 많아 한 줄씩 쌓으면 스크롤이 감당이 안 된다. */
-.concept-embed .fs-sec{border:1px solid var(--cborder);border-radius:10px;margin-bottom:8px;background:var(--cwhite)}
-.concept-embed .fs-sec-sum{cursor:pointer;padding:10px 14px;font-size:.85rem;font-weight:700;color:var(--cnavy);list-style:none;user-select:none}
-.concept-embed .fs-sec-sum::-webkit-details-marker{display:none}
-.concept-embed .fs-sec-sum::before{content:'+';display:inline-block;width:14px;font-weight:800;color:var(--cnavy)}
-.concept-embed .fs-sec[open]>.fs-sec-sum::before{content:'−'}
-.concept-embed .fs-sec-body{padding:2px 14px 12px;columns:2;column-gap:24px}
-.concept-embed .fs-sec-body .fs-group{break-inside:avoid;-webkit-column-break-inside:avoid}
-@media(max-width:900px){.concept-embed .fs-sec-body{columns:1}}
-/* 줄간격·자간 나란히 */
-.concept-embed .fs-side2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:1100px){.concept-embed .fs-side2{grid-template-columns:1fr}}
-.concept-embed .fs-row{display:flex;align-items:center;gap:10px;padding:5px 0}
-.concept-embed .fs-section{font-size:.7rem;font-weight:700;color:var(--cnavy);text-transform:uppercase;letter-spacing:.06em;padding:10px 0 4px;border-bottom:1px solid var(--cborder);margin-bottom:4px}
-.concept-embed .fs-name{font-size:.82rem;color:var(--ctext);min-width:90px}
-.concept-embed .fs-slider{flex:1;accent-color:var(--cnavy);cursor:pointer;height:4px}
-.concept-embed .fs-val{font-family:var(--font);font-size:.82rem;font-weight:700;color:var(--cnavy);width:56px;text-align:right;padding:3px 6px;border:1px solid var(--cborder);border-radius:6px}
-.concept-embed .fs-val:focus{outline:none;border-color:var(--cnavy)}
-.concept-embed .color-grid{display:flex;flex-direction:column;gap:8px}
-.concept-embed .color-row{display:flex;align-items:center;justify-content:space-between}
-.concept-embed .color-name{font-size:.86rem;font-weight:600}
-.concept-embed .color-pick{width:38px;height:30px;border:1px solid var(--cborder);border-radius:6px;padding:2px;cursor:pointer;background:none}
-.concept-embed .btn-row{display:flex;align-items:center;gap:10px}
-.concept-embed .toast-inline{font-size:.85rem;color:#2a6e40;font-weight:600;margin-right:auto;opacity:0;transition:opacity .3s}
-.concept-embed .toast-inline.show{opacity:1}
-/* 버튼 크기 위계(admin 전역 공통): 같은 줄에 나란히 쓰는 버튼끼리는 크기를 맞추고
-   (저장/취소·초기화, 게시/비공개는 색·굵기로만 구분), 항목 안 인라인 소형 액션 칩만
-   한 단계 작게 둔다. */
-.concept-embed .cbtn{padding:12px 24px;border-radius:10px;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;border:none}
-.concept-embed .cbtn-primary{background:var(--cnavy);color:#fff}
-.concept-embed .cbtn-primary:hover{background:var(--cnavy-deep)}
-.concept-embed .cbtn-ghost{background:transparent;color:var(--csub);border:1px solid var(--cborder);font-weight:600}
-.concept-embed .cbtn-ghost:hover{background:var(--cbg)}
-.concept-embed .cbtn-danger{background:transparent;color:var(--cred);border:1px solid rgba(220,38,38,.25);font-size:14px;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:var(--font);font-weight:600}
-.concept-embed .cbtn-danger:hover{background:rgba(220,38,38,.06)}
-.concept-embed .cbtn-sm{background:var(--cbg);border:1px solid var(--cborder);color:var(--ctext);font-size:14px;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:var(--font);font-weight:600}
-.concept-embed .cbtn-sm:hover{background:#e8e6df}
-.concept-embed .pv-solo{display:flex;justify-content:center}
-.concept-embed .pv-solo-outer{width:100%;max-width:1200px;aspect-ratio:16/9;overflow:hidden;border-radius:8px;position:relative;box-shadow:0 4px 20px rgba(0,0,0,.12);background:#fff}
-.concept-embed .pv-solo-inner{width:1920px;height:1080px;position:absolute;top:0;left:0;transform-origin:top left}
-.concept-embed .field-group{margin-bottom:14px}
-.concept-embed .field-label{font-size:.78rem;font-weight:700;color:var(--csub);margin-bottom:5px;display:flex;align-items:center;gap:8px}
-.concept-embed .field-input{width:100%;padding:9px 12px;border:1px solid var(--cborder);border-radius:7px;font-family:var(--font);font-size:.9rem;outline:none;color:var(--ctext)}
-.concept-embed .field-input:focus{border-color:var(--cnavy)}
-.concept-embed textarea.field-input{resize:none;min-height:56px;line-height:1.55;overflow-y:hidden}
-.concept-embed .field-inline{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.concept-embed .field-inline-label{font-size:.82rem;font-weight:700;color:var(--csub);width:100px;flex-shrink:0}
-.concept-embed .field-inline .field-input{flex:1}
-.concept-embed .lesson-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.concept-embed .lesson-bar-title{font-size:1rem;font-weight:600;color:var(--cnavy);font-family:var(--font);white-space:nowrap;margin-right:2px}
-.concept-embed .lesson-bar select{padding:8px 14px;border:1px solid var(--cborder);border-radius:7px;font-family:var(--font);font-size:.88rem;background:var(--cwhite);color:var(--ctext)}
-/* 다른 앱 어드민(interview/admin.html 등)의 서브메뉴와 동일한 가운데 정렬 필 스타일 */
-.concept-embed .sub-tab-bar{display:flex;gap:2px;justify-content:center;width:fit-content;margin:0 auto 16px;background:var(--cbg);border:1px solid var(--cborder);border-radius:10px;padding:3px}
-.concept-embed .sub-tab{padding:6px 20px;font-family:var(--font);font-size:.85rem;font-weight:700;color:var(--csub);background:none;border:none;border-radius:7px;cursor:pointer;transition:.15s}
-.concept-embed .sub-tab:hover:not(.active){color:var(--ctext)}
-.concept-embed .sub-tab.active{background:var(--cnavy);color:#fff}
-.concept-embed .sub-panel{display:none}
-.concept-embed .sub-panel.active{display:block}
-.concept-embed .cl-divider,.concept-embed .cl-row,.concept-embed .cl-image{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--cborder);border-radius:8px;margin-bottom:8px;background:var(--cwhite)}
-.concept-embed .cl-divider{background:#eef1f8;border-color:#c3d0ea;flex-direction:column;align-items:stretch;gap:8px}
-.concept-embed .cl-divider.dragging,.concept-embed .cl-row.dragging{opacity:.35}
-.concept-embed .cl-divider-top{display:flex;align-items:center;gap:10px}
-.concept-embed .cl-handle{cursor:grab;color:var(--csub);font-size:1.1rem;user-select:none;flex-shrink:0;line-height:1;padding-top:6px}
-.concept-embed .cl-move{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
-.concept-embed .cl-move-btn{width:20px;height:16px;padding:0;border:1px solid var(--cborder);border-radius:4px;background:var(--cwhite);color:var(--csub);font-size:.65rem;line-height:1;cursor:pointer}
-.concept-embed .cl-move-btn:hover{background:var(--cbg)}
-.concept-embed .cl-move-btn:disabled{opacity:.3;cursor:default}
-.concept-embed .cl-divider .cl-handle,.concept-embed .cl-image .cl-handle{padding-top:0}
-.concept-embed .cl-divider-label{font-size:.74rem;font-weight:700;color:var(--cnavy);flex-shrink:0;white-space:nowrap}
-.concept-embed .cl-divider-title{flex:1;padding:7px 10px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.85rem;font-weight:700}
-.concept-embed .cl-img-row{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-left:26px;background:rgba(255,107,61,0.06);border-radius:6px;flex-wrap:wrap}
-.concept-embed .cl-img-label{font-size:.74rem;font-weight:700;color:var(--cnavy);white-space:nowrap}
-.concept-embed .cl-img-input{width:64px;padding:4px 6px;border:1px solid var(--cborder);border-radius:5px;font-family:var(--font);font-size:.82rem;text-align:center}
-.concept-embed .cl-img-select{padding:4px 8px;border:1px solid var(--cborder);border-radius:5px;font-family:var(--font);font-size:.82rem;background:var(--cwhite)}
-.concept-embed .cl-image{background:#fdf3e7;border-color:#e8d4b0;flex-direction:column;align-items:stretch;gap:8px}
-.concept-embed .cl-image-label{font-size:.74rem;font-weight:700;color:#9a6a20;flex-shrink:0;white-space:nowrap}
-.concept-embed .cl-label{width:110px;flex-shrink:0;padding:8px 8px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.85rem;text-align:center;word-break:keep-all;overflow-wrap:break-word;resize:none;overflow:hidden;line-height:1.5;min-height:36px}
-.concept-embed .cl-items{flex:1;padding:8px 10px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.85rem;min-height:60px;line-height:1.5;overflow-y:hidden;resize:none}
-
-/* ── 슬라이드 형식 선택(연표/비교표/사료 인용/플로우) — 구분선 카드 아래 접어둔다 ── */
-.concept-embed .cl-fmt-details{margin-top:8px}
-.concept-embed .cl-fmt-summary{cursor:pointer;font-size:.74rem;font-weight:700;color:var(--cnavy);padding:6px 10px;background:rgba(255,107,61,0.06);border-radius:6px;list-style:none;user-select:none}
-.concept-embed .cl-fmt-summary::-webkit-details-marker{display:none}
-.concept-embed .cl-fmt-summary:hover{background:rgba(255,107,61,0.1)}
-.concept-embed .cl-fmt-panel{margin-top:8px;padding:12px;background:var(--cwhite);border:1px solid var(--cborder);border-radius:8px;display:flex;flex-direction:column;gap:10px}
-.concept-embed .cl-fmt-chips{display:flex;gap:6px;flex-wrap:wrap}
-.concept-embed .cl-fmt-chip{font-family:var(--font);font-size:.76rem;font-weight:700;padding:5px 12px;border-radius:100px;border:1.5px solid var(--cborder);background:var(--cwhite);color:var(--csub);cursor:pointer}
-.concept-embed .cl-fmt-chip:hover{border-color:var(--cnavy);color:var(--ctext)}
-.concept-embed .cl-fmt-chip.active{background:var(--cnavy);border-color:var(--cnavy);color:#fff}
-.concept-embed .cl-fmt-fields{display:flex;flex-direction:column;gap:8px}
-.concept-embed .cl-fmt-fields-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.concept-embed .cl-fmt-col{display:flex;flex-direction:column;gap:6px}
-.concept-embed .cl-fmt-row{display:flex;gap:8px;align-items:flex-start}
-.concept-embed .cl-fmt-sm{width:110px;flex-shrink:0;padding:7px 10px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.82rem}
-.concept-embed .cl-fmt-grow{flex:1;min-width:0;padding:7px 10px;border:1px solid var(--cborder);border-radius:6px;font-family:var(--font);font-size:.82rem;min-height:40px;line-height:1.5;overflow-y:hidden;resize:none}
-.concept-embed .cl-fmt-del{flex-shrink:0;background:transparent;color:var(--cred);border:1px solid rgba(220,38,38,.25);font-size:.72rem;padding:6px 9px;border-radius:6px;cursor:pointer;font-family:var(--font);font-weight:600}
-.concept-embed .cl-labelpos{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:var(--ctext);cursor:pointer}
-.concept-embed .cl-bq{margin-top:10px;border-top:1px dashed var(--cborder);padding-top:8px}
-.concept-embed .cl-bq-summary{cursor:pointer;font-size:.76rem;font-weight:700;color:var(--cnavy);list-style:none;user-select:none;padding:2px 0}
-.concept-embed .cl-bq-summary::-webkit-details-marker{display:none}
-.concept-embed .cl-bq-summary::before{content:'＋ ';font-weight:700}
-.concept-embed .cl-bq[open] .cl-bq-summary::before{content:'－ '}
-.concept-embed .cl-bq .cl-fmt-fields{margin-top:8px}
-
-/* ── 슬라이드 그룹 UI ── */
-.concept-embed .cl-group{border:1.5px solid #c8c4bc;border-radius:10px;margin-bottom:10px;overflow:hidden}
-.concept-embed .cl-group.dragging{opacity:.35}
-.concept-embed .cl-group-header{background:#eceae5;padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #d4d0c8}
-.concept-embed .cl-group-body{display:flex;flex-direction:column}
-.concept-embed .cl-slide-item{border-bottom:1px solid #eee}
-.concept-embed .cl-page-sep{font-size:12px;color:#323232;text-align:center;padding:6px 0 2px;letter-spacing:.05em;display:flex;align-items:center;justify-content:center;gap:6px}
-.concept-embed .cl-page-sep-first{padding:2px 0 0;justify-content:flex-start;padding-left:12px}
-.concept-embed .cl-page-handle{cursor:grab;font-size:14px;color:#323232;user-select:none}
-.concept-embed .cl-slide-item:last-child{border-bottom:none}
-.concept-embed .cl-slide-item.dragging{opacity:.35}
-.concept-embed .cl-slide-row{display:flex;align-items:flex-start;gap:8px;padding:8px 12px}
-.concept-embed .cl-row-actions{display:flex;flex-direction:row;gap:3px;flex-shrink:0;margin-left:auto}
-/* 슬라이드 헤더: 페이지 번호 + 형식 배지 + 페이지 액션바(가로, 우측 정렬) */
-.concept-embed .cl-slide-head{display:flex;align-items:center;gap:8px;padding:8px 12px 2px}
-.concept-embed .cl-slide-meta{font-size:.78rem;font-weight:700;color:var(--cnavy);white-space:nowrap}
-.concept-embed .cl-meta-sep{color:#323232;font-weight:400;margin:0 3px}
-/* 내용이 없어 실제 슬라이드로는 나오지 않는 페이지 — 번호 대신 흐린 표시 */
-.concept-embed .cl-slide-meta.cl-slide-ghost{color:#323232;font-weight:600}
-/* 특수 형식(사료 등): 편집기 본문(액션바는 상단 헤더로 이동함) */
-.concept-embed .cl-slide-special{align-items:flex-start}
-.concept-embed .cl-special-editor{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
-.concept-embed .cl-row-inner{display:flex;gap:8px;align-items:flex-start}
-.concept-embed .cl-row-del{align-self:flex-start}
-.concept-embed .cl-norow-hint{flex:1;font-size:.8rem;color:#323232;font-weight:600;padding:6px 0}
-/* 페이지별 글자 크기 입력 */
-.concept-embed .cl-fmt-fontsize{display:flex;align-items:center;gap:6px;font-size:.76rem;font-weight:700;color:var(--cnavy)}
-.concept-embed .cl-fmt-fontsize input{width:66px;padding:4px 6px;border:1px solid var(--cborder);border-radius:6px;font:inherit}
-.concept-embed .cl-fmt-fontsize-hint{font-weight:500;color:#323232;font-size:.72rem}
-/* 페이지 설정 옵션(라벨 좌측·배지 숨김·글자 크기)을 한 줄로 가로 나열 */
-.concept-embed .cl-fmt-opts{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px}
-.concept-embed .cl-opt{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--ctext);cursor:pointer;white-space:nowrap}
-.concept-embed .cl-opt input[type=checkbox]{cursor:pointer;margin:0}
-.concept-embed .cl-opt input[type=number]{width:58px;padding:4px 6px;border:1px solid var(--cborder);border-radius:6px;font:inherit}
-.concept-embed .cl-page-btn{height:28px;padding:0 10px;border-radius:6px;border:1px solid #ddd;background:#f8f7f5;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:14px;color:#323232;white-space:nowrap}
-.concept-embed .cl-page-btn:hover{background:#eeece8}
-.concept-embed .cl-page-btn svg{width:13px;height:13px}
-/* + 버튼 선택 메뉴(행 추가 / 페이지 추가) — body 직속으로 붙어 concept-embed 밖에 있다 */
-.cl-add-menu{position:absolute;z-index:2000;background:#fff;border:1px solid var(--cborder,#ddd);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.14);padding:4px;display:flex;flex-direction:column;min-width:118px}
-.cl-add-menu button{display:block;width:100%;text-align:left;padding:8px 12px;border:none;background:none;font-family:var(--font);font-size:.85rem;color:var(--ctext,#323232);cursor:pointer;border-radius:5px;white-space:nowrap}
-.cl-add-menu button:hover{background:#f1efec}
-.concept-embed .cl-icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid #ddd;background:#f8f7f5;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#323232;flex-shrink:0;padding:0}
-.concept-embed .cl-icon-btn:hover{background:#eeece8}
-.concept-embed .cl-icon-btn.danger{border-color:rgba(220,38,38,.25);color:#dc2626;background:transparent}
-.concept-embed .cl-icon-btn.danger:hover{background:rgba(220,38,38,.06)}
-.concept-embed .cl-icon-btn svg{width:14px;height:14px}
-.concept-embed .cl-add-slide{width:100%;padding:9px;border-radius:8px;border:1.5px dashed #FF6B3D;background:rgba(255,107,61,.03);color:#FF6B3D;font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font);margin-top:4px}
-/* 바깥 <details>의 요약줄만 숨긴다 — 여는 일은 툴바의 슬라이더 단추(ceToggleFmt)가 한다.
-   자손 선택자로 두면 이 안에 중첩된 <details>(하단 사료 인용)의 요약줄까지 같이 숨어서,
-   행 나열 페이지에서 "하단 사료 인용" 칸을 펼칠 방법이 사라진다. 반드시 직계 자식으로. */
-.concept-embed .cl-fmt-details > summary{display:none}
-.concept-embed .cl-fmt-details[open]{border-top:1px solid var(--cborder)}
-.concept-embed .cl-icon-btn.active{background:rgba(255,107,61,.12);border-color:#FF6B3D;color:#FF6B3D}
-.concept-embed .cl-icon-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
-
-/* ── 2027에서 더한 것 ──
-   2026 마크업에 인라인 style로 박혀 있던 것과, 작은 글씨 설명을 빼면서
-   글자 버튼을 아이콘 버튼으로 바꾸느라 생긴 것들. */
-.concept-embed .s-head-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-/* 빈 목록 표시. "없습니다"까지만 쓴다(CLAUDE.md 화면 규칙). */
-.concept-embed .cl-empty{font-size:.82rem;color:var(--csub);margin:0;padding:10px 2px}
-/* 슬라이드 추가 줄 — 2026은 .cl-add-slide에 width:auto를 인라인으로 박아 두었다. */
-.concept-embed .cl-add-row{margin-top:10px;gap:6px}
-.concept-embed .cl-add-row .cl-add-slide{width:auto;padding:7px 18px;margin-top:0;display:inline-flex;align-items:center;justify-content:center}
-.concept-embed .cl-add-slide svg{width:16px;height:16px;display:block}
-/* 아이콘만 든 작은 버튼(이미지 슬라이드, 영상). 글자 버튼과 높이를 맞춘다. */
-.concept-embed .cbtn-sm.cbtn-ic{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px}
-.concept-embed .cbtn-sm.cbtn-ic svg{width:16px;height:16px;display:block}
-/* 저장, 초기화도 아이콘 버튼이다. */
-.concept-embed .cbtn{display:inline-flex;align-items:center;justify-content:center}
-.concept-embed .cbtn svg{width:16px;height:16px;display:block}
-/* 숫자 단위는 칸 오른쪽에 보통 크기로(CLAUDE.md 입력 칸 규칙). */
-.concept-embed .fs-unit{font-size:.86rem;color:var(--ctext);margin-left:2px}
-
-/* ── 섹션 (2026-10-26 범용화) ──
-   탭 한 줄이 섹션 목록이고, 그 아래가 고른 섹션의 설정과 내용이다. */
-.concept-embed .sub-tab.off{opacity:.45}
-.concept-embed .sub-tab-add{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px}
-.concept-embed .sub-tab-add svg{width:15px;height:15px;display:block}
-/* 섹션 설정 줄 — 왼쪽은 이름과 배지 같은 칸, 오른쪽은 켜기와 순서와 삭제. */
-.concept-embed .sec-head{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  padding:14px 18px;margin-bottom:12px;border:1px solid var(--cborder);border-radius:10px;background:var(--cwhite);
-}
-.concept-embed .sec-fields{flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px}
-.concept-embed .sec-fields .field-inline{margin:0}
-.concept-embed .sec-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;padding-top:4px}
-.concept-embed .sec-check{display:inline-flex;align-items:center;gap:5px;font-size:.84rem;font-weight:600;color:var(--ctext);cursor:pointer;white-space:nowrap}
-.concept-embed .sec-check input{width:15px;height:15px;margin:0;accent-color:var(--cnavy);cursor:pointer}
-.concept-embed .sec-num{max-width:76px;text-align:right}
-.concept-embed .sec-unit{font-size:.86rem;color:var(--ctext);margin-left:6px}
-
-/* ══════ 미션 체크 ══════ (2026-10-26)
-   줄 모양은 강의 라이브러리(.lib-row)와 같다. 오른쪽에 올린 강의실 이름과
-   공개 스위치, 그리고 앱 어드민을 여는 톱니가 선다. */
-.mi-row{
-  display:flex;align-items:center;gap:12px;padding:11px 14px;
-  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:#fff;
-}
-.mi-row:last-child{margin-bottom:0}
-.mi-no{
-  flex-shrink:0;min-width:48px;padding:4px 8px;border-radius:7px;
-  background:var(--primary);color:#fff;font-size:12px;font-weight:800;text-align:center;
-}
-.mi-no.off{background:var(--border);color:var(--sub)}
-.mi-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.mi-title{font-size:14px;font-weight:600;word-break:keep-all}
-.mi-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--sub)}
-.mi-key{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--faint)}
-.mi-acts{display:flex;align-items:center;gap:6px;flex-shrink:0}
-/* 공개 스위치 — 알약 모양 테두리를 쓰지 않는 규칙은 버튼과 배지에 대한 것이고,
-   스위치는 켜고 끄는 물건이라 그 모양이 곧 뜻이다. 개념 노트의 .th-toggle과 같다. */
-.mi-sw{
-  width:38px;height:21px;border:0;border-radius:11px;background:var(--border);
-  position:relative;cursor:pointer;flex-shrink:0;transition:background .15s;
-}
-.mi-sw::after{
-  content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;
-  background:#fff;transition:transform .15s;
-}
-.mi-sw.on{background:var(--primary)}
-.mi-sw.on::after{transform:translateX(17px)}
-
-/* ══════ 앱 어드민 오버레이 ══════ (2026 lms/admin.css에서 옮김)
-   본문 자리를 통째로 덮는다. 바 높이는 앱 어드민의 자체 헤더(54px)와 맞춰
-   경계선 없이 이어 붙는다. */
-#appAdminOverlay{display:flex;flex-direction:column;flex:1;min-width:0;background:var(--surface)}
-#appAdminOverlay[hidden]{display:none}
-.app-admin-bar{
-  height:54px;flex-shrink:0;display:flex;align-items:center;
-  padding:0 20px;background:var(--canvas);
-}
-#appAdminFrame{flex:1;width:100%;min-height:0;border:0;background:#fff}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2328;color:#fff;
+  padding:11px 16px;border-radius:10px;font-size:14px;z-index:50;display:none}

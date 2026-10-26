@@ -85,15 +85,32 @@
   - 아이콘 버튼에는 `title`과 `aria-label`을 단다(마우스를 올리면 뜨는 이름이라 작은 글씨 설명에 해당하지 않는다).
   - 무엇을 하는지 아이콘만으로 모호한 버튼은 글자를 쓴다.
 
+## 조직 원리 (2026-10-26 제로베이스 재설계)
+**강의실은 "강의(차시)"와 "복습"을 담고, 강의 하나는 개념노트·미션·질문노트·형성평가 네 칸을 각각 있거나 없거나로 채운다.** 콘텐츠 메뉴를 코드에 못박지 않는다. 자세한 건 `LMS2027_요구사항.md`의 68~78, `LMS2027.md` 7, `model.js` 머리 주석.
+
+- 강의 안 칸(각 강의에 최대 1개, 순서 자유): `concept` 개념노트 · `mission` 미션 · `question` 질문노트 · `formative` 형성평가(성적 무관). 사료·사진·영상은 개념노트 안의 내용
+- 독립 메뉴: `review` 복습(성적 무관)
+- 포트폴리오 성적 = 개념노트(수기, 교사 입력) + 미션(참여 여부) + 질문노트(AI 1차+교사). 형성평가·복습은 빠진다
+
+## 컬렉션 이름 규칙
+`뿌리_세부` snake_case. 연도·차수·버전 금지(연도는 필드). **강의실에 매인 것은 전부 `course_` 접두**, **재사용 창고는 접두 없는 복수형**, 파생은 뿌리를 물려받아 `_`로(예: `mission_apps`, `grading_archive`).
+
 ## 데이터 모델 요약
-자세한 건 `LMS2027.md` 2와 `model.js` 머리 주석.
 
 | 컬렉션 | 문서 id | 내용 |
 |---|---|---|
-| `school_years` | 학년도 숫자(`2027`) | `{ year }` 반이 없어도 학년도가 있게 |
-| `courses` | 자동 id | `{ year, subject, grade, classNo, status }` 반 하나. 과목이 다르면 다른 반 |
-| `course_students` | `반id_학번` | 명단 |
-| `course_lessons` | 자동 id | 반이 쓰는 강의 |
-| `lesson_library` | 자동 id | 강의 내용. 연도와 무관하게 남는다 |
-| `course_auth` | `학년도_학번` | 학생 비밀번호 해시와 학생이 든 반 하나(`courseId`, 규칙이 명단 확인에 씀). 학생은 create 한 번만. 한 학생이 여러 반에 들어도 비밀번호는 하나 |
+| `school_years` | 학년도(`2027`) | `{ year }` 반이 없어도 학년도가 있게 |
+| `courses` | 자동 id | 강의실 `{ year, subject, grade, classNo, status }`. 과목이 다르면 다른 강의실 |
+| `course_students` | `강의실id_학번` | 명단 `{ name }` |
+| `course_auth` | `학년도_학번` | 비밀번호 해시. create 한 번만. 한 학생이 여러 강의실에 들어도 비번은 하나 |
 | `course_consent` | `학년도_학번` | 개인정보 동의. 학년도에 한 번 |
+| `course_lessons` | 자동 id | 강의실에 꽂힌 강의 `{ courseId, lessonId, order, isOpen }` |
+| `course_quizzes` | 자동 id | 강의실에 걸린 복습 `{ courseId, quizId, isOpen }` |
+| `course_submissions` | `꽂힌강의id_칸_학번` | 제출물 전부 여기로 `{ type, 학번, payload, score, status, shared }` |
+| `course_scores` | `강의실id_학번` | 항목별+최종 `{ items:{concept,mission,question}, total }` |
+| `course_xp` | `강의실id_학번` | 경험치·포인트·뽑기 `{ xp, point }` |
+| `lessons` | 자동 id | 강의 `{ title, parts:{ concept?, mission?, question?, formative? } }`. 연도 무관, 남는다 |
+| `quizzes` | 자동 id | 복습 퀴즈 `{ title, items[], source }`. 연도 무관 |
+| `mission_apps` | appKey | 미니앱 등록부 `{ name, url }` |
+
+> 재설계 전 모델(`lesson_library` 등)은 폐기. `course_submissions` 하나로 제출을 통일한다(예전 앱마다 흩어진 것 정리).
