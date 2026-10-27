@@ -1,5 +1,13 @@
-// 2027 LMS 학생 화면 — 제로베이스 뼈대 (2026-10-26)
-// 로그인 → 강의실 고르기 → 강의실(강의 목록·복습·내 성적) → 강의 뷰어(칸 넘기기).
+// 2027 LMS 학생 화면 — 제로베이스 뼈대 (2026-10-26, 큰 틀 2026-10-27)
+// 로그인 → 강의실 고르기 → 강의실(두 배치) → 칸 보기.
+//
+// 선생님 지시 2026-10-27 (요구사항 84~87):
+//  · 강의실 고르기에 반 번호를 띄우지 않는다. 학생은 자기 반밖에 없으므로 "사회", "역사"로 끝낸다
+//  · 강의실 안은 배치 둘 — 강의별(1강, 2강 고르기)과 메뉴별(개념노트만, 미션만 모아 보기).
+//    둘은 같은 내용으로 들어가는 두 길이다. 둘 다 필요하다
+//  · 학생은 폰과 패드로 들어온다. 화면은 모바일과 PC가 같은 것을 쓴다
+//  · 개념노트(강의 슬라이드)만 예외로 새 탭 전체화면으로 연다
+//
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
@@ -10,11 +18,13 @@ const YEAR = 2027;
 const $app = document.getElementById('app');
 
 const state = {
-  view: 'login',
+  view: 'login',          // login | rooms | home | lesson | menu | part
   sno: '', name: '',
   courseId: null,
-  lessonId: null,
-  partKey: null,
+  layout: 'byLesson',     // 강의실 안의 배치 (byLesson | byMenu)
+  lessonId: null,         // 강의별로 들어왔을 때 보는 강의
+  partKey: null,          // 보고 있는 칸
+  menuKey: null,          // 메뉴별로 들어왔을 때 고른 메뉴
 };
 
 // ── 부트 가드 ──
@@ -27,8 +37,9 @@ function boot(){
 }
 
 // ── 공통 조각 ──
-const partColor = k => `var(--${k})`;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 학생에게 보이는 강의실 이름은 과목만(요구사항 84). 어드민은 "사회 301"을 그대로 쓴다.
+const roomLabel = c => c?.subject || '';
 
 function topbar(title, backAct){
   return `<div class="topbar">
@@ -39,7 +50,7 @@ function topbar(title, backAct){
   </div>`;
 }
 
-// ── 화면들 ──
+// ── 로그인 ──
 function viewLogin(){
   return `<div class="login">
     <h1>2027</h1>
@@ -51,38 +62,87 @@ function viewLogin(){
   </div>`;
 }
 
+// ── 강의실 고르기 ── 과목만 보인다(요구사항 84)
 function viewRooms(){
   const rooms = M.getCoursesOfStudent(YEAR, state.sno);
   const body = rooms.length
-    ? rooms.map(c => `<div class="card" data-act="open-room" data-id="${c.id}">
-        <span class="ic" style="background:var(--concept)">${icon('graduation-cap',20)}</span>
-        <div class="body"><div class="t">${esc(M.roomName(c))}</div>
-          <div class="s">${c.grade}학년 ${c.classNo}반</div></div>
-        <span class="chev">${icon('chevron-right',18,'')}</span></div>`).join('')
+    ? `<div class="grid">${rooms.map(c => `<div class="card room" data-act="open-room" data-id="${c.id}">
+        <span class="ic" style="background:var(--concept)">${icon('graduation-cap',22)}</span>
+        <div class="body"><div class="t">${esc(roomLabel(c))}</div></div>
+        <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`
     : `<div class="empty">든 강의실이 없습니다.</div>`;
-  return topbar('강의실 고르기') + `<div class="sectionlabel">내 강의실</div>` + body;
+  return topbar('강의실 고르기') + body;
 }
 
+// ── 강의실 안 ── 배치 둘(강의별 / 메뉴별)
 function viewHome(){
   const c = M.getCourse(state.courseId);
+  const tabs = `<div class="layouttabs">${M.STUDENT_VIEWS.map(v =>
+    `<button class="layouttab ${v.key === state.layout ? 'on':''}" data-act="layout" data-v="${v.key}">${esc(v.name)}</button>`).join('')}</div>`;
+  return topbar(roomLabel(c), 'back-rooms') + tabs
+    + (state.layout === 'byLesson' ? paneByLesson() : paneByMenu());
+}
+
+// 배치 1 — 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.
+function paneByLesson(){
   const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
-  const lessons = cls.map(cl => {
-    const tags = (cl.lesson.order || []).map(k => `<span class="tag">${esc(M.partDef(k)?.name || k)}</span>`).join('');
-    return `<div class="card" data-act="open-lesson" data-cl="${cl.id}" data-lid="${cl.lessonId}">
-      <span class="ic" style="background:var(--concept)">${icon('book-open',20)}</span>
+  if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
+  return `<div class="grid">${cls.map((cl, i) => {
+    const tags = (cl.lesson.order || []).map(k =>
+      `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
+    return `<div class="card" data-act="open-lesson" data-lid="${cl.lessonId}">
+      <span class="no">${i + 1}강</span>
       <div class="body"><div class="t">${esc(cl.lesson.title)}</div><div class="tags">${tags}</div></div>
       <span class="chev">${icon('chevron-right',18)}</span></div>`;
-  }).join('') || `<div class="empty">열린 강의가 없습니다.</div>`;
+  }).join('')}</div>`;
+}
 
-  const review = `<div class="card" data-act="open-review">
-    <span class="ic" style="background:var(--review)">${icon('list-ordered',20)}</span>
-    <div class="body"><div class="t">복습</div><div class="s">퀴즈로 복습하기</div></div>
-    <span class="chev">${icon('chevron-right',18)}</span></div>`;
+// 배치 2 — 메뉴별. 개념노트만, 미션만 모아 본다. 복습과 성적도 여기 선다.
+function paneByMenu(){
+  const counts = {};
+  M.PART_TYPES.forEach(p => counts[p.key] = M.getPartItems(state.courseId, p.key).length);
+  const n = {
+    review: M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz).length,
+  };
+  return `<div class="grid menus">${M.STUDENT_MENUS.map(m => {
+    const sub = m.kind === 'part'   ? `${counts[m.key]}개`
+              : m.kind === 'review' ? `${n.review}개`
+              : '';
+    return `<div class="card menu" data-act="open-menu" data-k="${m.key}">
+      <span class="ic" style="background:var(--${m.key === 'score' ? 'navy-600' : m.key})">${icon(m.icon,22)}</span>
+      <div class="body"><div class="t">${esc(m.name)}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>
+      <span class="chev">${icon('chevron-right',18)}</span></div>`;
+  }).join('')}</div>`;
+}
 
-  return topbar(M.roomName(c), 'back-rooms')
-    + `<div class="sectionlabel">강의</div>` + lessons
-    + `<div class="sectionlabel">복습</div>` + review
-    + `<div class="sectionlabel">내 성적</div>` + scoreCard(c);
+// ── 메뉴 하나를 고른 화면 ──
+function viewMenu(){
+  const c = M.getCourse(state.courseId);
+  const m = M.STUDENT_MENUS.find(x => x.key === state.menuKey);
+  if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했습니다.</div>`;
+  const head = topbar(m.name, 'back-home');
+
+  if (m.kind === 'score')  return head + scoreCard(c);
+  if (m.kind === 'review') return head + reviewList();
+
+  // 칸 모아 보기 — 강의마다 그 칸 하나씩
+  const items = M.getPartItems(state.courseId, m.key);
+  if (!items.length) return head + `<div class="empty">아직 없습니다.</div>`;
+  return head + `<div class="grid">${items.map(it => `
+    <div class="card" data-act="open-part" data-lid="${it.lesson.id}" data-k="${m.key}">
+      <span class="no">${it.no}강</span>
+      <div class="body"><div class="t">${esc(it.part.title || m.name)}</div>
+        <div class="s">${esc(it.lesson.title)}</div></div>
+      <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`;
+}
+
+function reviewList(){
+  const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
+  if (!qs.length) return `<div class="empty">열린 복습이 없습니다.</div>`;
+  return `<div class="grid">${qs.map(cq => `<div class="card" data-act="noop">
+    <span class="ic" style="background:var(--review)">${icon('list-ordered',22)}</span>
+    <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
+      <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div></div>`).join('')}</div>`;
 }
 
 function scoreCard(c){
@@ -99,6 +159,7 @@ function scoreCard(c){
     <div class="row total"><span>최종</span><b>${maxTotal ? total + ' / ' + maxTotal : total}</b></div></div>`;
 }
 
+// ── 강의 하나를 고른 화면(배치 1) — 칸을 탭으로 넘긴다 ──
 function viewLesson(){
   const l = M.getLesson(state.lessonId);
   if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했습니다.</div>`;
@@ -121,63 +182,86 @@ function viewLesson(){
     + `<div class="partview">${partView(l, state.partKey)}</div>` + nav;
 }
 
-function partView(l, k){
-  const d = M.partDef(k); if (!d) return '';
-  const p = l.parts[k] || {};
-  const head = `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div><div class="bigt">${esc(p.title || d.name)}</div>`;
-  if (k === 'concept')
-    return head + `<div class="placeholder">개념 슬라이드가 여기 열립니다. (뼈대 — 슬라이드 엔진은 다음 단계)</div>`;
-  if (k === 'mission')
-    return head + `<div class="placeholder">미니앱이 여기 바로 열립니다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>제출하면 반 전체에 실시간 공유. (뼈대 — 연결은 다음 단계)</div>`;
-  if (k === 'question')
-    return head + `<p style="color:#444;font-size:14px;margin:0 0 10px">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`
-      + `<textarea placeholder="내 답변을 적습니다"></textarea>`
-      + `<div style="margin-top:10px"><button class="primary" style="width:auto;padding:10px 18px" data-act="submit-demo">제출</button></div>`;
-  if (k === 'formative')
-    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열립니다. 성적에는 들어가지 않습니다. (뼈대)</div>`;
-  return head;
+// ── 칸 하나만 보는 화면(배치 2에서 들어옴) ──
+function viewPart(){
+  const l = M.getLesson(state.lessonId);
+  const d = M.partDef(state.partKey);
+  if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했습니다.</div>`;
+  return topbar(l.title, 'back-menu') + `<div class="partview">${partView(l, state.partKey)}</div>`;
 }
 
-function viewReview(){
-  const c = M.getCourse(state.courseId);
-  const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
-  const body = qs.length
-    ? qs.map(cq => `<div class="card" data-act="noop">
-        <span class="ic" style="background:var(--review)">${icon('list-ordered',20)}</span>
-        <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
-          <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div></div>`).join('')
-    : `<div class="empty">열린 복습이 없습니다.</div>`;
-  return topbar(`${M.roomName(c)} 복습`, 'back-home') + `<div class="sectionlabel">복습 퀴즈</div>` + body;
+/* 칸 하나의 알맹이.
+   개념노트만 여기서 안 펼친다 — 강의 슬라이드는 늘 새 탭 전체화면이다(요구사항 87). */
+function partView(l, k){
+  const d = M.partDef(k); if (!d) return '';
+  const p = l.parts?.[k] || {};
+  const head = `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div>
+    <div class="bigt">${esc(p.title || d.name)}</div>`;
+
+  if (k === 'concept')
+    return head + `<button class="primary wide" data-act="open-slide" data-lid="${l.id}">
+        ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
+
+  if (k === 'mission')
+    return head + `<div class="placeholder">미니앱이 여기 바로 열립니다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
+      제출하면 반 전체에 실시간 공유. (뼈대 — 연결은 다음 단계)</div>`;
+
+  if (k === 'question')
+    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`
+      + `<textarea placeholder="내 답변을 적습니다"></textarea>`
+      + `<button class="primary wide" data-act="submit-demo">제출</button>`;
+
+  if (k === 'formative')
+    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열립니다. 성적에는 들어가지 않습니다. (뼈대)</div>`;
+
+  return head;
 }
 
 // ── 렌더 ──
 function render(){
-  const v = { login:viewLogin, rooms:viewRooms, home:viewHome, lesson:viewLesson, review:viewReview }[state.view];
+  const v = { login:viewLogin, rooms:viewRooms, home:viewHome,
+              lesson:viewLesson, menu:viewMenu, part:viewPart }[state.view];
   $app.innerHTML = v ? v() : '';
+  window.scrollTo(0, 0);
 }
 
 // ── 이벤트 위임 ──
 $app.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
-  const act = el.dataset.act;
-  switch (act){
+  switch (el.dataset.act){
     case 'login': {
       const sno = (document.getElementById('f-sno').value || '').trim();
       const rooms = M.getCoursesOfStudent(YEAR, sno);
-      if (!rooms.length){ alertBox('그 학번으로 든 강의실이 없습니다. (데모: 30101)'); return; }
+      if (!rooms.length){ alertBox('그 학번으로 든 강의실이 없습니다.'); return; }
       state.sno = sno;
-      state.name = (document.getElementById('f-name').value || '').trim() || rooms[0] && M.getStudentsByCourse(rooms[0].id).find(s=>s.studentNo===sno)?.name || '';
+      state.name = (document.getElementById('f-name').value || '').trim()
+        || M.getStudentsByCourse(rooms[0].id).find(s => s.studentNo === sno)?.name || '';
       state.view = 'rooms'; render(); break;
     }
-    case 'logout': Object.assign(state, { view:'login', sno:'', name:'', courseId:null }); render(); break;
+    case 'logout':
+      Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson' });
+      render(); break;
+
     case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;
     case 'back-rooms': state.view = 'rooms'; render(); break;
-    case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.view = 'lesson'; render(); break;
     case 'back-home': state.view = 'home'; render(); break;
-    case 'open-review': state.view = 'review'; render(); break;
+    case 'back-menu': state.view = 'menu'; render(); break;
+    case 'layout': state.layout = el.dataset.v; render(); break;
+
+    case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.view = 'lesson'; render(); break;
+    case 'open-menu': state.menuKey = el.dataset.k; state.view = 'menu'; render(); break;
+    case 'open-part':
+      state.lessonId = el.dataset.lid; state.partKey = el.dataset.k; state.view = 'part'; render(); break;
+
     case 'part': state.partKey = el.dataset.k; render(); break;
     case 'part-prev': shiftPart(-1); break;
     case 'part-next': shiftPart(1); break;
+
+    // 강의 슬라이드는 늘 새 탭 전체화면(요구사항 87). 교실 화면에 투사하는 것이 주 용도다.
+    case 'open-slide':
+      window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}`, '_blank', 'noopener');
+      break;
+
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
     case 'noop': break;
   }
@@ -191,12 +275,10 @@ function shiftPart(dir){
 
 // 아주 단순한 알림(브라우저 기본 대화상자 대신). 뼈대용.
 function alertBox(msg){
-  const t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1f2328;color:#fff;'
-    + 'padding:11px 16px;border-radius:10px;font-size:14px;z-index:50;max-width:90%';
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 1800);
+  let t = document.getElementById('snack');
+  if (!t){ t = document.createElement('div'); t.id = 'snack'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 1800);
 }
 
 boot();

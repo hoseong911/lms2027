@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>강의 슬라이드</title>
+<!-- 강의 슬라이드 — 늘 새 탭에서 전체화면으로 연다(선생님 지시 2026-10-27, 요구사항 87).
+     주 용도가 교사가 교실 화면에 투사하는 것이라, 다른 화면과 달리 여기만 전체화면이다.
+     모바일에서는 가로로 눕힌다.
+
+     ※ 지금은 뼈대다. 슬라이드 엔진(활동지에서 쪽 만들기)은 방학 과제라 쪽 내용이 비어 있다.
+       레포의 slide-render.js와 page-lesson.*이 그때 쓸 재료다. -->
+<link rel="stylesheet" href="shared/theme.css?v=20261027c">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff;font-family:var(--font)}
+#guard{position:fixed;inset:0;display:grid;place-items:center;color:#9FB3CC}
+
+/* 쪽 — 16:9를 화면 안에 꽉 채워 넣는다(잘리지 않게) */
+#stage{position:fixed;inset:0;display:grid;place-items:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#page{position:relative;width:min(100vw, calc(100vh * 16 / 9));height:min(100vh, calc(100vw * 9 / 16));
+  background:#fff;color:var(--navy);display:grid;place-items:center;text-align:center;padding:5%}
+#page .ttl{font-size:clamp(20px,4.2vmin,46px);font-weight:800;letter-spacing:-.5px;margin-bottom:2vmin}
+#page .sub{font-size:clamp(12px,2.1vmin,20px);color:var(--sub)}
+#page .mark{position:absolute;left:3%;top:4%;font-size:clamp(10px,1.7vmin,15px);color:var(--navy-400);letter-spacing:.5px}
+
+/* 위쪽 막대 — 마우스를 올리거나 화면을 건드리면 나온다. 투사 중에는 숨는다 */
+#bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
+  padding:10px 14px;background:rgba(4,30,66,.92);color:#fff;font-size:13px;
+  transform:translateY(-100%);transition:transform .18s;z-index:5}
+#bar.show{transform:none}
+#bar .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bar button{border:1px solid rgba(255,255,255,.35);background:none;color:#fff;border-radius:var(--r-btn);
+  padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+#bar button:hover{background:rgba(255,255,255,.12)}
+#hot{position:fixed;left:0;right:0;top:0;height:28px;z-index:4}
+
+/* 좌우 넘기기 */
+.nav{position:fixed;top:0;bottom:0;width:14vw;max-width:120px;border:0;background:none;cursor:pointer;
+  color:#fff;opacity:0;transition:opacity .15s;z-index:3;font-size:30px}
+.nav:hover{opacity:.55}
+#prev{left:0}#next{right:0}
+#dots{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:7px;z-index:3}
+#dots i{width:7px;height:7px;background:rgba(255,255,255,.35);display:block}
+#dots i.on{background:#fff}
+</style>
+</head>
+<body>
+<div id="guard">슬라이드를 불러오는 중…</div>
+
+<div id="stage" hidden>
+  <div id="page"></div>
+</div>
+<button class="nav" id="prev" aria-label="이전 쪽" hidden>‹</button>
+<button class="nav" id="next" aria-label="다음 쪽" hidden>›</button>
+<div id="dots" hidden></div>
+<div id="hot"></div>
+<div id="bar">
+  <span class="grow" id="bar-title"></span>
+  <span id="bar-no"></span>
+  <button id="btn-full">전체화면</button>
+  <button id="btn-close">닫기</button>
+</div>
+
+<script type="module">
+import * as M from './model.js?v=20261027a';
+
+const q = new URLSearchParams(location.search);
+const lesson = M.getLesson(q.get('lesson'));
+const $ = id => document.getElementById(id);
+
+if (!lesson){
+  $('guard').textContent = '강의를 찾지 못했습니다.';
+} else {
+  // 뼈대 — 쪽 내용이 아직 없으므로 표지 한 장만 세운다.
+  // 슬라이드 엔진이 붙으면 이 배열을 실제 쪽으로 바꾼다.
+  const pages = [{ ttl: lesson.parts?.concept?.title || lesson.title, sub: lesson.title }];
+  let i = 0;
+
+  const draw = () => {
+    const p = pages[i];
+    $('page').innerHTML = `<div class="mark">${esc(lesson.title)}</div>
+      <div><div class="ttl">${esc(p.ttl)}</div><div class="sub">${esc(p.sub || '')}</div></div>`;
+    $('bar-no').textContent = `${i + 1} / ${pages.length}`;
+    $('dots').innerHTML = pages.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('');
+    $('prev').hidden = i === 0;
+    $('next').hidden = i === pages.length - 1;
+  };
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const go = d => { const n = i + d; if (n >= 0 && n < pages.length){ i = n; draw(); } };
+
+  $('guard').hidden = true;
+  $('stage').hidden = false;
+  $('dots').hidden = false;
+  $('bar-title').textContent = lesson.title;
+  draw();
+
+  /* 전체화면 — 브라우저는 사용자가 누른 뒤에만 들어가게 해 준다(자동 진입 불가).
+     그래서 이 탭이 열리면 위쪽 막대를 한 번 보여 주고, 버튼을 누르면 들어간다.
+     모바일은 전체화면에 들어간 뒤에만 가로 잠금이 먹는다. */
+  const goFull = async () => {
+    try { await document.documentElement.requestFullscreen(); } catch {}
+    try { await screen.orientation?.lock?.('landscape'); } catch {}  // 데스크톱은 조용히 무시된다
+  };
+  $('btn-full').addEventListener('click', goFull);
+  $('btn-close').addEventListener('click', () => window.close());
+
+  // 막대 보이고 숨기기 — 위쪽에 마우스를 올리거나 화면을 건드리면
+  const bar = $('bar');
+  let hide;
+  const peek = () => { bar.classList.add('show'); clearTimeout(hide); hide = setTimeout(() => bar.classList.remove('show'), 2600); };
+  $('hot').addEventListener('mouseenter', peek);
+  bar.addEventListener('mouseenter', () => clearTimeout(hide));
+  bar.addEventListener('mouseleave', peek);
+  document.addEventListener('touchstart', e => { if (e.touches[0].clientY < 60) peek(); }, { passive:true });
+  peek();
+
+  $('prev').addEventListener('click', () => go(-1));
+  $('next').addEventListener('click', () => go(1));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'PageUp') go(-1);
+    if (e.key === 'f' || e.key === 'F') goFull();
+  });
+}
+</script>
+</body>
+</html>
