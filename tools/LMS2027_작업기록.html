@@ -552,5 +552,6 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <h3 id="검증-3">검증</h3>
 <p><code>node --check</code> 통과. 브라우저에서 실제로 눌러 확인 — 학년도 추가/중복/범위 밖, 강의실 중복/추가/수정, 삭제 확인 창(틀린 글자면 잠김, 정확하면 열림), 삭제 뒤 <strong>딸린 학생이 같이 사라지는지</strong>(사회 301만 듣던 이철수가 명단에서 빠지고, 두 강의실에 든 홍길동은 역사 301만 남음), 나머지 네 화면이 안 깨지는지.</p>
 <h3 id="지나가다-고친-것">지나가다 고친 것</h3>
-<p>삭제 확인 창 문구의 조사 오류("1개<strong>이</strong> 같이 없어집니다"). 목록 끝 낱말에 따라 조사가 달라지므로 <strong>아예 조사를 쓰지 않는 꼴</strong>("같이 없어지는 것 — 학생 3명, 꽂힌 강의 3개.")로 바꿨다.</p></main>
+<p>삭제 확인 창 문구의 조사 오류("1개<strong>이</strong> 같이 없어집니다"). 목록 끝 낱말에 따라 조사가 달라지므로 <strong>아예 조사를 쓰지 않는 꼴</strong>("같이 없어지는 것 — 학생 3명, 꽂힌 강의 3개.")로 바꿨다.</p>
+<p><strong>덧 (2026-10-27)</strong> — 학생 강의 뷰어의 칸 탭 줄(<code>.lessontabs</code>)이 <code>overflow:auto</code>라 세로 스크롤바가 같이 생겨 줄 오른쪽에 삐져나와 있었다. <code>overflow-x:auto; overflow-y:hidden</code>으로 바꾸고 가로 스크롤바도 감췄다(칸이 많으면 가로로만 밀리면 된다).</p></main>
 </body></html>
