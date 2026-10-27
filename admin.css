@@ -90,6 +90,20 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .prog td.ds-past .dateinput{color:var(--sub)}
 .ib-sm{width:28px;height:28px}
 
+/* 명단 편집(체크 선택) 모드 — 평소엔 없고 '편집'을 눌러야 나온다 */
+.sec-acts{display:flex;gap:12px;align-items:center}
+.selbar{display:flex;align-items:center;gap:12px;margin:0 2px 8px}
+.selall{display:flex;align-items:center;gap:6px;font-size:var(--fs-meta);color:var(--sub);cursor:pointer}
+.selall input{width:16px;height:16px;accent-color:var(--navy)}
+.selrow{cursor:pointer;gap:10px}
+.selrow input{width:16px;height:16px;accent-color:var(--navy);flex:0 0 auto}
+.selrow.on{border-color:var(--navy);background:var(--accent-soft)}
+.btn-chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:var(--r-btn);
+  padding:5px 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
+.btn-chip.danger{border-color:var(--red);color:var(--red)}
+.btn-chip.danger:hover:not(:disabled){background:var(--red);color:#fff}
+.btn-chip:disabled{opacity:.4;cursor:default}
+
 /* 섹션 이름표 오른쪽에 붙는 바로가기 링크 */
 .sectionlabel.between{display:flex;align-items:center;justify-content:space-between}
 .btn-link{border:0;background:none;color:var(--navy);font-size:var(--fs-meta);font-weight:600;cursor:pointer;

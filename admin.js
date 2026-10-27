@@ -20,6 +20,8 @@ const state = {
   roomDetailId: null,              // 아래로 펼친 강의실(인라인 상세)
   roomLessonsMore: false,          // 강의 진도 30강 넘겨 더 보기
   openScore: null,                 // 상세를 펼친 학생 키(`강의실id_학번`)
+  roomStudentEdit: false,          // 강의실 상세 명단 편집(체크 선택) 모드
+  roomStuSel: new Set(),           // 그 모드에서 고른 학번들(일괄 제외용)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
@@ -233,16 +235,38 @@ function roomDetailPanel(c){
     <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress">진도 관리</button></div>
     ${lessonRows}${moreBtn}</div>`;
 
-  // ── 오른쪽: 학생 명단 ──
+  // ── 오른쪽: 학생 명단 (편집을 누르면 체크 선택 모드 → 이 강의실에서 일괄 제외) ──
+  const editing = state.roomStudentEdit;
+  const sel = state.roomStuSel;
+  const allSel = students.length > 0 && students.every(s => sel.has(s.studentNo));
+
   const stuRows = students.length ? students.map(s => {
+    if (editing){
+      const checked = sel.has(s.studentNo);
+      return `<label class="row compact selrow ${checked?'on':''}">
+        <input type="checkbox" data-act="stu-sel" data-no="${s.studentNo}" ${checked?'checked':''}>
+        <span class="grow"><span class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</span></span></label>`;
+    }
     const open = state.openScore === `${c.id}_${s.studentNo}`;
     const row = `<div class="row compact rowlink" data-act="stu-score" data-no="${s.studentNo}" data-id="${c.id}">
       <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div></div>`;
     return open ? row + studentCard(c.id, s.studentNo) : row;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
-  const right = `<div class="dcol">
-    <div class="sectionlabel between">학생 명단<button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리</button></div>
-    ${stuRows}</div>`;
+
+  const stuHead = editing
+    ? `<div class="sectionlabel between">학생 명단
+         <button class="btn-link" data-act="stu-edit-done">완료</button></div>
+       <div class="selbar">
+         <label class="selall"><input type="checkbox" data-act="stu-sel-all" ${allSel?'checked':''}><span>전체</span></label>
+         <button class="btn-chip danger" data-act="stu-exclude" data-id="${c.id}" ${sel.size?'':'disabled'}>선택 제외 (${sel.size})</button>
+       </div>`
+    : `<div class="sectionlabel between">학생 명단
+         <span class="sec-acts">
+           ${students.length ? `<button class="btn-link" data-act="stu-edit-mode">편집</button>` : ''}
+           <button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리</button>
+         </span></div>`;
+
+  const right = `<div class="dcol">${stuHead}${stuRows}</div>`;
 
   return `<div class="detail two">${left}${right}</div>`;
 }
@@ -643,7 +667,7 @@ document.getElementById('shell').addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, k = el.dataset.k, id = el.dataset.id, v = el.dataset.v, no = el.dataset.no;
   switch (act){
-    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null; state.studentDetailNo = null; render(); break;
+    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null; state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -656,8 +680,18 @@ document.getElementById('shell').addEventListener('click', e => {
     // 강의실 상세(요구사항 6) — 줄 아래로 펼침/접음. 같은 줄을 다시 누르면 닫는다.
     case 'room-open':
       state.roomDetailId = state.roomDetailId === id ? null : id;
-      state.openScore = null; state.editRoomId = null; state.roomLessonsMore = false; render(); break;
+      state.openScore = null; state.editRoomId = null; state.roomLessonsMore = false;
+      state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
     case 'room-lessons-more': state.roomLessonsMore = true; render(); break;
+    case 'stu-edit-mode': state.roomStudentEdit = true; state.roomStuSel = new Set(); state.openScore = null; render(); break;
+    case 'stu-edit-done': state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
+    case 'stu-exclude': {
+      const c = M.getCourse(id); if (!c) break;
+      const nos = [...state.roomStuSel]; if (!nos.length) break;
+      nos.forEach(sno => M.unenrollStudent(id, sno));
+      state.roomStuSel = new Set();
+      toast(`${nos.length}명을 ${M.roomName(c)}에서 제외했습니다.`); render(); break;
+    }
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
     case 'stu-score': {
       const key = `${id}_${no}`;
@@ -739,9 +773,18 @@ document.getElementById('shell').addEventListener('change', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   if (el.dataset.act === 'year-pick'){
     state.year = +el.value; state.fSubject = null; state.editRoomId = null;
-    state.roomDetailId = null; state.studentDetailNo = null; render();
+    state.roomDetailId = null; state.studentDetailNo = null;
+    state.roomStudentEdit = false; state.roomStuSel = new Set(); render();
   } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
     M.setCourseLessonDate(el.dataset.id, el.value); render();
+  } else if (el.dataset.act === 'stu-sel'){   // 명단 편집 모드에서 한 명 고르고 풀기
+    if (el.checked) state.roomStuSel.add(el.dataset.no); else state.roomStuSel.delete(el.dataset.no);
+    render();
+  } else if (el.dataset.act === 'stu-sel-all'){
+    const c = M.getCourse(state.roomDetailId);
+    const nos = c ? M.getStudentsByCourse(c.id).map(s => s.studentNo) : [];
+    state.roomStuSel = el.checked ? new Set(nos) : new Set();
+    render();
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
     const courseId = el.dataset.id, sno = el.dataset.no;
     if (el.checked){
