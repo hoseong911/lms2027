@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261027l';
+import * as M from './model.js?v=20261027m';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -27,7 +27,6 @@ const state = {
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
   lessonId: null, lessonTab: 'edit',
-  gradingType: 'question',
 
   // 칸별 메뉴 넷 (2026-10-27)
   conceptTab: 'content',           // 개념 노트 서브 메뉴 'content' | 'design'
@@ -504,7 +503,7 @@ function studentDetailPanel(sno, name){
       <div class="s">${bits.join(', ')}</div></div></div>`;
   }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
   const right = `<div class="dcol">
-    <div class="sectionlabel between">과목별 성적<button class="btn-link" data-act="go-grading">채점, 공유</button></div>
+    <div class="sectionlabel">과목별 성적</div>
     ${scoreRows}</div>`;
 
   return `<div class="detail two">${left}${right}</div>`;
@@ -859,33 +858,11 @@ function pageFormative(){
     </div>`;
 }
 
-// ── 복습 ──
-function pageReview(){
-  const list = M.getQuizzes().map(q => `<div class="row">
-    <div class="grow"><div class="t">${esc(q.title)}</div>
-      <div class="s">${q.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div>
-    <div class="tools"><button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button></div>
-  </div>`).join('');
-  return `<div class="pagehead"><h2>복습</h2></div>
-    <div class="formrow"><input class="f grow" placeholder="새 복습 퀴즈 제목"><button class="btn-text" data-act="noop">만들기</button></div>
-    ${list}`;
-}
-
-// ── 채점, 공유 ──
-function pageGrading(){
-  const types = M.PART_TYPES.filter(p => p.submits).map(p => ({ v:p.key, label:p.name }));
-  const line = catline(types, state.gradingType, 'set-gtype');
-  return `<div class="pagehead"><h2>채점, 공유</h2></div>${line}
-    <div class="placeholder">${esc(M.partDef(state.gradingType)?.name || '')} 제출물이 강의실/강의별로 여기 모입니다.<br>
-      AI 1차 채점, 잘한 것 공유, 아카이브. (뼈대 — 다음 단계)</div>`;
-}
-
 // ── 렌더 ──
 function render(){
   renderSide();
   const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, progress:pageProgress,
-              concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative,
-              review:pageReview, grading:pageGrading }[state.page];
+              concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative }[state.page];
   $main.innerHTML = p ? p() : '';
 }
 
@@ -903,7 +880,6 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
     case 'room-group': state.roomGroup = v; render(); break;
     case 'set-sclass': state.studentClass = v; render(); break;
-    case 'set-gtype': state.gradingType = v; render(); break;
 
     case 'add-open': openAddModal(); break;
 
@@ -930,7 +906,6 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'go-progress': state.page = 'progress'; state.roomDetailId = null; render(); break;
     case 'go-lessons': state.page = 'lessons'; state.roomDetailId = null; state.lessonId = null; render(); break;
     case 'go-students': state.page = 'students'; state.studentClass = M.roomNo(M.getCourse(id)); state.roomDetailId = null; render(); break;
-    case 'go-grading': state.page = 'grading'; state.roomDetailId = null; render(); break;
 
     case 'room-edit': state.editRoomId = id; render(); break;
     case 'room-cancel': state.editRoomId = null; render(); break;

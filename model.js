@@ -72,8 +72,6 @@ export const ADMIN_MENUS = [
   { key:'mission',   name:'미션 활동',       icon:'layout-grid' },
   { key:'question',  name:'오늘의 질문',     icon:'message-square' },
   { key:'formative', name:'형성평가',        icon:'circle-check' },
-  { key:'review',    name:'복습',           icon:'list-ordered' },
-  { key:'grading',   name:'채점, 공유',      icon:'clipboard-check' },
 ];
 
 // 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
