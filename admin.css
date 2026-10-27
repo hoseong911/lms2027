@@ -47,28 +47,48 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 .row.compact{padding:9px 13px}
 .row.compact .t{font-weight:500}
 
-/* 펼쳐지는 상세 패널 — 줄 바로 아래, 살짝 들여써서 묶여 보이게 */
+/* 펼쳐지는 상세 패널 — 줄 바로 아래, 두 칸(강의 진도 | 학생 명단) */
 .detail{border:1px solid var(--navy);border-top:0;border-radius:0 0 var(--r) var(--r);
   background:var(--card);margin:-6px 0 10px;padding:4px 14px 14px}
+.detail.two{display:flex;gap:22px;align-items:flex-start}
+.detail.two .dcol{flex:1;min-width:0}
 .detail .sectionlabel:first-child{margin-top:12px}
 .detail .row{background:var(--bg)}
 
-/* 성적 펼침(학생 이름 누르면) */
+/* 강의 진도 줄 — 차수 · 제목 · 수업일자 · 공개토글 */
+.plrow{gap:10px}
+.plnum{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--navy);min-width:34px}
+.dateinput{width:64px;padding:6px 8px;text-align:center;font-size:13px}
+.dateinput.ds-past{color:var(--sub)}
+.dateinput.ds-today{border-color:var(--navy);color:var(--navy);font-weight:700;background:var(--accent-soft)}
+.morebtn{display:inline-block;margin:8px 2px 2px}
+
+/* 학생 카드 펼침 — 레벨·경험치·포인트 + 포트폴리오 */
 .score-detail{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
-  background:var(--bg);margin:-6px 0 6px;padding:8px 14px}
+  background:var(--bg);margin:-6px 0 6px;padding:10px 14px}
+.sc-stats{display:flex;gap:8px;margin-bottom:10px}
+.sc-stat{flex:1;border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:7px 4px;text-align:center}
+.sc-k{font-size:11px;color:var(--sub);font-weight:700}
+.sc-v{font-size:16px;font-weight:800;color:var(--navy);margin-top:2px}
+.sc-port .sc-k{margin-bottom:4px}
 .score-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)}
 .score-line:last-child{border-bottom:0}
+.score-line.tot{font-weight:700;color:var(--ink)}
 .score-empty{font-size:13px;color:var(--sub);padding:4px 0}
 
-/* 진도 관리 표 — 개설 강의 × 강의실 */
-.prog-hint{font-size:13px;color:var(--sub);margin:0 2px 14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+/* 진도 관리 표 — 강의 × 강의실, 칸은 수업일자 */
+.prog-hint{font-size:13px;color:var(--sub);margin:0 2px 14px}
 .prog-wrap{overflow-x:auto}
 .prog{border-collapse:collapse;font-size:13px}
-.prog th,.prog td{border:1px solid var(--line);padding:8px 10px;text-align:center;white-space:nowrap}
-.prog thead th{background:var(--hover);color:var(--sub);font-weight:700}
-.prog td.lname,.prog th.lname{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink);min-width:160px}
+.prog th,.prog td{border:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap}
+.prog thead th{background:var(--hover);color:var(--sub);font-weight:700;padding:8px 10px}
+.prog td.lname,.prog th.lname{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink);min-width:170px}
 .prog thead th.lname{background:var(--hover)}
 .prog td.na{color:var(--sub)}
+.prog .dateinput{width:58px}
+.prog td.ds-today{background:var(--accent-soft)}
+.prog td.ds-today .dateinput{color:var(--navy);font-weight:700}
+.prog td.ds-past .dateinput{color:var(--sub)}
 .ib-sm{width:28px;height:28px}
 
 /* 섹션 이름표 오른쪽에 붙는 바로가기 링크 */
@@ -223,4 +243,9 @@ input[type=number]{-moz-appearance:textfield}
   .palette{flex:1 1 auto;width:100%}
   .row{flex-wrap:wrap}
   .row .tools{margin-left:auto}
+  /* 상세 두 칸은 좁을 때 위아래로 */
+  .detail.two{flex-direction:column;gap:0}
+  .detail.two .dcol+.dcol{margin-top:6px}
+  .plrow{flex-wrap:nowrap}
+  .dateinput{min-height:40px}
 }

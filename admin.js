@@ -18,7 +18,8 @@ const state = {
   roomGroup: 'subject',            // 강의실 묶음 축: 'subject'(과목별) | 'class'(반별)
   fSubject: null, fClass: null,    // 강의실 관리 필터(과목 / 반)
   roomDetailId: null,              // 아래로 펼친 강의실(인라인 상세)
-  openScore: null,                 // 성적을 펼친 학생 키(`강의실id_학번`)
+  roomLessonsMore: false,          // 강의 진도 30강 넘겨 더 보기
+  openScore: null,                 // 상세를 펼친 학생 키(`강의실id_학번`)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   lessonId: null, lessonTab: 'edit',
@@ -27,6 +28,25 @@ const state = {
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const val = id => (document.getElementById(id)?.value || '').trim();
+
+/* 수업일자('M/D')가 오늘보다 지났는지 — 진도표·강의 진도의 날짜 강조에 쓴다.
+   연도는 적지 않으므로 오늘과 가장 가까운 해로 해석한다(2026 LMS와 같은 방식).
+   'past' | 'today' | 'future' | 'none'(빈 값/형식 오류). */
+const MAX_LESSONS = 30;            // 강의 진도에 한 번에 보여 줄 강의 수(요구사항 1)
+function dateStatus(mmdd){
+  const mt = /^(\d{1,2})\s*\/\s*(\d{1,2})$/.exec((mmdd || '').trim());
+  if (!mt) return 'none';
+  const m = +mt[1], d = +mt[2];
+  if (m < 1 || m > 12 || d < 1 || d > 31) return 'none';
+  const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let best = null;
+  [today.getFullYear()-1, today.getFullYear(), today.getFullYear()+1].forEach(yy => {
+    const cand = new Date(yy, m-1, d), diff = Math.abs(cand - today);
+    if (!best || diff < best.diff) best = { date:cand, diff };
+  });
+  if (best.date.getTime() === today.getTime()) return 'today';
+  return best.date < today ? 'past' : 'future';
+}
 
 function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
@@ -110,9 +130,9 @@ function catline(items, active, act, allLabel, extra = ''){
 // 수정 중인 강의실 줄 — 그 자리에서 입력 칸이 된다(인라인, 요구사항 66). 목록·상세 공용.
 function roomEditRow(c){
   return `<div class="row">
-    <input class="f w-md" id="e-subject" value="${esc(c.subject)}" placeholder="과목 (예: 사회)">
-    <input class="f w-sm" id="e-grade" inputmode="numeric" value="${c.grade}" placeholder="학년"><span class="unit">학년</span>
-    <input class="f w-sm" id="e-class" inputmode="numeric" value="${c.classNo}" placeholder="반"><span class="unit">반</span>
+    <input class="f w-md" id="e-subject" value="${esc(c.subject)}">
+    <input class="f w-sm" id="e-grade" inputmode="numeric" value="${c.grade}"><span class="unit">학년</span>
+    <input class="f w-sm" id="e-class" inputmode="numeric" value="${c.classNo}"><span class="unit">반</span>
     <div class="grow"></div>
     <div class="tools">
       <button class="ib ib-primary" data-act="room-save" data-id="${c.id}" title="저장" aria-label="저장">${icon('check',16)}</button>
@@ -163,8 +183,7 @@ function pageRooms(){
     const open = c.id === state.roomDetailId;
     const row = `<div class="row ${open?'on':''}">
       <div class="grow rowlink" data-act="room-open" data-id="${c.id}">
-        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(M.roomName(c))}</div>
-        <div class="s">학생 ${M.getStudentsByCourse(c.id).length}명 · 개설 강의 ${M.getCourseLessons(c.id).length}개</div></div>
+        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(M.roomName(c))}</div></div>
       <div class="tools">
         <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
@@ -189,63 +208,72 @@ function pageRooms(){
   return `${head}${filterLine}${rowsHtml}`;
 }
 
-/* 강의실 상세(요구사항 6) — 줄 아래로 펼쳐지는 패널. 개설 강의(=진도, 공개 토글만),
-   학생 명단, 성적(이름 누르면 그 학생 성적이 한 번 더 펼쳐진다)을 담는다. */
+/* 강의실 상세(요구사항 6) — 줄 아래로 두 칸으로 펼쳐진다(요구사항 1).
+   왼쪽: 강의 진도(강의차수·제목·수업일자, 최대 30강·넘으면 더보기, 요구사항 1·2).
+   오른쪽: 학생 전원. 이름을 누르면 그 학생의 레벨·경험치·포트폴리오 성적이 펼쳐진다(요구사항 3). */
 function roomDetailPanel(c){
   const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
-  const lessons = M.getCourseLessons(c.id);          // 전반 통일 순서. 여기선 공개/비공개만 다룬다.
+  const lessons = M.getCourseLessons(c.id);          // order 순, 수업일자(date) 포함
 
-  // ── 개설 강의(= 진도) : 공개/비공개 토글만, 순서 이동 없음 ──
-  const lessonRows = lessons.length ? lessons.map((cl, i) => {
-    const l = cl.lesson;
-    const parts = (l?.order || []).map(k => M.partDef(k)?.name).filter(Boolean).join(', ') || '빈 강의';
-    return `<div class="row compact">
-      <div class="grow"><div class="t">${i+1}강. ${esc(l?.title || '(삭제된 강의)')}</div>
-        <div class="s">${esc(parts)} · ${cl.isOpen ? '공개' : '비공개'}</div></div>
-      <div class="tools">
-        <button class="ib ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}" title="${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',16)}</button>
-      </div></div>`;
+  // ── 왼쪽: 강의 진도 ──
+  const shown = state.roomLessonsMore ? lessons : lessons.slice(0, MAX_LESSONS);
+  const lessonRows = lessons.length ? shown.map((cl, i) => {
+    const st = dateStatus(cl.date);
+    return `<div class="row compact plrow">
+      <div class="plnum">${i+1}강</div>
+      <div class="grow"><div class="t">${esc(cl.lesson?.title || '(삭제된 강의)')}</div></div>
+      <input class="f dateinput ds-${st}" data-act="cl-date" data-id="${cl.id}" value="${esc(cl.date || '')}" inputmode="numeric" aria-label="수업일자">
+      <button class="ib ib-sm ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}" title="${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
+    </div>`;
   }).join('') : `<div class="empty">개설된 강의가 없습니다.</div>`;
-  const lessonSec = `<div class="sectionlabel between">개설 강의 (진도)
-    <button class="btn-link" data-act="go-progress">진도 관리에서 보기</button></div>${lessonRows}`;
+  const moreBtn = (!state.roomLessonsMore && lessons.length > MAX_LESSONS)
+    ? `<button class="btn-link morebtn" data-act="room-lessons-more">더보기 (${lessons.length - MAX_LESSONS}강)</button>` : '';
+  const left = `<div class="dcol">
+    <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress">진도 관리</button></div>
+    ${lessonRows}${moreBtn}</div>`;
 
-  // ── 학생 명단 ──
-  const stuRows = students.length ? students.map(s => `<div class="row compact">
-      <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div>
-    </div>`).join('') : `<div class="empty">학생이 없습니다.</div>`;
-  const stuSec = `<div class="sectionlabel between">학생 명단
-    <button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리에서 보기</button></div>${stuRows}`;
-
-  // ── 성적 : 이름을 누르면 그 학생 성적이 한 번 더 펼쳐진다 ──
-  const scoreRows = students.length ? students.map(s => {
-    const sum = M.scoreSummary(c.id, s.studentNo);
-    const okey = `${c.id}_${s.studentNo}`;
-    const open = state.openScore === okey;
+  // ── 오른쪽: 학생 명단 ──
+  const stuRows = students.length ? students.map(s => {
+    const open = state.openScore === `${c.id}_${s.studentNo}`;
     const row = `<div class="row compact rowlink" data-act="stu-score" data-no="${s.studentNo}" data-id="${c.id}">
-      <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div>
-      <div class="s">${sum ? `${sum.got} / ${sum.max}점` : '기록 없음'}</div></div>`;
-    return open ? row + scoreBreakdown(c.id, s.studentNo) : row;
+      <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div></div>`;
+    return open ? row + studentCard(c.id, s.studentNo) : row;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
-  const scoreSec = `<div class="sectionlabel between">성적 (포트폴리오)
-    <button class="btn-link" data-act="go-grading">채점, 공유로 가기</button></div>${scoreRows}`;
+  const right = `<div class="dcol">
+    <div class="sectionlabel between">학생 명단<button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리</button></div>
+    ${stuRows}</div>`;
 
-  return `<div class="detail">${lessonSec}${stuSec}${scoreSec}</div>`;
+  return `<div class="detail two">${left}${right}</div>`;
 }
 
-// 한 학생의 성적 상세 — 포트폴리오 칸별 점수(펼침 안쪽).
-function scoreBreakdown(courseId, studentNo){
-  const sc = M.getScore(courseId, studentNo);
-  if (!sc) return `<div class="score-detail"><div class="score-empty">아직 채점 기록이 없습니다.</div></div>`;
-  const rows = M.PART_TYPES.filter(p => p.portfolio).map(p => {
-    const got = sc.items?.[p.key]; if (got == null) return '';
-    return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${got} / ${sc.max?.[p.key] ?? '–'}점</span></div>`;
-  }).filter(Boolean).join('');
-  return `<div class="score-detail">${rows || `<div class="score-empty">기록된 칸이 없습니다.</div>`}</div>`;
+// 한 학생 카드 — 레벨·경험치·포인트 + 포트폴리오 성적(펼침 안쪽, 요구사항 3).
+function studentCard(courseId, studentNo){
+  const xp = M.getXp(courseId, studentNo);
+  const lvl = xp ? M.levelFromXp(xp.xp) : null;
+  const sc = M.getScore(courseId, studentNo), sum = M.scoreSummary(courseId, studentNo);
+
+  const stats = `<div class="sc-stats">
+    <div class="sc-stat"><div class="sc-k">레벨</div><div class="sc-v">${lvl!=null?`Lv.${lvl}`:'–'}</div></div>
+    <div class="sc-stat"><div class="sc-k">경험치</div><div class="sc-v">${xp?xp.xp:'–'}</div></div>
+    <div class="sc-stat"><div class="sc-k">포인트</div><div class="sc-v">${xp?xp.point:'–'}</div></div>
+  </div>`;
+
+  let port;
+  if (!sc){ port = `<div class="score-empty">성적 기록이 없습니다.</div>`; }
+  else {
+    const lines = M.PART_TYPES.filter(p => p.portfolio).map(p => {
+      const got = sc.items?.[p.key]; if (got == null) return '';
+      return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${got} / ${sc.max?.[p.key] ?? '–'}점</span></div>`;
+    }).filter(Boolean).join('');
+    const tot = sum ? `<div class="score-line tot"><span>합계</span><span class="mono">${sum.got} / ${sum.max}점</span></div>` : '';
+    port = (lines + tot) || `<div class="score-empty">기록된 칸이 없습니다.</div>`;
+  }
+  return `<div class="score-detail">${stats}<div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
 }
 
-/* 진도 관리(요구사항 2) — 개설 강의 × 강의실 표. 칸의 공개/비공개를 한곳에서 일괄로.
-   강의실 관리의 공개 토글과 같은 데이터(course_lessons)를 쓰므로 서로 실시간으로 맞물린다.
-   (Firestore는 다음에 함께 연결) */
+/* 진도 관리(요구사항 1·2) — 2026 LMS 진도표를 본떠 강의 × 강의실 표로.
+   행은 강의(차수·제목), 열은 강의실, 칸은 수업일자('M/D'). 오늘·지난 날은 색으로.
+   강의실 관리의 강의 진도와 같은 데이터(course_lessons)를 써서 서로 실시간으로 맞물린다. */
 function pageProgress(){
   const years = M.getYears();
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
@@ -256,27 +284,26 @@ function pageProgress(){
 
   const courses = M.getCourses(state.year)
     .slice().sort((a,b) => a.subject.localeCompare(b.subject,'ko') || a.grade - b.grade || a.classNo - b.classNo);
-  const placed = {};               // courseId -> [course_lesson...]
-  const placedIds = new Set();
+  const placed = {}, placedIds = new Set();
   courses.forEach(c => { placed[c.id] = M.getCourseLessons(c.id); placed[c.id].forEach(cl => placedIds.add(cl.lessonId)); });
   const lessons = M.getLessons().filter(l => placedIds.has(l.id));
 
   if (!courses.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
-  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없습니다. 강의 라이브러리에서 강의실에 넣어 주세요.</div>`;
+  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없습니다.</div>`;
 
-  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomNo(c))}</th>`).join('');
-  const body = lessons.map(l => {
+  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomName(c))}</th>`).join('');
+  const body = lessons.map((l, li) => {
     const cells = courses.map(c => {
       const cl = placed[c.id].find(x => x.lessonId === l.id);
       if (!cl) return `<td class="na">–</td>`;
-      return `<td><button class="ib ib-sm ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}"
-        title="${esc(M.roomName(c))} · ${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button></td>`;
+      const st = dateStatus(cl.date);
+      return `<td class="ds-${st}"><input class="f dateinput" data-act="cl-date" data-id="${cl.id}" value="${esc(cl.date || '')}" inputmode="numeric" aria-label="${esc(M.roomName(c))} 수업일자"></td>`;
     }).join('');
-    return `<tr><td class="lname">${esc(l.title)}</td>${cells}</tr>`;
+    return `<tr><td class="lname">${li+1}강. ${esc(l.title)}</td>${cells}</tr>`;
   }).join('');
 
   return `${head}
-    <div class="prog-hint">칸의 ${icon('eye',13)} 를 눌러 강의실별 공개 여부를 조절합니다. 강의실 관리의 공개 설정과 같이 맞물립니다.</div>
+    <div class="prog-hint">칸에 수업일자를 'M/D'로 적습니다. 강의실 관리의 강의 진도와 같이 맞물립니다.</div>
     <div class="prog-wrap"><table class="prog">
       <thead><tr><th class="lname">강의</th>${th}</tr></thead>
       <tbody>${body}</tbody>
@@ -305,8 +332,7 @@ function openAddModal(initial){
     const body = tab === 'year'
       ? `<div class="m-form">
           <label class="m-label">학년도</label>
-          <input class="f" id="a-year" inputmode="numeric" placeholder="예: 2027" autocomplete="off">
-          <div class="m-hint">비어 있어도 학년도가 먼저 있어야 강의실을 만들 수 있습니다.</div>
+          <input class="f" id="a-year" inputmode="numeric" autocomplete="off">
         </div>`
       : `<div class="m-form">
           <label class="m-label">과목</label>
@@ -315,13 +341,13 @@ function openAddModal(initial){
                  ${subjects.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}
                  <option value="__new__">+ 새 과목 직접 입력</option>
                </select>
-               <input class="f" id="a-subject-new" placeholder="새 과목 이름" autocomplete="off" hidden>`
-            : `<input class="f" id="a-subject-new" placeholder="예: 사회, 역사" autocomplete="off">`}
+               <input class="f" id="a-subject-new" autocomplete="off" hidden>`
+            : `<input class="f" id="a-subject-new" autocomplete="off">`}
           <div class="m-two">
-            <div><label class="m-label">학년</label><input class="f" id="a-grade" inputmode="numeric" placeholder="학년"></div>
-            <div><label class="m-label">반</label><input class="f" id="a-class" inputmode="numeric" placeholder="반"></div>
+            <div><label class="m-label">학년</label><input class="f" id="a-grade" inputmode="numeric"></div>
+            <div><label class="m-label">반</label><input class="f" id="a-class" inputmode="numeric"></div>
           </div>
-          <div class="m-hint">${state.year}학년도에 만듭니다. 새 과목은 목록 맨 아래에서 직접 적으면 생깁니다.</div>
+          <div class="m-hint">${state.year}학년도에 만듭니다.</div>
         </div>`;
     modal.innerHTML = `<h3>추가</h3>${seg}${body}
       <div class="m-err" id="a-err"></div>
@@ -535,7 +561,8 @@ document.getElementById('shell').addEventListener('click', e => {
     // 강의실 상세(요구사항 6) — 줄 아래로 펼침/접음. 같은 줄을 다시 누르면 닫는다.
     case 'room-open':
       state.roomDetailId = state.roomDetailId === id ? null : id;
-      state.openScore = null; state.editRoomId = null; render(); break;
+      state.openScore = null; state.editRoomId = null; state.roomLessonsMore = false; render(); break;
+    case 'room-lessons-more': state.roomLessonsMore = true; render(); break;
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
     case 'stu-score': {
       const key = `${id}_${no}`;
@@ -619,7 +646,9 @@ document.getElementById('shell').addEventListener('click', e => {
 document.getElementById('shell').addEventListener('change', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   if (el.dataset.act === 'year-pick'){
-    state.year = +el.value; state.fSubject = null; state.editRoomId = null; render();
+    state.year = +el.value; state.fSubject = null; state.editRoomId = null; state.roomDetailId = null; render();
+  } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
+    M.setCourseLessonDate(el.dataset.id, el.value); render();
   }
 });
 

@@ -114,11 +114,11 @@ const DEMO = {
       order:['mission','formative'] },
   ],
 
-  // course_lessons: 강의실에 꽂힌 자리
+  // course_lessons: 강의실에 꽂힌 자리. date는 그 강의실의 수업일자('M/D', 진도표의 셀)
   courseLessons: [
-    { id:'cl1', courseId:'c_s301', lessonId:'L1', order:1, isOpen:true  },
-    { id:'cl2', courseId:'c_s301', lessonId:'L2', order:2, isOpen:true  },
-    { id:'cl3', courseId:'c_s301', lessonId:'L3', order:3, isOpen:false },
+    { id:'cl1', courseId:'c_s301', lessonId:'L1', order:1, isOpen:true,  date:'9/3'  },
+    { id:'cl2', courseId:'c_s301', lessonId:'L2', order:2, isOpen:true,  date:'9/10' },
+    { id:'cl3', courseId:'c_s301', lessonId:'L3', order:3, isOpen:false, date:'9/17' },
   ],
 
   quizzes: [
@@ -134,7 +134,28 @@ const DEMO = {
     { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101',
       items:{ concept:18, mission:9, question:14 }, max:{ concept:20, mission:10, question:15 } },
   ],
+
+  // course_xp: 강의실id_학번. 레벨은 저장하지 않고 xp에서 계산한다.
+  xp: [
+    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101', xp:420, point:15 },
+    { id:'c_s301_30102', courseId:'c_s301', studentNo:'30102', xp:180, point:8  },
+  ],
 };
+
+/* 레벨 표 — 2026 LMS shared/xp.js의 기본값을 그대로 옮겼다(누적 경험치 기준).
+   표 끝을 넘으면 공식으로 이어 간다(마지막 간격 550, 레벨마다 25씩 커짐). */
+export const XP_LEVELS = [0,100,225,375,550,750,975,1225,1500,1800,
+                          2125,2475,2850,3250,3675,4125,4600,5100,5625,6175];
+const XP_FORMULA = { lastGap:550, increment:25 };
+export function levelFromXp(total){
+  const t = +total || 0;
+  for (let i = XP_LEVELS.length - 1; i >= 0; i--){
+    if (t >= XP_LEVELS[i]){ if (i < XP_LEVELS.length - 1) return i + 1; break; }
+  }
+  let threshold = XP_LEVELS[XP_LEVELS.length - 1], gap = XP_FORMULA.lastGap, lv = XP_LEVELS.length;
+  while (t >= threshold + gap){ threshold += gap; gap += XP_FORMULA.increment; lv++; }
+  return lv;
+}
 
 // ── 조회 (뒤에 Firestore로 교체할 자리) ──
 export function getYears(){ return [...DEMO.years]; }
@@ -176,6 +197,9 @@ export function getCourseQuizzes(courseId){
 }
 export function getScore(courseId, studentNo){
   return DEMO.scores.find(s => s.courseId === courseId && s.studentNo === studentNo) || null;
+}
+export function getXp(courseId, studentNo){
+  return DEMO.xp.find(x => x.courseId === courseId && x.studentNo === studentNo) || null;
 }
 
 // ── 변경 (데모: 메모리에만. 다음 단계에서 Firestore 쓰기로 교체) ──
@@ -293,6 +317,11 @@ export function moveCourseLesson(courseId, clId, dir){
 }
 export function toggleCourseQuizOpen(id){
   const cq = DEMO.courseQuizzes.find(c => c.id === id); if (cq) cq.isOpen = !cq.isOpen;
+}
+// 수업일자('M/D') 저장 — 진도표와 강의실 상세가 같은 course_lessons를 써서 서로 맞물린다.
+export function setCourseLessonDate(clId, date){
+  const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
+  cl.date = String(date ?? '').trim(); return cl;
 }
 // 포트폴리오(성적) 요약 — 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
 export function scoreSummary(courseId, studentNo){
