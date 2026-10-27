@@ -22,6 +22,7 @@ const state = {
   openScore: null,                 // 상세를 펼친 학생 키(`강의실id_학번`)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
+  studentDetailNo: null,           // 아래로 펼친 학생(학번)
   lessonId: null, lessonTab: 'edit',
   gradingType: 'question',
 };
@@ -403,48 +404,146 @@ function openAddModal(initial){
 }
 
 // ── 학생 관리 ──
+// 헤더는 강의실 관리와 같은 모양(제목 + 학년도 드롭다운 + 추가 버튼), 아래 반별 한 줄.
 function pageStudents(){
+  const years = M.getYears();
+  const addBtn = `<button class="btn-add" data-act="stu-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button>`;
+  if (!years.length)
+    return `<div class="pagehead"><h2>학생 관리</h2>${addBtn}</div><div class="empty">학년도가 없습니다.</div>`;
+
   const all = M.getStudentsByYear(state.year);
-  // 학번 앞 세 자리(roomNo)로 묶기
   const byRoom = {};
   all.forEach(s => { const r = s.studentNo.slice(0,3); (byRoom[r] ||= new Set()).add(s.studentNo); });
   const roomNos = Object.keys(byRoom).sort();
-  const cats = roomNos.map(r => ({ v:r, label:`${r} (${byRoom[r].size})` }));
+  if (state.studentClass !== 'all' && !roomNos.includes(state.studentClass)) state.studentClass = 'all';
 
-  let snos = roomNos.flatMap(r => [...byRoom[r]]);
-  if (state.studentClass !== 'all') snos = [...(byRoom[state.studentClass] || [])];
+  let snos = state.studentClass !== 'all' ? [...(byRoom[state.studentClass] || [])] : roomNos.flatMap(r => [...byRoom[r]]);
   snos = [...new Set(snos)].sort();
 
-  const addForm = `<div class="formrow">
-    <input class="f w-sm" id="s-grade" inputmode="numeric" placeholder="학년"><span class="unit">학년</span>
-    <input class="f w-sm" id="s-class" inputmode="numeric" placeholder="반"><span class="unit">반</span>
-    <input class="f w-sm" id="s-no" inputmode="numeric" placeholder="번호"><span class="unit">번</span>
-    <input class="f grow" id="s-name" placeholder="이름">
-    <button class="btn-text" data-act="stu-add">학생 추가</button>
-  </div>
-  <div class="formrow">
-    <div class="grow"><div class="t">엑셀 명단 올리기</div></div>
-    <button class="ib ib-primary" data-act="stu-upload" title="업로드" aria-label="업로드">${icon('upload',16)}</button>
-  </div>`;
+  const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
+    ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
+  </select>`;
+  const head = `<div class="pagehead"><h2>학생 관리</h2>${yearSel}${addBtn}</div>`;
+  const filterLine = catline(roomNos.map(r => ({ v:r, label:r })), state.studentClass, 'set-sclass', '전체');
 
   const list = snos.length ? snos.map(sno => {
-    const recs = all.filter(s => s.studentNo === sno);
-    const name = recs[0]?.name || '';
-    const badges = recs.map(r => `<span class="badge">${esc(M.roomName(M.getCourse(r.courseId)))}</span>`).join(' ');
-    return `<div class="row">
-      <div class="grow"><div class="t"><span class="mono">${esc(sno)}</span> &nbsp;${esc(name)}</div>
-        <div class="s">${badges}</div></div>
+    const name = all.find(s => s.studentNo === sno)?.name || '';
+    const open = state.studentDetailNo === sno;
+    const row = `<div class="row ${open?'on':''}">
+      <div class="grow rowlink" data-act="stu-open" data-no="${sno}">
+        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span><span class="mono">${esc(sno)}</span> &nbsp;${esc(name)}</div></div>
       <div class="tools">
-        <button class="ib" data-act="stu-edit" data-no="${sno}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib" data-act="stu-reset" data-no="${sno}" title="비밀번호 초기화" aria-label="비밀번호 초기화">${icon('rotate-ccw',16)}</button>
         <button class="ib ib-danger" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
+    return open ? row + studentDetailPanel(sno, name) : row;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
 
-  return `<div class="pagehead"><h2>학생 관리</h2></div>
-    ${catline(M.getYears().map(y => ({ v:y.year, label:`${y.year}` })), state.year, 'set-year')}
-    ${catline(cats, state.studentClass, 'set-sclass', '전체')}
-    ${addForm}${list}`;
+  return `${head}${filterLine}${list}`;
+}
+
+/* 학생 상세(요구사항 2) — 줄 아래로 두 칸. 왼쪽: 수강 과목(강의실) 체크로 켜고 끄기 + 비밀번호.
+   오른쪽: 과목(강의실)별 레벨·경험치·포트폴리오 성적. 한 학번이 여러 과목에 들 수 있어서 과목별로 본다. */
+function studentDetailPanel(sno, name){
+  const grade = +sno.slice(0,1), classNo = +sno.slice(1,3);
+  const classCourses = M.getCourses(state.year)
+    .filter(c => c.grade === grade && c.classNo === classNo)
+    .sort((a,b) => a.subject.localeCompare(b.subject,'ko'));
+  const mine = M.getCoursesOfStudent(state.year, sno).sort((a,b) => a.subject.localeCompare(b.subject,'ko'));
+  const enrolled = new Set(mine.map(c => c.id));
+
+  const checks = classCourses.length ? classCourses.map(c => `<label class="checkline">
+    <input type="checkbox" data-act="stu-enroll" data-id="${c.id}" data-no="${sno}" ${enrolled.has(c.id)?'checked':''}>
+    <span>${esc(M.roomName(c))}</span></label>`).join('')
+    : `<div class="empty">${grade}${String(classNo).padStart(2,'0')} 반으로 만든 강의실이 없습니다.</div>`;
+
+  const left = `<div class="dcol">
+    <div class="sectionlabel">수강 과목</div>${checks}
+    <div class="sectionlabel">비밀번호</div>
+    <button class="btn-link" data-act="stu-reset" data-no="${sno}">비밀번호 초기화</button></div>`;
+
+  const scoreRows = mine.length ? mine.map(c => {
+    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sum = M.scoreSummary(c.id, sno);
+    const bits = [lvl!=null?`Lv.${lvl}`:'Lv.–', `경험치 ${xp?xp.xp:0}`,
+      sum ? `포트폴리오 ${sum.got}/${sum.max}점` : '포트폴리오 기록 없음'];
+    return `<div class="row compact"><div class="grow"><div class="t">${esc(M.roomName(c))}</div>
+      <div class="s">${bits.join(', ')}</div></div></div>`;
+  }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
+  const right = `<div class="dcol">
+    <div class="sectionlabel between">과목별 성적<button class="btn-link" data-act="go-grading">채점, 공유</button></div>
+    ${scoreRows}</div>`;
+
+  return `<div class="detail two">${left}${right}</div>`;
+}
+
+/* 학생 추가 팝업(요구사항 1) — 개별 추가 / 엑셀 명단. 개별은 학년·반·번호·이름만 받는다.
+   수강 과목은 추가한 뒤 학생을 눌러 수강 과목 체크로 고른다(여기선 그 반 강의실에 모두 등록). */
+function openStudentModal(){
+  let tab = 'one';
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="학생 추가"></div>`;
+  document.body.appendChild(back);
+  const modal = back.querySelector('.modal');
+
+  const draw = () => {
+    const seg = `<div class="seg">
+      <button class="seg-b ${tab==='one'?'on':''}" data-seg="one">개별 추가</button>
+      <button class="seg-b ${tab==='excel'?'on':''}" data-seg="excel">엑셀 명단</button>
+    </div>`;
+    const body = tab === 'one'
+      ? `<div class="m-form">
+          <div class="m-two">
+            <div><label class="m-label">학년</label><input class="f" id="st-grade" inputmode="numeric"></div>
+            <div><label class="m-label">반</label><input class="f" id="st-class" inputmode="numeric"></div>
+            <div><label class="m-label">번호</label><input class="f" id="st-no" inputmode="numeric"></div>
+          </div>
+          <label class="m-label">이름</label>
+          <input class="f" id="st-name" autocomplete="off">
+          <div class="m-hint">${state.year}학년도. 그 반 강의실에 모두 등록되고, 수강 과목은 추가한 뒤 학생을 눌러 고릅니다.</div>
+        </div>`
+      : `<div class="m-form">
+          <div class="m-hint">엑셀 명단 올리기는 다음 단계에서 붙입니다.</div>
+          <button class="btn-ghost" data-m="upload" style="align-self:flex-start">파일 고르기</button>
+        </div>`;
+    modal.innerHTML = `<h3>학생 추가</h3>${seg}${body}
+      <div class="m-err" id="st-err"></div>
+      <div class="m-acts">
+        <button class="btn-ghost" data-m="cancel">닫기</button>
+        ${tab==='one' ? `<button class="btn-text" data-m="ok">추가</button>` : ''}
+      </div>`;
+    modal.querySelector('.m-form .f')?.focus();
+  };
+  draw();
+
+  const close = () => { document.removeEventListener('keydown', onKey); back.remove(); };
+  const err = m => { const e = modal.querySelector('#st-err'); if (e) e.textContent = m; };
+  const submit = () => {
+    const grade = (modal.querySelector('#st-grade')?.value || '').trim();
+    const classNo = (modal.querySelector('#st-class')?.value || '').trim();
+    const n = (modal.querySelector('#st-no')?.value || '').trim();
+    const nm = (modal.querySelector('#st-name')?.value || '').trim();
+    if (!grade || !classNo || !n || !nm){ err('학년, 반, 번호, 이름을 적어 주세요.'); return; }
+    const studentNo = `${grade}${String(classNo).padStart(2,'0')}${String(n).padStart(2,'0')}`;
+    const { rooms, added } = M.addStudent({ year:state.year, grade, classNo, studentNo, name:nm });
+    if (!rooms.length){ err('그 반으로 만든 강의실이 없습니다. 먼저 강의실을 만드세요.'); return; }
+    state.studentClass = `${grade}${String(classNo).padStart(2,'0')}`;
+    toast(`${nm}(${studentNo})을 ${added.length}개 강의실에 등록했습니다.`); close(); render();
+  };
+  const onKey = e => {
+    if (e.key === 'Escape'){ close(); return; }
+    if (e.key === 'Enter' && tab === 'one'){ e.preventDefault(); submit(); }
+  };
+  back.addEventListener('click', e => {
+    if (e.target === back){ close(); return; }
+    const s = e.target.closest('[data-seg]');
+    if (s){ tab = s.dataset.seg; draw(); return; }
+    const m = e.target.closest('[data-m]'); if (!m) return;
+    if (m.dataset.m === 'ok') submit();
+    else if (m.dataset.m === 'upload') toast('엑셀 올리기 — 뼈대(다음 단계).');
+    else close();
+  });
+  document.addEventListener('keydown', onKey);
 }
 
 // ── 강의 라이브러리 ──
@@ -548,7 +647,7 @@ document.getElementById('shell').addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, k = el.dataset.k, id = el.dataset.id, v = el.dataset.v, no = el.dataset.no;
   switch (act){
-    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null; render(); break;
+    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null; state.studentDetailNo = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -607,17 +706,14 @@ document.getElementById('shell').addEventListener('click', e => {
       break;
     }
 
-    case 'stu-add': {
-      const grade = val('s-grade'), classNo = val('s-class'), n = val('s-no'), name = val('s-name');
-      if (!grade || !classNo || !n || !name){ toast('학년, 반, 번호, 이름을 적어 주세요.'); return; }
-      const studentNo = `${grade}${String(classNo).padStart(2,'0')}${String(n).padStart(2,'0')}`;
-      const { rooms, added } = M.addStudent({ year:state.year, grade, classNo, studentNo, name });
-      if (!rooms.length){ toast('그 반으로 만든 강의실이 없습니다. 먼저 강의실을 만드세요.'); return; }
-      toast(`${name}(${studentNo})을 ${added.length}개 강의실에 등록했습니다.`); render(); break;
-    }
-    case 'stu-upload': toast('엑셀 올리기 — 뼈대(다음 단계).'); break;
-    case 'stu-edit': case 'stu-reset': toast('뼈대 — 다음 단계에서 붙입니다.'); break;
-    case 'stu-del': M.removeStudentEverywhere(state.year, no); toast('삭제했습니다.'); render(); break;
+    case 'stu-add-open': openStudentModal(); break;
+    case 'stu-open':
+      state.studentDetailNo = state.studentDetailNo === no ? null : no; render(); break;
+    case 'stu-reset': toast('비밀번호 초기화 — 뼈대(다음 단계).'); break;
+    case 'stu-del':
+      M.removeStudentEverywhere(state.year, no);
+      if (state.studentDetailNo === no) state.studentDetailNo = null;
+      toast('삭제했습니다.'); render(); break;
 
     case 'lesson-add': {
       const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }
@@ -646,9 +742,19 @@ document.getElementById('shell').addEventListener('click', e => {
 document.getElementById('shell').addEventListener('change', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   if (el.dataset.act === 'year-pick'){
-    state.year = +el.value; state.fSubject = null; state.editRoomId = null; state.roomDetailId = null; render();
+    state.year = +el.value; state.fSubject = null; state.editRoomId = null;
+    state.roomDetailId = null; state.studentDetailNo = null; render();
   } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
     M.setCourseLessonDate(el.dataset.id, el.value); render();
+  } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
+    const courseId = el.dataset.id, sno = el.dataset.no;
+    if (el.checked){
+      const name = M.getStudentsByYear(state.year).find(s => s.studentNo === sno)?.name || '';
+      M.enrollStudent(courseId, sno, name);
+    } else {
+      M.unenrollStudent(courseId, sno);
+    }
+    render();
   }
 });
 

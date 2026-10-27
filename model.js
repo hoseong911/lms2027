@@ -280,6 +280,20 @@ export function removeStudentEverywhere(year, studentNo){
   const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
   DEMO.students = DEMO.students.filter(s => !(ids.has(s.courseId) && s.studentNo === studentNo));
 }
+// 학생 한 명을 한 강의실에 넣고 빼기 — 수강 과목(강의실) 체크에 쓴다.
+export function enrollStudent(courseId, studentNo, name){
+  const c = getCourse(courseId); if (!c) return null;
+  const id = `${courseId}_${studentNo}`;
+  if (DEMO.students.some(s => s.id === id)) return null;
+  const s = { id, courseId, studentNo, name: name || '' };
+  DEMO.students.push(s); return s;
+}
+export function unenrollStudent(courseId, studentNo){
+  const id = `${courseId}_${studentNo}`;
+  const before = DEMO.students.length;
+  DEMO.students = DEMO.students.filter(s => s.id !== id);
+  return DEMO.students.length < before;
+}
 export function addLesson(title){
   const l = { id:nid('L'), title, parts:{}, order:[] };
   DEMO.lessons.push(l); return l;
