@@ -65,6 +65,7 @@ export const ADMIN_MENUS = [
   { key:'rooms',    name:'강의실 관리',     icon:'graduation-cap' },
   { key:'students', name:'학생 관리',       icon:'users' },
   { key:'lessons',  name:'강의 라이브러리', icon:'book-open' },
+  { key:'progress', name:'진도 관리',       icon:'clipboard-list' },
   { key:'review',   name:'복습',           icon:'list-ordered' },
   { key:'grading',  name:'채점, 공유',      icon:'clipboard-check' },
 ];

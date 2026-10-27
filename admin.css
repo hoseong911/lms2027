@@ -39,11 +39,37 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 /* 목록 묶음 사이 구분선(이름표 없이, 요구사항 3) */
 .group-sep{height:0;border-top:1px solid var(--line);margin:14px 0 10px}
 
-/* 줄 전체를 눌러 상세로 (요구사항 6) */
-.rowlink{cursor:pointer}
+/* 줄 전체를 눌러 아래로 펼치기 (요구사항 6) */
+.rowlink{cursor:pointer;display:flex;align-items:center}
+.rowlink .t{display:flex;align-items:center}
+.row.on{border-color:var(--navy);background:var(--accent-soft)}
+.chev{display:inline-flex;margin-right:6px;color:var(--sub)}
 .row.compact{padding:9px 13px}
 .row.compact .t{font-weight:500}
-.detail-sum{font-size:13px;color:var(--sub);margin:-6px 2px 4px}
+
+/* 펼쳐지는 상세 패널 — 줄 바로 아래, 살짝 들여써서 묶여 보이게 */
+.detail{border:1px solid var(--navy);border-top:0;border-radius:0 0 var(--r) var(--r);
+  background:var(--card);margin:-6px 0 10px;padding:4px 14px 14px}
+.detail .sectionlabel:first-child{margin-top:12px}
+.detail .row{background:var(--bg)}
+
+/* 성적 펼침(학생 이름 누르면) */
+.score-detail{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
+  background:var(--bg);margin:-6px 0 6px;padding:8px 14px}
+.score-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.score-line:last-child{border-bottom:0}
+.score-empty{font-size:13px;color:var(--sub);padding:4px 0}
+
+/* 진도 관리 표 — 개설 강의 × 강의실 */
+.prog-hint{font-size:13px;color:var(--sub);margin:0 2px 14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.prog-wrap{overflow-x:auto}
+.prog{border-collapse:collapse;font-size:13px}
+.prog th,.prog td{border:1px solid var(--line);padding:8px 10px;text-align:center;white-space:nowrap}
+.prog thead th{background:var(--hover);color:var(--sub);font-weight:700}
+.prog td.lname,.prog th.lname{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink);min-width:160px}
+.prog thead th.lname{background:var(--hover)}
+.prog td.na{color:var(--sub)}
+.ib-sm{width:28px;height:28px}
 
 /* 섹션 이름표 오른쪽에 붙는 바로가기 링크 */
 .sectionlabel.between{display:flex;align-items:center;justify-content:space-between}

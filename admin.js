@@ -17,7 +17,8 @@ const state = {
   year: YEAR,
   roomGroup: 'subject',            // 강의실 묶음 축: 'subject'(과목별) | 'class'(반별)
   fSubject: null, fClass: null,    // 강의실 관리 필터(과목 / 반)
-  roomDetailId: null,              // 열어 본 강의실(상세 화면)
+  roomDetailId: null,              // 아래로 펼친 강의실(인라인 상세)
+  openScore: null,                 // 성적을 펼친 학생 키(`강의실id_학번`)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   lessonId: null, lessonTab: 'edit',
@@ -127,13 +128,6 @@ function pageRooms(){
     return `<div class="pagehead"><h2>강의실 관리</h2>${addBtn}</div>
       <div class="empty">학년도가 없습니다. 오른쪽 위 추가에서 학년도를 먼저 만드세요.</div>`;
 
-  // 한 강의실을 열어 보면 상세 화면으로(요구사항 6).
-  if (state.roomDetailId){
-    const c = M.getCourse(state.roomDetailId);
-    if (c) return pageRoomDetail(c);
-    state.roomDetailId = null;
-  }
-
   const courses = M.getCourses(state.year);
   const byClass = state.roomGroup === 'class';
 
@@ -152,11 +146,10 @@ function pageRooms(){
   let filterLine, list = courses.slice();
   if (byClass){
     const roomNos = [...new Set(courses.map(c => M.roomNo(c)))].sort();
-    const labelOf = rn => { const c = courses.find(x => M.roomNo(x)===rn); return `${c.grade}학년 ${c.classNo}반`; };
     if (state.fClass && !roomNos.includes(state.fClass)) state.fClass = null;
     if (state.fClass) list = list.filter(c => M.roomNo(c) === state.fClass);
     list.sort((a,b) => a.grade - b.grade || a.classNo - b.classNo || a.subject.localeCompare(b.subject,'ko'));
-    filterLine = catline(roomNos.map(rn => ({ v:rn, label:labelOf(rn) })), state.fClass, 'set-class', '전체', groupToggle);
+    filterLine = catline(roomNos.map(rn => ({ v:rn, label:rn })), state.fClass, 'set-class', '전체', groupToggle);
   } else {
     const subjects = [...new Set(courses.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
     if (state.fSubject && state.fSubject !== 'all' && !subjects.includes(state.fSubject)) state.fSubject = null;
@@ -165,15 +158,19 @@ function pageRooms(){
     filterLine = catline(subjects.map(s => ({ v:s, label:s })), state.fSubject, 'set-subject', '전체', groupToggle);
   }
 
-  // 누르면 상세로 열린다. 묶음은 구분선만(이름표 없음, 요구사항 3).
-  const showRow = c => `<div class="row">
+  // 누르면 그 자리에서 아래로 펼쳐진다(인라인 아코디언). 묶음은 구분선만(요구사항 3).
+  const showRow = c => {
+    const open = c.id === state.roomDetailId;
+    const row = `<div class="row ${open?'on':''}">
       <div class="grow rowlink" data-act="room-open" data-id="${c.id}">
-        <div class="t">${esc(M.roomName(c))}</div>
+        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(M.roomName(c))}</div>
         <div class="s">학생 ${M.getStudentsByCourse(c.id).length}명 · 개설 강의 ${M.getCourseLessons(c.id).length}개</div></div>
       <div class="tools">
         <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
+    return open ? row + roomDetailPanel(c) : row;
+  };
 
   let rowsHtml;
   if (!list.length){
@@ -192,41 +189,25 @@ function pageRooms(){
   return `${head}${filterLine}${rowsHtml}`;
 }
 
-/* 강의실 상세(요구사항 6) — 한 강의실 안의 것을 한눈에 보고 바로 다룬다.
-   개설 강의(공개/차례), 학생 명단, 성적·채점으로 가는 길을 담는다. */
-function pageRoomDetail(c){
-  const editing = state.editRoomId === c.id;
+/* 강의실 상세(요구사항 6) — 줄 아래로 펼쳐지는 패널. 개설 강의(=진도, 공개 토글만),
+   학생 명단, 성적(이름 누르면 그 학생 성적이 한 번 더 펼쳐진다)을 담는다. */
+function roomDetailPanel(c){
   const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
-  const lessons = M.getCourseLessons(c.id);          // order 순, lesson 본체 붙음
-  const quizzes = M.getCourseQuizzes(c.id);
+  const lessons = M.getCourseLessons(c.id);          // 전반 통일 순서. 여기선 공개/비공개만 다룬다.
 
-  const head = `<div class="pagehead">
-    <button class="ib" data-act="room-detail-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
-    <h2>${esc(M.roomName(c))}</h2>
-    <div class="tools">
-      <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-      <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-    </div></div>`;
-
-  if (editing) return `${head}${roomEditRow(c)}`;
-
-  const summary = `<div class="detail-sum">학생 ${students.length}명 · 개설 강의 ${lessons.length}개</div>`;
-
-  // ── 개설 강의 ──
+  // ── 개설 강의(= 진도) : 공개/비공개 토글만, 순서 이동 없음 ──
   const lessonRows = lessons.length ? lessons.map((cl, i) => {
     const l = cl.lesson;
     const parts = (l?.order || []).map(k => M.partDef(k)?.name).filter(Boolean).join(', ') || '빈 강의';
-    return `<div class="row">
+    return `<div class="row compact">
       <div class="grow"><div class="t">${i+1}강. ${esc(l?.title || '(삭제된 강의)')}</div>
         <div class="s">${esc(parts)} · ${cl.isOpen ? '공개' : '비공개'}</div></div>
       <div class="tools">
-        <button class="ib" data-act="cl-up" data-id="${cl.id}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',16)}</button>
-        <button class="ib" data-act="cl-down" data-id="${cl.id}" ${i===lessons.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',16)}</button>
         <button class="ib ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}" title="${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',16)}</button>
       </div></div>`;
   }).join('') : `<div class="empty">개설된 강의가 없습니다.</div>`;
-  const lessonSec = `<div class="sectionlabel between">개설 강의
-    <button class="btn-link" data-act="go-lessons">강의 라이브러리에서 넣기</button></div>${lessonRows}`;
+  const lessonSec = `<div class="sectionlabel between">개설 강의 (진도)
+    <button class="btn-link" data-act="go-progress">진도 관리에서 보기</button></div>${lessonRows}`;
 
   // ── 학생 명단 ──
   const stuRows = students.length ? students.map(s => `<div class="row compact">
@@ -235,27 +216,71 @@ function pageRoomDetail(c){
   const stuSec = `<div class="sectionlabel between">학생 명단
     <button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리에서 보기</button></div>${stuRows}`;
 
-  // ── 성적 ──
+  // ── 성적 : 이름을 누르면 그 학생 성적이 한 번 더 펼쳐진다 ──
   const scoreRows = students.length ? students.map(s => {
     const sum = M.scoreSummary(c.id, s.studentNo);
-    return `<div class="row compact">
-      <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div>
-      <div class="s">${sum ? `${sum.got} / ${sum.max}점` : '기록 없음'}</div>
-    </div>`;
+    const okey = `${c.id}_${s.studentNo}`;
+    const open = state.openScore === okey;
+    const row = `<div class="row compact rowlink" data-act="stu-score" data-no="${s.studentNo}" data-id="${c.id}">
+      <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div>
+      <div class="s">${sum ? `${sum.got} / ${sum.max}점` : '기록 없음'}</div></div>`;
+    return open ? row + scoreBreakdown(c.id, s.studentNo) : row;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
   const scoreSec = `<div class="sectionlabel between">성적 (포트폴리오)
     <button class="btn-link" data-act="go-grading">채점, 공유로 가기</button></div>${scoreRows}`;
 
-  // ── 복습 ──
-  const quizRows = quizzes.length ? quizzes.map(cq => `<div class="row compact">
-      <div class="grow"><div class="t">${esc(cq.quiz?.title || '(삭제된 복습)')}</div>
-        <div class="s">${cq.isOpen ? '공개' : '비공개'}</div></div>
-      <div class="tools">
-        <button class="ib ${cq.isOpen?'ib-primary':''}" data-act="cq-open" data-id="${cq.id}" title="${cq.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',16)}</button>
-      </div></div>`).join('') : `<div class="empty">걸린 복습이 없습니다.</div>`;
-  const quizSec = `<div class="sectionlabel">복습</div>${quizRows}`;
+  return `<div class="detail">${lessonSec}${stuSec}${scoreSec}</div>`;
+}
 
-  return `${head}${summary}${lessonSec}${stuSec}${scoreSec}${quizSec}`;
+// 한 학생의 성적 상세 — 포트폴리오 칸별 점수(펼침 안쪽).
+function scoreBreakdown(courseId, studentNo){
+  const sc = M.getScore(courseId, studentNo);
+  if (!sc) return `<div class="score-detail"><div class="score-empty">아직 채점 기록이 없습니다.</div></div>`;
+  const rows = M.PART_TYPES.filter(p => p.portfolio).map(p => {
+    const got = sc.items?.[p.key]; if (got == null) return '';
+    return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${got} / ${sc.max?.[p.key] ?? '–'}점</span></div>`;
+  }).filter(Boolean).join('');
+  return `<div class="score-detail">${rows || `<div class="score-empty">기록된 칸이 없습니다.</div>`}</div>`;
+}
+
+/* 진도 관리(요구사항 2) — 개설 강의 × 강의실 표. 칸의 공개/비공개를 한곳에서 일괄로.
+   강의실 관리의 공개 토글과 같은 데이터(course_lessons)를 쓰므로 서로 실시간으로 맞물린다.
+   (Firestore는 다음에 함께 연결) */
+function pageProgress(){
+  const years = M.getYears();
+  const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
+    ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
+  </select>`;
+  const head = `<div class="pagehead"><h2>진도 관리</h2>${years.length?yearSel:''}</div>`;
+  if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
+
+  const courses = M.getCourses(state.year)
+    .slice().sort((a,b) => a.subject.localeCompare(b.subject,'ko') || a.grade - b.grade || a.classNo - b.classNo);
+  const placed = {};               // courseId -> [course_lesson...]
+  const placedIds = new Set();
+  courses.forEach(c => { placed[c.id] = M.getCourseLessons(c.id); placed[c.id].forEach(cl => placedIds.add(cl.lessonId)); });
+  const lessons = M.getLessons().filter(l => placedIds.has(l.id));
+
+  if (!courses.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
+  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없습니다. 강의 라이브러리에서 강의실에 넣어 주세요.</div>`;
+
+  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomNo(c))}</th>`).join('');
+  const body = lessons.map(l => {
+    const cells = courses.map(c => {
+      const cl = placed[c.id].find(x => x.lessonId === l.id);
+      if (!cl) return `<td class="na">–</td>`;
+      return `<td><button class="ib ib-sm ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}"
+        title="${esc(M.roomName(c))} · ${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button></td>`;
+    }).join('');
+    return `<tr><td class="lname">${esc(l.title)}</td>${cells}</tr>`;
+  }).join('');
+
+  return `${head}
+    <div class="prog-hint">칸의 ${icon('eye',13)} 를 눌러 강의실별 공개 여부를 조절합니다. 강의실 관리의 공개 설정과 같이 맞물립니다.</div>
+    <div class="prog-wrap"><table class="prog">
+      <thead><tr><th class="lname">강의</th>${th}</tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>`;
 }
 
 /* 추가 팝업 — 학년도 생성 / 강의실 생성을 한곳에 모았다(요구사항 5).
@@ -488,7 +513,7 @@ function pageGrading(){
 // ── 렌더 ──
 function render(){
   renderSide();
-  const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, review:pageReview, grading:pageGrading }[state.page];
+  const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, progress:pageProgress, review:pageReview, grading:pageGrading }[state.page];
   $main.innerHTML = p ? p() : '';
 }
 
@@ -507,13 +532,16 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'add-open': openAddModal(); break;
 
-    // 강의실 상세(요구사항 6)
-    case 'room-open': state.roomDetailId = id; state.editRoomId = null; render(); break;
-    case 'room-detail-close': state.roomDetailId = null; state.editRoomId = null; render(); break;
-    case 'cl-up': M.moveCourseLesson(state.roomDetailId, id, -1); render(); break;
-    case 'cl-down': M.moveCourseLesson(state.roomDetailId, id, 1); render(); break;
-    case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;
-    case 'cq-open': M.toggleCourseQuizOpen(id); render(); break;
+    // 강의실 상세(요구사항 6) — 줄 아래로 펼침/접음. 같은 줄을 다시 누르면 닫는다.
+    case 'room-open':
+      state.roomDetailId = state.roomDetailId === id ? null : id;
+      state.openScore = null; state.editRoomId = null; render(); break;
+    case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
+    case 'stu-score': {
+      const key = `${id}_${no}`;
+      state.openScore = state.openScore === key ? null : key; render(); break;
+    }
+    case 'go-progress': state.page = 'progress'; state.roomDetailId = null; render(); break;
     case 'go-lessons': state.page = 'lessons'; state.roomDetailId = null; state.lessonId = null; render(); break;
     case 'go-students': state.page = 'students'; state.studentClass = M.roomNo(M.getCourse(id)); state.roomDetailId = null; render(); break;
     case 'go-grading': state.page = 'grading'; state.roomDetailId = null; render(); break;
