@@ -98,8 +98,17 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .selrow{cursor:pointer;gap:10px}
 .selrow input{width:16px;height:16px;accent-color:var(--navy);flex:0 0 auto}
 .selrow.on{border-color:var(--navy);background:var(--accent-soft)}
-.btn-chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:var(--r-btn);
-  padding:5px 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
+.btn-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);border-radius:var(--r-btn);padding:5px 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
+.btn-chip:hover:not(:disabled){border-color:var(--line-strong)}
+
+/* 개념 콘텐츠 편집기 — 페이지(제목)와 내용 줄 */
+.ce-wrap{padding:2px 0}
+.ce-line{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ce-page .f{font-weight:700}
+.ce-tag{flex:0 0 auto;font-size:var(--fs-meta);font-weight:700;color:var(--navy);min-width:40px}
+.ce-bullet{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:var(--sub);margin:0 18px}
+.ce-add{display:flex;gap:8px;margin-top:10px}
 .btn-chip.danger{border-color:var(--red);color:var(--red)}
 .btn-chip.danger:hover:not(:disabled){background:var(--red);color:#fff}
 .btn-chip:disabled{opacity:.4;cursor:default}

@@ -121,9 +121,15 @@ const DEMO = {
   // lessons: 재사용 창고. parts에 있는 칸만 그 강의가 가진 칸. order가 칸 순서.
   lessons: [
     { id:'L1', title:'붕당정치의 전개',
-      parts:{ concept:{ title:'붕당의 형성과 전개' },
+      parts:{ concept:{ title:'붕당의 형성과 전개', content:[
+                { type:'divider', title:'붕당의 형성' },
+                { type:'row', text:'선조 때 사림이 동인과 서인으로 나뉘었다.' },
+                { type:'row', text:'척신 정치 청산을 둘러싼 갈등이 계기가 되었다.' },
+                { type:'divider', title:'붕당의 전개' },
+                { type:'row', text:'동인은 다시 남인과 북인으로 갈라졌다.' },
+              ] },
               mission:{ appKey:'4cut', title:'네컷 만화 그리기' },
-              question:{ title:'오늘의 질문', prompt:'붕당정치의 긍정적 면과 부정적 면은 무엇인가?' },
+              question:{ title:'오늘의 질문', prompt:'붕당정치의 긍정적 면과 부정적 면은 무엇인가?', guide:'두 측면을 모두 한 문장 이상으로 쓴다.' },
               formative:{ title:'OX 5문항', items:[
                 { type:'ox',      q:'붕당은 선조 때 처음 갈라졌다.' },
                 { type:'short',   q:'동인과 서인으로 갈라진 계기가 된 자리는?' },
@@ -160,6 +166,14 @@ const DEMO = {
     { id:'_template', name:'템플릿',        studentUrl:'apps/_template/index.html', adminUrl:'apps/_template/admin.html' },
     { id:'4cut',      name:'네컷 만화',      studentUrl:'apps/4cut/index.html',      adminUrl:'apps/4cut/admin.html' },
     { id:'timeline',  name:'타임라인',       studentUrl:'apps/timeline/index.html',  adminUrl:'apps/timeline/admin.html' },
+  ],
+
+  // course_submissions: 제출물(지금은 오늘의 질문 답변만 데모). clId = 꽂힌 강의 자리.
+  submissions: [
+    { id:'sub1', clId:'cl1', part:'question', courseId:'c_s301', studentNo:'30101', name:'홍길동',
+      answer:'붕당정치는 여론을 모으는 긍정적 면과, 대립이 깊어지면 정치가 마비되는 부정적 면이 있다.', score:null, max:15, shared:false },
+    { id:'sub2', clId:'cl1', part:'question', courseId:'c_s301', studentNo:'30102', name:'김영희',
+      answer:'서로 견제해 권력 독점을 막지만, 싸움이 길어지면 백성이 피해를 본다.', score:12, max:15, shared:true },
   ],
 
   // course_scores: 강의실id_학번
@@ -384,3 +398,60 @@ export function scoreSummary(courseId, studentNo){
   keys.forEach(k => { if (s.items?.[k] != null){ got += s.items[k]; max += (s.max?.[k] || 0); any = true; } });
   return any ? { got, max } : null;
 }
+
+/* ── 개념 노트 콘텐츠 (2026 class_lessons.contentLines 모티브) ──
+   content는 줄의 배열: { type:'divider', title }(페이지 제목) | { type:'row', text }(내용 줄). */
+function conceptOf(lessonId){
+  const l = getLesson(lessonId); if (!l?.parts?.concept) return null;
+  if (!Array.isArray(l.parts.concept.content)) l.parts.concept.content = [];
+  return l.parts.concept.content;
+}
+export function getConceptContent(lessonId){ return conceptOf(lessonId) || []; }
+export function conceptAddLine(lessonId, type){
+  const c = conceptOf(lessonId); if (!c) return;
+  c.push(type === 'divider' ? { type:'divider', title:'' } : { type:'row', text:'' });
+}
+export function conceptSetLine(lessonId, idx, value){
+  const c = conceptOf(lessonId), line = c?.[idx]; if (!line) return;
+  if (line.type === 'divider') line.title = value; else line.text = value;
+}
+export function conceptMoveLine(lessonId, idx, dir){
+  const c = conceptOf(lessonId); if (!c) return;
+  const j = idx + dir; if (j < 0 || j >= c.length) return;
+  [c[idx], c[j]] = [c[j], c[idx]];
+}
+export function conceptDelLine(lessonId, idx){
+  const c = conceptOf(lessonId); if (c && c[idx]) c.splice(idx, 1);
+}
+
+// ── 오늘의 질문 ──
+export function setQuestion(lessonId, patch){
+  const l = getLesson(lessonId); if (l?.parts?.question) Object.assign(l.parts.question, patch);
+}
+export function getQuestionSubs(clId){
+  return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');
+}
+export function setSubScore(subId, score){
+  const s = DEMO.submissions.find(x => x.id === subId); if (!s) return;
+  s.score = (score === '' || score == null) ? null : +score;
+}
+export function toggleSubShared(subId){
+  const s = DEMO.submissions.find(x => x.id === subId); if (s) s.shared = !s.shared;
+}
+
+// ── 미션 앱 등록부 CRUD — 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
+export function addMissionApp({ name, studentUrl, adminUrl, key }){
+  const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
+  const id = String(key || '').trim() || nid('app_');
+  if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
+  const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim() };
+  DEMO.missionApps.push(a); return a;
+}
+export function updateMissionApp(id, patch){
+  const a = getMissionApp(id); if (!a) return null;
+  if (patch.name != null) a.name = String(patch.name).trim();
+  if (patch.studentUrl != null) a.studentUrl = String(patch.studentUrl).trim();
+  if (patch.adminUrl != null) a.adminUrl = String(patch.adminUrl).trim();
+  return a;
+}
+export function deleteMissionApp(id){ DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id); }

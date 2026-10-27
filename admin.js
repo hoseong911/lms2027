@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js';
+import * as M from './model.js?v=20261027l';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -35,6 +35,7 @@ const state = {
   missionTab: 'list',              // 미션 활동 탭 'list' 또는 열어 둔 앱 키
   missionOpen: [],                 // 같은 창 안에 탭으로 열어 둔 앱 키들(요구사항 67)
   questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers'
+  questionLessonId: null,          // 질문 관리에서 펼쳐 고치는 강의
   questionCourseId: null,          // 답변을 모아 볼 강의실
   questionClId: null,              // 그 강의실에 꽂힌 강의(질문이 있는 것만)
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
@@ -656,18 +657,36 @@ function pageConcept(){
     return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
 
   const lessons = M.getLessonsWithPart('concept');
-  const list = lessons.length ? lessons.map(l => {
+  if (!lessons.length) return head + `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
+  const list = lessons.map(l => {
     const open = state.conceptLessonId === l.id;
-    const row = `<div class="row ${open?'on':''} rowlink" data-act="concept-open" data-id="${l.id}">
-      <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div>
-        <div class="s">${esc(l.parts.concept.title || '')}</div></div>
-      <div class="tools">
-        <button class="ib" data-act="noop" title="활동지 올리기" aria-label="활동지 올리기">${icon('upload',16)}</button>
-      </div></div>`;
-    return open ? row + `<div class="detail"><div class="placeholder">콘텐츠 올리기 (다음 단계)</div></div>` : row;
-  }).join('') : `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
-
+    const row = `<div class="row ${open?'on':''}">
+      <div class="grow rowlink" data-act="concept-open" data-id="${l.id}">
+        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div></div></div>`;
+    return open ? row + conceptEditor(l) : row;
+  }).join('');
   return head + list;
+}
+
+/* 개념 콘텐츠 편집기 — 페이지(제목)와 내용 줄을 쌓는다(2026 contentLines 모티브).
+   각 줄은 입력칸이고 포커스가 빠질 때(change) 저장한다. 순서/삭제는 버튼으로. */
+function conceptEditor(l){
+  const content = M.getConceptContent(l.id);
+  const lines = content.length ? content.map((ln, i) => {
+    const tools = `<div class="tools">
+      <button class="ib ib-sm" data-act="ce-up" data-id="${l.id}" data-k="${i}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
+      <button class="ib ib-sm" data-act="ce-down" data-id="${l.id}" data-k="${i}" ${i===content.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
+      <button class="ib ib-sm ib-danger" data-act="ce-del" data-id="${l.id}" data-k="${i}" title="삭제" aria-label="삭제">${icon('trash-2',14)}</button></div>`;
+    if (ln.type === 'divider')
+      return `<div class="ce-line ce-page"><span class="ce-tag">페이지</span>
+        <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.title)}">${tools}</div>`;
+    return `<div class="ce-line"><span class="ce-bullet"></span>
+      <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.text)}">${tools}</div>`;
+  }).join('') : `<div class="placeholder">내용이 없습니다.</div>`;
+  const add = `<div class="ce-add">
+    <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="divider">${icon('plus',13)}페이지</button>
+    <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="row">${icon('plus',13)}내용 줄</button></div>`;
+  return `<div class="detail"><div class="ce-wrap">${lines}${add}</div></div>`;
 }
 
 /* ── 미션 활동 ──
@@ -675,7 +694,7 @@ function pageConcept(){
    덮지 않고 같은 창 안의 별도 탭으로 연다 — 미션 목록과 나란히 두고 오간다(요구사항 67). */
 function pageMission(){
   const head = `<div class="pagehead"><h2>미션 활동</h2>
-    <button class="btn-add" data-act="noop" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
+    <button class="btn-add" data-act="mission-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
 
   const openTabs = state.missionOpen.map(key => M.getMissionApp(key)).filter(Boolean);
   const tabline = `<div class="catline">
@@ -695,11 +714,51 @@ function pageMission(){
       <div class="s mono">${esc(a.id)}</div></div>
     <div class="tools">
       <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
-      <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-      <button class="ib ib-danger" data-act="noop" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+      <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+      <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
     </div></div>`).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
 
   return `${head}${tabline}${list}`;
+}
+
+/* 미션 앱 등록/수정 팝업 — 이름, 앱 키(apps/ 폴더 이름), 학생 주소, 관리자 주소. */
+function openMissionModal(app){
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const dis = app ? 'disabled' : '';
+  back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="미션 앱">
+    <h3>${app ? '앱 수정' : '앱 추가'}</h3>
+    <div class="m-form">
+      <label class="m-label">이름</label><input class="f" id="ma-name" value="${esc(app?.name || '')}">
+      <label class="m-label">앱 키</label><input class="f" id="ma-key" value="${esc(app?.id || '')}" ${dis}>
+      <label class="m-label">학생 주소</label><input class="f" id="ma-su" value="${esc(app?.studentUrl || '')}">
+      <label class="m-label">관리자 주소</label><input class="f" id="ma-au" value="${esc(app?.adminUrl || '')}">
+    </div>
+    <div class="m-err" id="ma-err"></div>
+    <div class="m-acts">
+      <button class="btn-ghost" data-m="cancel">닫기</button>
+      <button class="btn-text" data-m="ok">${app ? '저장' : '추가'}</button>
+    </div></div>`;
+  document.body.appendChild(back);
+  const modal = back.querySelector('.modal');
+  const close = () => { document.removeEventListener('keydown', onKey); back.remove(); };
+  const err = m => { modal.querySelector('#ma-err').textContent = m; };
+  const submit = () => {
+    const name = modal.querySelector('#ma-name').value, su = modal.querySelector('#ma-su').value,
+          auu = modal.querySelector('#ma-au').value, key = modal.querySelector('#ma-key').value;
+    try {
+      if (app) M.updateMissionApp(app.id, { name, studentUrl:su, adminUrl:auu });
+      else M.addMissionApp({ name, studentUrl:su, adminUrl:auu, key });
+      toast(app ? '앱을 저장했습니다.' : '앱을 추가했습니다.'); close(); render();
+    } catch(e){ err(e.message); }
+  };
+  const onKey = e => { if (e.key==='Escape') close(); if (e.key==='Enter'){ e.preventDefault(); submit(); } };
+  back.addEventListener('click', e => {
+    if (e.target === back){ close(); return; }
+    const m = e.target.closest('[data-m]'); if (!m) return;
+    if (m.dataset.m === 'ok') submit(); else close();
+  });
+  document.addEventListener('keydown', onKey);
 }
 
 /* ── 오늘의 질문 ──
@@ -711,12 +770,20 @@ function pageQuestion(){
 
   if (state.questionTab === 'manage'){
     const lessons = M.getLessonsWithPart('question');
-    const list = lessons.length ? lessons.map(l => `<div class="row">
-      <div class="grow"><div class="t">${esc(l.title)}</div>
-        <div class="s">${esc(l.parts.question.prompt || '')}</div></div>
-      <div class="tools">
-        <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-      </div></div>`).join('') : `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+    if (!lessons.length) return head + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+    const list = lessons.map(l => {
+      const open = state.questionLessonId === l.id, q = l.parts.question;
+      const row = `<div class="row ${open?'on':''}">
+        <div class="grow rowlink" data-act="q-open" data-id="${l.id}">
+          <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div></div></div>`;
+      const ed = `<div class="detail"><div class="m-form">
+        <label class="m-label">질문</label>
+        <input class="f" data-act="q-edit" data-id="${l.id}" data-k="prompt" value="${esc(q.prompt || '')}">
+        <label class="m-label">안내</label>
+        <input class="f" data-act="q-edit" data-id="${l.id}" data-k="guide" value="${esc(q.guide || '')}">
+      </div></div>`;
+      return open ? row + ed : row;
+    }).join('');
     return head + list;
   }
 
@@ -737,9 +804,17 @@ function pageQuestion(){
         : `<option>질문이 걸린 강의 없음</option>`}
     </select></div>`;
 
-  const body = state.questionClId
-    ? `<div class="placeholder">학생 답변과 채점 (다음 단계)</div>`
-    : `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+  if (!state.questionClId) return head + pickers + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+
+  const subs = M.getQuestionSubs(state.questionClId);
+  const body = subs.length ? subs.map(s => `<div class="row">
+    <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
+      <div class="s">${esc(s.answer)}</div></div>
+    <div class="tools">
+      <input class="f dateinput" data-act="q-score" data-id="${s.id}" value="${s.score ?? ''}" inputmode="numeric" aria-label="점수">
+      <span class="unit">/ ${s.max}</span>
+      <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
+    </div></div>`).join('') : `<div class="empty">제출된 답변이 없습니다.</div>`;
 
   return head + pickers + body;
 }
@@ -822,7 +897,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'page':
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
       state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set();
-      state.conceptLessonId = null; state.formativeLessonId = null; render(); break;
+      state.conceptLessonId = null; state.formativeLessonId = null; state.questionLessonId = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -922,6 +997,10 @@ document.getElementById('shell').addEventListener('click', e => {
     // 개념 노트
     case 'concept-tab': state.conceptTab = v; state.conceptLessonId = null; render(); break;
     case 'concept-open': state.conceptLessonId = state.conceptLessonId === id ? null : id; render(); break;
+    case 'ce-add': M.conceptAddLine(id, k); render(); break;
+    case 'ce-up': M.conceptMoveLine(id, +k, -1); render(); break;
+    case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
+    case 'ce-del': M.conceptDelLine(id, +k); render(); break;
 
     // 미션 활동 — 앱 어드민을 같은 창 안의 탭으로 열고 닫는다
     case 'mission-tab': state.missionTab = v; render(); break;
@@ -932,9 +1011,23 @@ document.getElementById('shell').addEventListener('click', e => {
       state.missionOpen = state.missionOpen.filter(x => x !== v);
       if (state.missionTab === v) state.missionTab = 'list';
       render(); break;
+    case 'mission-add-open': openMissionModal(); break;
+    case 'mission-edit': openMissionModal(M.getMissionApp(v)); break;
+    case 'mission-del': {
+      const a = M.getMissionApp(v); if (!a) break;
+      confirmDelete({ title:`${a.name} 삭제`, bodyHtml:`연결을 지웁니다. 되돌릴 수 없습니다.`, needText:a.name })
+        .then(ok => { if (!ok) return;
+          M.deleteMissionApp(v);
+          state.missionOpen = state.missionOpen.filter(x => x !== v);
+          if (state.missionTab === v) state.missionTab = 'list';
+          toast(`${a.name}을 지웠습니다.`); render(); });
+      break;
+    }
 
     // 오늘의 질문
-    case 'question-tab': state.questionTab = v; render(); break;
+    case 'question-tab': state.questionTab = v; state.questionLessonId = null; render(); break;
+    case 'q-open': state.questionLessonId = state.questionLessonId === id ? null : id; render(); break;
+    case 'q-share': M.toggleSubShared(id); render(); break;
 
     // 형성평가
     case 'fm-open': state.formativeLessonId = id; render(); break;
@@ -966,6 +1059,12 @@ document.getElementById('shell').addEventListener('change', e => {
     state.questionCourseId = el.value; state.questionClId = null; render();
   } else if (el.dataset.act === 'q-lesson'){
     state.questionClId = el.value; render();
+  } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄 — 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
+    M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
+  } else if (el.dataset.act === 'q-edit'){   // 질문/안내 저장
+    M.setQuestion(el.dataset.id, { [el.dataset.k]: el.value });
+  } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
+    M.setSubScore(el.dataset.id, el.value);
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
     const courseId = el.dataset.id, sno = el.dataset.no;
     if (el.checked){
