@@ -1,5 +1,6 @@
 // 2027 LMS 어드민 — 제로베이스 뼈대 (2026-10-26)
-// 왼쪽 메뉴 5개(강의실 관리 / 학생 관리 / 강의 라이브러리 / 복습 / 채점·공유).
+// 왼쪽 메뉴는 model.js의 ADMIN_MENUS 한 곳에서 나온다.
+// 가운데 넷(개념 노트 / 미션 활동 / 오늘의 질문 / 형성평가)은 강의 안 네 칸의 관리 화면이다(2026-10-27).
 // 조직 원리: 강의실은 강의(차시)와 복습을 담고, 강의 하나는 개념노트/미션/질문노트/형성평가
 //           네 칸을 각각 있거나 없거나로 채운다(순서 자유).
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
@@ -27,6 +28,16 @@ const state = {
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
   lessonId: null, lessonTab: 'edit',
   gradingType: 'question',
+
+  // 칸별 메뉴 넷 (2026-10-27)
+  conceptTab: 'content',           // 개념 노트 서브 메뉴 'content' | 'design'
+  conceptLessonId: null,           // 콘텐츠에서 펼친 강의
+  missionTab: 'list',              // 미션 활동 탭 'list' 또는 열어 둔 앱 키
+  missionOpen: [],                 // 같은 창 안에 탭으로 열어 둔 앱 키들(요구사항 67)
+  questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers'
+  questionCourseId: null,          // 답변을 모아 볼 강의실
+  questionClId: null,              // 그 강의실에 꽂힌 강의(질문이 있는 것만)
+  formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
 };
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -634,6 +645,145 @@ function lessonPlacer(l){
   return `<div class="sectionlabel">이 강의를 올릴 강의실</div>${rows}`;
 }
 
+/* ── 개념 노트 ──
+   2026 lms의 개념 체크에서 가져오는 것은 콘텐츠 올리는 기능과 디자인 조절 기능뿐이다
+   (요구사항 46·47). 그래서 서브 메뉴도 콘텐츠와 디자인 둘뿐이다. */
+function pageConcept(){
+  const tabs = catline(M.ADMIN_SUBMENUS.concept, state.conceptTab, 'concept-tab');
+  const head = `<div class="pagehead"><h2>개념 노트</h2></div>${tabs}`;
+
+  if (state.conceptTab === 'design')
+    return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
+
+  const lessons = M.getLessonsWithPart('concept');
+  const list = lessons.length ? lessons.map(l => {
+    const open = state.conceptLessonId === l.id;
+    const row = `<div class="row ${open?'on':''} rowlink" data-act="concept-open" data-id="${l.id}">
+      <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div>
+        <div class="s">${esc(l.parts.concept.title || '')}</div></div>
+      <div class="tools">
+        <button class="ib" data-act="noop" title="활동지 올리기" aria-label="활동지 올리기">${icon('upload',16)}</button>
+      </div></div>`;
+    return open ? row + `<div class="detail"><div class="placeholder">콘텐츠 올리기 (다음 단계)</div></div>` : row;
+  }).join('') : `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
+
+  return head + list;
+}
+
+/* ── 미션 활동 ──
+   별도로 만든 미니 웹앱을 잇는 허브(요구사항 62·63). 앱 어드민은 오버레이로 화면을 통째로
+   덮지 않고 같은 창 안의 별도 탭으로 연다 — 미션 목록과 나란히 두고 오간다(요구사항 67). */
+function pageMission(){
+  const head = `<div class="pagehead"><h2>미션 활동</h2>
+    <button class="btn-add" data-act="noop" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
+
+  const openTabs = state.missionOpen.map(key => M.getMissionApp(key)).filter(Boolean);
+  const tabline = `<div class="catline">
+    <button class="cat ${state.missionTab==='list'?'on':''}" data-act="mission-tab" data-v="list">미션 목록</button>
+    ${openTabs.map(a => `<span class="cat-wrap">
+      <button class="cat ${state.missionTab===a.id?'on':''}" data-act="mission-tab" data-v="${esc(a.id)}">${esc(a.name)}</button>
+      <button class="cat-x" data-act="mission-tab-close" data-v="${esc(a.id)}" title="탭 닫기" aria-label="탭 닫기">${icon('x',14)}</button>
+    </span>`).join('')}</div>`;
+
+  const openApp = state.missionTab === 'list' ? null : M.getMissionApp(state.missionTab);
+  if (openApp)
+    return `${head}${tabline}<iframe class="appframe" src="${esc(openApp.adminUrl)}" title="${esc(openApp.name)} 관리자 모드"></iframe>`;
+
+  const apps = M.getMissionApps();
+  const list = apps.length ? apps.map(a => `<div class="row">
+    <div class="grow"><div class="t">${esc(a.name)}</div>
+      <div class="s mono">${esc(a.id)}</div></div>
+    <div class="tools">
+      <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
+      <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+      <button class="ib ib-danger" data-act="noop" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+    </div></div>`).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
+
+  return `${head}${tabline}${list}`;
+}
+
+/* ── 오늘의 질문 ──
+   질문 관리는 강의에 걸린 질문(lessons.parts.question)을, 답변 채점은 강의실과 강의를 골라
+   그 질문에 들어온 학생 답변을 모아 본다(AI 1차 채점은 다음 단계, 요구사항 70). */
+function pageQuestion(){
+  const tabs = catline(M.ADMIN_SUBMENUS.question, state.questionTab, 'question-tab');
+  const head = `<div class="pagehead"><h2>오늘의 질문</h2></div>${tabs}`;
+
+  if (state.questionTab === 'manage'){
+    const lessons = M.getLessonsWithPart('question');
+    const list = lessons.length ? lessons.map(l => `<div class="row">
+      <div class="grow"><div class="t">${esc(l.title)}</div>
+        <div class="s">${esc(l.parts.question.prompt || '')}</div></div>
+      <div class="tools">
+        <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+      </div></div>`).join('') : `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+    return head + list;
+  }
+
+  const courses = M.getCourses(state.year);
+  if (!courses.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
+  if (!courses.some(c => c.id === state.questionCourseId)) state.questionCourseId = courses[0].id;
+
+  const cls = M.getCourseLessons(state.questionCourseId).filter(cl => cl.lesson?.parts?.question);
+  if (!cls.some(cl => cl.id === state.questionClId)) state.questionClId = cls[0]?.id || null;
+
+  const pickers = `<div class="formrow">
+    <select class="sel" data-act="q-course" aria-label="강의실">
+      ${courses.map(c => `<option value="${c.id}" ${c.id===state.questionCourseId?'selected':''}>${esc(M.roomName(c))}</option>`).join('')}
+    </select>
+    <select class="sel" data-act="q-lesson" aria-label="강의" ${cls.length?'':'disabled'}>
+      ${cls.length
+        ? cls.map(cl => `<option value="${cl.id}" ${cl.id===state.questionClId?'selected':''}>${esc(cl.lesson.title)}</option>`).join('')
+        : `<option>질문이 걸린 강의 없음</option>`}
+    </select></div>`;
+
+  const body = state.questionClId
+    ? `<div class="placeholder">학생 답변과 채점 (다음 단계)</div>`
+    : `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
+
+  return head + pickers + body;
+}
+
+/* ── 형성평가 ──
+   성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27). */
+function pageFormative(){
+  const lessons = M.getLessonsWithPart('formative');
+
+  if (!state.formativeLessonId){
+    const list = lessons.length ? lessons.map(l => `<div class="row rowlink" data-act="fm-open" data-id="${l.id}">
+      <div class="grow"><div class="t">${esc(l.title)}</div>
+        <div class="s">${esc(l.parts.formative.title || '')}</div></div>
+      <div class="tools"><span class="chev">${icon('chevron-right',16)}</span></div>
+    </div>`).join('') : `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
+    return `<div class="pagehead"><h2>형성평가</h2></div>${list}`;
+  }
+
+  const l = M.getLesson(state.formativeLessonId);
+  const f = l?.parts?.formative;
+  if (!f){ state.formativeLessonId = null; return pageFormative(); }
+
+  const items = f.items || [];
+  const deck = items.length ? items.map((it, i) => `<div class="partrow">
+      <span class="plnum">${i + 1}</span>
+      <div class="grow"><div class="t">${esc(it.q || '')}</div>
+        <div class="s">${esc(M.formativeTypeDef(it.type)?.name || '')}</div></div>
+      <div class="tools">
+        <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+        <button class="ib ib-danger" data-act="noop" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+      </div></div>`).join('') : `<div class="placeholder">문항이 없습니다.</div>`;
+
+  const palette = M.FORMATIVE_TYPES.map(t =>
+    `<div class="pchip" data-act="fm-add" data-k="${t.key}"><span class="grow">${esc(t.name)}</span>${icon('plus',15)}</div>`).join('');
+
+  return `<div class="pagehead">
+      <button class="ib" data-act="fm-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
+      <h2>${esc(l.title)}</h2></div>
+    <div class="editor">
+      <div class="deck"><div class="sectionlabel">문항</div>${deck}</div>
+      <div class="palette"><div class="sectionlabel">문제 유형</div>${palette}</div>
+    </div>`;
+}
+
 // ── 복습 ──
 function pageReview(){
   const list = M.getQuizzes().map(q => `<div class="row">
@@ -658,7 +808,9 @@ function pageGrading(){
 // ── 렌더 ──
 function render(){
   renderSide();
-  const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, progress:pageProgress, review:pageReview, grading:pageGrading }[state.page];
+  const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, progress:pageProgress,
+              concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative,
+              review:pageReview, grading:pageGrading }[state.page];
   $main.innerHTML = p ? p() : '';
 }
 
@@ -667,7 +819,10 @@ document.getElementById('shell').addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, k = el.dataset.k, id = el.dataset.id, v = el.dataset.v, no = el.dataset.no;
   switch (act){
-    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null; state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
+    case 'page':
+      state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
+      state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set();
+      state.conceptLessonId = null; state.formativeLessonId = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -764,6 +919,28 @@ document.getElementById('shell').addEventListener('click', e => {
       else toast('해제는 다음 단계에서 붙입니다.');
       render(); break;
     }
+    // 개념 노트
+    case 'concept-tab': state.conceptTab = v; state.conceptLessonId = null; render(); break;
+    case 'concept-open': state.conceptLessonId = state.conceptLessonId === id ? null : id; render(); break;
+
+    // 미션 활동 — 앱 어드민을 같은 창 안의 탭으로 열고 닫는다
+    case 'mission-tab': state.missionTab = v; render(); break;
+    case 'mission-admin':
+      if (!state.missionOpen.includes(v)) state.missionOpen.push(v);
+      state.missionTab = v; render(); break;
+    case 'mission-tab-close':
+      state.missionOpen = state.missionOpen.filter(x => x !== v);
+      if (state.missionTab === v) state.missionTab = 'list';
+      render(); break;
+
+    // 오늘의 질문
+    case 'question-tab': state.questionTab = v; render(); break;
+
+    // 형성평가
+    case 'fm-open': state.formativeLessonId = id; render(); break;
+    case 'fm-close': state.formativeLessonId = null; render(); break;
+    case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
+
     case 'noop': toast('뼈대 — 다음 단계.'); break;
   }
 });
@@ -785,6 +962,10 @@ document.getElementById('shell').addEventListener('change', e => {
     const nos = c ? M.getStudentsByCourse(c.id).map(s => s.studentNo) : [];
     state.roomStuSel = el.checked ? new Set(nos) : new Set();
     render();
+  } else if (el.dataset.act === 'q-course'){   // 오늘의 질문 — 답변을 모아 볼 강의실
+    state.questionCourseId = el.value; state.questionClId = null; render();
+  } else if (el.dataset.act === 'q-lesson'){
+    state.questionClId = el.value; render();
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
     const courseId = el.dataset.id, sno = el.dataset.no;
     if (el.checked){

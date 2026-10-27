@@ -115,6 +115,6 @@
 | `course_xp` | `강의실id_학번` | 경험치·포인트·뽑기 `{ xp, point }` |
 | `lessons` | 자동 id | 강의 `{ title, parts:{ concept?, mission?, question?, formative? } }`. 연도 무관, 남는다 |
 | `quizzes` | 자동 id | 복습 퀴즈 `{ title, items[], source }`. 연도 무관 |
-| `mission_apps` | appKey | 미니앱 등록부 `{ name, url }` |
+| `mission_apps` | appKey | 미니앱 등록부 `{ name, studentUrl, adminUrl }`. 앱 키는 `apps/` 아래 폴더 이름 |
 
 > 재설계 전 모델(`lesson_library` 등)은 폐기. `course_submissions` 하나로 제출을 통일한다(예전 앱마다 흩어진 것 정리).

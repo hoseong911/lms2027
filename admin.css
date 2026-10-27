@@ -116,6 +116,13 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
   font-family:inherit}
 .cat:hover{color:var(--ink)}
 .cat.on{color:var(--navy);-webkit-text-stroke:.5px var(--navy);border-bottom:2px solid var(--navy)}
+/* 미션 활동 — 열어 둔 앱 어드민 탭. 탭 글자 옆에 닫기 하나를 붙인다 */
+.cat-wrap{display:flex;align-items:center;gap:4px}
+.cat-x{border:0;background:none;color:var(--sub);cursor:pointer;padding:0 0 8px;margin-bottom:-9px;
+  display:inline-grid;place-items:center;font-family:inherit}
+.cat-x:hover{color:var(--ink)}
+.appframe{width:100%;height:calc(100vh - 210px);min-height:420px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--card);display:block}
 
 /* 목록 줄 */
 .row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:var(--r);

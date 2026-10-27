@@ -61,14 +61,35 @@ export const STUDENT_MENUS = [
 ];
 
 // 어드민 왼쪽 메뉴
+// 가운데 넷(개념 노트, 미션 활동, 오늘의 질문, 형성평가)은 강의 안 네 칸을 각각 관리하는 자리다.
+// 칸 이름(PART_TYPES)과 메뉴 이름이 다른 것이 있다 — 메뉴는 선생님이 부르는 이름으로 쓴다.
 export const ADMIN_MENUS = [
-  { key:'rooms',    name:'강의실 관리',     icon:'graduation-cap' },
-  { key:'students', name:'학생 관리',       icon:'users' },
-  { key:'lessons',  name:'강의 라이브러리', icon:'book-open' },
-  { key:'progress', name:'진도 관리',       icon:'clipboard-list' },
-  { key:'review',   name:'복습',           icon:'list-ordered' },
-  { key:'grading',  name:'채점, 공유',      icon:'clipboard-check' },
+  { key:'rooms',     name:'강의실 관리',     icon:'graduation-cap' },
+  { key:'students',  name:'학생 관리',       icon:'users' },
+  { key:'lessons',   name:'강의 라이브러리', icon:'book' },
+  { key:'progress',  name:'진도 관리',       icon:'clipboard-list' },
+  { key:'concept',   name:'개념 노트',       icon:'book-open' },
+  { key:'mission',   name:'미션 활동',       icon:'layout-grid' },
+  { key:'question',  name:'오늘의 질문',     icon:'message-square' },
+  { key:'formative', name:'형성평가',        icon:'circle-check' },
+  { key:'review',    name:'복습',           icon:'list-ordered' },
+  { key:'grading',   name:'채점, 공유',      icon:'clipboard-check' },
 ];
+
+// 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
+export const ADMIN_SUBMENUS = {
+  concept:  [ { v:'content', label:'콘텐츠' },    { v:'design',  label:'디자인' } ],
+  question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변, 채점' } ],
+};
+
+// 형성평가 문제 유형 넷 (선생님 지시 2026-10-27)
+export const FORMATIVE_TYPES = [
+  { key:'short',   name:'단답' },
+  { key:'ox',      name:'OX' },
+  { key:'initial', name:'초성' },
+  { key:'choice',  name:'선택형' },
+];
+export function formativeTypeDef(key){ return FORMATIVE_TYPES.find(t => t.key === key) || null; }
 
 // 표시 이름 헬퍼
 const pad2 = n => String(n).padStart(2, '0');
@@ -103,14 +124,19 @@ const DEMO = {
       parts:{ concept:{ title:'붕당의 형성과 전개' },
               mission:{ appKey:'4cut', title:'네컷 만화 그리기' },
               question:{ title:'오늘의 질문', prompt:'붕당정치의 긍정적 면과 부정적 면은 무엇인가?' },
-              formative:{ title:'OX 5문항' } },
+              formative:{ title:'OX 5문항', items:[
+                { type:'ox',      q:'붕당은 선조 때 처음 갈라졌다.' },
+                { type:'short',   q:'동인과 서인으로 갈라진 계기가 된 자리는?' },
+                { type:'initial', q:'붕당의 시작이 된 인물 둘 가운데 한 명 (ㄱㅎㅇ)' },
+                { type:'choice',  q:'다음 중 서인에 속한 인물은?' },
+              ] } },
       order:['concept','mission','question','formative'] },
     { id:'L2', title:'예송논쟁',
       parts:{ concept:{ title:'예송논쟁의 쟁점' } },
       order:['concept'] },
     { id:'L3', title:'환국',
       parts:{ mission:{ appKey:'timeline', title:'환국 타임라인' },
-              formative:{ title:'환국 확인 퀴즈' } },
+              formative:{ title:'환국 확인 퀴즈', items:[] } },
       order:['mission','formative'] },
   ],
 
@@ -127,6 +153,13 @@ const DEMO = {
   ],
   courseQuizzes: [
     { id:'cq1', courseId:'c_s301', quizId:'Q1', isOpen:true },
+  ],
+
+  // mission_apps: 문서 id가 곧 앱 키(= apps/ 아래 폴더 이름). 주소 둘은 APP_규약.md의 표 그대로.
+  missionApps: [
+    { id:'_template', name:'템플릿',        studentUrl:'apps/_template/index.html', adminUrl:'apps/_template/admin.html' },
+    { id:'4cut',      name:'네컷 만화',      studentUrl:'apps/4cut/index.html',      adminUrl:'apps/4cut/admin.html' },
+    { id:'timeline',  name:'타임라인',       studentUrl:'apps/timeline/index.html',  adminUrl:'apps/timeline/admin.html' },
   ],
 
   // course_scores: 강의실id_학번
@@ -188,6 +221,12 @@ export function getPartItems(courseId, partKey){
     .map((cl, i) => ({ cl, lesson:cl.lesson, part:cl.lesson.parts?.[partKey], no:i + 1 }))
     .filter(x => !!x.part);
 }
+
+// 그 칸(개념노트/미션/질문노트/형성평가)을 가진 강의만. 칸별 메뉴 넷이 쓴다.
+export function getLessonsWithPart(key){ return DEMO.lessons.filter(l => !!l.parts?.[key]); }
+
+export function getMissionApps(){ return [...DEMO.missionApps]; }
+export function getMissionApp(appKey){ return DEMO.missionApps.find(a => a.id === appKey) || null; }
 
 export function getQuizzes(){ return [...DEMO.quizzes]; }
 export function getCourseQuizzes(courseId){
