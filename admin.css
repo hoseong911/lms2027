@@ -18,11 +18,27 @@ html:not(.lms-ready) #shell{display:none}
   font-size:14px;cursor:pointer;margin-bottom:2px;border-left:2px solid transparent}
 .side .mi:hover{background:var(--hover);color:var(--ink)}
 .side .mi.on{background:var(--accent-soft);color:var(--navy);font-weight:700;border-left-color:var(--navy)}
-.main{flex:1;min-width:0;padding:24px 28px 80px;max-width:1000px}
+.main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto}
 
 h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 .pagehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .pagehead h2{flex:1}
+
+/* 학년도 고르개(드롭다운) */
+.sel{border:1px solid var(--line);border-radius:var(--r-btn);padding:8px 30px 8px 12px;font-size:14px;
+  background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 10px center;
+  color:var(--ink);font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none}
+.sel:hover{border-color:var(--line-strong)}
+.sel:focus{outline:none;border-color:var(--navy)}
+
+/* 추가 버튼(생성 팝업 열기) */
+.btn-add{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--navy);color:#fff;background:var(--navy);
+  border-radius:var(--r-btn);padding:8px 14px 8px 11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-add:hover{background:var(--navy-800);border-color:var(--navy-800)}
+
+/* 과목 머리말(목록 묶음) */
+.grouphead{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.3px;margin:16px 2px 6px}
+.grouphead:first-child{margin-top:4px}
 
 /* 태그/카테고리 줄 — 구분선으로만 구분, 배경색 없음 */
 .catline{display:flex;gap:18px;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:10px;flex-wrap:wrap}
@@ -110,6 +126,21 @@ input[type=number]{-moz-appearance:textfield}
   padding:9px 14px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
 .btn-danger:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .btn-danger:disabled{opacity:.4;cursor:default}
+
+/* 생성 팝업 — 세그먼트로 학년도/강의실 고르고, 폼은 팝업 안에서만 */
+.seg{display:flex;gap:4px;background:var(--hover);border:1px solid var(--line);border-radius:var(--r);
+  padding:3px;margin:4px 0 16px}
+.seg-b{flex:1;border:0;background:none;border-radius:calc(var(--r) - 3px);padding:8px 10px;font-size:13.5px;
+  color:var(--sub);cursor:pointer;font-family:inherit;font-weight:600}
+.seg-b:hover:not(.on):not(:disabled){color:var(--ink)}
+.seg-b.on{background:var(--card);color:var(--navy);box-shadow:0 1px 2px rgba(4,30,66,.08)}
+.seg-b:disabled{opacity:.4;cursor:default}
+.m-form{display:flex;flex-direction:column;gap:6px}
+.m-form .f{width:100%;margin:0}
+.m-label{font-size:12px;color:var(--sub);font-weight:700;margin-top:6px}
+.m-two{display:flex;gap:10px}
+.m-two>div{flex:1;display:flex;flex-direction:column;gap:6px}
+.m-hint{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5}
 
 /* 카테고리 줄 오른쪽에 붙는 인라인 폼(학년도 만들기) */
 .catline .line-end{margin-left:auto;display:flex;align-items:center;gap:6px;padding-bottom:0}
