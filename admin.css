@@ -20,6 +20,18 @@ html:not(.lms-ready) #shell{display:none}
 .side .mi.on{background:var(--accent-soft);color:var(--navy);font-weight:700;border-left-color:var(--navy)}
 .main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto}
 
+/* 로그아웃은 메뉴 맨 아래에 조금 띄워 둔다 */
+.side .mi.side-logout{margin-top:14px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
+
+/* 어드민 로그인 화면 */
+#login{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:40}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:28px;width:min(360px,92vw);display:flex;flex-direction:column;gap:6px}
+.login-card h1{font-size:var(--fs-title);margin:0 0 10px;color:var(--navy);letter-spacing:-.2px}
+.login-card .f{width:100%}
+.login-card .btn-text{margin-top:12px}
+.login-card .m-err{color:var(--red);font-size:var(--fs-meta);min-height:18px;margin-top:6px}
+
 h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pagehead{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .pagehead h2{flex:1}

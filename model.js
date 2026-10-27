@@ -13,6 +13,8 @@
 //   조회 함수만 Firestore 호출로 바꾸면 화면은 그대로 둔다.
 // ───────────────────────────────────────────────────────────────────────────
 
+import { db, collection, getDocs, doc, setDoc, deleteDoc } from './shared/fb.js?v=20261027n';
+
 // 컬렉션 이름 — 강의실에 매인 것은 course_ 접두, 재사용 창고는 접두 없는 복수형.
 export const COLLECTIONS = {
   schoolYears:        'school_years',
@@ -202,7 +204,31 @@ export function levelFromXp(total){
   return lv;
 }
 
-// ── 조회 (뒤에 Firestore로 교체할 자리) ──
+/* ── Firestore 연결 (핵심 구조만, 2026-10-27) ──
+   부팅 때 다섯 컬렉션을 메모리(DEMO)로 한 번 불러오고, 이후 화면은 이 메모리를 본다.
+   쓰기는 메모리를 먼저 고치고(화면 즉시 반영) Firestore에도 보낸다(백그라운드).
+   아직 안 붙인 것(성적·경험치·제출물·복습·미션앱)은 이 파일 위쪽 데모가 그대로 돈다. */
+function put(coll, obj){ setDoc(doc(db, coll, obj.id), obj).catch(e => console.error('save', coll, obj.id, e)); }
+function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('del', coll, id, e)); }
+
+export async function loadCore(){
+  const C = COLLECTIONS;
+  const [ys, cs, ss, cls, ls] = await Promise.all([
+    getDocs(collection(db, C.schoolYears)),
+    getDocs(collection(db, C.courses)),
+    getDocs(collection(db, C.courseStudents)),
+    getDocs(collection(db, C.courseLessons)),
+    getDocs(collection(db, C.lessons)),
+  ]);
+  const rows = snap => snap.docs.map(d => ({ ...d.data(), id:d.id }));
+  DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
+  DEMO.courses     = rows(cs);
+  DEMO.students    = rows(ss);
+  DEMO.courseLessons = rows(cls);
+  DEMO.lessons     = rows(ls);
+}
+
+// ── 조회 (메모리에서. loadCore가 Firestore에서 채워 둔다) ──
 export function getYears(){ return [...DEMO.years]; }
 export function getCourses(year){ return DEMO.courses.filter(c => !year || c.year === +year); }
 export function getCourse(id){ return DEMO.courses.find(c => c.id === id) || null; }
@@ -253,9 +279,10 @@ export function getXp(courseId, studentNo){
   return DEMO.xp.find(x => x.courseId === courseId && x.studentNo === studentNo) || null;
 }
 
-// ── 변경 (데모: 메모리에만. 다음 단계에서 Firestore 쓰기로 교체) ──
-let seq = 100;
-const nid = p => `${p}${++seq}`;
+// ── 변경 (메모리를 고치고 Firestore에도 보낸다) ──
+// id는 새로고침해도 겹치지 않게 시각+증가값으로 만든다(예전 c_101 같은 재사용 충돌 방지).
+let seq = 0;
+const nid = p => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
 /* 학년도 — 강의실이 없어도 학년도가 먼저 있어야 한다(요구사항 5, 16).
    비어 있는 데이터베이스에서 제일 먼저 만드는 것이 이것이다. */
 export function addYear(year){
@@ -265,6 +292,7 @@ export function addYear(year){
   const row = { id:String(y), year:y };
   DEMO.years.push(row);
   DEMO.years.sort((a, b) => b.year - a.year);   // 큰 해부터
+  put(COLLECTIONS.schoolYears, row);
   return row;
 }
 
@@ -283,7 +311,7 @@ export function addCourse({ year, subject, grade, classNo }){
   if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인해 주세요.');
   if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인해 주세요.');
   if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있습니다.`);
-  DEMO.courses.push(c); return c;
+  DEMO.courses.push(c); put(COLLECTIONS.courses, c); return c;
 }
 
 // 같은 학년도에 과목과 학년과 반이 똑같은 강의실이 또 있는가(자기 자신은 뺀다)
@@ -300,18 +328,22 @@ export function updateCourse(id, { subject, grade, classNo }){
   if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인해 주세요.');
   if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있습니다.`);
   Object.assign(c, { subject:next.subject, grade:next.grade, classNo:next.classNo });
-  return c;
+  put(COLLECTIONS.courses, c); return c;
 }
 
 /* 강의실 하나 삭제 — 그 강의실에 매인 것(course_ 접두)이 전부 같이 없어진다.
    창고(lessons, quizzes)는 건드리지 않는다. 강의 내용 자체는 남는다. */
 export function deleteCourse(id){
   const c = getCourse(id); if (!c) return null;
+  // 같이 없어지는 것(course_ 접두). 지울 id를 먼저 모아 Firestore에서도 지운다.
+  DEMO.students.filter(s => s.courseId === id).forEach(s => del(COLLECTIONS.courseStudents, s.id));
+  DEMO.courseLessons.filter(cl => cl.courseId === id).forEach(cl => del(COLLECTIONS.courseLessons, cl.id));
   DEMO.courses = DEMO.courses.filter(x => x.id !== id);
   DEMO.students = DEMO.students.filter(s => s.courseId !== id);
   DEMO.courseLessons = DEMO.courseLessons.filter(cl => cl.courseId !== id);
   DEMO.courseQuizzes = DEMO.courseQuizzes.filter(cq => cq.courseId !== id);
   DEMO.scores = DEMO.scores.filter(s => s.courseId !== id);
+  del(COLLECTIONS.courses, id);
   return c;
 }
 export function addStudent({ year, grade, classNo, studentNo, name }){
@@ -323,12 +355,14 @@ export function addStudent({ year, grade, classNo, studentNo, name }){
     const id = `${c.id}_${studentNo}`;
     if (DEMO.students.some(s => s.id === id)) return;
     const s = { id, courseId:c.id, studentNo, name };
-    DEMO.students.push(s); added.push(s);
+    DEMO.students.push(s); added.push(s); put(COLLECTIONS.courseStudents, s);
   });
   return { rooms, added };
 }
 export function removeStudentEverywhere(year, studentNo){
   const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
+  DEMO.students.filter(s => ids.has(s.courseId) && s.studentNo === studentNo)
+    .forEach(s => del(COLLECTIONS.courseStudents, s.id));
   DEMO.students = DEMO.students.filter(s => !(ids.has(s.courseId) && s.studentNo === studentNo));
 }
 // 학생 한 명을 한 강의실에 넣고 빼기 — 수강 과목(강의실) 체크에 쓴다.
@@ -337,17 +371,21 @@ export function enrollStudent(courseId, studentNo, name){
   const id = `${courseId}_${studentNo}`;
   if (DEMO.students.some(s => s.id === id)) return null;
   const s = { id, courseId, studentNo, name: name || '' };
-  DEMO.students.push(s); return s;
+  DEMO.students.push(s); put(COLLECTIONS.courseStudents, s); return s;
 }
 export function unenrollStudent(courseId, studentNo){
   const id = `${courseId}_${studentNo}`;
   const before = DEMO.students.length;
   DEMO.students = DEMO.students.filter(s => s.id !== id);
-  return DEMO.students.length < before;
+  if (DEMO.students.length < before){ del(COLLECTIONS.courseStudents, id); return true; }
+  return false;
 }
+// 강의 본체를 Firestore에 통째로 저장한다(parts·order·개념 콘텐츠·질문이 다 lessons 문서 안에 있다).
+function saveLesson(lessonId){ const l = getLesson(lessonId); if (l) put(COLLECTIONS.lessons, l); }
+
 export function addLesson(title){
   const l = { id:nid('L'), title, parts:{}, order:[] };
-  DEMO.lessons.push(l); return l;
+  DEMO.lessons.push(l); put(COLLECTIONS.lessons, l); return l;
 }
 export function setLessonPart(lessonId, key, on){
   const l = getLesson(lessonId); if (!l) return;
@@ -358,20 +396,23 @@ export function setLessonPart(lessonId, key, on){
     delete l.parts[key];
     l.order = l.order.filter(k => k !== key);
   }
+  saveLesson(lessonId);
 }
 export function moveLessonPart(lessonId, key, dir){
   const l = getLesson(lessonId); if (!l) return;
   const i = l.order.indexOf(key); if (i < 0) return;
   const j = i + dir; if (j < 0 || j >= l.order.length) return;
   [l.order[i], l.order[j]] = [l.order[j], l.order[i]];
+  saveLesson(lessonId);
 }
 export function placeLesson(courseId, lessonId){
   const order = DEMO.courseLessons.filter(c => c.courseId === courseId).length + 1;
-  const cl = { id:nid('cl'), courseId, lessonId, order, isOpen:false };
-  DEMO.courseLessons.push(cl); return cl;
+  const cl = { id:nid('cl'), courseId, lessonId, order, isOpen:false, date:'' };
+  DEMO.courseLessons.push(cl); put(COLLECTIONS.courseLessons, cl); return cl;
 }
 export function toggleCourseLessonOpen(id){
-  const cl = DEMO.courseLessons.find(c => c.id === id); if (cl) cl.isOpen = !cl.isOpen;
+  const cl = DEMO.courseLessons.find(c => c.id === id);
+  if (cl){ cl.isOpen = !cl.isOpen; put(COLLECTIONS.courseLessons, cl); }
 }
 // 한 강의실 안에서 꽂힌 강의의 차례를 위/아래로(dir: -1 위, +1 아래). order 값을 맞바꾼다.
 export function moveCourseLesson(courseId, clId, dir){
@@ -379,6 +420,7 @@ export function moveCourseLesson(courseId, clId, dir){
   const i = arr.findIndex(c => c.id === clId); if (i < 0) return;
   const j = i + dir; if (j < 0 || j >= arr.length) return;
   const a = arr[i], b = arr[j]; const t = a.order; a.order = b.order; b.order = t;
+  put(COLLECTIONS.courseLessons, a); put(COLLECTIONS.courseLessons, b);
 }
 export function toggleCourseQuizOpen(id){
   const cq = DEMO.courseQuizzes.find(c => c.id === id); if (cq) cq.isOpen = !cq.isOpen;
@@ -386,7 +428,7 @@ export function toggleCourseQuizOpen(id){
 // 수업일자('M/D') 저장 — 진도표와 강의실 상세가 같은 course_lessons를 써서 서로 맞물린다.
 export function setCourseLessonDate(clId, date){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
-  cl.date = String(date ?? '').trim(); return cl;
+  cl.date = String(date ?? '').trim(); put(COLLECTIONS.courseLessons, cl); return cl;
 }
 // 포트폴리오(성적) 요약 — 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
 export function scoreSummary(courseId, studentNo){
@@ -408,23 +450,26 @@ export function getConceptContent(lessonId){ return conceptOf(lessonId) || []; }
 export function conceptAddLine(lessonId, type){
   const c = conceptOf(lessonId); if (!c) return;
   c.push(type === 'divider' ? { type:'divider', title:'' } : { type:'row', text:'' });
+  saveLesson(lessonId);
 }
 export function conceptSetLine(lessonId, idx, value){
   const c = conceptOf(lessonId), line = c?.[idx]; if (!line) return;
   if (line.type === 'divider') line.title = value; else line.text = value;
+  saveLesson(lessonId);
 }
 export function conceptMoveLine(lessonId, idx, dir){
   const c = conceptOf(lessonId); if (!c) return;
   const j = idx + dir; if (j < 0 || j >= c.length) return;
   [c[idx], c[j]] = [c[j], c[idx]];
+  saveLesson(lessonId);
 }
 export function conceptDelLine(lessonId, idx){
-  const c = conceptOf(lessonId); if (c && c[idx]) c.splice(idx, 1);
+  const c = conceptOf(lessonId); if (c && c[idx]){ c.splice(idx, 1); saveLesson(lessonId); }
 }
 
 // ── 오늘의 질문 ──
 export function setQuestion(lessonId, patch){
-  const l = getLesson(lessonId); if (l?.parts?.question) Object.assign(l.parts.question, patch);
+  const l = getLesson(lessonId); if (l?.parts?.question){ Object.assign(l.parts.question, patch); saveLesson(lessonId); }
 }
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');

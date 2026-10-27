@@ -6,8 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261027m';
+import * as M from './model.js?v=20261027n';
 import { icon } from './shared/icons.js';
+import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261027n';
 
 const YEAR = 2027;
 const $side = document.getElementById('side');
@@ -66,11 +67,49 @@ function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
   if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
   document.documentElement.classList.add('lms-ready');
-  document.getElementById('shell').hidden = false;
   if (!document.getElementById('toast')){
     const t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t);
   }
-  render();
+  // 로그인해야 Firestore에 쓸 수 있다(규칙 isAdmin). 로그인 전엔 로그인 화면만 보인다.
+  onAuthStateChanged(auth, async user => {
+    if (!user){ showLogin(); return; }
+    document.getElementById('login')?.remove();
+    document.getElementById('boot').textContent = '불러오는 중…';
+    document.getElementById('boot').style.display = 'grid';
+    try { await M.loadCore(); }
+    catch(e){ console.error(e); toast('데이터를 불러오지 못했습니다.'); }
+    document.getElementById('boot').style.display = 'none';
+    document.getElementById('shell').hidden = false;
+    render();
+  });
+}
+
+// ── 어드민 로그인 화면 (Firebase Auth 이메일/비밀번호) ──
+function showLogin(msg){
+  document.getElementById('shell').hidden = true;
+  document.getElementById('boot').style.display = 'none';
+  let el = document.getElementById('login');
+  if (!el){ el = document.createElement('div'); el.id = 'login'; document.body.appendChild(el); }
+  el.innerHTML = `<form class="login-card" id="login-form">
+    <h1>2027 관리자</h1>
+    <label class="m-label">이메일</label>
+    <input class="f" id="lg-email" type="email" autocomplete="username">
+    <label class="m-label">비밀번호</label>
+    <input class="f" id="lg-pw" type="password" autocomplete="current-password">
+    <button class="btn-text" type="submit">로그인</button>
+    <div class="m-err" id="lg-err">${esc(msg || '')}</div>
+  </form>`;
+  const form = el.querySelector('#login-form');
+  el.querySelector('#lg-email').focus();
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = el.querySelector('#lg-email').value.trim();
+    const pw = el.querySelector('#lg-pw').value;
+    const err = el.querySelector('#lg-err');
+    err.textContent = '';
+    try { await signInWithEmailAndPassword(auth, email, pw); }   // 성공하면 onAuthStateChanged가 화면을 바꾼다
+    catch(_){ err.textContent = '이메일 또는 비밀번호를 확인해 주세요.'; }
+  });
 }
 
 function toast(msg){
@@ -126,7 +165,8 @@ function run(fn, okMsg){
 function renderSide(){
   $side.innerHTML = `<div class="brand">2027</div>` + M.ADMIN_MENUS.map(m =>
     `<div class="mi ${m.key === state.page ? 'on':''}" data-act="page" data-k="${m.key}">
-      ${icon(m.icon,18)}<span>${esc(m.name)}</span></div>`).join('');
+      ${icon(m.icon,18)}<span>${esc(m.name)}</span></div>`).join('') +
+    `<div class="mi side-logout" data-act="logout">${icon('log-out',18)}<span>로그아웃</span></div>`;
 }
 
 // ── 카테고리 줄(구분선) ──
@@ -1008,6 +1048,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'fm-open': state.formativeLessonId = id; render(); break;
     case 'fm-close': state.formativeLessonId = null; render(); break;
     case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
+
+    case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
 
     case 'noop': toast('뼈대 — 다음 단계.'); break;
   }
