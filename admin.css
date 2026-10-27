@@ -1,31 +1,31 @@
-@import url("shared/theme.css?v=20261027c");
-/* 2027 LMS 어드민 — 제로베이스 뼈대 (2026-10-26, 색과 형태 2026-10-27)
-   색은 shared/theme.css 한 곳에서. 여기서는 형태만 쓴다.
+@import url("shared/theme.css?v=20261027i");
+/* 2027 LMS 어드민 — 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀 — 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
-   화면 규칙: 태그/카테고리는 구분선으로, 액션은 아이콘 버튼(.ib),
-   숫자 칸은 스피너 없음, 입력 칸 위 이름표 없음(placeholder로). */
+   글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
+   화면 규칙: 태그/카테고리는 구분선으로, 액션은 아이콘 버튼(.ib), 숫자 칸은 스피너 없음. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:var(--fs-body);
+  line-height:1.5;-webkit-font-smoothing:antialiased}
 .boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--sub)}
 html.lms-ready .boot{display:none}
 html:not(.lms-ready) #shell{display:none}
 
 #shell{display:flex;min-height:100vh}
 .side{width:220px;flex:0 0 auto;background:var(--card);border-right:1px solid var(--line);padding:16px 10px}
-.side .brand{font-weight:900;font-size:20px;padding:6px 12px 18px;letter-spacing:1px;color:var(--navy)}
+.side .brand{font-weight:900;font-size:var(--fs-title);padding:6px 12px 18px;letter-spacing:1px;color:var(--navy)}
 .side .mi{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);color:var(--sub);
-  font-size:14px;cursor:pointer;margin-bottom:2px;border-left:2px solid transparent}
+  font-size:var(--fs-body);cursor:pointer;margin-bottom:2px;border-left:2px solid transparent}
 .side .mi:hover{background:var(--hover);color:var(--ink)}
 .side .mi.on{background:var(--accent-soft);color:var(--navy);font-weight:700;border-left-color:var(--navy)}
 .main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto}
 
-h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
-.pagehead{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
+.pagehead{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .pagehead h2{flex:1}
 
 /* 학년도 고르개(드롭다운) */
-.sel{border:1px solid var(--line);border-radius:var(--r-btn);padding:8px 30px 8px 12px;font-size:14px;
+.sel{border:1px solid var(--line);border-radius:var(--r-btn);padding:8px 30px 8px 12px;font-size:var(--fs-body);
   background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 10px center;
   color:var(--ink);font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none}
 .sel:hover{border-color:var(--line-strong)}
@@ -33,13 +33,13 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 
 /* 추가 버튼(생성 팝업 열기) */
 .btn-add{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--navy);color:#fff;background:var(--navy);
-  border-radius:var(--r-btn);padding:8px 14px 8px 11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  border-radius:var(--r-btn);padding:8px 14px 8px 11px;font-size:var(--fs-body);font-weight:600;cursor:pointer;font-family:inherit}
 .btn-add:hover{background:var(--navy-800);border-color:var(--navy-800)}
 
-/* 목록 묶음 사이 구분선(이름표 없이, 요구사항 3) */
+/* 목록 묶음 사이 구분선(이름표 없이) */
 .group-sep{height:0;border-top:1px solid var(--line);margin:14px 0 10px}
 
-/* 줄 전체를 눌러 아래로 펼치기 (요구사항 6) */
+/* 줄 전체를 눌러 아래로 펼치기 */
 .rowlink{cursor:pointer;display:flex;align-items:center}
 .rowlink .t{display:flex;align-items:center}
 .row.on{border-color:var(--navy);background:var(--accent-soft)}
@@ -47,7 +47,7 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 .row.compact{padding:9px 13px}
 .row.compact .t{font-weight:500}
 
-/* 펼쳐지는 상세 패널 — 줄 바로 아래, 두 칸(강의 진도 | 학생 명단) */
+/* 펼쳐지는 상세 패널 — 줄 바로 아래, 두 칸 */
 .detail{border:1px solid var(--navy);border-top:0;border-radius:0 0 var(--r) var(--r);
   background:var(--card);margin:-6px 0 10px;padding:4px 14px 14px}
 .detail.two{display:flex;gap:22px;align-items:flex-start}
@@ -55,31 +55,30 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 .detail .sectionlabel:first-child{margin-top:12px}
 .detail .row{background:var(--bg)}
 
-/* 강의 진도 줄 — 차수 · 제목 · 수업일자 · 공개토글 */
+/* 강의 진도 줄 — 차수, 제목, 수업일자, 공개토글 */
 .plrow{gap:10px}
-.plnum{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--navy);min-width:34px}
-.dateinput{width:64px;padding:6px 8px;text-align:center;font-size:13px}
+.plnum{flex:0 0 auto;font-size:var(--fs-meta);font-weight:700;color:var(--navy);min-width:34px}
+.dateinput{width:64px;padding:6px 8px;text-align:center;font-size:var(--fs-body)}
 .dateinput.ds-past{color:var(--sub)}
 .dateinput.ds-today{border-color:var(--navy);color:var(--navy);font-weight:700;background:var(--accent-soft)}
 .morebtn{display:inline-block;margin:8px 2px 2px}
 
-/* 학생 카드 펼침 — 레벨·경험치·포인트 + 포트폴리오 */
+/* 학생 카드 펼침 — 레벨, 경험치, 포인트, 포트폴리오 */
 .score-detail{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
   background:var(--bg);margin:-6px 0 6px;padding:10px 14px}
 .sc-stats{display:flex;gap:8px;margin-bottom:10px}
 .sc-stat{flex:1;border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:7px 4px;text-align:center}
-.sc-k{font-size:11px;color:var(--sub);font-weight:700}
-.sc-v{font-size:16px;font-weight:800;color:var(--navy);margin-top:2px}
+.sc-k{font-size:var(--fs-meta);color:var(--sub);font-weight:700}
+.sc-v{font-size:var(--fs-head);font-weight:800;color:var(--navy);margin-top:2px}
 .sc-port .sc-k{margin-bottom:4px}
-.score-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.score-line{display:flex;justify-content:space-between;font-size:var(--fs-body);padding:4px 0;border-bottom:1px dashed var(--line)}
 .score-line:last-child{border-bottom:0}
 .score-line.tot{font-weight:700;color:var(--ink)}
-.score-empty{font-size:13px;color:var(--sub);padding:4px 0}
+.score-empty{font-size:var(--fs-body);color:var(--sub);padding:4px 0}
 
-/* 진도 관리 표 — 강의 × 강의실, 칸은 수업일자 */
-.prog-hint{font-size:13px;color:var(--sub);margin:0 2px 14px}
+/* 진도 관리 표 — 강의 x 강의실, 칸은 수업일자 */
 .prog-wrap{overflow-x:auto}
-.prog{border-collapse:collapse;font-size:13px}
+.prog{border-collapse:collapse;font-size:var(--fs-body)}
 .prog th,.prog td{border:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap}
 .prog thead th{background:var(--hover);color:var(--sub);font-weight:700;padding:8px 10px}
 .prog td.lname,.prog th.lname{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink);min-width:170px}
@@ -93,13 +92,13 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 
 /* 섹션 이름표 오른쪽에 붙는 바로가기 링크 */
 .sectionlabel.between{display:flex;align-items:center;justify-content:space-between}
-.btn-link{border:0;background:none;color:var(--navy);font-size:12.5px;font-weight:600;cursor:pointer;
+.btn-link{border:0;background:none;color:var(--navy);font-size:var(--fs-meta);font-weight:600;cursor:pointer;
   font-family:inherit;padding:0;text-decoration:underline;text-underline-offset:2px}
 .btn-link:hover{color:var(--navy-800)}
 
 /* 태그/카테고리 줄 — 구분선으로만 구분, 배경색 없음 */
-.catline{display:flex;gap:18px;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:10px;flex-wrap:wrap}
-.cat{font-size:13px;color:var(--sub);background:none;border:none;cursor:pointer;padding-bottom:7px;margin-bottom:-8px;
+.catline{display:flex;gap:18px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:14px;flex-wrap:wrap}
+.cat{font-size:var(--fs-body);color:var(--sub);background:none;border:none;cursor:pointer;padding-bottom:8px;margin-bottom:-9px;
   font-family:inherit}
 .cat:hover{color:var(--ink)}
 .cat.on{color:var(--navy);-webkit-text-stroke:.5px var(--navy);border-bottom:2px solid var(--navy)}
@@ -109,9 +108,9 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
   background:var(--card);padding:11px 13px;margin-bottom:6px}
 .row:hover{border-color:var(--line-strong)}
 .row .grow{flex:1;min-width:0}
-.row .t{font-weight:600;font-size:14px}
-.row .s{font-size:12px;color:var(--sub);margin-top:2px}
-.badge{font-size:11px;background:var(--accent-soft);border-radius:3px;padding:2px 8px;color:var(--navy-600)}
+.row .t{font-weight:600;font-size:var(--fs-body)}
+.row .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px}
+.badge{font-size:var(--fs-meta);background:var(--accent-soft);border-radius:3px;padding:2px 8px;color:var(--navy-600)}
 .mono{font-family:ui-monospace,Consolas,monospace}
 
 /* 액션 아이콘 버튼 — 테두리는 진짜 액션 버튼에만, 모서리 8px, 알약 금지 */
@@ -129,7 +128,7 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 /* 인라인 폼 줄 */
 .formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--card);
   border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:14px}
-.f{border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;font-size:14px;background:var(--card);
+.f{border:1px solid var(--line);border-radius:var(--r);padding:9px 10px;font-size:var(--fs-body);background:var(--card);
   color:var(--ink);font-family:inherit}
 .f::placeholder{color:var(--sub)}
 .f:focus{outline:none;border-color:var(--navy);box-shadow:inset 0 -2px 0 -1px var(--navy)}
@@ -137,13 +136,13 @@ h2{font-size:20px;margin:0 0 4px;letter-spacing:-.2px}
 /* 숫자 칸 스피너 제거(혹시 type=number가 섞여도) */
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
-.unit{font-size:13px;color:var(--sub)}
+.unit{font-size:var(--fs-meta);color:var(--sub)}
 .btn-text{border:1px solid var(--navy);color:#fff;background:var(--navy);border-radius:var(--r-btn);
-  padding:9px 14px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+  padding:9px 14px;font-size:var(--fs-body);cursor:pointer;font-weight:600;font-family:inherit}
 .btn-text:hover{background:var(--navy-800);border-color:var(--navy-800)}
 
-.sectionlabel{font-size:12px;color:var(--sub);font-weight:700;margin:20px 2px 8px;letter-spacing:.3px}
-.empty{color:var(--sub);font-size:14px;padding:16px 2px}
+.sectionlabel{font-size:var(--fs-meta);color:var(--sub);font-weight:700;margin:20px 2px 8px;letter-spacing:.3px}
+.empty{color:var(--sub);font-size:var(--fs-body);padding:16px 2px}
 .hi-ic{vertical-align:middle}
 
 /* 강의 편집기 */
@@ -156,94 +155,85 @@ input[type=number]{-moz-appearance:textfield}
 .partrow.off{opacity:.45}
 .palette{flex:0 0 220px}
 .pchip{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:var(--r);
-  padding:9px 11px;margin-bottom:6px;cursor:pointer;background:var(--card);font-size:13.5px;font-family:inherit;
+  padding:9px 11px;margin-bottom:6px;cursor:pointer;background:var(--card);font-size:var(--fs-body);font-family:inherit;
   width:100%;text-align:left;color:var(--ink)}
 .pchip:hover{border-color:var(--line-strong)}
 .pchip .dot{width:10px;height:10px}
 .pchip.has{border-color:var(--navy);color:var(--navy);background:var(--accent-soft)}
 .checkline{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:var(--r);
-  padding:10px 12px;margin-bottom:6px;background:var(--card);cursor:pointer;font-size:14px}
+  padding:10px 12px;margin-bottom:6px;background:var(--card);cursor:pointer;font-size:var(--fs-body)}
 .checkline input{width:17px;height:17px;accent-color:var(--navy)}
-.placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
+.placeholder{color:var(--sub);font-size:var(--fs-body);border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
 
-/* 확인 창 — 브라우저 기본 confirm 대신 쓴다(코드 규칙).
-   되돌릴 수 없는 삭제에만 쓰고, 입력은 인라인 폼으로 받는다(팝업 금지, 요구사항 66). */
+/* 확인 창 — 브라우저 기본 confirm 대신 쓴다(코드 규칙). */
 .modal-back{position:fixed;inset:0;background:rgba(4,30,66,.45);display:grid;place-items:center;z-index:60}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);width:min(440px,92vw);padding:20px}
-.modal h3{margin:0 0 10px;font-size:17px}
-.modal .m-body{font-size:14px;line-height:1.7}
+.modal h3{margin:0 0 10px;font-size:var(--fs-head)}
+.modal .m-body{font-size:var(--fs-body);line-height:1.7}
 .modal .m-body ul{margin:8px 0 0;padding-left:18px;color:var(--sub)}
 .modal .f{width:100%;margin-top:14px}
-.modal .m-err{color:var(--red);font-size:13px;margin-top:8px;min-height:18px}
+.modal .m-err{color:var(--red);font-size:var(--fs-meta);margin-top:8px;min-height:18px}
 .modal .m-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 .btn-ghost{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:var(--r-btn);
-  padding:9px 14px;font-size:14px;cursor:pointer;font-family:inherit}
+  padding:9px 14px;font-size:var(--fs-body);cursor:pointer;font-family:inherit}
 .btn-ghost:hover{background:var(--hover)}
 .btn-danger{border:1px solid var(--red);background:var(--red);color:#fff;border-radius:var(--r-btn);
-  padding:9px 14px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+  padding:9px 14px;font-size:var(--fs-body);cursor:pointer;font-weight:600;font-family:inherit}
 .btn-danger:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .btn-danger:disabled{opacity:.4;cursor:default}
 
-/* 생성 팝업 — 세그먼트로 학년도/강의실 고르고, 폼은 팝업 안에서만 */
+/* 생성 팝업 — 세그먼트로 무엇을 만들지 고르고, 폼은 팝업 안에서만 */
 .seg{display:flex;gap:4px;background:var(--hover);border:1px solid var(--line);border-radius:var(--r);
   padding:3px;margin:4px 0 16px}
-.seg-b{flex:1;border:0;background:none;border-radius:calc(var(--r) - 3px);padding:8px 10px;font-size:13.5px;
+.seg-b{flex:1;border:0;background:none;border-radius:calc(var(--r) - 3px);padding:8px 10px;font-size:var(--fs-body);
   color:var(--sub);cursor:pointer;font-family:inherit;font-weight:600}
 .seg-b:hover:not(.on):not(:disabled){color:var(--ink)}
 .seg-b.on{background:var(--card);color:var(--navy);box-shadow:0 1px 2px rgba(4,30,66,.08)}
 .seg-b:disabled{opacity:.4;cursor:default}
-/* 작은 인라인 세그먼트(과목별/반별 토글) — 카테고리 줄 끝에 */
+/* 작은 인라인 세그먼트(과목별/반별 토글) — 카테고리 줄 끝에. 글자 크기는 본문과 같게 두고 패딩만 줄인다 */
 .seg.seg-inline{margin:0;padding:2px;align-self:center}
-.seg.seg-inline .seg-b{flex:0 0 auto;padding:5px 11px;font-size:12.5px}
+.seg.seg-inline .seg-b{flex:0 0 auto;padding:5px 11px}
 
 .m-form{display:flex;flex-direction:column;gap:6px}
 .m-form .f{width:100%;margin:0}
 .sel-full{width:100%}
-.m-label{font-size:12px;color:var(--sub);font-weight:700;margin-top:6px}
+.m-label{font-size:var(--fs-meta);color:var(--sub);font-weight:700;margin-top:6px}
 .m-two{display:flex;gap:10px}
 .m-two>div{flex:1;display:flex;flex-direction:column;gap:6px}
-.m-hint{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5}
 
-/* 카테고리 줄 오른쪽에 붙는 인라인 폼(학년도 만들기) */
 .catline .line-end{margin-left:auto;display:flex;align-items:center;gap:6px;padding-bottom:0}
-.catline .line-end .f{padding:5px 8px;font-size:13px}
 
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--navy);color:#fff;
-  padding:11px 16px;border-radius:var(--r);font-size:14px;z-index:50;display:none;max-width:90vw;text-align:center}
+  padding:11px 16px;border-radius:var(--r);font-size:var(--fs-body);z-index:50;display:none;max-width:90vw;text-align:center}
 #toast.err{background:var(--red)}
 
 /* ══════ 좁은 화면 ══════
-   선생님은 PC와 모바일 둘 다로 들어온다(지시 2026-10-27, 요구사항 86).
-   PC 전용으로 두지 않는다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
+   선생님은 PC와 모바일 둘 다로 들어온다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
 @media (max-width:760px){
   #shell{display:block;min-height:100dvh}
   .side{width:auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
     border-right:0;border-bottom:1px solid var(--line);padding:0 8px;
     position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch}
   .side::-webkit-scrollbar{display:none}
-  .side .brand{display:none}             /* 좁을 때는 메뉴에 자리를 다 준다 */
+  .side .brand{display:none}
   .side .mi{flex:0 0 auto;margin:0;border-radius:0;border-left:0;border-bottom:2px solid transparent;
     padding:0 11px;min-height:48px;white-space:nowrap}
   .side .mi.on{background:none;border-left:0;border-bottom-color:var(--navy)}
-  .side .mi span{font-size:13px}
   .main{padding:16px 14px 64px;max-width:none}
   .main{padding-left:max(14px, env(safe-area-inset-left));padding-right:max(14px, env(safe-area-inset-right))}
 
-  /* 폼 줄은 세로로 쌓고 칸을 늘린다. 손가락으로 누를 수 있게 키운다 */
   .formrow{padding:10px}
-  .f{min-height:44px;font-size:16px}    /* 16px 밑으로 내리면 사파리가 화면을 확대한다 */
+  .f{min-height:44px;font-size:16px}    /* 16px 밑으로 내리면 사파리가 화면을 확대한다(예외) */
   .f.w-sm{width:72px}
   .f.w-md{flex:1;min-width:110px}
   .btn-text{min-height:44px}
   .ib{width:40px;height:40px}
   .catline{gap:14px}
   .catline .line-end{width:100%;margin-left:0;padding-top:8px}
-  .catline .line-end .f{flex:1;min-height:40px}
   .editor{flex-direction:column}
   .palette{flex:1 1 auto;width:100%}
   .row{flex-wrap:wrap}
   .row .tools{margin-left:auto}
-  /* 상세 두 칸은 좁을 때 위아래로 */
   .detail.two{flex-direction:column;gap:0}
   .detail.two .dcol+.dcol{margin-top:6px}
   .plrow{flex-wrap:nowrap}

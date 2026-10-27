@@ -147,7 +147,7 @@ function pageRooms(){
 
   if (!years.length)
     return `<div class="pagehead"><h2>강의실 관리</h2>${addBtn}</div>
-      <div class="empty">학년도가 없습니다. 오른쪽 위 추가에서 학년도를 먼저 만드세요.</div>`;
+      <div class="empty">학년도가 없습니다.</div>`;
 
   const courses = M.getCourses(state.year);
   const byClass = state.roomGroup === 'class';
@@ -194,7 +194,7 @@ function pageRooms(){
 
   let rowsHtml;
   if (!list.length){
-    rowsHtml = `<div class="empty">강의실이 없습니다. 오른쪽 위 추가에서 만드세요.</div>`;
+    rowsHtml = `<div class="empty">강의실이 없습니다.</div>`;
   } else {
     const keyOf = c => byClass ? M.roomNo(c) : c.subject;
     const out = []; let last = null, first = true;
@@ -304,7 +304,6 @@ function pageProgress(){
   }).join('');
 
   return `${head}
-    <div class="prog-hint">칸에 수업일자를 'M/D'로 적습니다. 강의실 관리의 강의 진도와 같이 맞물립니다.</div>
     <div class="prog-wrap"><table class="prog">
       <thead><tr><th class="lname">강의</th>${th}</tr></thead>
       <tbody>${body}</tbody>
@@ -348,7 +347,6 @@ function openAddModal(initial){
             <div><label class="m-label">학년</label><input class="f" id="a-grade" inputmode="numeric"></div>
             <div><label class="m-label">반</label><input class="f" id="a-class" inputmode="numeric"></div>
           </div>
-          <div class="m-hint">${state.year}학년도에 만듭니다.</div>
         </div>`;
     modal.innerHTML = `<h3>추가</h3>${seg}${body}
       <div class="m-err" id="a-err"></div>
@@ -500,11 +498,9 @@ function openStudentModal(){
           </div>
           <label class="m-label">이름</label>
           <input class="f" id="st-name" autocomplete="off">
-          <div class="m-hint">${state.year}학년도. 그 반 강의실에 모두 등록되고, 수강 과목은 추가한 뒤 학생을 눌러 고릅니다.</div>
         </div>`
       : `<div class="m-form">
-          <div class="m-hint">엑셀 명단 올리기는 다음 단계에서 붙입니다.</div>
-          <button class="btn-ghost" data-m="upload" style="align-self:flex-start">파일 고르기</button>
+          <button class="btn-ghost" data-m="upload" style="align-self:flex-start">엑셀 파일 고르기</button>
         </div>`;
     modal.innerHTML = `<h3>학생 추가</h3>${seg}${body}
       <div class="m-err" id="st-err"></div>
