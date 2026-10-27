@@ -155,9 +155,63 @@ export function getScore(courseId, studentNo){
 // ── 변경 (데모: 메모리에만. 다음 단계에서 Firestore 쓰기로 교체) ──
 let seq = 100;
 const nid = p => `${p}${++seq}`;
+/* 학년도 — 강의실이 없어도 학년도가 먼저 있어야 한다(요구사항 5, 16).
+   비어 있는 데이터베이스에서 제일 먼저 만드는 것이 이것이다. */
+export function addYear(year){
+  const y = +year;
+  if (!(y >= 2000 && y <= 2199)) throw new Error('학년도를 확인해 주세요.');
+  if (DEMO.years.some(x => x.year === y)) throw new Error(`${y}학년도는 이미 있습니다.`);
+  const row = { id:String(y), year:y };
+  DEMO.years.push(row);
+  DEMO.years.sort((a, b) => b.year - a.year);   // 큰 해부터
+  return row;
+}
+
+/* 한 강의실을 지우면 같이 없어지는 것. 삭제 확인 창이 숫자를 보여 주는 데 쓴다. */
+export function courseDeps(id){
+  return {
+    students: DEMO.students.filter(s => s.courseId === id).length,
+    lessons:  DEMO.courseLessons.filter(cl => cl.courseId === id).length,
+    quizzes:  DEMO.courseQuizzes.filter(cq => cq.courseId === id).length,
+  };
+}
+
 export function addCourse({ year, subject, grade, classNo }){
-  const c = { id:nid('c_'), year:+year, subject, grade:+grade, classNo:+classNo, status:'active' };
+  const c = { id:nid('c_'), year:+year, subject:String(subject).trim(), grade:+grade, classNo:+classNo, status:'active' };
+  if (!c.subject) throw new Error('과목을 적어 주세요.');
+  if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인해 주세요.');
+  if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인해 주세요.');
+  if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있습니다.`);
   DEMO.courses.push(c); return c;
+}
+
+// 같은 학년도에 과목과 학년과 반이 똑같은 강의실이 또 있는가(자기 자신은 뺀다)
+function sameRoomExists({ id, year, subject, grade, classNo }){
+  return DEMO.courses.some(c => c.id !== id && c.year === +year &&
+    c.subject === subject && c.grade === +grade && c.classNo === +classNo);
+}
+
+export function updateCourse(id, { subject, grade, classNo }){
+  const c = getCourse(id); if (!c) throw new Error('강의실을 찾지 못했습니다.');
+  const next = { id, year:c.year, subject:String(subject).trim(), grade:+grade, classNo:+classNo };
+  if (!next.subject) throw new Error('과목을 적어 주세요.');
+  if (!(next.grade >= 1 && next.grade <= 6)) throw new Error('학년을 확인해 주세요.');
+  if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인해 주세요.');
+  if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있습니다.`);
+  Object.assign(c, { subject:next.subject, grade:next.grade, classNo:next.classNo });
+  return c;
+}
+
+/* 강의실 하나 삭제 — 그 강의실에 매인 것(course_ 접두)이 전부 같이 없어진다.
+   창고(lessons, quizzes)는 건드리지 않는다. 강의 내용 자체는 남는다. */
+export function deleteCourse(id){
+  const c = getCourse(id); if (!c) return null;
+  DEMO.courses = DEMO.courses.filter(x => x.id !== id);
+  DEMO.students = DEMO.students.filter(s => s.courseId !== id);
+  DEMO.courseLessons = DEMO.courseLessons.filter(cl => cl.courseId !== id);
+  DEMO.courseQuizzes = DEMO.courseQuizzes.filter(cq => cq.courseId !== id);
+  DEMO.scores = DEMO.scores.filter(s => s.courseId !== id);
+  return c;
 }
 export function addStudent({ year, grade, classNo, studentNo, name }){
   // 그 학년도, 그 반(과목 무관)의 강의실 전부에 등록

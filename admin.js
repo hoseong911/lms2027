@@ -16,6 +16,7 @@ const state = {
   page: 'rooms',
   year: YEAR,
   fSubject: null, fRoom: null,      // 강의실 관리 필터
+  editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   lessonId: null, lessonTab: 'edit',
   gradingType: 'question',
@@ -40,6 +41,50 @@ function toast(msg){
   clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 1800);
 }
 
+/* 확인 창 — 브라우저 기본 confirm을 쓰지 않는다(코드 규칙).
+   되돌릴 수 없는 삭제에만 쓴다. 보통 입력은 인라인 폼으로 받는다(요구사항 66).
+   needText를 주면 그 글자를 그대로 쳐야 확인 버튼이 켜진다(강의실 삭제, 화면 규칙 2026-10-25). */
+function confirmDelete({ title, bodyHtml = '', needText = null, okText = '삭제' }){
+  return new Promise(resolve => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <h3>${esc(title)}</h3>
+      <div class="m-body">${bodyHtml}</div>
+      ${needText ? `<input class="f" id="m-text" placeholder="${esc(needText)}" autocomplete="off">` : ''}
+      <div class="m-err" id="m-err"></div>
+      <div class="m-acts">
+        <button class="btn-ghost" data-m="cancel">취소</button>
+        <button class="btn-danger" data-m="ok" ${needText ? 'disabled' : ''}>${esc(okText)}</button>
+      </div></div>`;
+    document.body.appendChild(back);
+
+    const ok = back.querySelector('[data-m="ok"]');
+    const inp = back.querySelector('#m-text');
+    const close = v => { document.removeEventListener('keydown', onKey); back.remove(); resolve(v); };
+    const onKey = e => {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter' && !ok.disabled) close(true);
+    };
+    if (inp){
+      inp.addEventListener('input', () => { ok.disabled = inp.value.trim() !== needText; });
+      inp.focus();
+    } else ok.focus();
+    back.addEventListener('click', e => {
+      if (e.target === back) close(false);
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      close(b.dataset.m === 'ok');
+    });
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+// model.js가 던지는 오류 메시지를 그대로 토스트로. 성공하면 다시 그린다.
+function run(fn, okMsg){
+  try { const r = fn(); if (okMsg) toast(typeof okMsg === 'function' ? okMsg(r) : okMsg); render(); return r; }
+  catch (e){ toast(e.message); return null; }
+}
+
 // ── 사이드 ──
 function renderSide(){
   $side.innerHTML = `<div class="brand">2027</div>` + M.ADMIN_MENUS.map(m =>
@@ -48,10 +93,11 @@ function renderSide(){
 }
 
 // ── 카테고리 줄(구분선) ──
-function catline(items, active, act, allLabel){
+// extra를 주면 줄 오른쪽 끝에 붙는다(학년도 줄의 "학년도 만들기" 칸).
+function catline(items, active, act, allLabel, extra = ''){
   const all = allLabel ? `<button class="cat ${active==null||active==='all'?'on':''}" data-act="${act}" data-v="all">${esc(allLabel)}</button>` : '';
   const rest = items.map(it => `<button class="cat ${String(active)===String(it.v)?'on':''}" data-act="${act}" data-v="${esc(it.v)}">${esc(it.label)}</button>`).join('');
-  return `<div class="catline">${all}${rest}</div>`;
+  return `<div class="catline">${all}${rest}${extra}</div>`;
 }
 
 // ── 강의실 관리 ──
@@ -63,17 +109,43 @@ function pageRooms(){
   if (state.fSubject && state.fSubject !== 'all') list = list.filter(c => c.subject === state.fSubject);
   if (state.fRoom && state.fRoom !== 'all') list = list.filter(c => M.roomNo(c) === state.fRoom);
 
-  const yearLine = catline(M.getYears().map(y => ({ v:y.year, label:`${y.year}` })), state.year, 'set-year');
+  // 학년도 줄 오른쪽에 만들기 칸을 붙인다. 강의실이 없어도 학년도가 먼저 있어야 한다(요구사항 5, 16).
+  const yearAdd = `<span class="line-end">
+    <input class="f w-sm" id="y-new" inputmode="numeric" placeholder="학년도 (숫자 입력)" style="width:140px">
+    <span class="unit">학년도</span>
+    <button class="ib ib-primary" data-act="year-add" title="학년도 만들기" aria-label="학년도 만들기">${icon('plus',16)}</button>
+  </span>`;
+  const yearLine = catline(M.getYears().map(y => ({ v:y.year, label:`${y.year}` })), state.year, 'set-year', '', yearAdd);
+
+  if (!M.getYears().length)
+    return `<div class="pagehead"><h2>강의실 관리</h2></div>${yearLine}
+      <div class="empty">학년도가 없습니다.</div>`;
+
   const subjLine = catline(subjects.map(s => ({ v:s, label:s })), state.fSubject, 'set-subject', '전체');
   const roomLine = catline(rooms.map(r => ({ v:r, label:r })), state.fRoom, 'set-room', '전체');
 
-  const rowsHtml = list.length ? list.map(c => `<div class="row">
+  // 수정 중인 줄은 그 자리에서 입력 칸이 된다(팝업을 쓰지 않는다, 요구사항 66).
+  const editRow = c => `<div class="row">
+      <input class="f w-md" id="e-subject" value="${esc(c.subject)}" placeholder="과목 (예: 사회)">
+      <input class="f w-sm" id="e-grade" inputmode="numeric" value="${c.grade}" placeholder="학년"><span class="unit">학년</span>
+      <input class="f w-sm" id="e-class" inputmode="numeric" value="${c.classNo}" placeholder="반"><span class="unit">반</span>
+      <div class="grow"></div>
+      <div class="tools">
+        <button class="ib ib-primary" data-act="room-save" data-id="${c.id}" title="저장" aria-label="저장">${icon('check',16)}</button>
+        <button class="ib" data-act="room-cancel" title="취소" aria-label="취소">${icon('x',16)}</button>
+      </div></div>`;
+
+  const showRow = c => `<div class="row">
       <div class="grow"><div class="t">${esc(M.roomName(c))}</div>
         <div class="s">${M.getStudentsByCourse(c.id).length}명</div></div>
       <div class="tools">
         <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-      </div></div>`).join('') : `<div class="empty">강의실이 없습니다.</div>`;
+      </div></div>`;
+
+  const rowsHtml = list.length
+    ? list.map(c => c.id === state.editRoomId ? editRow(c) : showRow(c)).join('')
+    : `<div class="empty">강의실이 없습니다.</div>`;
 
   const addForm = `<div class="formrow">
     <input class="f w-md" id="r-subject" placeholder="과목 (예: 사회)">
@@ -232,20 +304,60 @@ document.getElementById('shell').addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, k = el.dataset.k, id = el.dataset.id, v = el.dataset.v, no = el.dataset.no;
   switch (act){
-    case 'page': state.page = k; state.lessonId = null; render(); break;
-    case 'set-year': state.year = +v; render(); break;
+    case 'page': state.page = k; state.lessonId = null; state.editRoomId = null; render(); break;
+    case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-room': state.fRoom = v; render(); break;
     case 'set-sclass': state.studentClass = v; render(); break;
     case 'set-gtype': state.gradingType = v; render(); break;
 
+    case 'year-add': {
+      const y = val('y-new');
+      if (!y){ toast('학년도를 적어 주세요.'); return; }
+      const row = run(() => M.addYear(y), r => `${r.year}학년도를 만들었습니다.`);
+      if (row){ state.year = row.year; state.fSubject = null; state.fRoom = null; render(); }
+      break;
+    }
+
     case 'room-add': {
       const subject = val('r-subject'), grade = val('r-grade'), classNo = val('r-class');
       if (!subject || !grade || !classNo){ toast('과목, 학년, 반을 적어 주세요.'); return; }
-      const c = M.addCourse({ year:state.year, subject, grade, classNo });
-      toast(`${M.roomName(c)} 강의실을 만들었습니다.`); render(); break;
+      run(() => M.addCourse({ year:state.year, subject, grade, classNo }),
+          c => `${M.roomName(c)} 강의실을 만들었습니다.`);
+      break;
     }
-    case 'room-edit': case 'room-del': toast('뼈대 — 다음 단계에서 붙입니다.'); break;
+    case 'room-edit': state.editRoomId = id; render(); break;
+    case 'room-cancel': state.editRoomId = null; render(); break;
+    case 'room-save': {
+      const subject = val('e-subject'), grade = val('e-grade'), classNo = val('e-class');
+      if (!subject || !grade || !classNo){ toast('과목, 학년, 반을 적어 주세요.'); return; }
+      const c = run(() => M.updateCourse(id, { subject, grade, classNo }));
+      if (c){ state.editRoomId = null; toast(`${M.roomName(c)} 강의실로 저장했습니다.`); render(); }
+      break;
+    }
+    case 'room-del': {
+      const c = M.getCourse(id); if (!c) return;
+      const name = M.roomName(c), d = M.courseDeps(id);
+      const gone = [
+        d.students ? `학생 ${d.students}명` : '',
+        d.lessons  ? `꽂힌 강의 ${d.lessons}개` : '',
+        d.quizzes  ? `걸린 복습 ${d.quizzes}개` : '',
+      ].filter(Boolean);
+      confirmDelete({
+        title: `${name} 강의실 삭제`,
+        // 목록 끝 낱말이 무엇이냐에 따라 조사가 달라지므로 아예 조사를 쓰지 않는다
+        bodyHtml: (gone.length
+          ? `같이 없어지는 것 — ${gone.join(', ')}.<ul><li>강의 내용 자체는 창고에 남습니다</li></ul>`
+          : `되돌릴 수 없습니다.`) + `<br>지우려면 <b>${esc(name)}</b>을 그대로 적어 주세요.`,
+        needText: name,
+      }).then(ok => {
+        if (!ok) return;
+        M.deleteCourse(id);
+        if (state.editRoomId === id) state.editRoomId = null;
+        toast(`${name} 강의실을 삭제했습니다.`); render();
+      });
+      break;
+    }
 
     case 'stu-add': {
       const grade = val('s-grade'), classNo = val('s-class'), n = val('s-no'), name = val('s-name');
@@ -280,6 +392,14 @@ document.getElementById('shell').addEventListener('click', e => {
     }
     case 'noop': toast('뼈대 — 다음 단계.'); break;
   }
+});
+
+/* 인라인 폼에서 엔터를 치면 그 줄의 주 버튼을 누른 것으로 본다.
+   줄마다 핸들러를 달지 않도록 같은 묶음 안의 .btn-text 또는 .ib-primary를 찾는다. */
+document.getElementById('shell').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+  const btn = e.target.closest('.formrow, .row, .catline')?.querySelector('.btn-text, .ib-primary');
+  if (btn){ e.preventDefault(); btn.click(); }
 });
 
 boot();

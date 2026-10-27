@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261027a");
+@import url("shared/theme.css?v=20261027b");
 /* 2027 LMS 어드민 — 제로베이스 뼈대 (2026-10-26, 색과 형태 2026-10-27)
    색은 shared/theme.css 한 곳에서. 여기서는 형태만 쓴다.
    기조: 플랫 + 미니멀 — 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
@@ -92,6 +92,28 @@ input[type=number]{-moz-appearance:textfield}
   padding:10px 12px;margin-bottom:6px;background:var(--card);cursor:pointer;font-size:14px}
 .checkline input{width:17px;height:17px;accent-color:var(--navy)}
 .placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
+
+/* 확인 창 — 브라우저 기본 confirm 대신 쓴다(코드 규칙).
+   되돌릴 수 없는 삭제에만 쓰고, 입력은 인라인 폼으로 받는다(팝업 금지, 요구사항 66). */
+.modal-back{position:fixed;inset:0;background:rgba(4,30,66,.45);display:grid;place-items:center;z-index:60}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);width:min(440px,92vw);padding:20px}
+.modal h3{margin:0 0 10px;font-size:17px}
+.modal .m-body{font-size:14px;line-height:1.7}
+.modal .m-body ul{margin:8px 0 0;padding-left:18px;color:var(--sub)}
+.modal .f{width:100%;margin-top:14px}
+.modal .m-err{color:var(--red);font-size:13px;margin-top:8px;min-height:18px}
+.modal .m-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.btn-ghost{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:var(--r-btn);
+  padding:9px 14px;font-size:14px;cursor:pointer;font-family:inherit}
+.btn-ghost:hover{background:var(--hover)}
+.btn-danger{border:1px solid var(--red);background:var(--red);color:#fff;border-radius:var(--r-btn);
+  padding:9px 14px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-danger:hover{background:var(--red-dark);border-color:var(--red-dark)}
+.btn-danger:disabled{opacity:.4;cursor:default}
+
+/* 카테고리 줄 오른쪽에 붙는 인라인 폼(학년도 만들기) */
+.catline .line-end{margin-left:auto;display:flex;align-items:center;gap:6px;padding-bottom:0}
+.catline .line-end .f{padding:5px 8px;font-size:13px}
 
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--navy);color:#fff;
   padding:11px 16px;border-radius:var(--r);font-size:14px;z-index:50;display:none}
