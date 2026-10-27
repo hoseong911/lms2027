@@ -15,21 +15,34 @@
 
 import { db, collection, getDocs, doc, setDoc, deleteDoc } from './shared/fb.js?v=20261027n';
 
-// 컬렉션 이름 — 강의실에 매인 것은 course_ 접두, 재사용 창고는 접두 없는 복수형.
+/* 컬렉션 설계 — 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
+ * 규칙:
+ *   - 이름에 연도/버전을 박지 않는다. 학년도는 문서의 year 필드로 구분하고,
+ *     지난 해는 status:'archived'로 숨긴다. (2028이 와도 같은 컬렉션을 그대로 쓴다)
+ *   - 강의실에 매인 것은 전부 course_ 접두, 재사용 창고는 접두 없는 복수형.
+ *   - 저장은 전부 Firestore 하나로. (RTDB는 나중에 실시간 미션의 '그 순간' 상태 전용으로만,
+ *     끝나면 최종 결과를 course_submissions에 남긴다)
+ *
+ * 학생이 낸 답은 종류를 가리지 않고 course_submissions 한 곳에 모은다(제출물 통합).
+ *   종류는 part 필드(question/formative/mission)로 구분. 성적은 따로 컬렉션을 두지 않고
+ *   이 제출물에서 뽑아 보여 주는 것으로 시작한다. */
 export const COLLECTIONS = {
-  schoolYears:        'school_years',
-  courses:            'courses',
-  courseStudents:     'course_students',
-  courseAuth:         'course_auth',
-  courseConsent:      'course_consent',
-  courseLessons:      'course_lessons',
-  courseQuizzes:      'course_quizzes',
-  courseSubmissions:  'course_submissions',
-  courseScores:       'course_scores',
-  courseXp:           'course_xp',
-  lessons:            'lessons',
-  quizzes:            'quizzes',
-  missionApps:        'mission_apps',
+  // ── 지금 쓰는 7개 ──
+  schoolYears:        'school_years',   // { year, status }  문서 id = '2027'
+  courses:            'courses',        // 강의실 { year, subject, grade, classNo, status }
+  courseStudents:     'course_students',// 명단 { courseId, studentNo, name }  id = 강의실id_학번
+  courseAuth:         'course_auth',    // 비밀번호 해시 { hash }  id = 학년도_학번 (로그인 때만 읽음)
+  courseLessons:      'course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
+  lessons:            'lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
+  courseSubmissions:  'course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
+
+  // ── 나중(예약) — 해당 단계에서 실제로 만든다 ──
+  quizzes:            'quizzes',        // 복습 문제 창고            (5단계 복습 허브)
+  courseQuizzes:      'course_quizzes', // 강의실에 걸린 복습        (5단계)
+  missionApps:        'mission_apps',   // 미션 미니앱 등록부        (3단계)
+  courseConsent:      'course_consent', // 학생 동의서              (학생 화면 붙일 때)
+  courseScores:       'course_scores',  // 성적 요약(집계가 무거워지면 얹음. 그 전엔 제출물에서 도출)
+  courseXp:           'course_xp',       // 경험치/포인트            (6단계 게임 요소)
 };
 
 // 강의 안 네 칸 — 각 강의에 최대 1개, 순서 자유.
@@ -97,96 +110,24 @@ export function roomName(course){ return `${course.subject} ${course.grade}${pad
 export function roomNo(course){ return `${course.grade}${pad2(course.classNo)}`; }
 
 // ───────────────────────────────────────────────────────────────────────────
-// 데모 데이터 (Firestore 붙이기 전 임시). 한 세션 안에서는 추가/삭제가 반영된다.
+// 메모리 캐시 — 화면은 이 메모리를 보고, loadCore가 Firestore에서 채운다.
+// 제로베이스(2026-10-27): 가짜 시드 없이 빈 상태로 시작한다. 어드민에서 학년도 →
+// 강의실 → 학생 → 강의를 만들면 그때부터 Firestore에 쌓인다. 각 문서 모양은 아래 주석 참고.
 // ───────────────────────────────────────────────────────────────────────────
 const DEMO = {
-  years: [ { id:'2027', year:2027 } ],
+  years:        [],   // school_years   { id:'2027', year:2027, status:'active' }
+  courses:      [],   // courses        { id, year, subject, grade, classNo, status }
+  students:     [],   // course_students{ id:'강의실id_학번', courseId, studentNo, name }
+  lessons:      [],   // lessons        { id, title, parts:{concept,mission,question,formative}, order:[] }
+  courseLessons:[],   // course_lessons { id, courseId, lessonId, order, isOpen, date:'M/D' }
+  submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, max, shared }
 
-  courses: [
-    { id:'c_s301', year:2027, subject:'사회', grade:3, classNo:1, status:'active' },
-    { id:'c_s302', year:2027, subject:'사회', grade:3, classNo:2, status:'active' },
-    { id:'c_h301', year:2027, subject:'역사', grade:3, classNo:1, status:'active' },
-  ],
-
-  // course_students: id = 강의실id_학번
-  students: [
-    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101', name:'홍길동' },
-    { id:'c_s301_30102', courseId:'c_s301', studentNo:'30102', name:'김영희' },
-    { id:'c_s301_30103', courseId:'c_s301', studentNo:'30103', name:'이철수' },
-    { id:'c_h301_30101', courseId:'c_h301', studentNo:'30101', name:'홍길동' },
-    { id:'c_h301_30102', courseId:'c_h301', studentNo:'30102', name:'김영희' },
-    { id:'c_s302_30201', courseId:'c_s302', studentNo:'30201', name:'박민지' },
-  ],
-
-  // lessons: 재사용 창고. parts에 있는 칸만 그 강의가 가진 칸. order가 칸 순서.
-  lessons: [
-    { id:'L1', title:'붕당정치의 전개',
-      parts:{ concept:{ title:'붕당의 형성과 전개', content:[
-                { type:'divider', title:'붕당의 형성' },
-                { type:'row', text:'선조 때 사림이 동인과 서인으로 나뉘었다.' },
-                { type:'row', text:'척신 정치 청산을 둘러싼 갈등이 계기가 되었다.' },
-                { type:'divider', title:'붕당의 전개' },
-                { type:'row', text:'동인은 다시 남인과 북인으로 갈라졌다.' },
-              ] },
-              mission:{ appKey:'4cut', title:'네컷 만화 그리기' },
-              question:{ title:'오늘의 질문', prompt:'붕당정치의 긍정적 면과 부정적 면은 무엇인가?', guide:'두 측면을 모두 한 문장 이상으로 쓴다.' },
-              formative:{ title:'OX 5문항', items:[
-                { type:'ox',      q:'붕당은 선조 때 처음 갈라졌다.' },
-                { type:'short',   q:'동인과 서인으로 갈라진 계기가 된 자리는?' },
-                { type:'initial', q:'붕당의 시작이 된 인물 둘 가운데 한 명 (ㄱㅎㅇ)' },
-                { type:'choice',  q:'다음 중 서인에 속한 인물은?' },
-              ] } },
-      order:['concept','mission','question','formative'] },
-    { id:'L2', title:'예송논쟁',
-      parts:{ concept:{ title:'예송논쟁의 쟁점' } },
-      order:['concept'] },
-    { id:'L3', title:'환국',
-      parts:{ mission:{ appKey:'timeline', title:'환국 타임라인' },
-              formative:{ title:'환국 확인 퀴즈', items:[] } },
-      order:['mission','formative'] },
-  ],
-
-  // course_lessons: 강의실에 꽂힌 자리. date는 그 강의실의 수업일자('M/D', 진도표의 셀)
-  courseLessons: [
-    { id:'cl1', courseId:'c_s301', lessonId:'L1', order:1, isOpen:true,  date:'9/3'  },
-    { id:'cl2', courseId:'c_s301', lessonId:'L2', order:2, isOpen:true,  date:'9/10' },
-    { id:'cl3', courseId:'c_s301', lessonId:'L3', order:3, isOpen:false, date:'9/17' },
-  ],
-
-  quizzes: [
-    { id:'Q1', title:'붕당정치 복습 OX',        source:'auto',     items:[] },
-    { id:'Q2', title:'조선 후기 외부 문제모음',  source:'external', items:[] },
-  ],
-  courseQuizzes: [
-    { id:'cq1', courseId:'c_s301', quizId:'Q1', isOpen:true },
-  ],
-
-  // mission_apps: 문서 id가 곧 앱 키(= apps/ 아래 폴더 이름). 주소 둘은 APP_규약.md의 표 그대로.
-  missionApps: [
-    { id:'_template', name:'템플릿',        studentUrl:'apps/_template/index.html', adminUrl:'apps/_template/admin.html' },
-    { id:'4cut',      name:'네컷 만화',      studentUrl:'apps/4cut/index.html',      adminUrl:'apps/4cut/admin.html' },
-    { id:'timeline',  name:'타임라인',       studentUrl:'apps/timeline/index.html',  adminUrl:'apps/timeline/admin.html' },
-  ],
-
-  // course_submissions: 제출물(지금은 오늘의 질문 답변만 데모). clId = 꽂힌 강의 자리.
-  submissions: [
-    { id:'sub1', clId:'cl1', part:'question', courseId:'c_s301', studentNo:'30101', name:'홍길동',
-      answer:'붕당정치는 여론을 모으는 긍정적 면과, 대립이 깊어지면 정치가 마비되는 부정적 면이 있다.', score:null, max:15, shared:false },
-    { id:'sub2', clId:'cl1', part:'question', courseId:'c_s301', studentNo:'30102', name:'김영희',
-      answer:'서로 견제해 권력 독점을 막지만, 싸움이 길어지면 백성이 피해를 본다.', score:12, max:15, shared:true },
-  ],
-
-  // course_scores: 강의실id_학번
-  scores: [
-    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101',
-      items:{ concept:18, mission:9, question:14 }, max:{ concept:20, mission:10, question:15 } },
-  ],
-
-  // course_xp: 강의실id_학번. 레벨은 저장하지 않고 xp에서 계산한다.
-  xp: [
-    { id:'c_s301_30101', courseId:'c_s301', studentNo:'30101', xp:420, point:15 },
-    { id:'c_s301_30102', courseId:'c_s301', studentNo:'30102', xp:180, point:8  },
-  ],
+  // ── 나중 단계에서 채운다(지금은 비움) ──
+  quizzes:       [],  // quizzes        { id, title, source, items:[] }
+  courseQuizzes: [],  // course_quizzes { id, courseId, quizId, isOpen }
+  missionApps:   [],  // mission_apps   { id:앱키, name, studentUrl, adminUrl }
+  scores:        [],  // course_scores  { id:'강의실id_학번', courseId, studentNo, items:{}, max:{} }
+  xp:            [],  // course_xp      { id:'강의실id_학번', courseId, studentNo, xp, point }
 };
 
 /* 레벨 표 — 2026 LMS shared/xp.js의 기본값을 그대로 옮겼다(누적 경험치 기준).
@@ -204,21 +145,23 @@ export function levelFromXp(total){
   return lv;
 }
 
-/* ── Firestore 연결 (핵심 구조만, 2026-10-27) ──
-   부팅 때 다섯 컬렉션을 메모리(DEMO)로 한 번 불러오고, 이후 화면은 이 메모리를 본다.
+/* ── Firestore 연결 (2026-10-27 제로베이스) ──
+   부팅 때 '지금 쓰는' 컬렉션을 메모리(DEMO)로 한 번 불러오고, 이후 화면은 이 메모리를 본다.
    쓰기는 메모리를 먼저 고치고(화면 즉시 반영) Firestore에도 보낸다(백그라운드).
-   아직 안 붙인 것(성적·경험치·제출물·복습·미션앱)은 이 파일 위쪽 데모가 그대로 돈다. */
+   비밀번호(course_auth)는 로그인 때만 읽으므로 여기서 통째로 불러오지 않는다.
+   나중 단계 컬렉션(복습·미션앱·성적요약·경험치)은 그 단계에서 붙인다. */
 function put(coll, obj){ setDoc(doc(db, coll, obj.id), obj).catch(e => console.error('save', coll, obj.id, e)); }
 function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('del', coll, id, e)); }
 
 export async function loadCore(){
   const C = COLLECTIONS;
-  const [ys, cs, ss, cls, ls] = await Promise.all([
+  const [ys, cs, ss, cls, ls, subs] = await Promise.all([
     getDocs(collection(db, C.schoolYears)),
     getDocs(collection(db, C.courses)),
     getDocs(collection(db, C.courseStudents)),
     getDocs(collection(db, C.courseLessons)),
     getDocs(collection(db, C.lessons)),
+    getDocs(collection(db, C.courseSubmissions)),
   ]);
   const rows = snap => snap.docs.map(d => ({ ...d.data(), id:d.id }));
   DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
@@ -226,6 +169,7 @@ export async function loadCore(){
   DEMO.students    = rows(ss);
   DEMO.courseLessons = rows(cls);
   DEMO.lessons     = rows(ls);
+  DEMO.submissions = rows(subs);
 }
 
 // ── 조회 (메모리에서. loadCore가 Firestore에서 채워 둔다) ──
@@ -477,9 +421,12 @@ export function getQuestionSubs(clId){
 export function setSubScore(subId, score){
   const s = DEMO.submissions.find(x => x.id === subId); if (!s) return;
   s.score = (score === '' || score == null) ? null : +score;
+  put(COLLECTIONS.courseSubmissions, s);
 }
 export function toggleSubShared(subId){
-  const s = DEMO.submissions.find(x => x.id === subId); if (s) s.shared = !s.shared;
+  const s = DEMO.submissions.find(x => x.id === subId); if (!s) return;
+  s.shared = !s.shared;
+  put(COLLECTIONS.courseSubmissions, s);
 }
 
 // ── 미션 앱 등록부 CRUD — 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
