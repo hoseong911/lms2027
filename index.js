@@ -28,9 +28,18 @@ const state = {
 };
 
 // ── 부트 가드 ──
-function boot(){
+// Firestore를 먼저 읽고 화면을 연다. 이게 없으면 메모리가 빈 채로 로그인을 판정해
+// 맞는 학번을 넣어도 "그 학번으로 든 강의실이 없습니다"가 된다.
+async function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
   if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
+  try {
+    await M.loadCore();
+  } catch (e) {
+    console.error('loadCore', e);
+    document.getElementById('boot').textContent = '자료를 불러오지 못했습니다. 새로고침해 주세요.';
+    return;
+  }
   document.documentElement.classList.add('lms-ready');
   $app.hidden = false;
   render();
