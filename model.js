@@ -283,3 +283,21 @@ export function placeLesson(courseId, lessonId){
 export function toggleCourseLessonOpen(id){
   const cl = DEMO.courseLessons.find(c => c.id === id); if (cl) cl.isOpen = !cl.isOpen;
 }
+// 한 강의실 안에서 꽂힌 강의의 차례를 위/아래로(dir: -1 위, +1 아래). order 값을 맞바꾼다.
+export function moveCourseLesson(courseId, clId, dir){
+  const arr = DEMO.courseLessons.filter(c => c.courseId === courseId).sort((a,b) => a.order - b.order);
+  const i = arr.findIndex(c => c.id === clId); if (i < 0) return;
+  const j = i + dir; if (j < 0 || j >= arr.length) return;
+  const a = arr[i], b = arr[j]; const t = a.order; a.order = b.order; b.order = t;
+}
+export function toggleCourseQuizOpen(id){
+  const cq = DEMO.courseQuizzes.find(c => c.id === id); if (cq) cq.isOpen = !cq.isOpen;
+}
+// 포트폴리오(성적) 요약 — 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
+export function scoreSummary(courseId, studentNo){
+  const s = getScore(courseId, studentNo); if (!s) return null;
+  const keys = PART_TYPES.filter(p => p.portfolio).map(p => p.key);
+  let got = 0, max = 0, any = false;
+  keys.forEach(k => { if (s.items?.[k] != null){ got += s.items[k]; max += (s.max?.[k] || 0); any = true; } });
+  return any ? { got, max } : null;
+}
