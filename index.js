@@ -79,8 +79,13 @@ function viewHome(){
   const c = M.getCourse(state.courseId);
   const tabs = `<div class="layouttabs">${M.STUDENT_VIEWS.map(v =>
     `<button class="layouttab ${v.key === state.layout ? 'on':''}" data-act="layout" data-v="${v.key}">${esc(v.name)}</button>`).join('')}</div>`;
-  return topbar(roomLabel(c), 'back-rooms') + tabs
-    + (state.layout === 'byLesson' ? paneByLesson() : paneByMenu());
+  const pane = { byLesson:paneByLesson, byMenu:paneByMenu, extras:paneExtras }[state.layout] || paneByLesson;
+  return topbar(roomLabel(c), 'back-rooms') + tabs + pane();
+}
+
+// 배치 3 — 콘텐츠. 뽑기, 게임 같은 흥미 요소가 들어올 자리다(선생님 지시 2026-10-27). 아직 비었다.
+function paneExtras(){
+  return `<div class="empty">아직 없습니다.</div>`;
 }
 
 // 배치 1 — 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.

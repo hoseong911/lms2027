@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC 패드 폰 한눈에</title>
+<!-- 세 기기를 동시에 보는 미리보기 (선생님 지시 2026-10-27, 요구사항 89).
+     "앞으로 브라우저를 띄울 때 PC, 핸드폰, 패드를 동시에 보여 달라."
+     화면을 고칠 때마다 이 주소 하나만 새로고침하면 세 기기가 같이 보인다.
+     주소: http://localhost:5500/tools/미리보기.html
+     쓰는 법 — 위에서 볼 화면을 고르고, 오른쪽 [다시 불러오기]로 세 틀을 함께 새로 읽는다. -->
+<style>
+:root{
+  --navy:#041E42; --red:#D00F31; --line:#DDE2E9; --sub:#68727F;
+  --bg:#EDF0F4; --chrome:#fff;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0E1620;--chrome:#15202E;--line:#243243;--sub:#8E99A8;--navy:#7FA6D8}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--navy);
+  font:14px/1.5 "Pretendard","Malgun Gothic",system-ui,sans-serif;overflow-x:hidden}
+
+/* 위쪽 조작 줄 */
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:10px 16px;background:var(--chrome);border-bottom:1px solid var(--line)}
+header .ttl{font-weight:800;letter-spacing:.5px}
+.pages{display:flex;gap:16px;margin-left:8px}
+.pg{font-size:13px;color:var(--sub);background:none;border:0;cursor:pointer;font-family:inherit;
+  padding:6px 0;border-bottom:2px solid transparent}
+.pg:hover{color:var(--navy)}
+.pg.on{color:var(--navy);-webkit-text-stroke:.45px currentColor;border-bottom-color:var(--navy)}
+header .sp{flex:1}
+header button.act{border:1px solid var(--line);background:none;color:inherit;border-radius:8px;
+  padding:7px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+header button.act:hover{border-color:var(--navy)}
+header .url{font:12px/1 ui-monospace,Consolas,monospace;color:var(--sub)}
+
+/* 기기 세 대 */
+#rail{padding:22px 16px 40px;overflow:hidden}
+#row{display:flex;gap:26px;align-items:flex-start;transform-origin:top left}
+figure{margin:0;flex:none}
+figcaption{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;font-size:13px;font-weight:700}
+figcaption .px{font-weight:400;color:var(--sub);font:12px ui-monospace,Consolas,monospace}
+.screen{background:#fff;border:1px solid var(--line);overflow:hidden}
+.screen iframe{display:block;border:0;background:#fff}
+/* 폰과 패드는 둥근 모서리로 기기처럼 */
+.m .screen{border-radius:18px}
+.t .screen{border-radius:12px}
+.d .screen{border-radius:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="ttl">미리보기</span>
+  <div class="pages" id="pages"></div>
+  <span class="sp"></span>
+  <span class="url" id="url"></span>
+  <button class="act" id="reload">다시 불러오기</button>
+</header>
+
+<div id="rail"><div id="row"></div></div>
+
+<script>
+// 볼 화면들. 레포에 화면이 늘면 여기에 한 줄 더한다.
+const PAGES = [
+  { key:'student', name:'학생',   src:'../index.html' },
+  { key:'admin',   name:'어드민', src:'../admin.html' },
+  { key:'slide',   name:'슬라이드', src:'../slide.html?lesson=L1' },
+];
+// 기기 세 대. 폭은 실제로 많이 쓰는 값.
+const DEVICES = [
+  { cls:'d', name:'PC',   w:1440, h:900  },
+  { cls:'t', name:'패드', w:820,  h:1100 },
+  { cls:'m', name:'폰',   w:390,  h:844  },
+];
+
+const $ = id => document.getElementById(id);
+let page = PAGES[0];
+
+function drawPages(){
+  $('pages').innerHTML = PAGES.map(p =>
+    `<button class="pg ${p.key === page.key ? 'on' : ''}" data-k="${p.key}">${p.name}</button>`).join('');
+  $('url').textContent = page.src.replace('../', '/');
+}
+
+function drawRow(){
+  $('row').innerHTML = DEVICES.map(d => `
+    <figure class="${d.cls}">
+      <figcaption>${d.name} <span class="px">${d.w} × ${d.h}</span></figcaption>
+      <div class="screen" style="width:${d.w}px;height:${d.h}px">
+        <iframe src="${page.src}" width="${d.w}" height="${d.h}" loading="eager"></iframe>
+      </div>
+    </figure>`).join('');
+  fit();
+}
+
+/* 세 대를 한 화면에 다 넣는다 — 전체 폭에 맞춰 통째로 줄인다.
+   iframe 안쪽은 원래 크기 그대로라서, 줄여도 반응형 분기점은 진짜 기기와 같게 걸린다. */
+function fit(){
+  const row = $('row'), rail = $('rail');
+  row.style.transform = 'none';
+  const need = row.scrollWidth;
+  const have = rail.clientWidth - 32;
+  const k = Math.min(1, have / need);
+  row.style.transform = `scale(${k})`;
+  rail.style.height = (row.scrollHeight * k + 40) + 'px';
+}
+
+$('pages').addEventListener('click', e => {
+  const b = e.target.closest('[data-k]'); if (!b) return;
+  page = PAGES.find(p => p.key === b.dataset.k);
+  drawPages(); drawRow();
+});
+$('reload').addEventListener('click', drawRow);
+addEventListener('resize', fit);
+
+drawPages(); drawRow();
+</script>
+</body>
+</html>

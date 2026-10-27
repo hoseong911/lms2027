@@ -44,13 +44,15 @@ export function partDef(key){ return PART_TYPES.find(p => p.key === key) || null
 // 독립 메뉴
 export const REVIEW = { key:'review', name:'복습', icon:'list-ordered' };
 
-/* 학생이 강의실 안에서 쓰는 두 배치 (선생님 지시 2026-10-27, 요구사항 85)
- *   강의별 — 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
- *   메뉴별 — 개념노트만, 미션만 모아 본다. 2026 lms 메뉴와 같은 방식
- * 둘은 같은 내용으로 들어가는 두 개의 길이다. 메뉴별에는 강의에 안 매인 복습과 성적도 선다. */
+/* 학생이 강의실 안에서 쓰는 세 배치 (선생님 지시 2026-10-27, 요구사항 85·90)
+ *   강의 보기 — 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
+ *   메뉴      — 개념노트만, 미션만 모아 본다. 2026 lms 메뉴와 같은 방식
+ *   콘텐츠    — 뽑기, 게임 같은 흥미 요소가 들어올 자리(요구사항 69의 다섯 번째 용도). 아직 비었다
+ * 앞의 둘은 같은 내용으로 들어가는 두 개의 길이다. 메뉴에는 강의에 안 매인 복습과 성적도 선다. */
 export const STUDENT_VIEWS = [
-  { key:'byLesson', name:'강의별' },
-  { key:'byMenu',   name:'메뉴별' },
+  { key:'byLesson', name:'강의 보기' },
+  { key:'byMenu',   name:'메뉴' },
+  { key:'extras',   name:'콘텐츠' },
 ];
 export const STUDENT_MENUS = [
   ...PART_TYPES.map(p => ({ key:p.key, name:p.name, icon:p.icon, kind:'part' })),
