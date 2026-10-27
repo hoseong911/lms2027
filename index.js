@@ -64,8 +64,8 @@ function viewLogin(){
   return `<div class="login">
     <h1>2027</h1>
     <p class="lead">Dive into HISTORY</p>
-    <input class="field" id="f-sno" inputmode="numeric" placeholder="학번 (숫자 입력)" value="30101">
-    <input class="field" id="f-name" placeholder="이름" value="홍길동">
+    <input class="field" id="f-sno" inputmode="numeric" placeholder="학번 (숫자 입력)">
+    <input class="field" id="f-name" placeholder="이름">
     <input class="field" id="f-pw" type="password" placeholder="비밀번호">
     <button class="primary" data-act="login">입장하기</button>
   </div>`;
