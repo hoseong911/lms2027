@@ -35,13 +35,15 @@ export const COLLECTIONS = {
   courseLessons:      'course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
   lessons:            'lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
   courseSubmissions:  'course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
+  courseGrades:       'course_grades',  // 성적 기록 { clId, studentNo, 영역별 달성/기한, absent, feedback }
+                                        //   id = 꽂힌강의id_학번. 급간 표와 반영 강의는 settings/grade
 
   // ── 나중(예약): 해당 단계에서 실제로 만든다 ──
   quizzes:            'quizzes',        // 복습 문제 창고            (5단계 복습 허브)
   courseQuizzes:      'course_quizzes', // 강의실에 걸린 복습        (5단계)
-  missionApps:        'mission_apps',   // 미션 미니앱 등록부        (3단계)
+  missionApps:        'mission_apps',   // 미션 미니앱 등록부 { name, studentUrl, adminUrl, lessonId, archive }
   courseConsent:      'course_consent', // 학생 동의서              (학생 화면 붙일 때)
-  courseScores:       'course_scores',  // 성적 요약(집계가 무거워지면 얹음. 그 전엔 제출물에서 도출)
+  courseScores:       'course_scores',  // 안 쓴다. 성적은 course_grades와 제출물에서 집계한다
   courseXp:           'course_xp',       // 경험치/포인트            (6단계 게임 요소)
 };
 
@@ -95,7 +97,9 @@ export const ADMIN_MENUS = [
    강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
 export const ADMIN_SUBMENUS = {
   concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
-  question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변, 채점' } ],
+  question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변, 채점' }, { v:'pick', label:'PICK' } ],
+  // 성적은 hoistory/lms의 성적 Check 세 화면(입력, 설정, 조회)을 그대로 옮긴 것이다.
+  scores:   [ { v:'input',   label:'성적 입력' }, { v:'setting', label:'성적 설정' }, { v:'view',  label:'성적 조회' } ],
 };
 
 /* ── 화면 문구 (선생님 지시 2026-10-28) ──────────────────────────────────
@@ -162,6 +166,31 @@ const pad2 = n => String(n).padStart(2, '0');
 export function roomName(course){ return `${course.subject} ${course.grade}${pad2(course.classNo)}`; }
 export function roomNo(course){ return `${course.grade}${pad2(course.classNo)}`; }
 
+/* 수업일자는 연도 없이 'M/D'로만 적는다(진도 관리, hoistory와 같다).
+   오늘과 가장 가까운 해로 읽어 학기가 연말을 넘어가도 자연스럽게 맞는다.
+   Date 또는 null(빈 값, 형식 오류)을 돌려준다. 진도표 색칠과 성적 기한 판정이 같이 쓴다. */
+export function resolveMmdd(mmdd, today = new Date()){
+  const mt = /^(\d{1,2})\s*\/\s*(\d{1,2})$/.exec(String(mmdd ?? '').trim());
+  if (!mt) return null;
+  const m = +mt[1], d = +mt[2];
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let best = null;
+  [base.getFullYear() - 1, base.getFullYear(), base.getFullYear() + 1].forEach(yy => {
+    const cand = new Date(yy, m - 1, d), diff = Math.abs(cand - base);
+    if (!best || diff < best.diff) best = { date:cand, diff };
+  });
+  return best.date;
+}
+// 'past' | 'today' | 'future' | 'none'. 진도표와 강의 진도의 날짜 강조에 쓴다.
+export function dateStatus(mmdd, today = new Date()){
+  const d = resolveMmdd(mmdd, today);
+  if (!d) return 'none';
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (d.getTime() === base.getTime()) return 'today';
+  return d < base ? 'past' : 'future';
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // 메모리 캐시: 화면은 이 메모리를 보고, loadCore가 Firestore에서 채운다.
 // 제로베이스(2026-10-27): 가짜 시드 없이 빈 상태로 시작한다. 어드민에서 학년도 →
@@ -173,7 +202,9 @@ const DEMO = {
   students:     [],   // course_students{ id:'강의실id_학번', courseId, studentNo, name }
   lessons:      [],   // lessons        { id, title, parts:{concept,mission,question,formative}, order:[] }
   courseLessons:[],   // course_lessons { id, courseId, lessonId, order, isOpen, date:'M/D' }
-  submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, max, shared }
+  submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
+  grades:       [],   // course_grades   { id:'꽂힌강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
+  gradeConf:    { bands:null, lessons:[] },  // settings/grade  급간 표 + 성적에 반영할 강의 목록
 
   // ── 나중 단계에서 채운다(지금은 비움) ──
   quizzes:       [],  // quizzes        { id, title, source, items:[] }
@@ -207,14 +238,17 @@ function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('d
 
 export async function loadCore(){
   const C = COLLECTIONS;
-  const [ys, cs, ss, cls, ls, subs, gen] = await Promise.all([
+  const [ys, cs, ss, cls, ls, subs, grs, mas, gen, grc] = await Promise.all([
     getDocs(collection(db, C.schoolYears)),
     getDocs(collection(db, C.courses)),
     getDocs(collection(db, C.courseStudents)),
     getDocs(collection(db, C.courseLessons)),
     getDocs(collection(db, C.lessons)),
     getDocs(collection(db, C.courseSubmissions)),
+    getDocs(collection(db, C.courseGrades)),
+    getDocs(collection(db, C.missionApps)),
     getDoc(doc(db, 'settings', 'general')),
+    getDoc(doc(db, 'settings', 'grade')),
   ]);
   const rows = snap => snap.docs.map(d => ({ ...d.data(), id:d.id }));
   DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
@@ -223,7 +257,11 @@ export async function loadCore(){
   DEMO.courseLessons = rows(cls);
   DEMO.lessons     = rows(ls);
   DEMO.submissions = rows(subs);
+  DEMO.grades      = rows(grs);
+  DEMO.missionApps = rows(mas);
   siteTexts        = gen.exists() ? (gen.data().texts || {}) : {};
+  DEMO.gradeConf   = grc.exists() ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [] }
+                                  : { bands:null, lessons:[] };
 }
 
 // ── 조회 (메모리에서. loadCore가 Firestore에서 채워 둔다) ──
@@ -298,6 +336,7 @@ export function courseDeps(id){
     lessons:  DEMO.courseLessons.filter(cl => cl.courseId === id).length,
     quizzes:  DEMO.courseQuizzes.filter(cq => cq.courseId === id).length,
     subs:     DEMO.submissions.filter(s => s.courseId === id).length,
+    grades:   DEMO.grades.filter(g => g.courseId === id).length,
   };
 }
 
@@ -340,6 +379,8 @@ export function deleteCourse(id){
   DEMO.courseQuizzes = DEMO.courseQuizzes.filter(cq => cq.courseId !== id);
   DEMO.submissions.filter(s => s.courseId === id).forEach(s => del(COLLECTIONS.courseSubmissions, s.id));
   DEMO.submissions = DEMO.submissions.filter(s => s.courseId !== id);
+  DEMO.grades.filter(g => g.courseId === id).forEach(g => del(COLLECTIONS.courseGrades, g.id));
+  DEMO.grades = DEMO.grades.filter(g => g.courseId !== id);
   del(COLLECTIONS.courses, id);
   return c;
 }
@@ -384,6 +425,13 @@ export function addLesson(title){
   const l = { id:nid('L'), title, parts:{}, order:[] };
   DEMO.lessons.push(l); put(COLLECTIONS.lessons, l); return l;
 }
+// 강의 제목 고치기(진도표의 주제 칸, 강의 라이브러리 공용).
+export function setLessonTitle(lessonId, title){
+  const l = getLesson(lessonId); if (!l) return null;
+  const t = String(title ?? '').trim();
+  if (!t) throw new Error('강의 제목을 적어 주세요.');
+  l.title = t; saveLesson(lessonId); return l;
+}
 export function setLessonPart(lessonId, key, on){
   const l = getLesson(lessonId); if (!l) return;
   if (on){
@@ -427,82 +475,302 @@ export function setCourseLessonDate(clId, date){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
   cl.date = String(date ?? '').trim(); put(COLLECTIONS.courseLessons, cl); return cl;
 }
-/* ── 성적 (2026-10-28 선생님 지시 "성적 메뉴 만들어보자") ─────────────────
-   포트폴리오 세 요소만 들어간다(요구사항 70). 형성평가와 복습은 빠진다.
-   집계 컬렉션(course_scores)을 따로 두지 않고 course_submissions에서 뽑는다(머리 주석).
-     개념노트 : 활동지에 수기로 쓰므로 LMS에 제출물이 없다. 교사가 넣는 점수를
-                part:'concept' 제출물 행으로 남긴다(선생님 지시: 강의 차시마다 입력).
-     미션     : 점수가 아니라 참여 여부다. 낸 차시마다 1점, 만점은 미션이 걸린 차시 수.
-     질문노트 : 제출물의 score를 더한다.
-   배점은 강의(차시)마다 하나씩 lessons.parts.<칸>.max에 둔다. 강의가 창고에 있는 것이라
-   그 강의를 꽂은 모든 강의실에 같은 배점이 걸린다. 제출물이 없는 학생도 그 차시 배점은
-   만점에 들어간다(안 낸 것이 점수에 드러나게). */
-export function partMax(lessonId, partKey){
-  return +(getLesson(lessonId)?.parts?.[partKey]?.max) || 0;
-}
-export function setPartMax(lessonId, partKey, max){
-  const l = getLesson(lessonId), p = l?.parts?.[partKey];
-  if (!p) throw new Error('그 칸이 없는 강의입니다.');
-  const raw = String(max ?? '').trim();
-  const n = raw === '' ? 0 : Math.round(+raw);
-  if (!Number.isFinite(n) || n < 0) throw new Error('배점을 확인해 주세요.');
-  p.max = n;
-  put(COLLECTIONS.lessons, l);
-  return n;
-}
-function subOf(clId, part, studentNo){
-  return DEMO.submissions.find(s => s.clId === clId && s.part === part && s.studentNo === studentNo) || null;
-}
-// 개념노트 점수(교사 수기 입력). 빈칸으로 두면 기록을 지운다.
-export function setConceptScore(clId, studentNo, score){
-  const cl = DEMO.courseLessons.find(x => x.id === clId);
-  if (!cl) throw new Error('강의를 찾지 못했습니다.');
-  const id = `${clId}_concept_${studentNo}`;
-  const i = DEMO.submissions.findIndex(s => s.id === id);
-  const raw = String(score ?? '').trim();
-  if (raw === ''){
-    if (i >= 0){ DEMO.submissions.splice(i, 1); del(COLLECTIONS.courseSubmissions, id); }
-    return null;
-  }
-  const n = +raw;
-  if (!Number.isFinite(n) || n < 0) throw new Error('점수를 확인해 주세요.');
-  const stu = DEMO.students.find(s => s.courseId === cl.courseId && s.studentNo === studentNo);
-  const row = { ...(i >= 0 ? DEMO.submissions[i] : {}),
-    id, clId, part:'concept', courseId:cl.courseId, studentNo, name:stu?.name || '', score:n };
-  if (i >= 0) DEMO.submissions[i] = row; else DEMO.submissions.push(row);
-  put(COLLECTIONS.courseSubmissions, row);
-  return row;
+// 꽂힌 강의 하나를 그 강의실에서 뺀다. 강의 내용 자체는 창고에 남는다.
+export function unplaceLesson(clId){
+  const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
+  DEMO.courseLessons = DEMO.courseLessons.filter(c => c.id !== clId);
+  del(COLLECTIONS.courseLessons, clId);
+  DEMO.grades.filter(g => g.clId === clId).forEach(g => del(COLLECTIONS.courseGrades, g.id));
+  DEMO.grades = DEMO.grades.filter(g => g.clId !== clId);
+  DEMO.submissions.filter(s => s.clId === clId).forEach(s => del(COLLECTIONS.courseSubmissions, s.id));
+  DEMO.submissions = DEMO.submissions.filter(s => s.clId !== clId);
+  return cl;
 }
 
-/* 한 학생의 한 강의실 성적: 차시별 내역(lines)과 항목별, 최종 합계.
-   lines의 각 칸은 그 차시에 그 칸이 없으면 null이다. */
-export function courseScore(courseId, studentNo){
-  const items = { concept:{ got:0, max:0 }, mission:{ got:0, max:0 }, question:{ got:0, max:0 } };
-  const lines = getCourseLessons(courseId).map((cl, i) => {
-    const parts = cl.lesson?.parts || {};
-    const line = { clId:cl.id, lessonId:cl.lessonId, no:i + 1,
-                   title:cl.lesson?.title || '(삭제된 강의)', concept:null, mission:null, question:null };
-    if (parts.concept){
-      const mx = +parts.concept.max || 0, got = subOf(cl.id, 'concept', studentNo)?.score;
-      line.concept = { score: got ?? null, max: mx };
-      items.concept.got += (+got || 0); items.concept.max += mx;
-    }
-    if (parts.mission){
-      const done = !!subOf(cl.id, 'mission', studentNo);
-      line.mission = { done };
-      items.mission.got += done ? 1 : 0; items.mission.max += 1;
-    }
-    if (parts.question){
-      const sub = subOf(cl.id, 'question', studentNo);
-      const mx = +parts.question.max || +sub?.max || 0;
-      line.question = { score: sub?.score ?? null, max: mx, sent: !!sub };
-      items.question.got += (+sub?.score || 0); items.question.max += mx;
-    }
-    return line;
+/* ── 진도표의 강의 줄 (hoistory 진도 계획 틀 이식, 선생님 지시 2026-10-28) ──
+   hoistory에서는 진도표 한 줄이 모든 반에 공통이고 반마다 날짜만 달랐다. 2027도 같게 둔다:
+   진도표에서 강의를 더하면 **그 과목의 강의실 전부에 같이 꽂힌다**(요구사항 49의 과목 일괄).
+   돌려주는 것은 만든 강의와 꽂은 강의실 수다. */
+export function addLessonToSubject(year, subject, title){
+  const t = String(title ?? '').trim();
+  if (!t) throw new Error('강의 제목을 적어 주세요.');
+  const rooms = DEMO.courses.filter(c => c.year === +year && c.subject === subject && c.status === 'active');
+  if (!rooms.length) throw new Error(`${subject} 강의실이 없습니다.`);
+  const lesson = addLesson(t);
+  rooms.forEach(c => placeLesson(c.id, lesson.id));
+  return { lesson, rooms: rooms.length };
+}
+// 진도표 한 줄(= 한 강의)을 그 과목 강의실 전부에서 뺀다.
+export function removeLessonFromSubject(year, subject, lessonId){
+  const ids = new Set(DEMO.courses
+    .filter(c => c.year === +year && c.subject === subject).map(c => c.id));
+  const targets = DEMO.courseLessons.filter(cl => cl.lessonId === lessonId && ids.has(cl.courseId));
+  targets.forEach(cl => unplaceLesson(cl.id));
+  return targets.length;
+}
+/* 반별 수업 요일(hoistory 진도표 머리줄의 "수1, 목5"). 강의실 문서에 적어 둔다.
+   시간표 자체를 쓰는 것이 아니라 선생님이 눈으로 보는 메모라 자유 입력으로 둔다. */
+export function setCourseSchedule(courseId, schedule){
+  const c = getCourse(courseId); if (!c) return null;
+  c.schedule = String(schedule ?? '').trim();
+  put(COLLECTIONS.courses, c);
+  return c;
+}
+/* ── 성적 (hoistory/lms 성적 Check 기본 틀 이식, 선생님 지시 2026-10-28) ────────
+   2026 lms에서 돌려 본 방식을 그대로 가져온다. 점수를 강의마다 직접 적는 것이 아니라,
+   강의마다 영역별로 **달성**과 **기한** 두 칸을 체크하고, 전체 달성률을 **급간 표**로
+   점수로 환산한다. 그래서 강의가 몇 개든 만점이 흔들리지 않는다.
+
+     1) 강의마다 학생마다 영역(개념노트, 미션, 질문노트)별로 달성 칸과 기한 칸.
+        가중치가 2배면 칸이 둘씩이라 반만 깎을 수 있다(lessons.parts.<칸>.weight)
+     2) 달성률 = 켜진 칸 / 가능한 칸. 성적 설정의 반영 강의 목록에 든 강의만 센다
+     3) 급간 표(bands)에서 그 달성률에 맞는 줄을 찾아 영역 점수를 읽는다
+     4) 세 영역 점수를 더한 것이 포트폴리오 성적
+
+   손으로 쓰기와 자동 끌어오기를 둘 다 둔다(선생님 지시):
+     자동 : 미션과 질문노트는 제출물(course_submissions)에서 달성과 기한을 계산한다.
+            기한은 그 강의의 수업일자(course_lessons.date, 진도 관리에서 넣는 그 값)와
+            제출 시각을 견준다. 진도 관리와 성적이 여기서 맞물린다
+     손   : 어느 칸이든 교사가 눌러 바꾸면 그 영역은 manual로 표시되고, 다시 불러와도
+            자동 감지가 덮어쓰지 않는다. 개념노트는 LMS 밖 활동지라 늘 손으로만 넣는다
+   형성평가와 복습은 성적에서 빠진다(요구사항 70). */
+
+// 성적에 드는 영역 셋. PART_TYPES의 portfolio 칸과 같다.
+export const GRADE_AREAS = PART_TYPES.filter(p => p.portfolio).map(p => ({ key:p.key, name:p.name }));
+
+/* 급간 표 기본값: hoistory/lms의 DEFAULT_BANDS를 그대로 옮겼다(생각체크 = 질문노트).
+   달성률이 min 이상인 첫 줄의 점수를 쓴다. 개념 30, 미션 40, 질문 30으로 100점. */
+export const DEFAULT_BANDS = [
+  { min:90, concept:30, mission:40, question:30 },
+  { min:80, concept:27, mission:36, question:27 },
+  { min:70, concept:24, mission:32, question:24 },
+  { min:60, concept:21, mission:28, question:21 },
+  { min:50, concept:18, mission:24, question:18 },
+  { min:40, concept:15, mission:20, question:15 },
+  { min:30, concept:12, mission:16, question:12 },
+  { min:20, concept: 9, mission:12, question: 9 },
+  { min:10, concept: 6, mission: 8, question: 6 },
+  { min: 0, concept: 3, mission: 4, question: 3 },
+];
+
+export function getBands(){
+  const b = DEMO.gradeConf.bands;
+  return (Array.isArray(b) && b.length) ? b : DEFAULT_BANDS;
+}
+// 성적에 반영할 강의(lessons의 id 목록). 비어 있으면 아무것도 집계하지 않는다.
+export function getGradeLessons(){ return [...(DEMO.gradeConf.lessons || [])]; }
+export function isGradeLesson(lessonId){ return (DEMO.gradeConf.lessons || []).includes(lessonId); }
+export function toggleGradeLesson(lessonId, on){
+  const list = DEMO.gradeConf.lessons || (DEMO.gradeConf.lessons = []);
+  const i = list.indexOf(lessonId);
+  if (on && i < 0) list.push(lessonId);
+  if (!on && i >= 0) list.splice(i, 1);
+  return list;
+}
+// 성적 설정의 저장 버튼이 한 번에 부른다(급간 표와 반영 강의 목록을 같이 쓴다).
+export async function saveGradeConfig(bands){
+  const clean = (bands || getBands()).map(b => ({
+    min: Math.max(0, Math.min(100, Math.round(+b.min) || 0)),
+    concept: Math.max(0, Math.round(+b.concept) || 0),
+    mission: Math.max(0, Math.round(+b.mission) || 0),
+    question: Math.max(0, Math.round(+b.question) || 0),
+  })).sort((a, b) => b.min - a.min);
+  DEMO.gradeConf = { bands:clean, lessons:getGradeLessons() };
+  await setDoc(doc(db, 'settings', 'grade'), DEMO.gradeConf);
+  return DEMO.gradeConf;
+}
+
+/* 가중치: 그 강의의 그 칸이 몇 칸을 차지하는가(1 또는 2). 강의는 창고에 있는 것이라
+   그 강의를 꽂은 모든 강의실에 같이 걸린다. 칸이 없는 강의는 0(미실시)이다. */
+export function partWeight(lessonId, partKey){
+  const p = getLesson(lessonId)?.parts?.[partKey];
+  if (!p) return 0;
+  const w = Math.round(+p.weight) || 1;
+  return Math.max(1, Math.min(2, w));
+}
+export function setPartWeight(lessonId, partKey, weight){
+  const l = getLesson(lessonId), p = l?.parts?.[partKey];
+  if (!p) throw new Error('그 칸이 없는 강의입니다.');
+  p.weight = (Math.round(+weight) === 2) ? 2 : 1;
+  put(COLLECTIONS.lessons, l);
+  return p.weight;
+}
+
+// ── 성적 기록 (course_grades, 문서 id = 꽂힌강의id_학번) ──
+const emptyBlock = () => ({ achievedN:0, onTimeN:0 });
+function blankRec(clId, studentNo){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  const rec = { id:`${clId}_${studentNo}`, clId, courseId:cl?.courseId || '', lessonId:cl?.lessonId || '',
+                studentNo, absent:false, feedback:'', manual:{} };
+  GRADE_AREAS.forEach(a => { rec[a.key] = emptyBlock(); });
+  return rec;
+}
+// 기록이 없으면 빈 것을 돌려준다(저장은 하지 않는다. 화면이 읽기만 할 때가 많다).
+export function gradeRec(clId, studentNo){
+  return DEMO.grades.find(g => g.clId === clId && g.studentNo === studentNo) || blankRec(clId, studentNo);
+}
+function gradeRecLive(clId, studentNo){
+  let g = DEMO.grades.find(x => x.clId === clId && x.studentNo === studentNo);
+  if (!g){ g = blankRec(clId, studentNo); DEMO.grades.push(g); }
+  GRADE_AREAS.forEach(a => { if (!g[a.key]) g[a.key] = emptyBlock(); });
+  if (!g.manual) g.manual = {};
+  return g;
+}
+function saveGrade(g){ put(COLLECTIONS.courseGrades, g); return g; }
+
+/* 칸 하나를 켜고 끈다. field는 'achievedN' 또는 'onTimeN', n은 0부터 가중치까지.
+   교사가 누른 것이므로 그 영역을 manual로 표시한다(자동 감지가 덮어쓰지 못하게). */
+export function setGradeCell(clId, studentNo, area, field, n){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  const w = partWeight(cl.lessonId, area);
+  if (!w) throw new Error('그 칸이 없는 강의입니다.');
+  const g = gradeRecLive(clId, studentNo);
+  if (g.absent) throw new Error('결석으로 둔 학생은 미달성으로 고정됩니다.');
+  g[area][field] = Math.max(0, Math.min(w, Math.round(+n) || 0));
+  g.manual[area] = true;
+  return saveGrade(g);
+}
+// 이름을 누르면 결석. 결석은 전부 미달성으로 고정한다(hoistory와 같다).
+export function toggleGradeAbsent(clId, studentNo){
+  const g = gradeRecLive(clId, studentNo);
+  g.absent = !g.absent;
+  if (g.absent) GRADE_AREAS.forEach(a => { g[a.key] = emptyBlock(); g.manual[a.key] = true; });
+  return saveGrade(g);
+}
+// 한 학생의 실시 중인 모든 칸을 한 번에 켜고 끈다(이름 앞 체크박스).
+export function setGradeRowAll(clId, studentNo, on){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  const g = gradeRecLive(clId, studentNo);
+  if (g.absent) throw new Error('결석으로 둔 학생은 미달성으로 고정됩니다.');
+  GRADE_AREAS.forEach(a => {
+    const w = partWeight(cl.lessonId, a.key); if (!w) return;
+    g[a.key] = { achievedN: on ? w : 0, onTimeN: on ? w : 0 };
+    g.manual[a.key] = true;
   });
-  const total = { got:0, max:0 };
-  PART_TYPES.filter(p => p.portfolio).forEach(p => { total.got += items[p.key].got; total.max += items[p.key].max; });
-  return { lines, items, total, has: total.max > 0 || total.got > 0 };
+  return saveGrade(g);
+}
+export function setGradeFeedback(clId, studentNo, text){
+  const g = gradeRecLive(clId, studentNo);
+  g.feedback = String(text ?? '').trim();
+  return saveGrade(g);
+}
+// 그 반에 이 강의 성적을 공개했는가. 2027은 꽂힌 강의가 이미 반 단위라 거기에 붙인다.
+export function toggleGradePublished(clId){
+  const cl = DEMO.courseLessons.find(x => x.id === clId); if (!cl) return null;
+  cl.gradePublished = !cl.gradePublished;
+  cl.gradePublishedAt = cl.gradePublished ? Date.now() : null;
+  put(COLLECTIONS.courseLessons, cl);
+  return cl;
+}
+
+/* ── 자동 감지 ──
+   제출물에서 달성과 기한을 계산한다. 기한은 수업일자(cl.date)의 끝(자정)까지를 본다.
+   날짜를 안 넣은 강의는 기한을 따지지 않고 통과로 둔다(진도 관리에서 날짜를 넣으면 그때 걸린다).
+   질문노트는 hoistory thinkVerdict의 뼈대를 옮겼다: 50자 미만은 미달성, 지연 제출은
+   달성이지만 기한에서 깎인다. 미제출은 둘 다 0이다. */
+function lessonDueMs(cl){
+  const d = resolveMmdd(cl?.date);
+  return d ? d.getTime() + 24 * 60 * 60 * 1000 - 1 : null;
+}
+export function autoDetect(clId){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) return {};
+  const due = lessonDueMs(cl);
+  const out = {};
+  DEMO.submissions.filter(s => s.clId === clId).forEach(s => {
+    if (s.part !== 'mission' && s.part !== 'question') return;
+    const w = partWeight(cl.lessonId, s.part); if (!w) return;
+    const at = +s.at || 0;
+    const onTime = (!due || !at) ? true : at <= due;
+    let achieved = true, note = '통과';
+    if (s.part === 'question'){
+      const len = (s.answer == null) ? (s.textLength || 0) : String(s.answer).trim().length;
+      if (len < 50){ achieved = false; note = '미흡(50자 미만)'; }
+      else if (!onTime) note = '미흡(지연 제출)';
+    } else if (!onTime) note = '미흡(지연 제출)';
+    out[s.studentNo] = out[s.studentNo] || {};
+    out[s.studentNo][s.part] = { achievedN: achieved ? w : 0, onTimeN: onTime ? w : 0, at, note };
+  });
+  return out;
+}
+/* 자동 감지를 기록에 넣는다. manual로 표시된 영역과 결석 학생은 건드리지 않는다.
+   돌려주는 것은 { touched, skipped } : 몇 명을 끌어왔는지 화면에 알리는 데 쓴다. */
+export function applyAutoDetect(clId){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  const auto = autoDetect(clId);
+  let touched = 0, skipped = 0;
+  Object.entries(auto).forEach(([studentNo, areas]) => {
+    const g = gradeRecLive(clId, studentNo);
+    if (g.absent){ skipped++; return; }
+    let changed = false;
+    Object.entries(areas).forEach(([area, v]) => {
+      if (g.manual?.[area]){ skipped++; return; }
+      if (g[area].achievedN !== v.achievedN || g[area].onTimeN !== v.onTimeN){
+        g[area] = { achievedN:v.achievedN, onTimeN:v.onTimeN };
+        changed = true;
+      }
+    });
+    if (changed){ saveGrade(g); touched++; }
+  });
+  return { touched, skipped };
+}
+// 손으로 고친 표시를 지운다(그 영역을 자동 감지에 다시 맡긴다).
+export function clearGradeManual(clId, studentNo, area){
+  const g = gradeRecLive(clId, studentNo);
+  if (area) delete g.manual[area]; else g.manual = {};
+  return saveGrade(g);
+}
+
+/* ── 집계 ──
+   한 학생의 한 강의실 성적. 반영 강의 목록(성적 설정)에 들고 그 반에 공개된 강의만 센다.
+   돌려주는 것: { areas:{키:{achieved,total,pct,score}}, total, maxScore, lessonCount, rows }
+   rows는 강의별 내역이다(어디서 깎였는지 바로 보이게. hoistory 2026-09-03과 같은 뜻). */
+export function studentGrade(courseId, studentNo){
+  const bands = getBands();
+  const picked = new Set(getGradeLessons());
+  const cls = getCourseLessons(courseId).filter(cl => picked.has(cl.lessonId) && cl.gradePublished);
+  const sum = {}; GRADE_AREAS.forEach(a => { sum[a.key] = { achieved:0, total:0 }; });
+  const rows = cls.map((cl, i) => {
+    const rec = gradeRec(cl.id, studentNo);
+    const row = { clId:cl.id, no:i + 1, title:cl.lesson?.title || '(삭제된 강의)',
+                  areas:{}, absent:!!rec.absent, feedback:rec.feedback || '' };
+    GRADE_AREAS.forEach(a => {
+      const w = partWeight(cl.lessonId, a.key);
+      if (!w){ row.areas[a.key] = null; return; }
+      const got = Math.min(w, rec[a.key]?.achievedN || 0) + Math.min(w, rec[a.key]?.onTimeN || 0);
+      sum[a.key].achieved += got; sum[a.key].total += 2 * w;
+      row.areas[a.key] = { weight:w, achievedN:rec[a.key]?.achievedN || 0, onTimeN:rec[a.key]?.onTimeN || 0 };
+    });
+    return row;
+  });
+  const areas = {};
+  GRADE_AREAS.forEach(a => {
+    const { achieved, total } = sum[a.key];
+    const pct = total ? Math.round(achieved / total * 100) : 0;
+    const band = total ? (bands.find(b => pct >= b.min) || bands[bands.length - 1]) : null;
+    areas[a.key] = { achieved, total, pct, score: band ? (+band[a.key] || 0) : 0 };
+  });
+  const top = bands[0] || {};
+  const maxScore = GRADE_AREAS.reduce((n, a) => n + (+top[a.key] || 0), 0);
+  const total = GRADE_AREAS.reduce((n, a) => n + areas[a.key].score, 0);
+  return { areas, total, maxScore, lessonCount: cls.length, rows, has: cls.length > 0 };
+}
+
+// 한 강의, 한 반의 달성 통계(성적 입력 화면의 칩). 영역마다 "달성한 학생 / 전체".
+export function gradeStats(clId, studentNos){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  const out = {};
+  GRADE_AREAS.forEach(a => {
+    const w = cl ? partWeight(cl.lessonId, a.key) : 0;
+    if (!w){ out[a.key] = null; return; }
+    let done = 0;
+    studentNos.forEach(no => { if ((gradeRec(clId, no)[a.key]?.achievedN || 0) >= w) done++; });
+    out[a.key] = { done, all: studentNos.length };
+  });
+  return out;
 }
 
 /* ── 개념 노트 콘텐츠 (2026 class_lessons.contentLines 모티브) ──
@@ -540,6 +808,25 @@ export function setQuestion(lessonId, patch){
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');
 }
+/* 제출물 저장: 학생 화면과 미션 미니앱이 쓰는 한 길. 문서 id가 꽂힌강의, 칸, 학번이라
+   다시 내면 같은 줄을 고친다. 처음 적힌 at(제출 시각)은 기한 판정의 기준이라 덮어쓰지 않는다
+   (2026 네컷에서 다시 낼 때마다 시각이 덮여 기한이 지각으로 뒤집힌 적이 있다). */
+export function saveSubmission({ clId, part, studentNo, answer, score }){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  if (!PART_ORDER.includes(part)) throw new Error('칸 종류를 확인해 주세요.');
+  const id = `${clId}_${part}_${studentNo}`;
+  const i = DEMO.submissions.findIndex(s => s.id === id);
+  const stu = DEMO.students.find(s => s.courseId === cl.courseId && s.studentNo === studentNo);
+  const prev = i >= 0 ? DEMO.submissions[i] : null;
+  const row = { ...(prev || {}), id, clId, part, courseId:cl.courseId, studentNo,
+                name: stu?.name || prev?.name || '', at: prev?.at || Date.now() };
+  if (answer != null) row.answer = String(answer);
+  if (score != null) row.score = +score;
+  if (i >= 0) DEMO.submissions[i] = row; else DEMO.submissions.push(row);
+  put(COLLECTIONS.courseSubmissions, row);
+  return row;
+}
 export function setSubScore(subId, score){
   const s = DEMO.submissions.find(x => x.id === subId); if (!s) return;
   s.score = (score === '' || score == null) ? null : +score;
@@ -551,22 +838,60 @@ export function toggleSubShared(subId){
   put(COLLECTIONS.courseSubmissions, s);
 }
 
-// ── 미션 앱 등록부 CRUD: 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
-export function addMissionApp({ name, studentUrl, adminUrl, key }){
+/* 답변 판정 (hoistory/lms thinkVerdict 이식) ────────────────────────────────
+   자동으로 통과와 미흡을 가린다. 선생님이 손으로 통과/미흡을 못박으면(verdict 필드)
+   그것이 이긴다. 성적의 자동 감지(autoDetect)와 같은 기준을 쓴다.
+     50자 미만         : 미흡. 기한은 깎지 않는다
+     지연 제출         : 달성은 주고 기한만 깎는다
+     그 밖             : 통과
+   hoistory의 이탈(cheatCount) 규칙은 학생 화면에 이탈 감시가 아직 없어 다음 단계로 둔다. */
+export function questionVerdict(sub){
+  const cl = DEMO.courseLessons.find(x => x.id === sub?.clId);
+  const due = (() => { const d = resolveMmdd(cl?.date); return d ? d.getTime() + 24*60*60*1000 - 1 : null; })();
+  const at = +sub?.at || 0;
+  const onTime = (!due || !at) ? true : at <= due;
+  const len = (sub?.answer == null) ? (sub?.textLength || 0) : String(sub.answer).trim().length;
+  let verdict, achieved;
+  if (len < 50){ verdict = '미흡(50자 미만)'; achieved = false; }
+  else if (!onTime){ verdict = '미흡(지연 제출)'; achieved = true; }
+  else { verdict = '통과'; achieved = true; }
+  if (sub?.verdict === 'pass'){ verdict = '통과(교사)'; achieved = true; }
+  if (sub?.verdict === 'fail'){ verdict = '미흡(교사)'; achieved = false; }
+  return { verdict, achieved, onTime, length:len };
+}
+// 통과/미흡을 손으로 못박는다(같은 값을 다시 누르면 자동 판정으로 되돌린다).
+export function setSubVerdict(subId, v){
+  const s = DEMO.submissions.find(x => x.id === subId); if (!s) return null;
+  s.verdict = (s.verdict === v) ? null : v;
+  put(COLLECTIONS.courseSubmissions, s);
+  return s;
+}
+
+/* ── 미션 앱 등록부 (hoistory/lms 미션 Check 카드 틀 이식) ──
+   문서 id가 곧 앱 키(apps/ 아래 폴더 이름)다. hoistory 카드가 들고 있던 것을 그대로 옮겼다:
+   제목, 학생 주소, 어드민 주소, 아이콘, 연결할 강의, 팝업으로 열기, 아카이브 세 칸
+   (수업 주제, 활동 의도, 아카이브 내용). 아카이브는 나중에 공개 페이지가 그대로 읽는다. */
+export function addMissionApp({ name, studentUrl, adminUrl, key, icon, lessonId, modal, archive }){
   const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
   const id = String(key || '').trim() || nid('app_');
   if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
-  const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim() };
-  DEMO.missionApps.push(a); return a;
+  const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim(),
+              icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal,
+              archive:{ topic:'', intent:'', content:'', ...(archive || {}) } };
+  DEMO.missionApps.push(a); put(COLLECTIONS.missionApps, a); return a;
 }
 export function updateMissionApp(id, patch){
   const a = getMissionApp(id); if (!a) return null;
-  if (patch.name != null) a.name = String(patch.name).trim();
-  if (patch.studentUrl != null) a.studentUrl = String(patch.studentUrl).trim();
-  if (patch.adminUrl != null) a.adminUrl = String(patch.adminUrl).trim();
-  return a;
+  ['name','studentUrl','adminUrl','icon'].forEach(k => { if (patch[k] != null) a[k] = String(patch[k]).trim(); });
+  if (patch.lessonId != null) a.lessonId = patch.lessonId || '';
+  if (patch.modal != null) a.modal = !!patch.modal;
+  if (patch.archive) a.archive = { ...(a.archive || {}), ...patch.archive };
+  put(COLLECTIONS.missionApps, a); return a;
 }
-export function deleteMissionApp(id){ DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id); }
+export function deleteMissionApp(id){
+  DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id);
+  del(COLLECTIONS.missionApps, id);
+}
 
 /* ── 학생 로그인: 학번, 이름, 비밀번호 (선생님 지시 2026-10-28) ──────────────────
    Firebase Auth를 쓰지 않는다(2026-10-23 결정). course_auth 문서 { pw, courseId }를

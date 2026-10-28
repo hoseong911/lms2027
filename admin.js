@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028g';
-import { icon } from './shared/icons.js';
+import * as M from './model.js?v=20261028h';
+import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -41,34 +41,21 @@ const state = {
   questionClId: null,              // 그 강의실에 꽂힌 강의(질문이 있는 것만)
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
 
-  // 성적 (2026-10-28)
+  progAdding: false,               // 진도표에서 강의 추가 줄을 열었는가
+
+  // 성적 (hoistory 성적 Check 틀 이식, 2026-10-28)
+  scTab: 'input',                  // 서브 메뉴 'input' | 'setting' | 'view'
   scSubject: null,                 // 과목 탭
   scCourseId: null,                // 반 탭(강의실)
-  scOpenNo: null,                  // 차시별 내역을 펼친 학생(학번)
-  scMaxOpen: false,                // 배점 줄을 펼쳤는가
+  scClId: null,                    // 성적 입력에서 고른 꽂힌 강의
+  scOpenNo: null,                  // 성적 조회에서 강의별 내역을 펼친 학생(학번)
 };
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const val = id => (document.getElementById(id)?.value || '').trim();
 
-/* 수업일자('M/D')가 오늘보다 지났는지: 진도표, 강의 진도의 날짜 강조에 쓴다.
-   연도는 적지 않으므로 오늘과 가장 가까운 해로 해석한다(2026 LMS와 같은 방식).
-   'past' | 'today' | 'future' | 'none'(빈 값/형식 오류). */
+// 수업일자('M/D')의 과거/오늘/미래 판정은 model.js로 옮겼다(성적 기한 판정과 같은 함수를 쓴다).
 const MAX_LESSONS = 30;            // 강의 진도에 한 번에 보여 줄 강의 수(요구사항 1)
-function dateStatus(mmdd){
-  const mt = /^(\d{1,2})\s*\/\s*(\d{1,2})$/.exec((mmdd || '').trim());
-  if (!mt) return 'none';
-  const m = +mt[1], d = +mt[2];
-  if (m < 1 || m > 12 || d < 1 || d > 31) return 'none';
-  const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let best = null;
-  [today.getFullYear()-1, today.getFullYear(), today.getFullYear()+1].forEach(yy => {
-    const cand = new Date(yy, m-1, d), diff = Math.abs(cand - today);
-    if (!best || diff < best.diff) best = { date:cand, diff };
-  });
-  if (best.date.getTime() === today.getTime()) return 'today';
-  return best.date < today ? 'past' : 'future';
-}
 
 function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
@@ -279,7 +266,7 @@ function roomDetailPanel(c){
   // ── 왼쪽: 강의 진도 ──
   const shown = state.roomLessonsMore ? lessons : lessons.slice(0, MAX_LESSONS);
   const lessonRows = lessons.length ? shown.map((cl, i) => {
-    const st = dateStatus(cl.date);
+    const st = M.dateStatus(cl.date);
     return `<div class="row compact plrow">
       <div class="plnum">${i+1}강</div>
       <div class="grow"><div class="t">${esc(cl.lesson?.title || '(삭제된 강의)')}</div></div>
@@ -333,7 +320,7 @@ function roomDetailPanel(c){
 function studentCard(courseId, studentNo){
   const xp = M.getXp(courseId, studentNo);
   const lvl = xp ? M.levelFromXp(xp.xp) : null;
-  const sc = M.courseScore(courseId, studentNo);
+  const sc = M.studentGrade(courseId, studentNo);
 
   const stats = `<div class="sc-stats">
     <div class="sc-stat"><div class="sc-k">레벨</div><div class="sc-v">${lvl!=null?`Lv.${lvl}`:'없음'}</div></div>
@@ -342,23 +329,32 @@ function studentCard(courseId, studentNo){
   </div>`;
 
   let port;
-  if (!sc.has){ port = `<div class="score-empty">성적 기록이 없습니다.</div>`; }
+  if (!sc.has){ port = `<div class="score-empty">반영된 강의가 없습니다.</div>`; }
   else {
-    const lines = M.PART_TYPES.filter(p => p.portfolio).map(p => {
-      const it = sc.items[p.key]; if (!it.max && !it.got) return '';
-      return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${it.got} / ${it.max}점</span></div>`;
-    }).filter(Boolean).join('');
-    const tot = `<div class="score-line tot"><span>합계</span><span class="mono">${sc.total.got} / ${sc.total.max}점</span></div>`;
+    const lines = M.GRADE_AREAS.map(a => {
+      const it = sc.areas[a.key];
+      const detail = it.total ? `${it.score}점 <span class="gsub">${it.achieved}/${it.total} ${it.pct}%</span>` : '미실시';
+      return `<div class="score-line"><span>${esc(a.name)}</span><span class="mono">${detail}</span></div>`;
+    }).join('');
+    const tot = `<div class="score-line tot"><span>총점</span><span class="mono">${sc.total} / ${sc.maxScore}점</span></div>`;
     port = lines + tot;
   }
   return `<div class="score-detail">${stats}<div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
 }
 
-/* 진도 관리(요구사항 1, 2): 2026 LMS 진도표를 본떠 강의 × 강의실 표로.
-   행은 강의(차수, 제목), 열은 강의실, 칸은 수업일자('M/D'). 오늘, 지난 날은 색으로.
-   강의실 관리의 강의 진도와 같은 데이터(course_lessons)를 써서 서로 실시간으로 맞물린다.
-   과목을 섞으면 표가 가로로 넘치고 진도도 과목마다 따로 가므로 과목별 탭으로 나눈다
-   (선생님 지시 2026-10-28). 열 머리는 과목이 탭에 이미 있으므로 반 번호만 쓴다. */
+/* ── 진도 관리 (hoistory/lms "설정 - SCHEDULE 반별 수업 스케줄" 틀 이식) ─────
+   선생님 지시 2026-10-28: "hoistory/lms의 진도 관리 메뉴를 차용해서 가지고 와 줘."
+   hoistory 틀을 그대로 옮긴 것:
+     - 머리줄 두 줄: 위는 반, 아래는 그 반의 수업 요일(자유 입력, courses.schedule)
+     - 왼쪽 두 열: 강의 번호와 주제. 주제는 그 자리에서 고치면 강의 제목이 바뀐다
+     - 가운데: 반마다 수업일자('M/D'). 오늘과 지난 날은 색으로 구분한다
+     - 오른쪽 관리 열: 그 줄(강의)을 그 과목 강의실 전부에서 뺀다
+     - 툴바의 [강의 추가]: 한 줄을 더하면 **그 과목 강의실 전부에 같이 꽂힌다**
+   hoistory에서 안 가져온 것:
+     [번호 자동 채우기]와 [주제 새로고침]은 hoistory가 번호와 주제를 손으로 적어
+     따로 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 꽂힌 순서에서 저절로 나오고
+     주제가 강의 제목 그 자체라 맞출 것이 없다.
+   과목 탭은 어제 지시(요구사항 96)대로 그대로 둔다. */
 function pageProgress(){
   const years = M.getYears();
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
@@ -370,56 +366,104 @@ function pageProgress(){
   const all = M.getCourses(state.year);
   if (!all.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
 
-  // 과목 탭: 있는 과목만(요구사항 3). 고른 과목이 사라졌으면 첫 과목으로 돌아간다.
+  // 과목 탭에서 그 과목의 반 탭으로 좁힌다. 둘 다 있는 것만(요구사항 3).
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
   if (!subjects.includes(state.progSubject)) state.progSubject = subjects[0];
   const tabs = catline(subjects.map(s => ({ v:s, label:s })), state.progSubject, 'prog-subject');
 
-  const courses = all.filter(c => c.subject === state.progSubject)
+  const rooms = all.filter(c => c.subject === state.progSubject)
     .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
-  const placed = {}, placedIds = new Set();
-  courses.forEach(c => { placed[c.id] = M.getCourseLessons(c.id); placed[c.id].forEach(cl => placedIds.add(cl.lessonId)); });
-  const lessons = M.getLessons().filter(l => placedIds.has(l.id));
 
-  if (!lessons.length) return `${head}${tabs}<div class="empty">개설된 강의가 없습니다.</div>`;
+  // 줄(강의)을 모은다: 그 과목 어느 반에든 꽂혀 있으면 한 줄이 선다.
+  // 세우는 차례는 꽂힌 순서(order)가 가장 앞인 것 기준이다(반마다 순서가 어긋나도 한 줄로 선다).
+  const placed = {};                     // 강의실id -> 꽂힌 강의 배열
+  const firstOrder = new Map();          // 강의id -> 가장 앞선 order
+  rooms.forEach(c => {
+    placed[c.id] = M.getCourseLessons(c.id);
+    placed[c.id].forEach(cl => {
+      const cur = firstOrder.get(cl.lessonId);
+      if (cur == null || cl.order < cur) firstOrder.set(cl.lessonId, cl.order);
+    });
+  });
+  const lessons = M.getLessons()
+    .filter(l => firstOrder.has(l.id))
+    .sort((a,b) => firstOrder.get(a.id) - firstOrder.get(b.id));
 
-  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomNo(c))}</th>`).join('');
+  // 툴바: hoistory의 [+ 강의 추가]. 누르면 그 자리에 제목 입력 줄이 열린다(요구사항 66 인라인).
+  const toolbar = `<div class="pl-toolbar">
+    <button class="btn-chip" data-act="prog-add-open">${icon('plus',13)}강의 추가</button>
+  </div>`;
+  const addRow = state.progAdding ? `<div class="row">
+    <input class="f grow" id="prog-new-title" autocomplete="off" aria-label="강의 제목">
+    <span class="unit">${esc(state.progSubject)} 강의실 ${rooms.length}개에 같이 꽂습니다</span>
+    <div class="tools">
+      <button class="ib ib-primary" data-act="prog-add-save" title="추가" aria-label="추가">${icon('check',16)}</button>
+      <button class="ib" data-act="prog-add-cancel" title="취소" aria-label="취소">${icon('x',16)}</button>
+    </div></div>` : '';
+
+  if (!lessons.length)
+    return `${head}${tabs}${toolbar}${addRow}${addRow ? '' : `<div class="empty">개설된 강의가 없습니다.</div>`}`;
+
+  // 머리줄 두 줄: 반 번호 / 그 반의 수업 요일
+  const thead = `<tr>
+      <th class="pl-num" rowspan="2">강의</th>
+      <th class="lname" rowspan="2">주제</th>
+      ${rooms.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomNo(c))}</th>`).join('')}
+      <th class="pl-manage" rowspan="2">관리</th>
+    </tr>
+    <tr>
+      ${rooms.map(c => `<th class="pl-sch"><input class="f dateinput" data-act="prog-sch" data-id="${c.id}"
+          value="${esc(c.schedule || '')}" aria-label="${esc(M.roomName(c))} 수업 요일"></th>`).join('')}
+    </tr>`;
+
   const body = lessons.map((l, li) => {
-    const cells = courses.map(c => {
+    const cells = rooms.map(c => {
       const cl = placed[c.id].find(x => x.lessonId === l.id);
-      if (!cl) return `<td class="na"></td>`;
-      const st = dateStatus(cl.date);
-      return `<td class="ds-${st}"><input class="f dateinput" data-act="cl-date" data-id="${cl.id}" value="${esc(cl.date || '')}" inputmode="numeric" aria-label="${esc(M.roomName(c))} 수업일자"></td>`;
+      if (!cl) return `<td class="na"><button class="pl-plus" data-act="prog-place" data-id="${c.id}" data-lid="${l.id}"
+        title="${esc(M.roomName(c))}에 이 강의를 꽂습니다" aria-label="꽂기">${icon('plus',12)}</button></td>`;
+      const st = M.dateStatus(cl.date);
+      return `<td class="ds-${st}"><input class="f dateinput" data-act="cl-date" data-id="${cl.id}"
+        value="${esc(cl.date || '')}" inputmode="numeric" aria-label="${esc(M.roomName(c))} 수업일자"></td>`;
     }).join('');
-    return `<tr><td class="lname">${li+1}강. ${esc(l.title)}</td>${cells}</tr>`;
+    return `<tr>
+      <td class="pl-num">${li + 1}강</td>
+      <td class="lname"><input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제"></td>
+      ${cells}
+      <td class="pl-manage"><button class="ib ib-sm ib-danger" data-act="prog-del" data-lid="${l.id}"
+        title="이 줄을 과목 전체에서 빼기" aria-label="빼기">${icon('trash-2',14)}</button></td>
+    </tr>`;
   }).join('');
 
-  return `${head}${tabs}
-    <div class="prog-wrap"><table class="prog">
-      <thead><tr><th class="lname">강의</th>${th}</tr></thead>
-      <tbody>${body}</tbody>
+  return `${head}${tabs}${toolbar}${addRow}
+    <div class="prog-wrap"><table class="prog pltable">
+      <thead>${thead}</thead><tbody>${body}</tbody>
     </table></div>`;
 }
 
-/* ── 성적 (선생님 지시 2026-10-28) ──────────────────────────────────────────
-   첫 화면은 "강의실 한 판 표"다(선생님이 고른 모양): 과목 탭에서 반 탭으로 강의실을 좁히면
-   그 반 학생 전원이 세로로, 포트폴리오 세 항목과 합계가 가로로 놓인다.
-   미션(참여 여부)과 질문노트(채점한 점수)는 제출물에서 저절로 합산된다.
-   개념노트는 LMS 밖 활동지라 교사가 넣는다: 학생 줄을 누르면 차시별 입력 칸이 펼쳐진다
-   (선생님이 고른 입력 단위: 강의 차시마다).
-   배점은 차시마다 하나라 학생 표와 섞이지 않게 [배점] 줄에서 따로 정한다. */
+/* ── 성적 (hoistory/lms "성적 Check" 틀 이식) ───────────────────────────────
+   선생님 지시 2026-10-28: 미션 활동, 오늘의 질문, 성적 전부 hoistory 기본 틀로.
+   hoistory와 같이 서브 메뉴 셋으로 나눈다.
+     성적 입력 : 강의를 고르고 불러오면 반 학생 표가 뜬다. 영역마다 달성 칸과 기한 칸을
+                 체크한다. 미션과 질문노트는 제출물에서 자동으로 끌어오고(자동 감지),
+                 교사가 누른 칸은 손으로 정한 것으로 표시돼 다시 끌어와도 덮이지 않는다.
+                 이름을 누르면 결석(전부 미달성 고정). 끝에 피드백 칸.
+     성적 설정 : 성적에 반영할 강의 목록 + 포트폴리오 점수 급간 표
+     성적 조회 : 반별로 학생의 영역 점수, 달성률, 총점. 이름을 누르면 강의별 내역
+   계산은 model.js의 studentGrade 한 곳에서 한다(머리 주석 참고). */
 function pageScores(){
   const years = M.getYears();
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
-  const head = `<div class="pagehead"><h2>성적</h2>${years.length?yearSel:''}</div>`;
+  const tabs = catline(M.ADMIN_SUBMENUS.scores, state.scTab, 'sc-tab');
+  const head = `<div class="pagehead"><h2>성적</h2>${years.length?yearSel:''}</div>${tabs}`;
   if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
+  if (state.scTab === 'setting') return head + scoreSettingPanel();
 
   const all = M.getCourses(state.year);
   if (!all.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
 
-  // 과목 탭에서 그 과목의 반 탭으로 좁힌다. 둘 다 있는 것만(요구사항 3).
+  // 과목 탭에서 반 탭으로. 두 화면이 같은 고르개를 쓴다.
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
   if (!subjects.includes(state.scSubject)) state.scSubject = subjects[0];
   const subTabs = catline(subjects.map(s => ({ v:s, label:s })), state.scSubject, 'sc-subject');
@@ -432,79 +476,186 @@ function pageScores(){
   const c = M.getCourse(state.scCourseId);
   if (!c) return `${head}${subTabs}<div class="empty">강의실이 없습니다.</div>`;
 
+  const pick = `${subTabs}${roomTabs}`;
+  return head + pick + (state.scTab === 'input' ? scoreInputPanel(c) : scoreViewPanel(c));
+}
+
+/* 성적 입력: 강의 고르개 줄(hoistory의 grade-config-card) + 통계 칩 + 학생 표.
+   영역 실시 여부는 2027에서 "그 강의에 그 칸이 있는가"가 그대로 답이라 따로 토글을 두지 않는다
+   (hoistory는 칸 개념이 없어 미실시 체크박스를 따로 뒀다). 가중치만 고르개로 남긴다. */
+function scoreInputPanel(c){
   const cls = M.getCourseLessons(c.id);
-  const maxBtn = `<button class="btn-link" data-act="sc-max-toggle">배점</button>`;
-  const label = `<div class="sectionlabel between">${esc(M.roomName(c))}${maxBtn}</div>`;
-  const maxPanel = state.scMaxOpen ? scoreMaxPanel(cls) : '';
+  if (!cls.length) return `<div class="empty">꽂힌 강의가 없습니다.</div>`;
+  if (!cls.some(cl => cl.id === state.scClId)) state.scClId = cls[0].id;
+  const cl = cls.find(x => x.id === state.scClId);
+  const no = cls.findIndex(x => x.id === state.scClId) + 1;
 
-  const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
-  if (!students.length) return `${head}${subTabs}${roomTabs}${label}${maxPanel}<div class="empty">학생이 없습니다.</div>`;
+  const lessonSel = `<select class="sel" data-act="sc-lesson" aria-label="강의">
+    ${cls.map((x, i) => `<option value="${x.id}" ${x.id===state.scClId?'selected':''}>${i+1}강. ${esc(x.lesson?.title || '(삭제된 강의)')}</option>`).join('')}
+  </select>`;
 
-  const cols = M.PART_TYPES.filter(p => p.portfolio);
-  const th = cols.map(p => `<th>${esc(p.name)}</th>`).join('');
-  const body = students.map(s => {
-    const sc = M.courseScore(c.id, s.studentNo);
-    const open = state.scOpenNo === s.studentNo;
-    const cells = cols.map(p => {
-      const it = sc.items[p.key];
-      return `<td class="num">${it.max || it.got ? `${it.got} / ${it.max}` : ''}</td>`;
-    }).join('');
-    const tot = sc.has ? `${sc.total.got} / ${sc.total.max}` : '';
-    const row = `<tr class="scrow ${open?'on':''}" data-act="sc-open" data-no="${s.studentNo}">
-      <td class="lname"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>
-        <span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</td>
-      ${cells}<td class="num tot">${tot}</td></tr>`;
-    return open ? row + scoreLinesRow(sc, cols.length + 2, s.studentNo) : row;
+  // 가중치: 그 강의의 그 칸에 붙는다(그 강의를 꽂은 모든 강의실 공통).
+  const weights = M.GRADE_AREAS.map(a => {
+    const w = M.partWeight(cl.lessonId, a.key);
+    if (!w) return `<span class="gw off">${esc(a.name)} 없음</span>`;
+    return `<span class="gw">${esc(a.name)}
+      <select class="sel sel-sm" data-act="sc-weight" data-lid="${cl.lessonId}" data-k="${a.key}" aria-label="${esc(a.name)} 가중치">
+        <option value="1" ${w===1?'selected':''}>1배</option>
+        <option value="2" ${w===2?'selected':''}>2배</option>
+      </select></span>`;
   }).join('');
 
-  return `${head}${subTabs}${roomTabs}${label}${maxPanel}
-    <div class="prog-wrap"><table class="prog scoretable">
-      <thead><tr><th class="lname">학생</th>${th}<th class="num">합계</th></tr></thead>
-      <tbody>${body}</tbody>
+  const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
+  const nos = students.map(s => s.studentNo);
+  const stats = M.gradeStats(cl.id, nos);
+  const statChips = M.GRADE_AREAS.map(a => {
+    const st = stats[a.key];
+    return `<span class="gchip"><b>${esc(a.name)}</b>${st ? `${st.done} / ${st.all}` : '없음'}</span>`;
+  }).join('');
+
+  const dateNote = cl.date
+    ? `<span class="unit">수업일자 ${esc(cl.date)}</span>`
+    : `<span class="unit">수업일자가 없어 기한을 따지지 않습니다</span>`;
+
+  const pubBtn = `<button class="btn-chip ${cl.gradePublished?'on':''}" data-act="sc-publish" data-id="${cl.id}">
+    ${icon(cl.gradePublished ? 'eye' : 'eye-off', 13)}${cl.gradePublished ? '반영 중' : '반영하기'}</button>`;
+  const autoBtn = `<button class="btn-chip" data-act="sc-auto" data-id="${cl.id}">${icon('download',13)}자동 끌어오기</button>`;
+  const inGrade = M.isGradeLesson(cl.lessonId);
+
+  const bar = `<div class="gradebar">
+    <div class="gradebar-line">${lessonSel}<div class="gw-row">${weights}</div></div>
+    <div class="gradebar-line">${dateNote}<div class="grow"></div>${autoBtn}${pubBtn}</div>
+    ${inGrade ? '' : `<div class="m-err">이 강의는 성적 설정의 반영 강의 목록에 없어 최종 성적에 들어가지 않습니다.</div>`}
+  </div>`;
+
+  if (!students.length) return bar + `<div class="empty">학생이 없습니다.</div>`;
+
+  // 표: 영역마다 (달성 w칸 + 기한 w칸). 가중치 2배면 칸이 둘씩이라 반만 깎을 수 있다.
+  const areas = M.GRADE_AREAS.map(a => ({ ...a, w:M.partWeight(cl.lessonId, a.key) })).filter(a => a.w);
+  if (!areas.length) return bar + `<div class="empty">이 강의에는 성적에 드는 칸이 없습니다.</div>`;
+
+  const auto = M.autoDetect(cl.id);
+  const head1 = areas.map(a =>
+    `<th colspan="${2*a.w}" class="ga-${a.key}">${esc(a.name)}${a.w>1?`<span class="gw-tag">x${a.w}</span>`:''}</th>`).join('');
+  const head2 = areas.map(a =>
+    Array.from({length:a.w}, (_, i) => `<th class="ga-${a.key}">달성</th>`).join('') +
+    Array.from({length:a.w}, (_, i) => `<th class="ga-${a.key}">기한</th>`).join('')).join('');
+
+  const body = students.map(s => {
+    const g = M.gradeRec(cl.id, s.studentNo);
+    const rowAll = areas.every(a => (g[a.key]?.achievedN||0) >= a.w && (g[a.key]?.onTimeN||0) >= a.w);
+    const cells = areas.map(a => {
+      const mk = (field, n) => Array.from({length:a.w}, (_, i) =>
+        `<td class="ga-${a.key}"><input type="checkbox" class="gcb" data-act="sc-cell" data-id="${cl.id}"
+           data-no="${s.studentNo}" data-k="${a.key}" data-f="${field}" data-i="${i}"
+           ${i < n ? 'checked' : ''} ${g.absent ? 'disabled' : ''}></td>`).join('');
+      return mk('achievedN', g[a.key]?.achievedN || 0) + mk('onTimeN', g[a.key]?.onTimeN || 0);
+    }).join('');
+    const note = M.GRADE_AREAS.map(a => {
+      const v = auto[s.studentNo]?.[a.key]; if (!v) return '';
+      const manual = g.manual?.[a.key];
+      return `<span class="gnote ${manual?'muted':''}" title="${manual?'손으로 정한 칸이라 자동 감지가 덮지 않습니다':'자동 감지 결과'}">${esc(v.note)}</span>`;
+    }).filter(Boolean).join('');
+    return `<tr class="${g.absent?'absent':''}">
+      <td class="lname">
+        <input type="checkbox" class="gcb" data-act="sc-row-all" data-id="${cl.id}" data-no="${s.studentNo}"
+          ${rowAll?'checked':''} ${g.absent?'disabled':''} title="이 학생의 달성과 기한을 한 번에">
+        <span class="mono">${esc(s.studentNo)}</span>
+        <button class="gname" data-act="sc-absent" data-id="${cl.id}" data-no="${s.studentNo}"
+          title="누르면 결석으로 표시하고 해제합니다">${esc(s.name)}</button>
+        ${g.absent ? `<span class="gnote">결석</span>` : ''}
+      </td>
+      ${cells}
+      <td class="gauto">${note}</td>
+      <td class="gfb"><input class="f" data-act="sc-feedback" data-id="${cl.id}" data-no="${s.studentNo}"
+        value="${esc(g.feedback || '')}" aria-label="피드백"></td>
+    </tr>`;
+  }).join('');
+
+  return bar + `<div class="gstats">${statChips}</div>
+    <div class="prog-wrap"><table class="prog gradetable">
+      <thead>
+        <tr><th class="lname" rowspan="2">${no}강 학생</th>${head1}<th rowspan="2">자동 감지</th><th rowspan="2">피드백</th></tr>
+        <tr>${head2}</tr>
+      </thead><tbody>${body}</tbody></table></div>`;
+}
+
+/* 성적 설정: 반영할 강의 목록 + 포트폴리오 점수 급간 표(hoistory grade_settings/config 그대로). */
+function scoreSettingPanel(){
+  const lessons = M.getLessons();
+  const picked = new Set(M.getGradeLessons());
+  const list = lessons.length ? lessons.map(l => {
+    const on = picked.has(l.id);
+    const parts = M.GRADE_AREAS.filter(a => M.partWeight(l.id, a.key)).map(a => a.name).join(', ');
+    return `<label class="row compact selrow ${on?'on':''}">
+      <input type="checkbox" data-act="sc-pick-lesson" data-lid="${l.id}" ${on?'checked':''}>
+      <span class="grow"><span class="t">${esc(l.title)}</span>
+        ${parts ? `<span class="s">${esc(parts)}</span>` : `<span class="s">성적에 드는 칸이 없습니다.</span>`}</span></label>`;
+  }).join('') : `<div class="empty">만든 강의가 없습니다.</div>`;
+
+  const bands = M.getBands();
+  const rows = bands.map((b, i) => {
+    const next = i === 0 ? 100 : bands[i-1].min;
+    const label = i === 0 ? `${b.min}% 이상` : `${b.min} ~ ${next}%`;
+    const box = k => `<td class="num"><input class="f dateinput" data-band="${i}" data-k="${k}"
+      value="${+b[k] || 0}" inputmode="numeric" aria-label="${label} ${esc(M.GRADE_AREAS.find(a=>a.key===k).name)} 점수"></td>`;
+    return `<tr><td class="lname">${label}</td>${M.GRADE_AREAS.map(a => box(a.key)).join('')}</tr>`;
+  }).join('');
+  const top = bands[0] || {};
+  const full = M.GRADE_AREAS.reduce((n, a) => n + (+top[a.key] || 0), 0);
+
+  return `<div class="sectionlabel">성적에 반영할 강의</div>${list}
+    <div class="sectionlabel between">포트폴리오 점수 급간
+      <button class="btn-link" data-act="sc-config-save">저장</button></div>
+    <div class="prog-wrap"><table class="prog bandtable">
+      <thead><tr><th class="lname">달성률</th>${M.GRADE_AREAS.map(a => `<th class="num">${esc(a.name)}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td class="lname">만점</td><td class="num" colspan="${M.GRADE_AREAS.length}">${full}점</td></tr></tfoot>
     </table></div>`;
 }
 
-/* 배점 줄: 차시마다 개념노트, 질문노트 만점을 정한다. 강의(창고)에 붙는 값이라
-   그 강의를 꽂은 모든 강의실에 같이 걸린다. 미션은 참여 여부라 배점이 없다. */
-function scoreMaxPanel(cls){
-  const rows = cls
-    .map((cl, i) => ({ cl, no:i + 1 }))                     // 강 번호는 거르기 전 순서로
-    .filter(x => x.cl.lesson?.parts?.concept || x.cl.lesson?.parts?.question)
-    .map(({ cl, no }) => {
-    const p = cl.lesson.parts;
-    const box = (key) => p[key]
-      ? `<input class="f dateinput" data-act="sc-max" data-id="${cl.lessonId}" data-k="${key}"
-           value="${M.partMax(cl.lessonId, key) || ''}" inputmode="numeric"
-           aria-label="${esc(cl.lesson.title)} ${esc(M.partDef(key).name)} 배점">`
-      : `<span class="unit">없음</span>`;
-    return `<div class="row compact">
-      <div class="plnum">${no}강</div>
-      <div class="grow"><div class="t">${esc(cl.lesson.title)}</div></div>
-      <span class="unit">개념노트</span>${box('concept')}
-      <span class="unit">질문노트</span>${box('question')}
-    </div>`;
+/* 성적 조회: 반별로 학생의 영역 점수와 총점. 이름을 누르면 강의별 내역이 펼쳐진다. */
+function scoreViewPanel(c){
+  const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
+  if (!students.length) return `<div class="empty">학생이 없습니다.</div>`;
+  const picked = M.getGradeLessons();
+  if (!picked.length)
+    return `<div class="empty">성적 설정에서 반영할 강의를 먼저 고르시길 바랍니다.</div>`;
+
+  const th = M.GRADE_AREAS.map(a => `<th class="num">${esc(a.name)}</th>`).join('');
+  const body = students.map(s => {
+    const g = M.studentGrade(c.id, s.studentNo);
+    const open = state.scOpenNo === s.studentNo;
+    const cells = M.GRADE_AREAS.map(a => {
+      const it = g.areas[a.key];
+      return `<td class="num">${it.total ? `${it.score}<span class="gsub">${it.achieved}/${it.total} ${it.pct}%</span>` : '<span class="gsub">미실시</span>'}</td>`;
+    }).join('');
+    const row = `<tr class="scrow ${open?'on':''}" data-act="sc-open" data-no="${s.studentNo}">
+      <td class="lname"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>
+        <span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</td>
+      ${cells}<td class="num tot">${g.total}<span class="gsub">/ ${g.maxScore}</span></td></tr>`;
+    return open ? row + scoreRowDetail(g, M.GRADE_AREAS.length + 2) : row;
   }).join('');
-  return rows || `<div class="empty">배점을 정할 칸이 없습니다.</div>`;
+
+  return `<div class="sectionlabel">${esc(M.roomName(c))} 포트폴리오 성적</div>
+    <div class="prog-wrap"><table class="prog scoretable">
+      <thead><tr><th class="lname">학생</th>${th}<th class="num">총점</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
 }
 
-// 학생 줄 아래로 펼쳐지는 차시별 내역: 개념노트만 입력 칸이다.
-function scoreLinesRow(sc, span, studentNo){
-  const lines = sc.lines.filter(l => l.concept || l.mission || l.question);
-  const body = lines.length ? lines.map(l => {
-    const concept = l.concept
-      ? `<span class="unit">개념노트</span>
-         <input class="f dateinput" data-act="sc-concept" data-id="${l.clId}" data-no="${studentNo}"
-           value="${l.concept.score ?? ''}" inputmode="numeric"
-           aria-label="${esc(l.title)} 개념노트 점수"><span class="unit">/ ${l.concept.max}</span>` : '';
-    const mission = l.mission
-      ? `<span class="unit">미션</span><span class="sc-mark ${l.mission.done?'on':''}">${l.mission.done?'참여':'미참여'}</span>` : '';
-    const question = l.question
-      ? `<span class="unit">질문노트</span><span class="mono">${l.question.score ?? '-'} / ${l.question.max}</span>` : '';
+// 강의별 내역: 어디서 깎였는지 그대로 보인다(hoistory 2026-09-03과 같은 뜻).
+function scoreRowDetail(g, span){
+  const body = g.rows.length ? g.rows.map(r => {
+    const bits = M.GRADE_AREAS.map(a => {
+      const v = r.areas[a.key]; if (!v) return '';
+      const mark = (n, w) => n >= w ? 'O' : (n > 0 ? '△' : 'X');
+      return `<span class="gnote">${esc(a.name)} ${mark(v.achievedN, v.weight)} ${mark(v.onTimeN, v.weight)}</span>`;
+    }).filter(Boolean).join('');
     return `<div class="row compact">
-      <div class="plnum">${l.no}강</div>
-      <div class="grow"><div class="t">${esc(l.title)}</div></div>
-      ${concept}${mission}${question}</div>`;
-  }).join('') : `<div class="empty">채점할 칸이 있는 강의가 없습니다.</div>`;
+      <div class="plnum">${r.no}강</div>
+      <div class="grow"><div class="t">${esc(r.title)}</div>${r.feedback ? `<div class="s">${esc(r.feedback)}</div>` : ''}</div>
+      ${r.absent ? `<span class="gnote">결석</span>` : ''}${bits}</div>`;
+  }).join('') : `<div class="empty">반영된 강의가 없습니다.</div>`;
   return `<tr class="sc-lines"><td colspan="${span}"><div class="detail">${body}</div></td></tr>`;
 }
 
@@ -659,9 +810,9 @@ function studentDetailPanel(sno, name){
     <button class="btn-link" data-act="stu-reset" data-no="${sno}">비밀번호 초기화</button></div>`;
 
   const scoreRows = mine.length ? mine.map(c => {
-    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sc = M.courseScore(c.id, sno);
+    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sc = M.studentGrade(c.id, sno);
     const bits = [lvl!=null?`Lv.${lvl}`:'레벨 없음', `경험치 ${xp?xp.xp:0}`,
-      sc.has ? `포트폴리오 ${sc.total.got}/${sc.total.max}점` : '포트폴리오 기록 없음'];
+      sc.has ? `포트폴리오 ${sc.total}/${sc.maxScore}점` : '포트폴리오 기록 없음'];
     return `<div class="row compact"><div class="grow"><div class="t">${esc(M.roomName(c))}</div>
       <div class="s">${bits.join(', ')}</div></div></div>`;
   }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
@@ -854,9 +1005,12 @@ function conceptEditor(l){
   return `<div class="detail"><div class="ce-wrap">${lines}${add}</div></div>`;
 }
 
-/* ── 미션 활동 ──
-   별도로 만든 미니 웹앱을 잇는 허브(요구사항 62, 63). 앱 어드민은 오버레이로 화면을 통째로
-   덮지 않고 같은 창 안의 별도 탭으로 연다: 미션 목록과 나란히 두고 오간다(요구사항 67). */
+/* ── 미션 활동 (hoistory/lms "미션 Check" 카드 틀 이식) ─────────────────────
+   선생님 지시 2026-10-28: 미션 활동도 hoistory 기본 틀로.
+   hoistory 카드가 들고 있던 것을 그대로 옮겼다: 제목, 웹앱 주소, 어드민 주소, 아이콘,
+   연결할 강의, 팝업으로 열기, 그리고 아카이브 세 칸(수업 주제, 활동 의도, 아카이브 내용).
+   아카이브 칸은 접어 두고 아이콘 단추로 펼친다(hoistory의 아카이브 아코디언과 같다).
+   앱 어드민은 오버레이로 화면을 덮지 않고 같은 창 안의 탭으로 연다(요구사항 67). */
 function pageMission(){
   const head = `<div class="pagehead"><h2>미션 활동</h2>
     <button class="btn-add" data-act="mission-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
@@ -874,30 +1028,54 @@ function pageMission(){
     return `${head}${tabline}<iframe class="appframe" src="${esc(openApp.adminUrl)}" title="${esc(openApp.name)} 관리자 모드"></iframe>`;
 
   const apps = M.getMissionApps();
-  const list = apps.length ? apps.map(a => `<div class="row">
-    <div class="grow"><div class="t">${esc(a.name)}</div>
-      <div class="s mono">${esc(a.id)}</div></div>
-    <div class="tools">
-      <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
-      <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-      <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-    </div></div>`).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
+  const list = apps.length ? apps.map(a => {
+    const lesson = a.lessonId ? M.getLesson(a.lessonId) : null;
+    const arch = a.archive || {};
+    const bits = [lesson ? `연결 강의 ${lesson.title}` : '연결한 강의 없음',
+                  a.modal ? '팝업으로 열기' : ''].filter(Boolean).join(', ');
+    return `<div class="row">
+      <div class="grow"><div class="t">${esc(a.name)}</div>
+        <div class="s mono">${esc(a.id)}</div>
+        <div class="s">${esc(bits)}</div>
+        ${arch.topic ? `<div class="s">아카이브 ${esc(arch.topic)}</div>` : ''}</div>
+      <div class="tools">
+        <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
+        <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+        <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+      </div></div>`;
+  }).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
 
-  return `${head}${tabline}${list}`;
+  return `${head}${tabline}<div class="sectionlabel">현재 연결된 미션</div>${list}`;
 }
 
-/* 미션 앱 등록/수정 팝업: 이름, 앱 키(apps/ 폴더 이름), 학생 주소, 관리자 주소. */
+/* 미션 앱 등록, 수정 팝업. hoistory 카드 추가 폼의 칸을 그대로 옮겼다. */
 function openMissionModal(app){
   const back = document.createElement('div');
   back.className = 'modal-back';
   const dis = app ? 'disabled' : '';
-  back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="미션 앱">
+  const lessons = M.getLessons();
+  const arch = app?.archive || {};
+  let archOpen = !!(arch.topic || arch.intent || arch.content);
+
+  back.innerHTML = `<div class="modal modal-wide" role="dialog" aria-modal="true" aria-label="미션 앱">
     <h3>${app ? '앱 수정' : '앱 추가'}</h3>
     <div class="m-form">
-      <label class="m-label">이름</label><input class="f" id="ma-name" value="${esc(app?.name || '')}">
+      <label class="m-label">제목</label><input class="f" id="ma-name" value="${esc(app?.name || '')}">
       <label class="m-label">앱 키</label><input class="f" id="ma-key" value="${esc(app?.id || '')}" ${dis}>
-      <label class="m-label">학생 주소</label><input class="f" id="ma-su" value="${esc(app?.studentUrl || '')}">
-      <label class="m-label">관리자 주소</label><input class="f" id="ma-au" value="${esc(app?.adminUrl || '')}">
+      <label class="m-label">웹앱 주소</label><input class="f" id="ma-su" value="${esc(app?.studentUrl || '')}">
+      <label class="m-label">어드민 주소</label><input class="f" id="ma-au" value="${esc(app?.adminUrl || '')}">
+      <label class="m-label">연결할 강의</label>
+      <select class="sel sel-full" id="ma-lesson">
+        <option value="">연결 없음</option>
+        ${lessons.map(l => `<option value="${l.id}" ${l.id===app?.lessonId?'selected':''}>${esc(l.title)}</option>`).join('')}
+      </select>
+      <label class="m-check"><input type="checkbox" id="ma-modal" ${app?.modal?'checked':''}><span>팝업으로 열기</span></label>
+      <button class="btn-chip" id="ma-arch-btn">${icon('archive',13)}아카이브 정보</button>
+      <div class="m-form" id="ma-arch" ${archOpen?'':'hidden'}>
+        <label class="m-label">수업 주제</label><input class="f" id="ma-topic" value="${esc(arch.topic || '')}">
+        <label class="m-label">활동 의도</label><textarea class="f ta" id="ma-intent">${esc(arch.intent || '')}</textarea>
+        <label class="m-label">아카이브 내용</label><textarea class="f ta" id="ma-content">${esc(arch.content || '')}</textarea>
+      </div>
     </div>
     <div class="m-err" id="ma-err"></div>
     <div class="m-acts">
@@ -908,16 +1086,23 @@ function openMissionModal(app){
   const modal = back.querySelector('.modal');
   const close = () => { document.removeEventListener('keydown', onKey); back.remove(); };
   const err = m => { modal.querySelector('#ma-err').textContent = m; };
+  const g = id => modal.querySelector(id);
   const submit = () => {
-    const name = modal.querySelector('#ma-name').value, su = modal.querySelector('#ma-su').value,
-          auu = modal.querySelector('#ma-au').value, key = modal.querySelector('#ma-key').value;
+    const payload = {
+      name: g('#ma-name').value, studentUrl: g('#ma-su').value, adminUrl: g('#ma-au').value,
+      lessonId: g('#ma-lesson').value, modal: g('#ma-modal').checked,
+      archive: { topic:g('#ma-topic').value.trim(), intent:g('#ma-intent').value.trim(), content:g('#ma-content').value.trim() },
+    };
     try {
-      if (app) M.updateMissionApp(app.id, { name, studentUrl:su, adminUrl:auu });
-      else M.addMissionApp({ name, studentUrl:su, adminUrl:auu, key });
+      if (app) M.updateMissionApp(app.id, payload);
+      else M.addMissionApp({ ...payload, key:g('#ma-key').value });
       toast(app ? '앱을 저장했습니다.' : '앱을 추가했습니다.'); close(); render();
     } catch(e){ err(e.message); }
   };
-  const onKey = e => { if (e.key==='Escape') close(); if (e.key==='Enter'){ e.preventDefault(); submit(); } };
+  g('#ma-arch-btn').addEventListener('click', () => {
+    archOpen = !archOpen; g('#ma-arch').hidden = !archOpen;
+  });
+  const onKey = e => { if (e.key==='Escape') close(); };
   back.addEventListener('click', e => {
     if (e.target === back){ close(); return; }
     const m = e.target.closest('[data-m]'); if (!m) return;
@@ -926,9 +1111,13 @@ function openMissionModal(app){
   document.addEventListener('keydown', onKey);
 }
 
-/* ── 오늘의 질문 ──
-   질문 관리는 강의에 걸린 질문(lessons.parts.question)을, 답변 채점은 강의실과 강의를 골라
-   그 질문에 들어온 학생 답변을 모아 본다(AI 1차 채점은 다음 단계, 요구사항 70). */
+/* ── 오늘의 질문 (hoistory/lms "생각 Check" 틀 이식) ─────────────────────────
+   서브 메뉴 셋. hoistory의 강의 선택 줄, 채점 영역(반 태그 + 통계 칩 + 답변 목록),
+   PICK 영역을 그대로 옮긴 것이다.
+     질문 관리 : 강의에 걸린 질문과 안내를 고친다. 공개 토글도 여기
+     답변, 채점 : 강의실과 강의를 골라 반 학생 답변을 모아 본다. 자동 판정(questionVerdict)
+                 결과가 줄마다 붙고, [통과] [미흡]으로 손으로 못박을 수 있다
+     PICK      : 공유로 켜 둔 답변만 모아 본다(수업 중 띄우는 자리, 요구사항 73) */
 function pageQuestion(){
   const tabs = catline(M.ADMIN_SUBMENUS.question, state.questionTab, 'question-tab');
   const head = `<div class="pagehead"><h2>오늘의 질문</h2></div>${tabs}`;
@@ -959,29 +1148,63 @@ function pageQuestion(){
   const cls = M.getCourseLessons(state.questionCourseId).filter(cl => cl.lesson?.parts?.question);
   if (!cls.some(cl => cl.id === state.questionClId)) state.questionClId = cls[0]?.id || null;
 
+  // hoistory의 강의 선택 줄: 강의실과 강의 고르개 + 공개 토글.
+  const cl = cls.find(x => x.id === state.questionClId);
+  const openBtn = cl
+    ? `<button class="btn-chip ${cl.isOpen?'on':''}" data-act="cl-open" data-id="${cl.id}">
+         ${icon(cl.isOpen?'eye':'eye-off',13)}${cl.isOpen?'공개 중':'숨김'}</button>` : '';
   const pickers = `<div class="formrow">
     <select class="sel" data-act="q-course" aria-label="강의실">
       ${courses.map(c => `<option value="${c.id}" ${c.id===state.questionCourseId?'selected':''}>${esc(M.roomName(c))}</option>`).join('')}
     </select>
     <select class="sel" data-act="q-lesson" aria-label="강의" ${cls.length?'':'disabled'}>
       ${cls.length
-        ? cls.map(cl => `<option value="${cl.id}" ${cl.id===state.questionClId?'selected':''}>${esc(cl.lesson.title)}</option>`).join('')
+        ? cls.map(x => `<option value="${x.id}" ${x.id===state.questionClId?'selected':''}>${esc(x.lesson.title)}</option>`).join('')
         : `<option>질문이 걸린 강의 없음</option>`}
-    </select></div>`;
+    </select>${openBtn}</div>`;
 
   if (!state.questionClId) return head + pickers + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
 
+  const q = cl.lesson.parts.question || {};
+  const info = q.prompt ? `<div class="row"><div class="grow"><div class="t">${esc(q.prompt)}</div>
+    ${q.guide ? `<div class="s">${esc(q.guide)}</div>` : ''}</div></div>` : '';
+
   const subs = M.getQuestionSubs(state.questionClId);
-  const body = subs.length ? subs.map(s => `<div class="row">
-    <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
+  const judged = subs.map(s => ({ s, v:M.questionVerdict(s) }));
+
+  if (state.questionTab === 'pick'){
+    const picked = judged.filter(x => x.s.shared);
+    const body = picked.length ? picked.map(({ s }) => `<div class="row">
+      <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
+        <div class="s">${esc(s.answer)}</div></div>
+      <div class="tools">
+        <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="공개 내리기" aria-label="공개 내리기">${icon('eye',14)}</button>
+      </div></div>`).join('') : `<div class="empty">공유로 켜 둔 답변이 없습니다.</div>`;
+    return head + pickers + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
+  }
+
+  // 통계 칩: 제출, 통과, 미흡, 공유.
+  const pass = judged.filter(x => x.v.achieved).length;
+  const students = M.getStudentsByCourse(state.questionCourseId);
+  const chips = `<div class="gstats">
+    <span class="gchip"><b>제출</b>${judged.length} / ${students.length}</span>
+    <span class="gchip"><b>통과</b>${pass}</span>
+    <span class="gchip"><b>미흡</b>${judged.length - pass}</span>
+    <span class="gchip"><b>공유</b>${judged.filter(x => x.s.shared).length}</span>
+  </div>`;
+
+  const body = judged.length ? judged.map(({ s, v }) => `<div class="row">
+    <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}
+        <span class="gnote ${v.achieved?'':'bad'}">${esc(v.verdict)}</span>
+        <span class="gsub">${v.length}자</span></div>
       <div class="s">${esc(s.answer)}</div></div>
     <div class="tools">
-      <input class="f dateinput" data-act="q-score" data-id="${s.id}" value="${s.score ?? ''}" inputmode="numeric" aria-label="점수">
-      <span class="unit">/ ${s.max}</span>
+      <button class="btn-chip ${s.verdict==='pass'?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
+      <button class="btn-chip ${s.verdict==='fail'?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
       <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
     </div></div>`).join('') : `<div class="empty">제출된 답변이 없습니다.</div>`;
 
-  return head + pickers + body;
+  return head + pickers + info + chips + body;
 }
 
 /* ── 형성평가 ──
@@ -1191,6 +1414,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'question-tab': state.questionTab = v; state.questionLessonId = null; render(); break;
     case 'q-open': state.questionLessonId = state.questionLessonId === id ? null : id; render(); break;
     case 'q-share': M.toggleSubShared(id); render(); break;
+    // 통과/미흡을 손으로 못박는다(같은 것을 다시 누르면 자동 판정으로 되돌아간다)
+    case 'q-verdict': M.setSubVerdict(id, v); render(); break;
 
     // 형성평가
     case 'fm-open': state.formativeLessonId = id; render(); break;
@@ -1198,10 +1423,64 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
 
     // 성적
-    case 'sc-subject': state.scSubject = v; state.scCourseId = null; state.scOpenNo = null; render(); break;
-    case 'sc-room': state.scCourseId = v; state.scOpenNo = null; render(); break;
-    case 'sc-max-toggle': state.scMaxOpen = !state.scMaxOpen; render(); break;
+    case 'sc-tab': state.scTab = v; state.scOpenNo = null; render(); break;
+    case 'sc-subject':
+      state.scSubject = v; state.scCourseId = null; state.scClId = null; state.scOpenNo = null; render(); break;
+    case 'sc-room': state.scCourseId = v; state.scClId = null; state.scOpenNo = null; render(); break;
     case 'sc-open': state.scOpenNo = state.scOpenNo === no ? null : no; render(); break;
+    // 이름을 누르면 결석(전부 미달성 고정). hoistory와 같다.
+    case 'sc-absent': run(() => M.toggleGradeAbsent(id, no)); break;
+    // 제출물에서 달성과 기한을 끌어온다. 손으로 정한 칸과 결석 학생은 건드리지 않는다.
+    case 'sc-auto': {
+      const r = run(() => M.applyAutoDetect(id));
+      if (r) toast(r.touched ? `${r.touched}명을 끌어왔습니다.` : '새로 끌어올 것이 없습니다.');
+      break;
+    }
+    case 'sc-publish': {
+      const cl = M.toggleGradePublished(id);
+      toast(cl?.gradePublished ? '이 반에 성적을 반영했습니다.' : '성적 반영을 내렸습니다.');
+      render(); break;
+    }
+    // 급간 표와 반영 강의 목록을 한 번에 쓴다(일반 설정의 저장 버튼과 같은 방식).
+    case 'sc-config-save': {
+      const bands = M.getBands().map((b, i) => {
+        const out = { min:b.min };
+        M.GRADE_AREAS.forEach(a => {
+          out[a.key] = document.querySelector(`[data-band="${i}"][data-k="${a.key}"]`)?.value ?? b[a.key];
+        });
+        return out;
+      });
+      M.saveGradeConfig(bands)
+        .then(() => { toast('저장했습니다.'); render(); })
+        .catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
+      break;
+    }
+
+    // 진도 관리 (hoistory 진도 계획 틀)
+    case 'prog-add-open': state.progAdding = true; render();
+      document.getElementById('prog-new-title')?.focus(); break;
+    case 'prog-add-cancel': state.progAdding = false; render(); break;
+    case 'prog-add-save': {
+      const t = val('prog-new-title');
+      const r = run(() => M.addLessonToSubject(state.year, state.progSubject, t));
+      if (r){ state.progAdding = false; toast(`${state.progSubject} 강의실 ${r.rooms}개에 꽂았습니다.`); render(); }
+      break;
+    }
+    case 'prog-place': {   // 그 반에만 빠져 있던 강의를 꽂는다
+      M.placeLesson(id, el.dataset.lid); render(); break;
+    }
+    case 'prog-del': {
+      const l = M.getLesson(el.dataset.lid); if (!l) break;
+      confirmDelete({
+        title: `${l.title} 빼기`,
+        bodyHtml: `${esc(state.progSubject)} 강의실 전부에서 이 줄을 뺍니다. 그 강의의 성적 기록과 제출물도 같이 없어집니다.`
+          + `<ul><li>강의 내용 자체는 창고에 남습니다</li></ul>`,
+        okText: '빼기',
+      }).then(ok => { if (!ok) return;
+        const n = M.removeLessonFromSubject(state.year, state.progSubject, l.id);
+        toast(`강의실 ${n}개에서 뺐습니다.`); render(); });
+      break;
+    }
 
     // 일반 설정: 칸마다 따로 안 쓰고 저장 버튼을 누를 때 전부 한 번에 쓴다.
     case 'general-save': {
@@ -1229,10 +1508,25 @@ document.getElementById('shell').addEventListener('change', e => {
     state.roomStudentEdit = false; state.roomStuSel = new Set(); render();
   } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
     M.setCourseLessonDate(el.dataset.id, el.value); render();
-  } else if (el.dataset.act === 'sc-concept'){   // 개념노트 점수(교사 수기 입력)
-    run(() => M.setConceptScore(el.dataset.id, el.dataset.no, el.value));
-  } else if (el.dataset.act === 'sc-max'){       // 차시 배점(그 강의를 꽂은 모든 강의실 공통)
-    run(() => M.setPartMax(el.dataset.id, el.dataset.k, el.value));
+  } else if (el.dataset.act === 'prog-sch'){   // 반별 수업 요일(진도표 머리줄)
+    M.setCourseSchedule(el.dataset.id, el.value);
+  } else if (el.dataset.act === 'prog-topic'){   // 진도표의 주제 = 강의 제목
+    run(() => M.setLessonTitle(el.dataset.lid, el.value));
+  } else if (el.dataset.act === 'sc-lesson'){   // 성적 입력: 채점할 강의
+    state.scClId = el.value; render();
+  } else if (el.dataset.act === 'sc-weight'){   // 가중치(그 강의를 꽂은 모든 강의실 공통)
+    run(() => M.setPartWeight(el.dataset.lid, el.dataset.k, el.value));
+  } else if (el.dataset.act === 'sc-cell'){   // 달성/기한 칸 하나. 체크한 칸 수가 그대로 점수다
+    const n = el.checked ? (+el.dataset.i + 1) : (+el.dataset.i);
+    run(() => M.setGradeCell(el.dataset.id, el.dataset.no, el.dataset.k, el.dataset.f, n));
+  } else if (el.dataset.act === 'sc-row-all'){   // 이름 앞 체크: 그 학생의 실시 중인 칸 전부
+    run(() => M.setGradeRowAll(el.dataset.id, el.dataset.no, el.checked));
+  } else if (el.dataset.act === 'sc-feedback'){
+    M.setGradeFeedback(el.dataset.id, el.dataset.no, el.value);
+  } else if (el.dataset.act === 'sc-pick-lesson'){   // 성적에 반영할 강의 목록
+    M.toggleGradeLesson(el.dataset.lid, el.checked);
+    M.saveGradeConfig().catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
+    render();
   } else if (el.dataset.act === 'stu-sel'){   // 명단 편집 모드에서 한 명 고르고 풀기
     if (el.checked) state.roomStuSel.add(el.dataset.no); else state.roomStuSel.delete(el.dataset.no);
     render();

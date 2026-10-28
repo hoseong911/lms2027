@@ -100,6 +100,58 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .prog td.ds-today .dateinput{color:var(--navy);font-weight:700}
 .prog td.ds-past .dateinput{color:var(--sub)}
 
+/* 진도 관리 표 (hoistory 진도 계획 틀): 머리줄 둘, 왼쪽 두 열, 오른쪽 관리 열 */
+.pl-toolbar{display:flex;gap:8px;margin:0 0 12px}
+.pltable td.pl-num,.pltable th.pl-num{min-width:52px;font-weight:700;color:var(--navy)}
+.pltable td.lname,.pltable th.lname{min-width:210px}
+.pltable td.lname .f{width:100%;border-color:transparent;background:transparent;font-weight:600}
+.pltable td.lname .f:focus{border-color:var(--navy);background:var(--card)}
+.pltable th.pl-sch{padding:3px 4px}
+.pltable th.pl-sch .dateinput{width:100%;min-width:52px;font-weight:400}
+.pltable td.pl-manage,.pltable th.pl-manage{min-width:52px}
+.pl-plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border:1px dashed var(--line);border-radius:var(--r-btn);background:transparent;color:var(--sub);cursor:pointer}
+.pl-plus:hover{border-color:var(--navy);color:var(--navy);border-style:solid}
+
+/* 성적 입력 (hoistory 성적 Check 틀): 고르개 줄, 가중치, 통계 칩, 체크 표 */
+.gradebar{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
+.gradebar-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gradebar-line + .gradebar-line{margin-top:10px}
+.gw-row{display:flex;gap:14px;flex-wrap:wrap}
+.gw{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-meta);color:var(--ink)}
+.gw.off{color:var(--sub)}
+.sel-sm{padding:4px 6px;font-size:var(--fs-meta)}
+.gstats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.gchip{display:inline-flex;align-items:center;gap:6px;background:var(--hover);border-radius:var(--r-btn);
+  padding:5px 10px;font-size:var(--fs-meta);color:var(--ink)}
+.gchip b{color:var(--sub);font-weight:700}
+.gradetable td,.gradetable th{padding:4px}
+.gradetable td.lname,.gradetable th.lname{min-width:190px;white-space:nowrap}
+.gradetable td.lname{display:table-cell}
+.gradetable .gname{border:0;background:transparent;font:inherit;color:var(--ink);cursor:pointer;padding:0 2px}
+.gradetable .gname:hover{text-decoration:underline}
+.gradetable tr.absent td{background:var(--hover);color:var(--sub)}
+.gradetable td.gauto{min-width:110px;text-align:left}
+.gradetable td.gfb{min-width:170px}
+.gradetable td.gfb .f{width:100%}
+.gcb{width:16px;height:16px;accent-color:var(--navy)}
+.gw-tag{font-size:var(--fs-meta);color:var(--sub);margin-left:4px}
+.gnote{display:inline-block;font-size:var(--fs-meta);color:var(--navy);margin-left:6px}
+.gnote.bad{color:var(--red)}
+.gnote.muted{color:var(--sub)}
+.gsub{display:inline-block;font-size:var(--fs-meta);color:var(--sub);margin-left:5px}
+
+/* 성적 설정의 급간 표 */
+.bandtable td.lname,.bandtable th.lname{min-width:120px}
+.bandtable td.num .dateinput{width:64px;text-align:right}
+.bandtable tfoot td{font-weight:700;color:var(--navy)}
+
+/* 미션 앱 팝업: 아카이브 칸이 있어 조금 넓다 */
+.modal-wide{max-width:560px}
+.m-check{display:flex;align-items:center;gap:8px;font-size:var(--fs-body);color:var(--ink);margin:4px 0}
+.m-check input{width:16px;height:16px;accent-color:var(--navy)}
+.ta{min-height:64px;resize:vertical;font-family:inherit}
+
 /* 성적 표: 학생 x 포트폴리오 세 항목. 진도 관리 표와 뼈대를 같이 쓴다 */
 .scoretable{width:100%}
 .scoretable td.lname{min-width:150px}
@@ -137,6 +189,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .btn-chip.danger{border-color:var(--red);color:var(--red)}
 .btn-chip.danger:hover:not(:disabled){background:var(--red);color:#fff}
 .btn-chip:disabled{opacity:.4;cursor:default}
+.btn-chip.on{border-color:var(--navy);color:var(--navy);background:var(--accent-soft)}
 
 /* 섹션 이름표 오른쪽에 붙는 바로가기 링크 */
 .sectionlabel.between{display:flex;align-items:center;justify-content:space-between}

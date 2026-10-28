@@ -24,6 +24,23 @@
 - GitHub Pages(`main` 브랜치 루트). 주소 `https://hoseong911.github.io/lms2027/`. 빌드 없음, 바닐라 HTML/CSS/JS.
 - 캐시 무효화는 `?v=YYYYMMDDx`를 손으로 올린다(`index.html`, `admin.html`의 css/js, js 안의 `model.js` import).
 
+## hoistory/lms에서 이식한 것 (선생님 지시 2026-10-28)
+"**1번 2번 둘 다 lms에서 기본 틀 이식해 오는 거야.**" 2026 lms에서 실제로 돌려 본 틀을 가져왔다.
+베낄 원본은 `../hoistory/lms/admin.html`, `admin.js`다.
+
+| 2027 화면 | hoistory 원본 | 가져온 것 |
+|---|---|---|
+| 진도 관리 | 설정 - SCHEDULE "반별 수업 스케줄" (`plRender`) | 머리줄 두 줄(반 / 수업 요일), 왼쪽 강의와 주제 열, 반별 수업일자, 관리 열, [강의 추가] |
+| 성적 | 성적 Check 세 패널 (`renderGradeTable`, `initGradeSettings`, `dbComputeStudentScore`) | 달성과 기한 체크, 가중치, 급간 표, 반영 강의 목록, 자동 감지와 손으로 못박기, 결석, 피드백, 반영하기 |
+| 오늘의 질문 | 생각 Check (`thinkVerdict`, `thRenderAnswerClass`) | 강의 고르개와 공개 토글, 통계 칩, 답변 목록, 자동 판정, 통과와 미흡 못박기, PICK |
+| 미션 활동 | 미션 Check 카드 폼 (`renderMissionPreview`) | 제목, 웹앱 주소, 어드민 주소, 연결할 강의, 팝업으로 열기, 아카이브 세 칸 |
+
+**이식하면서 2027 구조에 맞춘 것**(그대로 베끼지 않은 자리)
+- hoistory는 반이 학번에서 계산됐다(`Math.floor((sid-30000)/100)`). 2027은 강의실(`courses`)이 실체라 반 탭이 강의실 탭이다.
+- hoistory의 "미실시 체크박스"는 2027에서 **그 강의에 그 칸이 있는가**로 대신한다.
+- hoistory 진도표의 [번호 자동 채우기], [주제 새로고침]은 번호와 주제를 손으로 적어 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 꽂힌 순서에서 나오고 주제가 강의 제목 그 자체라 가져오지 않았다.
+- `grade_publish_status/{강의}_{반}`은 2027에서 꽂힌 강의가 이미 반 단위라 `course_lessons.gradePublished` 필드로 둔다.
+
 ## hoistory와의 관계
 - **Firebase 프로젝트는 같다**(`ho0911seong-56638`). 선생님 계정, 기존 앱 데이터와 한 데이터베이스를 쓴다.
 - **`firestore.rules`는 hoistory 레포에 있다.** 규칙 파일은 프로젝트에 하나뿐이라 둘로 나눌 수 없다. 이 레포의 컬렉션 규칙은 `hoistory/firestore.rules`의 "2027 LMS" 구역에 쓰고, hoistory에서 `~/bin/firebase.exe deploy --only firestore:rules --project ho0911seong-56638`로 배포한 뒤 hoistory에도 커밋한다.
@@ -141,11 +158,19 @@
 - 독립 메뉴: `review` 복습(성적 무관)
 - 포트폴리오 성적 = 개념노트(수기, 교사 입력) + 미션(참여 여부) + 질문노트(AI 1차+교사). 형성평가, 복습은 빠진다
 
-### 성적을 매기는 자리 (2026-10-28 구현)
-- 어드민 **성적** 메뉴(`admin.js` `pageScores`): 과목 탭에서 반 탭으로 강의실을 좁히면 학생 전원 표가 뜬다. 학생 줄을 누르면 차시별로 펼쳐지고 그 안에서 **개념노트 점수만** 입력한다(선생님이 고른 입력 단위: 강의 차시마다).
-- **배점은 강의(차시)에 붙는다**(`lessons.parts.<칸>.max`). 강의는 창고에 있는 것이라 그 강의를 꽂은 모든 강의실에 같은 배점이 걸린다. 성적 화면의 [배점] 줄에서 정한다.
-- **미션은 점수가 아니라 참여 여부**다. 낸 차시마다 1점, 만점은 미션이 걸린 차시 수.
-- **집계 컬렉션을 쓰지 않는다.** 성적은 `course_submissions`에서 뽑는다(`model.js` `courseScore`). 개념노트는 LMS 밖 활동지라 제출물이 없으므로 교사가 넣는 점수를 `part:'concept'` 행으로 남긴다.
+### 성적을 매기는 방식 (2026-10-28, hoistory/lms 성적 Check 틀 이식)
+선생님 지시로 **2026 lms에서 돌려 본 방식을 그대로** 가져왔다. 점수를 강의마다 직접 적지 않는다.
+1. 강의마다 학생마다 영역(개념노트, 미션, 질문노트)별로 **달성 칸**과 **기한 칸**을 체크한다. 가중치가 2배면 칸이 둘씩이라 반만 깎을 수 있다(`lessons.parts.<칸>.weight`, 1 또는 2)
+2. **달성률 = 켜진 칸 / 가능한 칸.** 성적 설정의 **반영 강의 목록**에 들고 그 반에 **반영하기**를 누른 강의만 센다
+3. **급간 표**(`settings/grade`의 `bands`)에서 그 달성률에 맞는 줄을 찾아 영역 점수를 읽는다. 기본값은 개념 30, 미션 40, 질문 30으로 100점
+4. 세 영역 점수의 합이 포트폴리오 성적. 계산은 `model.js` `studentGrade` 한 곳에서만 한다
+- **칸이 없는 영역은 미실시**다(0점, 달성률도 안 센다). hoistory는 칸 개념이 없어 미실시 체크박스를 따로 뒀지만 2027은 "그 강의에 그 칸이 있는가"가 그대로 답이다.
+- **손으로 쓰기와 자동 끌어오기를 둘 다 둔다**(선생님 지시).
+  - 자동: 미션과 질문노트는 `course_submissions`에서 달성과 기한을 계산한다(`autoDetect`). **기한은 진도 관리에서 넣은 수업일자(`course_lessons.date`)와 제출 시각을 견준다.** 진도 관리와 성적이 여기서 맞물린다. 질문노트 판정은 hoistory `thinkVerdict`를 옮긴 것(50자 미만은 미달성, 지연 제출은 기한만 깎임)
+  - 손: 교사가 누른 칸은 `manual`로 표시돼 **다시 끌어와도 덮이지 않는다.** 개념노트는 LMS 밖 활동지라 늘 손으로만 넣는다
+  - 이름을 누르면 **결석**(전부 미달성 고정)
+- 어드민 **성적** 메뉴는 hoistory와 같이 서브 메뉴 셋이다: **성적 입력 / 성적 설정 / 성적 조회**.
+- 기록은 `course_grades`(문서 id `꽂힌강의id_학번`). 집계 컬렉션 `course_scores`는 쓰지 않는다.
 
 ## 컬렉션 이름 규칙
 `뿌리_세부` snake_case. 연도, 차수, 버전 금지(연도는 필드). **강의실에 매인 것은 전부 `course_` 접두**, **재사용 창고는 접두 없는 복수형**, 파생은 뿌리를 물려받아 `_`로(예: `mission_apps`, `grading_archive`).
@@ -162,7 +187,9 @@
 | `course_lessons` | 자동 id | 강의실에 꽂힌 강의 `{ courseId, lessonId, order, isOpen }` |
 | `course_quizzes` | 자동 id | 강의실에 걸린 복습 `{ courseId, quizId, isOpen }` |
 | `course_submissions` | `꽂힌강의id_칸_학번` | 제출물 전부 여기로 `{ type, 학번, payload, score, status, shared }` |
-| ~~`course_scores`~~ | | **안 쓴다 (2026-10-28).** 성적은 `course_submissions`에서 뽑는다(`model.js` `courseScore`). 집계가 무거워지면 그때 얹는다 |
+| `course_grades` | `꽂힌강의id_학번` | 성적 기록 `{ concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }` |
+| `settings/grade` | `grade` | 급간 표와 반영 강의 목록 `{ bands:[{min,concept,mission,question}], lessons:[강의id] }` |
+| ~~`course_scores`~~ | | **안 쓴다 (2026-10-28).** 성적은 `course_grades`와 제출물에서 집계한다 |
 | `course_xp` | `강의실id_학번` | 경험치, 포인트, 뽑기 `{ xp, point }` |
 | `lessons` | 자동 id | 강의 `{ title, parts:{ concept?, mission?, question?, formative? } }`. 연도 무관, 남는다 |
 | `quizzes` | 자동 id | 복습 퀴즈 `{ title, items[], source }`. 연도 무관 |
