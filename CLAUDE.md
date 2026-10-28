@@ -141,6 +141,12 @@
 - 독립 메뉴: `review` 복습(성적 무관)
 - 포트폴리오 성적 = 개념노트(수기, 교사 입력) + 미션(참여 여부) + 질문노트(AI 1차+교사). 형성평가, 복습은 빠진다
 
+### 성적을 매기는 자리 (2026-10-28 구현)
+- 어드민 **성적** 메뉴(`admin.js` `pageScores`): 과목 탭에서 반 탭으로 강의실을 좁히면 학생 전원 표가 뜬다. 학생 줄을 누르면 차시별로 펼쳐지고 그 안에서 **개념노트 점수만** 입력한다(선생님이 고른 입력 단위: 강의 차시마다).
+- **배점은 강의(차시)에 붙는다**(`lessons.parts.<칸>.max`). 강의는 창고에 있는 것이라 그 강의를 꽂은 모든 강의실에 같은 배점이 걸린다. 성적 화면의 [배점] 줄에서 정한다.
+- **미션은 점수가 아니라 참여 여부**다. 낸 차시마다 1점, 만점은 미션이 걸린 차시 수.
+- **집계 컬렉션을 쓰지 않는다.** 성적은 `course_submissions`에서 뽑는다(`model.js` `courseScore`). 개념노트는 LMS 밖 활동지라 제출물이 없으므로 교사가 넣는 점수를 `part:'concept'` 행으로 남긴다.
+
 ## 컬렉션 이름 규칙
 `뿌리_세부` snake_case. 연도, 차수, 버전 금지(연도는 필드). **강의실에 매인 것은 전부 `course_` 접두**, **재사용 창고는 접두 없는 복수형**, 파생은 뿌리를 물려받아 `_`로(예: `mission_apps`, `grading_archive`).
 
@@ -156,7 +162,7 @@
 | `course_lessons` | 자동 id | 강의실에 꽂힌 강의 `{ courseId, lessonId, order, isOpen }` |
 | `course_quizzes` | 자동 id | 강의실에 걸린 복습 `{ courseId, quizId, isOpen }` |
 | `course_submissions` | `꽂힌강의id_칸_학번` | 제출물 전부 여기로 `{ type, 학번, payload, score, status, shared }` |
-| `course_scores` | `강의실id_학번` | 항목별+최종 `{ items:{concept,mission,question}, total }` |
+| ~~`course_scores`~~ | | **안 쓴다 (2026-10-28).** 성적은 `course_submissions`에서 뽑는다(`model.js` `courseScore`). 집계가 무거워지면 그때 얹는다 |
 | `course_xp` | `강의실id_학번` | 경험치, 포인트, 뽑기 `{ xp, point }` |
 | `lessons` | 자동 id | 강의 `{ title, parts:{ concept?, mission?, question?, formative? } }`. 연도 무관, 남는다 |
 | `quizzes` | 자동 id | 복습 퀴즈 `{ title, items[], source }`. 연도 무관 |

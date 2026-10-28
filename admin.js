@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028f';
+import * as M from './model.js?v=20261028g';
 import { icon } from './shared/icons.js';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -25,6 +25,7 @@ const state = {
   roomStudentEdit: false,          // 강의실 상세 명단 편집(체크 선택) 모드
   roomStuSel: new Set(),           // 그 모드에서 고른 학번들(일괄 제외용)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
+  progSubject: null,               // 진도 관리에서 보고 있는 과목(탭)
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
   lessonId: null, lessonTab: 'edit',
@@ -39,6 +40,12 @@ const state = {
   questionCourseId: null,          // 답변을 모아 볼 강의실
   questionClId: null,              // 그 강의실에 꽂힌 강의(질문이 있는 것만)
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
+
+  // 성적 (2026-10-28)
+  scSubject: null,                 // 과목 탭
+  scCourseId: null,                // 반 탭(강의실)
+  scOpenNo: null,                  // 차시별 내역을 펼친 학생(학번)
+  scMaxOpen: false,                // 배점 줄을 펼쳤는가
 };
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -283,7 +290,7 @@ function roomDetailPanel(c){
   const moreBtn = (!state.roomLessonsMore && lessons.length > MAX_LESSONS)
     ? `<button class="btn-link morebtn" data-act="room-lessons-more">더보기 (${lessons.length - MAX_LESSONS}강)</button>` : '';
   const left = `<div class="dcol">
-    <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress">진도 관리</button></div>
+    <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress" data-id="${c.id}">진도 관리</button></div>
     ${lessonRows}${moreBtn}</div>`;
 
   // ── 오른쪽: 학생 명단 (편집을 누르면 체크 선택 모드 → 이 강의실에서 일괄 제외) ──
@@ -326,7 +333,7 @@ function roomDetailPanel(c){
 function studentCard(courseId, studentNo){
   const xp = M.getXp(courseId, studentNo);
   const lvl = xp ? M.levelFromXp(xp.xp) : null;
-  const sc = M.getScore(courseId, studentNo), sum = M.scoreSummary(courseId, studentNo);
+  const sc = M.courseScore(courseId, studentNo);
 
   const stats = `<div class="sc-stats">
     <div class="sc-stat"><div class="sc-k">레벨</div><div class="sc-v">${lvl!=null?`Lv.${lvl}`:'없음'}</div></div>
@@ -335,21 +342,23 @@ function studentCard(courseId, studentNo){
   </div>`;
 
   let port;
-  if (!sc){ port = `<div class="score-empty">성적 기록이 없습니다.</div>`; }
+  if (!sc.has){ port = `<div class="score-empty">성적 기록이 없습니다.</div>`; }
   else {
     const lines = M.PART_TYPES.filter(p => p.portfolio).map(p => {
-      const got = sc.items?.[p.key]; if (got == null) return '';
-      return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${got} / ${sc.max?.[p.key] ?? 0}점</span></div>`;
+      const it = sc.items[p.key]; if (!it.max && !it.got) return '';
+      return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${it.got} / ${it.max}점</span></div>`;
     }).filter(Boolean).join('');
-    const tot = sum ? `<div class="score-line tot"><span>합계</span><span class="mono">${sum.got} / ${sum.max}점</span></div>` : '';
-    port = (lines + tot) || `<div class="score-empty">기록된 칸이 없습니다.</div>`;
+    const tot = `<div class="score-line tot"><span>합계</span><span class="mono">${sc.total.got} / ${sc.total.max}점</span></div>`;
+    port = lines + tot;
   }
   return `<div class="score-detail">${stats}<div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
 }
 
 /* 진도 관리(요구사항 1, 2): 2026 LMS 진도표를 본떠 강의 × 강의실 표로.
    행은 강의(차수, 제목), 열은 강의실, 칸은 수업일자('M/D'). 오늘, 지난 날은 색으로.
-   강의실 관리의 강의 진도와 같은 데이터(course_lessons)를 써서 서로 실시간으로 맞물린다. */
+   강의실 관리의 강의 진도와 같은 데이터(course_lessons)를 써서 서로 실시간으로 맞물린다.
+   과목을 섞으면 표가 가로로 넘치고 진도도 과목마다 따로 가므로 과목별 탭으로 나눈다
+   (선생님 지시 2026-10-28). 열 머리는 과목이 탭에 이미 있으므로 반 번호만 쓴다. */
 function pageProgress(){
   const years = M.getYears();
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
@@ -358,16 +367,23 @@ function pageProgress(){
   const head = `<div class="pagehead"><h2>진도 관리</h2>${years.length?yearSel:''}</div>`;
   if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
 
-  const courses = M.getCourses(state.year)
-    .slice().sort((a,b) => a.subject.localeCompare(b.subject,'ko') || a.grade - b.grade || a.classNo - b.classNo);
+  const all = M.getCourses(state.year);
+  if (!all.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
+
+  // 과목 탭: 있는 과목만(요구사항 3). 고른 과목이 사라졌으면 첫 과목으로 돌아간다.
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  if (!subjects.includes(state.progSubject)) state.progSubject = subjects[0];
+  const tabs = catline(subjects.map(s => ({ v:s, label:s })), state.progSubject, 'prog-subject');
+
+  const courses = all.filter(c => c.subject === state.progSubject)
+    .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
   const placed = {}, placedIds = new Set();
   courses.forEach(c => { placed[c.id] = M.getCourseLessons(c.id); placed[c.id].forEach(cl => placedIds.add(cl.lessonId)); });
   const lessons = M.getLessons().filter(l => placedIds.has(l.id));
 
-  if (!courses.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
-  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없습니다.</div>`;
+  if (!lessons.length) return `${head}${tabs}<div class="empty">개설된 강의가 없습니다.</div>`;
 
-  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomName(c))}</th>`).join('');
+  const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomNo(c))}</th>`).join('');
   const body = lessons.map((l, li) => {
     const cells = courses.map(c => {
       const cl = placed[c.id].find(x => x.lessonId === l.id);
@@ -378,11 +394,118 @@ function pageProgress(){
     return `<tr><td class="lname">${li+1}강. ${esc(l.title)}</td>${cells}</tr>`;
   }).join('');
 
-  return `${head}
+  return `${head}${tabs}
     <div class="prog-wrap"><table class="prog">
       <thead><tr><th class="lname">강의</th>${th}</tr></thead>
       <tbody>${body}</tbody>
     </table></div>`;
+}
+
+/* ── 성적 (선생님 지시 2026-10-28) ──────────────────────────────────────────
+   첫 화면은 "강의실 한 판 표"다(선생님이 고른 모양): 과목 탭에서 반 탭으로 강의실을 좁히면
+   그 반 학생 전원이 세로로, 포트폴리오 세 항목과 합계가 가로로 놓인다.
+   미션(참여 여부)과 질문노트(채점한 점수)는 제출물에서 저절로 합산된다.
+   개념노트는 LMS 밖 활동지라 교사가 넣는다: 학생 줄을 누르면 차시별 입력 칸이 펼쳐진다
+   (선생님이 고른 입력 단위: 강의 차시마다).
+   배점은 차시마다 하나라 학생 표와 섞이지 않게 [배점] 줄에서 따로 정한다. */
+function pageScores(){
+  const years = M.getYears();
+  const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
+    ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
+  </select>`;
+  const head = `<div class="pagehead"><h2>성적</h2>${years.length?yearSel:''}</div>`;
+  if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
+
+  const all = M.getCourses(state.year);
+  if (!all.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
+
+  // 과목 탭에서 그 과목의 반 탭으로 좁힌다. 둘 다 있는 것만(요구사항 3).
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  if (!subjects.includes(state.scSubject)) state.scSubject = subjects[0];
+  const subTabs = catline(subjects.map(s => ({ v:s, label:s })), state.scSubject, 'sc-subject');
+
+  const rooms = all.filter(c => c.subject === state.scSubject)
+    .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
+  if (!rooms.some(c => c.id === state.scCourseId)) state.scCourseId = rooms[0]?.id || null;
+  const roomTabs = catline(rooms.map(c => ({ v:c.id, label:M.roomNo(c) })), state.scCourseId, 'sc-room');
+
+  const c = M.getCourse(state.scCourseId);
+  if (!c) return `${head}${subTabs}<div class="empty">강의실이 없습니다.</div>`;
+
+  const cls = M.getCourseLessons(c.id);
+  const maxBtn = `<button class="btn-link" data-act="sc-max-toggle">배점</button>`;
+  const label = `<div class="sectionlabel between">${esc(M.roomName(c))}${maxBtn}</div>`;
+  const maxPanel = state.scMaxOpen ? scoreMaxPanel(cls) : '';
+
+  const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
+  if (!students.length) return `${head}${subTabs}${roomTabs}${label}${maxPanel}<div class="empty">학생이 없습니다.</div>`;
+
+  const cols = M.PART_TYPES.filter(p => p.portfolio);
+  const th = cols.map(p => `<th>${esc(p.name)}</th>`).join('');
+  const body = students.map(s => {
+    const sc = M.courseScore(c.id, s.studentNo);
+    const open = state.scOpenNo === s.studentNo;
+    const cells = cols.map(p => {
+      const it = sc.items[p.key];
+      return `<td class="num">${it.max || it.got ? `${it.got} / ${it.max}` : ''}</td>`;
+    }).join('');
+    const tot = sc.has ? `${sc.total.got} / ${sc.total.max}` : '';
+    const row = `<tr class="scrow ${open?'on':''}" data-act="sc-open" data-no="${s.studentNo}">
+      <td class="lname"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>
+        <span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</td>
+      ${cells}<td class="num tot">${tot}</td></tr>`;
+    return open ? row + scoreLinesRow(sc, cols.length + 2, s.studentNo) : row;
+  }).join('');
+
+  return `${head}${subTabs}${roomTabs}${label}${maxPanel}
+    <div class="prog-wrap"><table class="prog scoretable">
+      <thead><tr><th class="lname">학생</th>${th}<th class="num">합계</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>`;
+}
+
+/* 배점 줄: 차시마다 개념노트, 질문노트 만점을 정한다. 강의(창고)에 붙는 값이라
+   그 강의를 꽂은 모든 강의실에 같이 걸린다. 미션은 참여 여부라 배점이 없다. */
+function scoreMaxPanel(cls){
+  const rows = cls
+    .map((cl, i) => ({ cl, no:i + 1 }))                     // 강 번호는 거르기 전 순서로
+    .filter(x => x.cl.lesson?.parts?.concept || x.cl.lesson?.parts?.question)
+    .map(({ cl, no }) => {
+    const p = cl.lesson.parts;
+    const box = (key) => p[key]
+      ? `<input class="f dateinput" data-act="sc-max" data-id="${cl.lessonId}" data-k="${key}"
+           value="${M.partMax(cl.lessonId, key) || ''}" inputmode="numeric"
+           aria-label="${esc(cl.lesson.title)} ${esc(M.partDef(key).name)} 배점">`
+      : `<span class="unit">없음</span>`;
+    return `<div class="row compact">
+      <div class="plnum">${no}강</div>
+      <div class="grow"><div class="t">${esc(cl.lesson.title)}</div></div>
+      <span class="unit">개념노트</span>${box('concept')}
+      <span class="unit">질문노트</span>${box('question')}
+    </div>`;
+  }).join('');
+  return rows || `<div class="empty">배점을 정할 칸이 없습니다.</div>`;
+}
+
+// 학생 줄 아래로 펼쳐지는 차시별 내역: 개념노트만 입력 칸이다.
+function scoreLinesRow(sc, span, studentNo){
+  const lines = sc.lines.filter(l => l.concept || l.mission || l.question);
+  const body = lines.length ? lines.map(l => {
+    const concept = l.concept
+      ? `<span class="unit">개념노트</span>
+         <input class="f dateinput" data-act="sc-concept" data-id="${l.clId}" data-no="${studentNo}"
+           value="${l.concept.score ?? ''}" inputmode="numeric"
+           aria-label="${esc(l.title)} 개념노트 점수"><span class="unit">/ ${l.concept.max}</span>` : '';
+    const mission = l.mission
+      ? `<span class="unit">미션</span><span class="sc-mark ${l.mission.done?'on':''}">${l.mission.done?'참여':'미참여'}</span>` : '';
+    const question = l.question
+      ? `<span class="unit">질문노트</span><span class="mono">${l.question.score ?? '-'} / ${l.question.max}</span>` : '';
+    return `<div class="row compact">
+      <div class="plnum">${l.no}강</div>
+      <div class="grow"><div class="t">${esc(l.title)}</div></div>
+      ${concept}${mission}${question}</div>`;
+  }).join('') : `<div class="empty">채점할 칸이 있는 강의가 없습니다.</div>`;
+  return `<tr class="sc-lines"><td colspan="${span}"><div class="detail">${body}</div></td></tr>`;
 }
 
 /* 추가 팝업: 학년도 생성 / 강의실 생성을 한곳에 모았다(요구사항 5).
@@ -536,9 +659,9 @@ function studentDetailPanel(sno, name){
     <button class="btn-link" data-act="stu-reset" data-no="${sno}">비밀번호 초기화</button></div>`;
 
   const scoreRows = mine.length ? mine.map(c => {
-    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sum = M.scoreSummary(c.id, sno);
+    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sc = M.courseScore(c.id, sno);
     const bits = [lvl!=null?`Lv.${lvl}`:'레벨 없음', `경험치 ${xp?xp.xp:0}`,
-      sum ? `포트폴리오 ${sum.got}/${sum.max}점` : '포트폴리오 기록 없음'];
+      sc.has ? `포트폴리오 ${sc.total.got}/${sc.total.max}점` : '포트폴리오 기록 없음'];
     return `<div class="row compact"><div class="grow"><div class="t">${esc(M.roomName(c))}</div>
       <div class="s">${bits.join(', ')}</div></div></div>`;
   }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
@@ -921,7 +1044,7 @@ function render(){
   renderSide();
   const p = { rooms:pageRooms, students:pageStudents, progress:pageProgress,
               concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative,
-              general:pageGeneral }[state.page];
+              scores:pageScores, general:pageGeneral }[state.page];
   $main.innerHTML = p ? p() : '';
 }
 
@@ -938,6 +1061,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
     case 'room-group': state.roomGroup = v; render(); break;
+    case 'prog-subject': state.progSubject = v; render(); break;
     case 'set-sclass': state.studentClass = v; render(); break;
 
     case 'add-open': openAddModal(); break;
@@ -962,7 +1086,10 @@ document.getElementById('shell').addEventListener('click', e => {
       const key = `${id}_${no}`;
       state.openScore = state.openScore === key ? null : key; render(); break;
     }
-    case 'go-progress': state.page = 'progress'; state.roomDetailId = null; render(); break;
+    // 강의실 상세에서 건너올 때는 그 강의실의 과목 탭이 열려 있게 한다.
+    case 'go-progress':
+      state.page = 'progress'; state.progSubject = M.getCourse(id)?.subject ?? null;
+      state.roomDetailId = null; render(); break;
     case 'go-lessons':
       state.page = 'concept'; state.conceptTab = 'library'; state.roomDetailId = null; state.lessonId = null; render(); break;
     case 'go-students': state.page = 'students'; state.studentClass = M.roomNo(M.getCourse(id)); state.roomDetailId = null; render(); break;
@@ -983,6 +1110,7 @@ document.getElementById('shell').addEventListener('click', e => {
         d.students ? `학생 ${d.students}명` : '',
         d.lessons  ? `꽂힌 강의 ${d.lessons}개` : '',
         d.quizzes  ? `걸린 복습 ${d.quizzes}개` : '',
+        d.subs     ? `제출물과 성적 ${d.subs}건` : '',
       ].filter(Boolean);
       confirmDelete({
         title: `${name} 강의실 삭제`,
@@ -1069,6 +1197,12 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'fm-close': state.formativeLessonId = null; render(); break;
     case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
 
+    // 성적
+    case 'sc-subject': state.scSubject = v; state.scCourseId = null; state.scOpenNo = null; render(); break;
+    case 'sc-room': state.scCourseId = v; state.scOpenNo = null; render(); break;
+    case 'sc-max-toggle': state.scMaxOpen = !state.scMaxOpen; render(); break;
+    case 'sc-open': state.scOpenNo = state.scOpenNo === no ? null : no; render(); break;
+
     // 일반 설정: 칸마다 따로 안 쓰고 저장 버튼을 누를 때 전부 한 번에 쓴다.
     case 'general-save': {
       const patch = {};
@@ -1091,9 +1225,14 @@ document.getElementById('shell').addEventListener('change', e => {
   if (el.dataset.act === 'year-pick'){
     state.year = +el.value; state.fSubject = null; state.editRoomId = null;
     state.roomDetailId = null; state.studentDetailNo = null;
+    state.scCourseId = null; state.scOpenNo = null;
     state.roomStudentEdit = false; state.roomStuSel = new Set(); render();
   } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
     M.setCourseLessonDate(el.dataset.id, el.value); render();
+  } else if (el.dataset.act === 'sc-concept'){   // 개념노트 점수(교사 수기 입력)
+    run(() => M.setConceptScore(el.dataset.id, el.dataset.no, el.value));
+  } else if (el.dataset.act === 'sc-max'){       // 차시 배점(그 강의를 꽂은 모든 강의실 공통)
+    run(() => M.setPartMax(el.dataset.id, el.dataset.k, el.value));
   } else if (el.dataset.act === 'stu-sel'){   // 명단 편집 모드에서 한 명 고르고 풀기
     if (el.checked) state.roomStuSel.add(el.dataset.no); else state.roomStuSel.delete(el.dataset.no);
     render();

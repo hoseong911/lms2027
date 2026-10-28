@@ -11,7 +11,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261028f';
+import * as M from './model.js?v=20261028g';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -202,18 +202,16 @@ function reviewList(){
       <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div></div>`).join('')}</div>`;
 }
 
+// 성적은 제출물에서 바로 뽑는다(model.js courseScore). 교사가 점수를 넣으면 그대로 비친다.
 function scoreCard(c){
-  const s = M.getScore(c.id, state.sno);
-  const parts = M.PART_TYPES.filter(p => p.portfolio);
-  let total = 0, maxTotal = 0;
-  const rows = parts.map(p => {
-    const v = s?.items?.[p.key], mx = s?.max?.[p.key];
-    if (typeof v === 'number'){ total += v; maxTotal += (mx || 0); }
-    const val = typeof v === 'number' ? `${v}${mx ? ' / ' + mx : ''}` : '없음';
+  const sc = M.courseScore(c.id, state.sno);
+  const rows = M.PART_TYPES.filter(p => p.portfolio).map(p => {
+    const it = sc.items[p.key];
+    const val = (it.max || it.got) ? `${it.got} / ${it.max}` : '없음';
     return `<div class="row"><span>${esc(p.name)}</span><b>${val}</b></div>`;
   }).join('');
   return `<div class="score"><div class="h">실시간 성적</div>${rows}
-    <div class="row total"><span>최종</span><b>${maxTotal ? total + ' / ' + maxTotal : total}</b></div></div>`;
+    <div class="row total"><span>최종</span><b>${sc.has ? `${sc.total.got} / ${sc.total.max}` : 0}</b></div></div>`;
 }
 
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──

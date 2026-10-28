@@ -86,6 +86,7 @@ export const ADMIN_MENUS = [
   { key:'mission',   name:'미션 활동',       icon:'layout-grid' },
   { key:'question',  name:'오늘의 질문',     icon:'message-square' },
   { key:'formative', name:'형성평가',        icon:'circle-check' },
+  { key:'scores',    name:'성적',            icon:'bar-chart-3' },
   { key:'general',   name:'일반 설정',       icon:'settings' },
 ];
 
@@ -178,7 +179,6 @@ const DEMO = {
   quizzes:       [],  // quizzes        { id, title, source, items:[] }
   courseQuizzes: [],  // course_quizzes { id, courseId, quizId, isOpen }
   missionApps:   [],  // mission_apps   { id:앱키, name, studentUrl, adminUrl }
-  scores:        [],  // course_scores  { id:'강의실id_학번', courseId, studentNo, items:{}, max:{} }
   xp:            [],  // course_xp      { id:'강의실id_학번', courseId, studentNo, xp, point }
 };
 
@@ -270,9 +270,6 @@ export function getCourseQuizzes(courseId){
     .filter(cq => cq.courseId === courseId)
     .map(cq => ({ ...cq, quiz: DEMO.quizzes.find(q => q.id === cq.quizId) }));
 }
-export function getScore(courseId, studentNo){
-  return DEMO.scores.find(s => s.courseId === courseId && s.studentNo === studentNo) || null;
-}
 export function getXp(courseId, studentNo){
   return DEMO.xp.find(x => x.courseId === courseId && x.studentNo === studentNo) || null;
 }
@@ -300,6 +297,7 @@ export function courseDeps(id){
     students: DEMO.students.filter(s => s.courseId === id).length,
     lessons:  DEMO.courseLessons.filter(cl => cl.courseId === id).length,
     quizzes:  DEMO.courseQuizzes.filter(cq => cq.courseId === id).length,
+    subs:     DEMO.submissions.filter(s => s.courseId === id).length,
   };
 }
 
@@ -340,7 +338,8 @@ export function deleteCourse(id){
   DEMO.students = DEMO.students.filter(s => s.courseId !== id);
   DEMO.courseLessons = DEMO.courseLessons.filter(cl => cl.courseId !== id);
   DEMO.courseQuizzes = DEMO.courseQuizzes.filter(cq => cq.courseId !== id);
-  DEMO.scores = DEMO.scores.filter(s => s.courseId !== id);
+  DEMO.submissions.filter(s => s.courseId === id).forEach(s => del(COLLECTIONS.courseSubmissions, s.id));
+  DEMO.submissions = DEMO.submissions.filter(s => s.courseId !== id);
   del(COLLECTIONS.courses, id);
   return c;
 }
@@ -428,13 +427,82 @@ export function setCourseLessonDate(clId, date){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
   cl.date = String(date ?? '').trim(); put(COLLECTIONS.courseLessons, cl); return cl;
 }
-// 포트폴리오(성적) 요약: 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
-export function scoreSummary(courseId, studentNo){
-  const s = getScore(courseId, studentNo); if (!s) return null;
-  const keys = PART_TYPES.filter(p => p.portfolio).map(p => p.key);
-  let got = 0, max = 0, any = false;
-  keys.forEach(k => { if (s.items?.[k] != null){ got += s.items[k]; max += (s.max?.[k] || 0); any = true; } });
-  return any ? { got, max } : null;
+/* ── 성적 (2026-10-28 선생님 지시 "성적 메뉴 만들어보자") ─────────────────
+   포트폴리오 세 요소만 들어간다(요구사항 70). 형성평가와 복습은 빠진다.
+   집계 컬렉션(course_scores)을 따로 두지 않고 course_submissions에서 뽑는다(머리 주석).
+     개념노트 : 활동지에 수기로 쓰므로 LMS에 제출물이 없다. 교사가 넣는 점수를
+                part:'concept' 제출물 행으로 남긴다(선생님 지시: 강의 차시마다 입력).
+     미션     : 점수가 아니라 참여 여부다. 낸 차시마다 1점, 만점은 미션이 걸린 차시 수.
+     질문노트 : 제출물의 score를 더한다.
+   배점은 강의(차시)마다 하나씩 lessons.parts.<칸>.max에 둔다. 강의가 창고에 있는 것이라
+   그 강의를 꽂은 모든 강의실에 같은 배점이 걸린다. 제출물이 없는 학생도 그 차시 배점은
+   만점에 들어간다(안 낸 것이 점수에 드러나게). */
+export function partMax(lessonId, partKey){
+  return +(getLesson(lessonId)?.parts?.[partKey]?.max) || 0;
+}
+export function setPartMax(lessonId, partKey, max){
+  const l = getLesson(lessonId), p = l?.parts?.[partKey];
+  if (!p) throw new Error('그 칸이 없는 강의입니다.');
+  const raw = String(max ?? '').trim();
+  const n = raw === '' ? 0 : Math.round(+raw);
+  if (!Number.isFinite(n) || n < 0) throw new Error('배점을 확인해 주세요.');
+  p.max = n;
+  put(COLLECTIONS.lessons, l);
+  return n;
+}
+function subOf(clId, part, studentNo){
+  return DEMO.submissions.find(s => s.clId === clId && s.part === part && s.studentNo === studentNo) || null;
+}
+// 개념노트 점수(교사 수기 입력). 빈칸으로 두면 기록을 지운다.
+export function setConceptScore(clId, studentNo, score){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  const id = `${clId}_concept_${studentNo}`;
+  const i = DEMO.submissions.findIndex(s => s.id === id);
+  const raw = String(score ?? '').trim();
+  if (raw === ''){
+    if (i >= 0){ DEMO.submissions.splice(i, 1); del(COLLECTIONS.courseSubmissions, id); }
+    return null;
+  }
+  const n = +raw;
+  if (!Number.isFinite(n) || n < 0) throw new Error('점수를 확인해 주세요.');
+  const stu = DEMO.students.find(s => s.courseId === cl.courseId && s.studentNo === studentNo);
+  const row = { ...(i >= 0 ? DEMO.submissions[i] : {}),
+    id, clId, part:'concept', courseId:cl.courseId, studentNo, name:stu?.name || '', score:n };
+  if (i >= 0) DEMO.submissions[i] = row; else DEMO.submissions.push(row);
+  put(COLLECTIONS.courseSubmissions, row);
+  return row;
+}
+
+/* 한 학생의 한 강의실 성적: 차시별 내역(lines)과 항목별, 최종 합계.
+   lines의 각 칸은 그 차시에 그 칸이 없으면 null이다. */
+export function courseScore(courseId, studentNo){
+  const items = { concept:{ got:0, max:0 }, mission:{ got:0, max:0 }, question:{ got:0, max:0 } };
+  const lines = getCourseLessons(courseId).map((cl, i) => {
+    const parts = cl.lesson?.parts || {};
+    const line = { clId:cl.id, lessonId:cl.lessonId, no:i + 1,
+                   title:cl.lesson?.title || '(삭제된 강의)', concept:null, mission:null, question:null };
+    if (parts.concept){
+      const mx = +parts.concept.max || 0, got = subOf(cl.id, 'concept', studentNo)?.score;
+      line.concept = { score: got ?? null, max: mx };
+      items.concept.got += (+got || 0); items.concept.max += mx;
+    }
+    if (parts.mission){
+      const done = !!subOf(cl.id, 'mission', studentNo);
+      line.mission = { done };
+      items.mission.got += done ? 1 : 0; items.mission.max += 1;
+    }
+    if (parts.question){
+      const sub = subOf(cl.id, 'question', studentNo);
+      const mx = +parts.question.max || +sub?.max || 0;
+      line.question = { score: sub?.score ?? null, max: mx, sent: !!sub };
+      items.question.got += (+sub?.score || 0); items.question.max += mx;
+    }
+    return line;
+  });
+  const total = { got:0, max:0 };
+  PART_TYPES.filter(p => p.portfolio).forEach(p => { total.got += items[p.key].got; total.max += items[p.key].max; });
+  return { lines, items, total, has: total.max > 0 || total.got > 0 };
 }
 
 /* ── 개념 노트 콘텐츠 (2026 class_lessons.contentLines 모티브) ──

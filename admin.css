@@ -99,6 +99,20 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .prog td.ds-today{background:var(--accent-soft)}
 .prog td.ds-today .dateinput{color:var(--navy);font-weight:700}
 .prog td.ds-past .dateinput{color:var(--sub)}
+
+/* 성적 표: 학생 x 포트폴리오 세 항목. 진도 관리 표와 뼈대를 같이 쓴다 */
+.scoretable{width:100%}
+.scoretable td.lname{min-width:150px}
+.scoretable td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.scoretable th.num{text-align:right}
+.scoretable td.tot{font-weight:800;color:var(--navy)}
+.scoretable tr.scrow{cursor:pointer}
+.scoretable tr.scrow:hover td{background:var(--hover)}
+.scoretable tr.on td{background:var(--accent-soft)}
+.scoretable tr.sc-lines td{padding:0;background:var(--card);white-space:normal}
+.scoretable tr.sc-lines:hover td{background:var(--card)}
+.sc-mark{font-size:var(--fs-meta);font-weight:700;color:var(--sub)}
+.sc-mark.on{color:var(--navy)}
 .ib-sm{width:28px;height:28px}
 
 /* 명단 편집(체크 선택) 모드: 평소엔 없고 '편집'을 눌러야 나온다 */
