@@ -801,18 +801,28 @@ export function conceptDelLine(lessonId, idx){
 }
 
 // ── 오늘의 질문 ──
-/* 질문 관리(선생님 지시 2026-10-28): 깔린 강의마다 질문과 설명문을 바로 적는다.
-   적으면 그 강의에 질문노트 칸이 생기고, 둘 다 비우면 칸이 빠진다
-   (칸이 있는가가 곧 성적의 실시, 미실시다). */
+/* 질문 관리(선생님 지시 2026-10-28): 강의별 카드에서 편집 버튼을 눌러 질문과 설명문을 고친다.
+   질문노트가 필요 없는 강의는 토글로 칸을 통째로 끈다(칸이 있는가가 곧 성적의 실시, 미실시다).
+   끌 때 적어 둔 질문과 설명문은 partsOff에 맡겨 두었다가 다시 켜면 되살린다. */
 export function setQuestion(lessonId, patch){
-  const l = getLesson(lessonId); if (!l) return;
-  const cur = l.parts?.question || {};
-  const next = { ...cur, ...patch };
-  const filled = String(next.prompt || '').trim() || String(next.guide || '').trim();
-  if (!filled){ if (l.parts?.question) setLessonPart(lessonId, 'question', false); return; }
-  if (!l.parts.question) setLessonPart(lessonId, 'question', true);
+  const l = getLesson(lessonId);
+  if (!l?.parts?.question) throw new Error('질문노트를 먼저 켜 주세요.');
   Object.assign(l.parts.question, patch);
   saveLesson(lessonId);
+}
+export function setQuestionEnabled(lessonId, on){
+  const l = getLesson(lessonId); if (!l) return;
+  if (!on){
+    if (!l.parts?.question) return;
+    l.partsOff = { ...(l.partsOff || {}), question:{ ...l.parts.question } };
+    setLessonPart(lessonId, 'question', false);
+    return;
+  }
+  if (l.parts?.question) return;
+  const kept = l.partsOff?.question;
+  if (l.partsOff) delete l.partsOff.question;
+  setLessonPart(lessonId, 'question', true);
+  if (kept){ Object.assign(l.parts.question, kept); saveLesson(lessonId); }
 }
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');

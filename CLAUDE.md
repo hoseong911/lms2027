@@ -32,7 +32,7 @@
 |---|---|---|
 | 진도 관리 | 설정 - SCHEDULE "반별 수업 스케줄" (`plRender`) | 머리줄 두 줄(반 / 수업 요일), 왼쪽 강의와 주제 열, 반별 수업일자, 관리 열, [강의 추가] |
 | 성적 | 성적 Check 세 패널 (`renderGradeTable`, `initGradeSettings`, `dbComputeStudentScore`) | 달성과 기한 체크, 가중치, 급간 표, 반영 강의 목록, 자동 감지와 손으로 못박기, 결석, 피드백, 반영하기 |
-| 오늘의 질문 | 생각 Check (`thinkVerdict`, `thRenderAnswerClass`, 채점 모달 `thGradeBackdrop`, `thRunGrading`) | 강의 고르개와 공개 토글, 자동 판정, 통과와 미흡 못박기, PICK. 채점 모달은 모달 없이 "답변, 채점" 화면 자체가 됐다(통과 / 미흡 / AI 채점 탭, 이탈 탭은 뺌). AI 채점 규칙과 프롬프트 그대로, 경험치 지급만 아직 없음 |
+| 오늘의 질문 | 생각 Check (`thinkVerdict`, `thRenderAnswerClass`, 채점 모달 `thGradeBackdrop`, `thRunGrading`) | 자동 판정, 통과와 미흡 못박기, PICK. 채점 모달은 모달 없이 "답변, 채점" 화면 자체가 됐다: 과목 탭, 강의 드롭다운, 전체와 반 줄, `채점 / 통과 (n) / 미흡 (n)` 탭(채점이 기본, 이탈 탭은 뺌). AI 채점 규칙과 프롬프트 그대로, 경험치 지급만 아직 없음. 질문 관리는 강의별 카드(편집 버튼, 질문노트 켜고 끄기 스위치) |
 | 미션 활동 | 미션 Check 카드 폼 (`renderMissionPreview`) | 제목, 웹앱 주소, 어드민 주소, 연결할 강의, 팝업으로 열기, 아카이브 세 칸 |
 
 **이식하면서 2027 구조에 맞춘 것**(그대로 베끼지 않은 자리)
@@ -40,6 +40,12 @@
 - hoistory의 "미실시 체크박스"는 2027에서 **그 강의에 그 칸이 있는가**로 대신한다.
 - hoistory 진도표의 [번호 자동 채우기], [주제 새로고침]은 번호와 주제를 손으로 적어 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 꽂힌 순서에서 나오고 주제가 강의 제목 그 자체라 가져오지 않았다.
 - `grade_publish_status/{강의}_{반}`은 2027에서 꽂힌 강의가 이미 반 단위라 `course_lessons.gradePublished` 필드로 둔다.
+
+## 더미 데이터 (`tools/더미데이터.mjs`, 2026-10-28)
+"모든 메뉴가 다 채워졌다고 가정하고" 작업한다(선생님 지시). Firestore에 더미가 들어 있다.
+- `node tools/더미데이터.mjs fill` / `clear`. Firebase CLI 로그인(`firebase login`)이 돼 있어야 한다.
+- 새로 만든 제출물, 성적, 미션 앱에는 `dummy: true`가 있고 clear는 그것만 지운다.
+- model.js의 실제 함수로 만들므로 **데이터 모양을 바꾸면(model.js) 도구도 같이 맞는지 본다.**
 
 ## hoistory와의 관계
 - **Firebase 프로젝트는 같다**(`ho0911seong-56638`). 선생님 계정, 기존 앱 데이터와 한 데이터베이스를 쓴다.
