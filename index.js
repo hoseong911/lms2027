@@ -30,7 +30,8 @@ const state = {
   loginStep: 'check',     // 'check'(학번·이름·비밀번호) | 'setup'(첫 접속 — 비밀번호 만들기)
   loginErr: '',           // 지금 보일 빨간 오류 문구(없으면 '')
   loginBusy: false,       // Firestore 확인 중 — 중복 제출 막기
-  pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name }
+  pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name, courseId }
+  formSno: '', formName: '',  // 오류로 다시 그릴 때도 학번·이름은 남겨 둔다(비밀번호만 새로 친다)
 };
 
 // ── 부트 가드 ──
@@ -77,8 +78,8 @@ function viewLogin(){
     <h1>${esc(M.getText('loginTitle'))}</h1>
     <p class="lead">${esc(M.getText('loginSubtitle'))}</p>
     ${guide ? `<p class="guide">${esc(guide)}</p>` : ''}
-    <input class="field" id="f-sno" inputmode="numeric">
-    <input class="field" id="f-name">
+    <input class="field" id="f-sno" inputmode="numeric" value="${esc(state.formSno)}">
+    <input class="field" id="f-name" value="${esc(state.formName)}">
     <input class="field" id="f-pw" type="password">
     <button class="primary" data-act="login" ${state.loginBusy ? 'disabled' : ''}>${esc(M.getText('loginBtn'))}</button>
     ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
@@ -290,6 +291,7 @@ $app.addEventListener('click', e => {
       const sno = (document.getElementById('f-sno').value || '').trim();
       const name = (document.getElementById('f-name').value || '').trim();
       const pw = (document.getElementById('f-pw').value || '').trim();
+      state.formSno = sno; state.formName = name;   // 오류로 다시 그려도 학번·이름은 남긴다
       const rooms = M.getCoursesOfStudent(YEAR, sno);
       if (!rooms.length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
       if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = M.getText('errNameMismatch'); render(); return; }
@@ -305,7 +307,8 @@ $app.addEventListener('click', e => {
           const ok = await M.verifyPassword(YEAR, sno, pw);
           state.loginBusy = false;
           if (!ok){ state.loginErr = M.getText('errPwWrong'); render(); return; }
-          state.sno = sno; state.name = name; state.view = 'rooms'; render();
+          state.sno = sno; state.name = name; state.formSno = ''; state.formName = '';
+          state.view = 'rooms'; render();
         } catch (e) {
           console.error('login', e);
           state.loginBusy = false; state.loginErr = M.getText('errNetwork'); render();
@@ -325,6 +328,7 @@ $app.addEventListener('click', e => {
           await M.createPassword(YEAR, state.pending.sno, pw1, state.pending.courseId);
           state.sno = state.pending.sno; state.name = state.pending.name;
           state.pending = null; state.loginStep = 'check'; state.loginBusy = false;
+          state.formSno = ''; state.formName = '';
           state.view = 'rooms'; render();
         } catch (e) {
           console.error('setup-pw', e);
@@ -338,7 +342,7 @@ $app.addEventListener('click', e => {
 
     case 'logout':
       Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
-        loginStep:'check', loginErr:'', loginBusy:false, pending:null });
+        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'' });
       render(); break;
 
     case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;
