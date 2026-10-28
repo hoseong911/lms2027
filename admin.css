@@ -141,6 +141,16 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .gnote.muted{color:var(--sub)}
 .gsub{display:inline-block;font-size:var(--fs-meta);color:var(--sub);margin-left:5px}
 
+/* 오늘의 질문: 질문 관리 표(질문, 설명문 칸은 표 폭을 나눠 쓴다)와 채점 탭의 학생 칩 */
+.qtable{width:100%}
+.qtable td.lname{white-space:normal}
+.qtable td.qcell{white-space:normal;min-width:240px;width:40%;padding:4px}
+.qtable td.qcell .f{width:100%;resize:vertical;font:inherit;line-height:1.5}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.qchip{display:inline-flex;align-items:center;gap:4px;background:var(--hover);border-radius:var(--r-btn);
+  padding:5px 10px;font-size:var(--fs-meta);color:var(--ink)}
+.qchip .gsub{margin-left:2px}
+
 /* 성적 설정의 급간 표 */
 .bandtable td.lname,.bandtable th.lname{min-width:120px}
 .bandtable td.num .dateinput{width:64px;text-align:right}

@@ -23,7 +23,7 @@ import { CLAUDE_PROXY_URL } from "./shared/util.js?v=20261028f";
 import {
   lessonOrderKey as lecOrderKey, lessonTag as lecTag, courseShort, listCourses,
   listLessonCourses, setLessonCourses, syncLessonRows, deleteLessonEverywhere
-} from "./model.js?v=20261028h";
+} from "./model.js?v=20261028i";
 
 const LIB = 'lesson_library';
 const DESIGN_REF = () => doc(db, 'settings', 'concept_note_design');

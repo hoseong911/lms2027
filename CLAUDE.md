@@ -32,7 +32,7 @@
 |---|---|---|
 | 진도 관리 | 설정 - SCHEDULE "반별 수업 스케줄" (`plRender`) | 머리줄 두 줄(반 / 수업 요일), 왼쪽 강의와 주제 열, 반별 수업일자, 관리 열, [강의 추가] |
 | 성적 | 성적 Check 세 패널 (`renderGradeTable`, `initGradeSettings`, `dbComputeStudentScore`) | 달성과 기한 체크, 가중치, 급간 표, 반영 강의 목록, 자동 감지와 손으로 못박기, 결석, 피드백, 반영하기 |
-| 오늘의 질문 | 생각 Check (`thinkVerdict`, `thRenderAnswerClass`) | 강의 고르개와 공개 토글, 통계 칩, 답변 목록, 자동 판정, 통과와 미흡 못박기, PICK |
+| 오늘의 질문 | 생각 Check (`thinkVerdict`, `thRenderAnswerClass`, 채점 모달 `thGradeBackdrop`, `thRunGrading`) | 강의 고르개와 공개 토글, 자동 판정, 통과와 미흡 못박기, PICK. 채점 모달은 모달 없이 "답변, 채점" 화면 자체가 됐다(통과 / 미흡 / AI 채점 탭, 이탈 탭은 뺌). AI 채점 규칙과 프롬프트 그대로, 경험치 지급만 아직 없음 |
 | 미션 활동 | 미션 Check 카드 폼 (`renderMissionPreview`) | 제목, 웹앱 주소, 어드민 주소, 연결할 강의, 팝업으로 열기, 아카이브 세 칸 |
 
 **이식하면서 2027 구조에 맞춘 것**(그대로 베끼지 않은 자리)

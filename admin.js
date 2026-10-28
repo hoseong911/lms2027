@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028h';
+import * as M from './model.js?v=20261028i';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -35,8 +35,11 @@ const state = {
   conceptLessonId: null,           // 콘텐츠에서 펼친 강의
   missionTab: 'list',              // 미션 활동 탭 'list' 또는 열어 둔 앱 키
   missionOpen: [],                 // 같은 창 안에 탭으로 열어 둔 앱 키들(요구사항 67)
-  questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers'
-  questionLessonId: null,          // 질문 관리에서 펼쳐 고치는 강의
+  questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers' | 'pick'
+  questionSubject: null,           // 질문 관리에서 보고 있는 과목(탭)
+  questionGradeTab: 'pass',        // 답변, 채점의 탭 'pass' | 'fail' | 'ai' (hoistory 채점 모달)
+  questionAiBusy: false,           // AI 채점이 도는 중인가
+  questionAiStatus: '',            // AI 채점 진행 문구
   questionCourseId: null,          // 답변을 모아 볼 강의실
   questionClId: null,              // 그 강의실에 꽂힌 강의(질문이 있는 것만)
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
@@ -355,6 +358,25 @@ function studentCard(courseId, studentNo){
      따로 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 꽂힌 순서에서 저절로 나오고
      주제가 강의 제목 그 자체라 맞출 것이 없다.
    과목 탭은 어제 지시(요구사항 96)대로 그대로 둔다. */
+/* 강의실들에 깔린 강의를 모은다: 어느 반에든 꽂혀 있으면 한 줄이 선다.
+   세우는 차례는 꽂힌 순서(order)가 가장 앞인 것 기준이다(반마다 순서가 어긋나도 한 줄로 선다).
+   진도 관리와 질문 관리가 같이 쓴다. */
+function placedLessons(rooms){
+  const placed = {};                     // 강의실id -> 꽂힌 강의 배열
+  const firstOrder = new Map();          // 강의id -> 가장 앞선 order
+  rooms.forEach(c => {
+    placed[c.id] = M.getCourseLessons(c.id);
+    placed[c.id].forEach(cl => {
+      const cur = firstOrder.get(cl.lessonId);
+      if (cur == null || cl.order < cur) firstOrder.set(cl.lessonId, cl.order);
+    });
+  });
+  const lessons = M.getLessons()
+    .filter(l => firstOrder.has(l.id))
+    .sort((a,b) => firstOrder.get(a.id) - firstOrder.get(b.id));
+  return { placed, lessons };
+}
+
 function pageProgress(){
   const years = M.getYears();
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
@@ -374,20 +396,7 @@ function pageProgress(){
   const rooms = all.filter(c => c.subject === state.progSubject)
     .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
 
-  // 줄(강의)을 모은다: 그 과목 어느 반에든 꽂혀 있으면 한 줄이 선다.
-  // 세우는 차례는 꽂힌 순서(order)가 가장 앞인 것 기준이다(반마다 순서가 어긋나도 한 줄로 선다).
-  const placed = {};                     // 강의실id -> 꽂힌 강의 배열
-  const firstOrder = new Map();          // 강의id -> 가장 앞선 order
-  rooms.forEach(c => {
-    placed[c.id] = M.getCourseLessons(c.id);
-    placed[c.id].forEach(cl => {
-      const cur = firstOrder.get(cl.lessonId);
-      if (cur == null || cl.order < cur) firstOrder.set(cl.lessonId, cl.order);
-    });
-  });
-  const lessons = M.getLessons()
-    .filter(l => firstOrder.has(l.id))
-    .sort((a,b) => firstOrder.get(a.id) - firstOrder.get(b.id));
+  const { placed, lessons } = placedLessons(rooms);
 
   // 툴바: hoistory의 [+ 강의 추가]. 누르면 그 자리에 제목 입력 줄이 열린다(요구사항 66 인라인).
   const toolbar = `<div class="pl-toolbar">
@@ -1112,34 +1121,18 @@ function openMissionModal(app){
 }
 
 /* ── 오늘의 질문 (hoistory/lms "생각 Check" 틀 이식) ─────────────────────────
-   서브 메뉴 셋. hoistory의 강의 선택 줄, 채점 영역(반 태그 + 통계 칩 + 답변 목록),
-   PICK 영역을 그대로 옮긴 것이다.
-     질문 관리 : 강의에 걸린 질문과 안내를 고친다. 공개 토글도 여기
-     답변, 채점 : 강의실과 강의를 골라 반 학생 답변을 모아 본다. 자동 판정(questionVerdict)
-                 결과가 줄마다 붙고, [통과] [미흡]으로 손으로 못박을 수 있다
+   서브 메뉴 셋.
+     질문 관리 : 과목별로 깔린 강의(진도 관리와 같은 줄)마다 질문과 설명문을 바로 적는다
+                 (선생님 지시 2026-10-28). 적으면 그 강의에 질문노트 칸이 생긴다
+     답변, 채점 : hoistory에서 팝업 모달로 뜨던 채점 화면(thGradeBackdrop)을 이 자리로 옮겼다
+                 (같은 날 지시). 통과 / 미흡 / AI 채점 세 탭. 이탈 탭은 학생 화면에
+                 이탈 감시가 아직 없어 뺐다
      PICK      : 공유로 켜 둔 답변만 모아 본다(수업 중 띄우는 자리, 요구사항 73) */
 function pageQuestion(){
   const tabs = catline(M.ADMIN_SUBMENUS.question, state.questionTab, 'question-tab');
   const head = `<div class="pagehead"><h2>오늘의 질문</h2></div>${tabs}`;
 
-  if (state.questionTab === 'manage'){
-    const lessons = M.getLessonsWithPart('question');
-    if (!lessons.length) return head + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
-    const list = lessons.map(l => {
-      const open = state.questionLessonId === l.id, q = l.parts.question;
-      const row = `<div class="row ${open?'on':''}">
-        <div class="grow rowlink" data-act="q-open" data-id="${l.id}">
-          <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div></div></div>`;
-      const ed = `<div class="detail"><div class="m-form">
-        <label class="m-label">질문</label>
-        <input class="f" data-act="q-edit" data-id="${l.id}" data-k="prompt" value="${esc(q.prompt || '')}">
-        <label class="m-label">안내</label>
-        <input class="f" data-act="q-edit" data-id="${l.id}" data-k="guide" value="${esc(q.guide || '')}">
-      </div></div>`;
-      return open ? row + ed : row;
-    }).join('');
-    return head + list;
-  }
+  if (state.questionTab === 'manage') return head + questionManage();
 
   const courses = M.getCourses(state.year);
   if (!courses.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
@@ -1170,11 +1163,10 @@ function pageQuestion(){
     ${q.guide ? `<div class="s">${esc(q.guide)}</div>` : ''}</div></div>` : '';
 
   const subs = M.getQuestionSubs(state.questionClId);
-  const judged = subs.map(s => ({ s, v:M.questionVerdict(s) }));
 
   if (state.questionTab === 'pick'){
-    const picked = judged.filter(x => x.s.shared);
-    const body = picked.length ? picked.map(({ s }) => `<div class="row">
+    const picked = subs.filter(s => s.shared);
+    const body = picked.length ? picked.map(s => `<div class="row">
       <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
         <div class="s">${esc(s.answer)}</div></div>
       <div class="tools">
@@ -1183,28 +1175,119 @@ function pageQuestion(){
     return head + pickers + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
   }
 
-  // 통계 칩: 제출, 통과, 미흡, 공유.
-  const pass = judged.filter(x => x.v.achieved).length;
-  const students = M.getStudentsByCourse(state.questionCourseId);
-  const chips = `<div class="gstats">
-    <span class="gchip"><b>제출</b>${judged.length} / ${students.length}</span>
-    <span class="gchip"><b>통과</b>${pass}</span>
-    <span class="gchip"><b>미흡</b>${judged.length - pass}</span>
-    <span class="gchip"><b>공유</b>${judged.filter(x => x.s.shared).length}</span>
+  return head + pickers + info + questionGrade(cl, subs);
+}
+
+// 질문 관리: 진도 관리처럼 과목 탭 아래 깔린 강의를 한 줄씩. 칸을 떠날 때 저장한다.
+function questionManage(){
+  const all = M.getCourses(state.year);
+  if (!all.length) return `<div class="empty">강의실이 없습니다.</div>`;
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  if (!subjects.includes(state.questionSubject)) state.questionSubject = subjects[0];
+  const subTabs = subjects.length > 1
+    ? catline(subjects.map(s => ({ v:s, label:s })), state.questionSubject, 'q-subject') : '';
+
+  const { lessons } = placedLessons(all.filter(c => c.subject === state.questionSubject));
+  if (!lessons.length) return subTabs + `<div class="empty">깔린 강의가 없습니다.</div>`;
+
+  const body = lessons.map((l, i) => {
+    const q = l.parts?.question || {};
+    return `<tr>
+      <td class="pl-num">${i + 1}강</td>
+      <td class="lname">${esc(l.title)}</td>
+      <td class="qcell"><textarea class="f" rows="2" data-act="q-edit" data-id="${l.id}" data-k="prompt" aria-label="질문">${esc(q.prompt || '')}</textarea></td>
+      <td class="qcell"><textarea class="f" rows="2" data-act="q-edit" data-id="${l.id}" data-k="guide" aria-label="설명문">${esc(q.guide || '')}</textarea></td>
+    </tr>`;
+  }).join('');
+  return `${subTabs}<div class="prog-wrap"><table class="prog pltable qtable">
+    <thead><tr><th class="pl-num">강의</th><th class="lname">주제</th><th>질문</th><th>설명문</th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+}
+
+/* 답변, 채점: hoistory 채점 모달(thUpdateGradeSummary, thRenderGradeBody)을 옮긴 것.
+   판정은 언제나 M.questionVerdict 하나로 한다. 성적의 자동 끌어오기도 같은 함수를 쓰므로
+   여기서 누른 통과/미흡과 AI 채점 결과가 성적에 그대로 이어진다. */
+function questionGrade(cl, subs){
+  const students = M.getStudentsByCourse(state.questionCourseId)
+    .slice().sort((a,b) => String(a.studentNo).localeCompare(String(b.studentNo), undefined, { numeric:true }));
+  const byNo = new Map(subs.map(s => [s.studentNo, s]));
+  const judged = subs.map(s => ({ s, v:M.questionVerdict(s) }));
+  const absent = students.filter(st => !byNo.has(st.studentNo));
+  const failing = judged.filter(x => !x.v.achieved);
+  const passing = judged.filter(x => x.v.achieved);
+
+  const room = M.getCourse(state.questionCourseId);
+  const summary = `<div class="gstats">
+    <span class="gchip"><b>${esc(M.roomNo(room))}</b></span>
+    <span class="gchip"><b>통과</b>${passing.length}명</span>
+    <span class="gchip"><b>미흡</b>${absent.length + failing.length}명</span>
+    <span class="gchip"><b>전체</b>${students.length}명</span>
   </div>`;
+  const gtabs = catline([{ v:'pass', label:'통과' }, { v:'fail', label:'미흡' }, { v:'ai', label:'AI 채점' }],
+    state.questionGradeTab, 'q-gtab');
+  const chip = (no, name, extra = '') => `<span class="qchip"><span class="mono">${esc(no)}</span> ${esc(name)}${extra}</span>`;
 
-  const body = judged.length ? judged.map(({ s, v }) => `<div class="row">
-    <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}
-        <span class="gnote ${v.achieved?'':'bad'}">${esc(v.verdict)}</span>
-        <span class="gsub">${v.length}자</span></div>
-      <div class="s">${esc(s.answer)}</div></div>
-    <div class="tools">
-      <button class="btn-chip ${s.verdict==='pass'?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
-      <button class="btn-chip ${s.verdict==='fail'?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
-      <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
-    </div></div>`).join('') : `<div class="empty">제출된 답변이 없습니다.</div>`;
+  let body;
+  if (state.questionGradeTab === 'pass'){
+    body = passing.length
+      ? `<div class="qchips">${passing.map(({ s }) => chip(s.studentNo, s.name)).join('')}</div>`
+      : `<div class="empty">통과한 학생이 없습니다.</div>`;
+  } else if (state.questionGradeTab === 'fail'){
+    // 미흡 사유별로 묶는다(hoistory: 미제출, 50자 미만, AI 분석 미흡).
+    const groups = [
+      ['미제출', absent.map(st => chip(st.studentNo, st.name))],
+      ['50자 미만', failing.filter(x => x.v.verdict === '미흡(50자 미만)').map(({ s, v }) => chip(s.studentNo, s.name, ` <span class="gsub">${v.length}자</span>`))],
+      ['AI 채점 미흡', failing.filter(x => x.v.verdict === '조금 미흡').map(({ s }) => chip(s.studentNo, s.name))],
+      ['선생님 미흡', failing.filter(x => x.v.verdict === '미흡(교사)').map(({ s }) => chip(s.studentNo, s.name))],
+    ].filter(g => g[1].length);
+    body = groups.length
+      ? groups.map(([label, chips]) => `<div class="sectionlabel">${label} ${chips.length}명</div><div class="qchips">${chips.join('')}</div>`).join('')
+      : `<div class="empty">미흡 학생이 없습니다.</div>`;
+  } else {
+    const ungraded = subs.filter(s => !s.graded).length, graded = subs.length - ungraded;
+    const busy = state.questionAiBusy;
+    const bar = `<div class="formrow">
+      <button class="btn-chip" data-act="q-ai-run" ${ungraded && !busy ? '' : 'disabled'}>${icon('sparkles',13)}AI 채점${ungraded ? ` (미채점 ${ungraded})` : ''}</button>
+      ${graded ? `<button class="btn-chip" data-act="q-ai-regrade" ${busy ? 'disabled' : ''}>${icon('rotate-ccw',13)}재채점 (${graded}명)</button>` : ''}
+      <button class="btn-chip" data-act="q-go-scores">${icon('trophy',13)}성적 입력으로</button>
+      ${state.questionAiStatus ? `<span class="gnote">${esc(state.questionAiStatus)}</span>` : ''}
+    </div>`;
+    const sorted = judged.slice().sort((a,b) => String(a.s.studentNo).localeCompare(String(b.s.studentNo), undefined, { numeric:true }));
+    const cards = sorted.length ? sorted.map(({ s, v }) => {
+      const res = s.graded
+        ? `<span class="gnote ${v.achieved ? '' : 'bad'}">${esc(s.aiVerdict || '')} / ${s.aiPt ?? 0}pt</span>`
+        : `<span class="gnote muted">미채점</span>`;
+      return `<div class="row">
+        <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}${res}
+            <span class="gsub">${v.length}자</span></div>
+          <div class="s">${esc(s.answer)}</div></div>
+        <div class="tools">
+          <button class="btn-chip ${v.achieved?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
+          <button class="btn-chip ${v.achieved?'':'on'}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
+          <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
+        </div></div>`;
+    }).join('') : `<div class="empty">이 반의 제출이 없습니다.</div>`;
+    body = bar + cards;
+  }
+  return summary + gtabs + body;
+}
 
-  return head + pickers + info + chips + body;
+// AI 채점과 재채점: 끝나면 다시 그린다. 진행 문구는 버튼 줄 옆에 뜬다.
+async function runQuestionAI(regrade){
+  const clId = state.questionClId; if (!clId || state.questionAiBusy) return;
+  if (regrade){
+    const n = M.getQuestionSubs(clId).filter(s => s.graded).length;
+    const ok = await confirmDelete({ title:'재채점',
+      bodyHtml:`${n}명의 채점과 손으로 정한 통과, 미흡을 지우고 다시 채점합니다.`, okText:'재채점' });
+    if (!ok) return;
+  }
+  state.questionAiBusy = true; render();
+  const onStatus = msg => { state.questionAiStatus = msg; render(); };
+  try {
+    const n = await (regrade ? M.regradeQuestionsAI : M.gradeQuestionsAI)(clId, onStatus);
+    toast(`${n}명을 채점했습니다.`);
+  } catch(e){ toast(e.message || '채점하지 못했습니다.'); }
+  state.questionAiBusy = false; state.questionAiStatus = ''; render();
 }
 
 /* ── 형성평가 ──
@@ -1279,7 +1362,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'page':
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
       state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set();
-      state.conceptLessonId = null; state.formativeLessonId = null; state.questionLessonId = null; render(); break;
+      state.conceptLessonId = null; state.formativeLessonId = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -1411,8 +1494,17 @@ document.getElementById('shell').addEventListener('click', e => {
     }
 
     // 오늘의 질문
-    case 'question-tab': state.questionTab = v; state.questionLessonId = null; render(); break;
-    case 'q-open': state.questionLessonId = state.questionLessonId === id ? null : id; render(); break;
+    case 'question-tab': state.questionTab = v; render(); break;
+    case 'q-subject': state.questionSubject = v; render(); break;
+    case 'q-gtab': state.questionGradeTab = v; render(); break;
+    case 'q-ai-run': runQuestionAI(false); break;
+    case 'q-ai-regrade': runQuestionAI(true); break;
+    case 'q-go-scores': {   // hoistory "성적 체크로": 같은 강의실, 같은 강의의 성적 입력으로
+      const c = M.getCourse(state.questionCourseId);
+      Object.assign(state, { page:'scores', scTab:'input', scSubject:c?.subject ?? null,
+                             scCourseId:state.questionCourseId, scClId:state.questionClId });
+      render(); break;
+    }
     case 'q-share': M.toggleSubShared(id); render(); break;
     // 통과/미흡을 손으로 못박는다(같은 것을 다시 누르면 자동 판정으로 되돌아간다)
     case 'q-verdict': M.setSubVerdict(id, v); render(); break;
@@ -1541,8 +1633,8 @@ document.getElementById('shell').addEventListener('change', e => {
     state.questionClId = el.value; render();
   } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
-  } else if (el.dataset.act === 'q-edit'){   // 질문/안내 저장
-    M.setQuestion(el.dataset.id, { [el.dataset.k]: el.value });
+  } else if (el.dataset.act === 'q-edit'){   // 질문, 설명문 저장(다시 그리지 않아 다음 칸으로 그대로 간다)
+    M.setQuestion(el.dataset.id, { [el.dataset.k]: el.value.trim() });
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
