@@ -285,8 +285,8 @@ const nid = p => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
    비어 있는 데이터베이스에서 제일 먼저 만드는 것이 이것이다. */
 export function addYear(year){
   const y = +year;
-  if (!(y >= 2000 && y <= 2199)) throw new Error('학년도를 확인한다.');
-  if (DEMO.years.some(x => x.year === y)) throw new Error(`${y}학년도는 이미 있다.`);
+  if (!(y >= 2000 && y <= 2199)) throw new Error('학년도를 확인해 주세요.');
+  if (DEMO.years.some(x => x.year === y)) throw new Error(`${y}학년도는 이미 있습니다.`);
   const row = { id:String(y), year:y };
   DEMO.years.push(row);
   DEMO.years.sort((a, b) => b.year - a.year);   // 큰 해부터
@@ -305,10 +305,10 @@ export function courseDeps(id){
 
 export function addCourse({ year, subject, grade, classNo }){
   const c = { id:nid('c_'), year:+year, subject:String(subject).trim(), grade:+grade, classNo:+classNo, status:'active' };
-  if (!c.subject) throw new Error('과목을 적는다.');
-  if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인한다.');
-  if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인한다.');
-  if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있다.`);
+  if (!c.subject) throw new Error('과목을 적어 주세요.');
+  if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인해 주세요.');
+  if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인해 주세요.');
+  if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있습니다.`);
   DEMO.courses.push(c); put(COLLECTIONS.courses, c); return c;
 }
 
@@ -319,12 +319,12 @@ function sameRoomExists({ id, year, subject, grade, classNo }){
 }
 
 export function updateCourse(id, { subject, grade, classNo }){
-  const c = getCourse(id); if (!c) throw new Error('강의실을 찾지 못했다.');
+  const c = getCourse(id); if (!c) throw new Error('강의실을 찾지 못했습니다.');
   const next = { id, year:c.year, subject:String(subject).trim(), grade:+grade, classNo:+classNo };
-  if (!next.subject) throw new Error('과목을 적는다.');
-  if (!(next.grade >= 1 && next.grade <= 6)) throw new Error('학년을 확인한다.');
-  if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인한다.');
-  if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있다.`);
+  if (!next.subject) throw new Error('과목을 적어 주세요.');
+  if (!(next.grade >= 1 && next.grade <= 6)) throw new Error('학년을 확인해 주세요.');
+  if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인해 주세요.');
+  if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있습니다.`);
   Object.assign(c, { subject:next.subject, grade:next.grade, classNo:next.classNo });
   put(COLLECTIONS.courses, c); return c;
 }
@@ -485,9 +485,9 @@ export function toggleSubShared(subId){
 
 // ── 미션 앱 등록부 CRUD: 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
 export function addMissionApp({ name, studentUrl, adminUrl, key }){
-  const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적는다.');
+  const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
   const id = String(key || '').trim() || nid('app_');
-  if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키이다.');
+  if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
   const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim() };
   DEMO.missionApps.push(a); return a;
 }
@@ -529,7 +529,7 @@ export async function getAuthRecord(year, studentNo){
 // courseId는 그 학번이 든 강의실 중 아무 곳(규칙은 명단에 있는지만 본다).
 export async function createPassword(year, studentNo, password, courseId){
   const id = `${year}_${studentNo}`;
-  if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있다.');
+  if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있습니다.');
   await setDoc(doc(db, COLLECTIONS.courseAuth, id), { pw: await sha256Hex(password), courseId });
 }
 export async function verifyPassword(year, studentNo, password){

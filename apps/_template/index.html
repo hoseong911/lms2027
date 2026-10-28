@@ -34,7 +34,7 @@
         <h2 class="app-card-title">여기부터 이 앱의 내용</h2>
       </div>
       <div class="app-card-body">
-        <textarea class="app-inp" id="answer" placeholder="답을 적는다"></textarea>
+        <textarea class="app-inp" id="answer" placeholder="답을 적어 주세요"></textarea>
       </div>
     </div>
     <div style="display:flex;justify-content:center;margin-top:16px">
@@ -59,8 +59,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { initializeFirestore, doc, setDoc, getDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "../../shared/firebase-config.js";
-import { requireStudent } from "../../shared/lms-session.js?v=20261026a";
-import { markSubmitted, appCollection } from "../../shared/lms-submit.js?v=20261026a";
+import { requireStudent } from "../../shared/lms-session.js?v=20261028f";
+import { markSubmitted, appCollection } from "../../shared/lms-submit.js?v=20261028f";
 
 // 앱 키 = 이 폴더 이름. LMS 미션 카드의 "앱 키"와 **같아야** 성적이 붙는다.
 const APP_KEY = '_template';
@@ -102,7 +102,7 @@ async function load() {
 
 $('submitBtn').addEventListener('click', async () => {
   const answer = $('answer').value.trim();
-  if (!answer) { toast('답을 적는다.', 'err'); return; }
+  if (!answer) { toast('답을 적어 주세요.', 'err'); return; }
   $('submitBtn').disabled = true;
   try {
     // 1) 앱 고유 데이터는 앱 컬렉션에
@@ -112,10 +112,10 @@ $('submitBtn').addEventListener('click', async () => {
     }, { merge: true });
     // 2) "냈다"는 공용 컬렉션에 한 줄. 이것만으로 LMS 성적에 붙는다.
     await markSubmitted(db, APP_KEY, me);
-    toast('제출했다.');
+    toast('제출했습니다.');
   } catch (e) {
     console.warn('[submit]', e);
-    toast('제출하지 못했다. ' + e.message, 'err');
+    toast('제출하지 못했습니다. ' + e.message, 'err');
   } finally {
     $('submitBtn').disabled = false;
   }

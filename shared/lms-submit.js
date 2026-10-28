@@ -40,11 +40,11 @@ export const submitId = (appKey, year, studentNo) => `${appKey}_${year}_${studen
  * status는 **싣지 않는다.** 채점은 선생님만 쓴다: 규칙도 그렇게 막는다.
  */
 export async function markSubmitted(db, appKey, student, extra = {}) {
-  if (!appKey) throw new Error('appKey가 필요한다.');
-  if (!student || !student.studentId) throw new Error('학생 정보가 없다.');
+  if (!appKey) throw new Error('appKey가 필요합니다.');
+  if (!student || !student.studentId) throw new Error('학생 정보가 없습니다.');
   // 2027은 반(courseId)이 있어야 성적이 제자리로 간다. 보안 규칙도 반 명단을 확인하므로
   // 여기서 막지 않으면 뜻 모를 권한 오류로 떨어진다. 수업 홈을 거쳐 들어오면 늘 있다.
-  if (!student.courseId) throw new Error('수업 홈에서 반을 고르고 들어온다.');
+  if (!student.courseId) throw new Error('수업 홈에서 반을 고르고 들어와 주세요.');
   const year = student.year ?? new Date().getFullYear();
   const ref = doc(db, MISSION_SUBMISSIONS, submitId(appKey, year, student.studentId));
 
@@ -71,7 +71,7 @@ export async function markSubmitted(db, appKey, student, extra = {}) {
    칸이 아예 없으면 아직 안 매긴 것이다(2026 규약 그대로). */
 export async function setStatus(db, appKey, year, studentNo, status) {
   if (status !== 'pass' && status !== 'fail' && status !== null) {
-    throw new Error("status는 'pass', 'fail', null 중 하나이다.");
+    throw new Error("status는 'pass', 'fail', null 중 하나입니다.");
   }
   await updateDoc(doc(db, MISSION_SUBMISSIONS, submitId(appKey, year, studentNo)),
     { status, gradedAt: serverTimestamp() });

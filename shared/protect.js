@@ -53,7 +53,7 @@ function injectStyle() {
     @media print {
       html.hi-protected body { display: none !important; }
       html.hi-protected::after {
-        content: '이 자료는 인쇄할 수 없다.';
+        content: '이 자료는 인쇄할 수 없습니다.';
         display: block; padding: 40px; font-size: 18px; font-weight: 700;
       }
     }`;
@@ -110,7 +110,7 @@ async function clobberClipboard() {
  * @param {string}  [opts.veilMessage] 가려졌을 때 덮개에 띄울 문구
  */
 export function applyScreenProtection(doc = document, opts = {}) {
-  const { blurWhenHidden = true, veilMessage = '화면 보호 중이다. 창을 다시 선택하면 이어서 볼 수 있어요.' } = opts;
+  const { blurWhenHidden = true, veilMessage = '화면 보호 중입니다. 창을 다시 선택하면 이어서 볼 수 있어요.' } = opts;
 
   injectStyle();
   document.documentElement.classList.add('hi-protected');
@@ -134,7 +134,7 @@ export function applyScreenProtection(doc = document, opts = {}) {
     // 인쇄 / 소스 보기 / 저장
     if ((e.ctrlKey || e.metaKey) && (k === 'p' || k === 'u' || k === 's')) {
       e.preventDefault();
-      warn('이 자료는 인쇄, 저장할 수 없다.');
+      warn('이 자료는 인쇄, 저장할 수 없습니다.');
       return;
     }
     // 개발자도구
@@ -151,7 +151,7 @@ export function applyScreenProtection(doc = document, opts = {}) {
     // 화면 캡처 키: 키가 눌린 시점엔 이미 찍힌 뒤라 막을 수는 없고, 클립보드를 지운다.
     if (k === 'printscreen') {
       clobberClipboard();
-      warn('화면 캡처는 허용되지 않는다.');
+      warn('화면 캡처는 허용되지 않습니다.');
     }
   });
 

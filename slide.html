@@ -63,14 +63,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 </div>
 
 <script type="module">
-import * as M from './model.js?v=20261028e';
+import * as M from './model.js?v=20261028f';
 
 const q = new URLSearchParams(location.search);
 const lesson = M.getLesson(q.get('lesson'));
 const $ = id => document.getElementById(id);
 
 if (!lesson){
-  $('guard').textContent = '강의를 찾지 못했다.';
+  $('guard').textContent = '강의를 찾지 못했습니다.';
 } else {
   // 뼈대: 쪽 내용이 아직 없으므로 표지 한 장만 세운다.
   // 슬라이드 엔진이 붙으면 이 배열을 실제 쪽으로 바꾼다.

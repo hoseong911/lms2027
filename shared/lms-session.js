@@ -63,8 +63,8 @@ export function requireStudent(el) {
   if (el) {
     el.innerHTML =
       '<div class="app-gate">' +
-      '<div class="app-gate-title">수업 홈에서 연다</div>' +
-      '<div class="app-gate-desc">로그인한 뒤 이 활동을 누르면 바로 들어온다.</div>' +
+      '<div class="app-gate-title">수업 홈에서 열어 주세요</div>' +
+      '<div class="app-gate-desc">로그인한 뒤 이 활동을 누르면 바로 들어옵니다.</div>' +
       '</div>';
     el.hidden = false;
   }

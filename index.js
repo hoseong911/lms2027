@@ -11,7 +11,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261028e';
+import * as M from './model.js?v=20261028f';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -39,12 +39,12 @@ const state = {
 // 맞는 학번을 넣어도 "그 학번으로 든 강의실이 없다"가 된다.
 async function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
-  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했다. 새로고침한다.'; return; }
+  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
   try {
     await M.loadCore();
   } catch (e) {
     console.error('loadCore', e);
-    document.getElementById('boot').textContent = '자료를 불러오지 못했다. 새로고침한다.';
+    document.getElementById('boot').textContent = '자료를 불러오지 못했습니다. 새로고침해 주세요.';
     return;
   }
   document.title = M.getText('browserTitle');
@@ -110,7 +110,7 @@ function loginExtras(){
   </div>`;
 }
 function openExternal(url){
-  if (!url){ alertBox('링크가 아직 설정되지 않았다.'); return; }
+  if (!url){ alertBox('링크가 아직 설정되지 않았습니다.'); return; }
   window.open(url, '_blank', 'noopener');
 }
 
@@ -122,7 +122,7 @@ function viewRooms(){
         <span class="ic" style="background:var(--concept)">${icon('graduation-cap',22)}</span>
         <div class="body"><div class="t">${esc(roomLabel(c))}</div></div>
         <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`
-    : `<div class="empty">든 강의실이 없다.</div>`;
+    : `<div class="empty">든 강의실이 없습니다.</div>`;
   return topbar('강의실 고르기') + body;
 }
 
@@ -137,13 +137,13 @@ function viewHome(){
 
 // 배치 3: 콘텐츠. 뽑기, 게임 같은 흥미 요소가 들어올 자리다(선생님 지시 2026-10-27). 아직 비었다.
 function paneExtras(){
-  return `<div class="empty">아직 없다.</div>`;
+  return `<div class="empty">아직 없습니다.</div>`;
 }
 
 // 배치 1: 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.
 function paneByLesson(){
   const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
-  if (!cls.length) return `<div class="empty">열린 강의가 없다.</div>`;
+  if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
   return `<div class="grid">${cls.map((cl, i) => {
     const tags = (cl.lesson.order || []).map(k =>
       `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
@@ -176,7 +176,7 @@ function paneByMenu(){
 function viewMenu(){
   const c = M.getCourse(state.courseId);
   const m = M.STUDENT_MENUS.find(x => x.key === state.menuKey);
-  if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했다.</div>`;
+  if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했습니다.</div>`;
   const head = topbar(m.name, 'back-home');
 
   if (m.kind === 'score')  return head + scoreCard(c);
@@ -184,7 +184,7 @@ function viewMenu(){
 
   // 칸 모아 보기: 강의마다 그 칸 하나씩
   const items = M.getPartItems(state.courseId, m.key);
-  if (!items.length) return head + `<div class="empty">아직 없다.</div>`;
+  if (!items.length) return head + `<div class="empty">아직 없습니다.</div>`;
   return head + `<div class="grid">${items.map(it => `
     <div class="card" data-act="open-part" data-lid="${it.lesson.id}" data-k="${m.key}">
       <span class="no">${it.no}강</span>
@@ -195,7 +195,7 @@ function viewMenu(){
 
 function reviewList(){
   const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
-  if (!qs.length) return `<div class="empty">열린 복습이 없다.</div>`;
+  if (!qs.length) return `<div class="empty">열린 복습이 없습니다.</div>`;
   return `<div class="grid">${qs.map(cq => `<div class="card" data-act="noop">
     <span class="ic" style="background:var(--review)">${icon('list-ordered',22)}</span>
     <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
@@ -219,7 +219,7 @@ function scoreCard(c){
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
 function viewLesson(){
   const l = M.getLesson(state.lessonId);
-  if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했다.</div>`;
+  if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했습니다.</div>`;
   const order = l.order || [];
   if (!state.partKey || !order.includes(state.partKey)) state.partKey = order[0] || null;
 
@@ -243,7 +243,7 @@ function viewLesson(){
 function viewPart(){
   const l = M.getLesson(state.lessonId);
   const d = M.partDef(state.partKey);
-  if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했다.</div>`;
+  if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했습니다.</div>`;
   return topbar(l.title, 'back-menu') + `<div class="partview">${partView(l, state.partKey)}</div>`;
 }
 
@@ -260,16 +260,16 @@ function partView(l, k){
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
   if (k === 'mission')
-    return head + `<div class="placeholder">미니앱이 여기 바로 열린다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
+    return head + `<div class="placeholder">미니앱이 여기 바로 열립니다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
       제출하면 반 전체에 실시간 공유. (뼈대: 연결은 다음 단계)</div>`;
 
   if (k === 'question')
-    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없다.')}</p>`
-      + `<textarea placeholder="내 답변을 적는다"></textarea>`
+    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`
+      + `<textarea placeholder="내 답변을 적습니다"></textarea>`
       + `<button class="primary wide" data-act="submit-demo">제출</button>`;
 
   if (k === 'formative')
-    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열린다. 성적에는 들어가지 않는다. (뼈대)</div>`;
+    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열립니다. 성적에는 들어가지 않습니다. (뼈대)</div>`;
 
   return head;
 }
@@ -365,7 +365,7 @@ $app.addEventListener('click', e => {
       window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}`, '_blank', 'noopener');
       break;
 
-    case 'submit-demo': alertBox('제출되었다. (데모)'); break;
+    case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
     case 'noop': break;
   }
 });

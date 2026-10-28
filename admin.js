@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028e';
+import * as M from './model.js?v=20261028f';
 import { icon } from './shared/icons.js';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -65,7 +65,7 @@ function dateStatus(mmdd){
 
 function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
-  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했다. 새로고침한다.'; return; }
+  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
   document.documentElement.classList.add('lms-ready');
   if (!document.getElementById('toast')){
     const t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t);
@@ -77,7 +77,7 @@ function boot(){
     document.getElementById('boot').textContent = '불러오는 중…';
     document.getElementById('boot').style.display = 'grid';
     try { await M.loadCore(); document.title = `${M.getText('browserTitle')} : 관리자 모드`; }
-    catch(e){ console.error(e); toast('데이터를 불러오지 못했다.'); }
+    catch(e){ console.error(e); toast('데이터를 불러오지 못했습니다.'); }
     document.getElementById('boot').style.display = 'none';
     document.getElementById('shell').hidden = false;
     render();
@@ -108,7 +108,7 @@ function showLogin(msg){
     const err = el.querySelector('#lg-err');
     err.textContent = '';
     try { await signInWithEmailAndPassword(auth, email, pw); }   // 성공하면 onAuthStateChanged가 화면을 바꾼다
-    catch(_){ err.textContent = '이메일 또는 비밀번호를 확인한다.'; }
+    catch(_){ err.textContent = '이메일 또는 비밀번호를 확인해 주세요.'; }
   });
 }
 
@@ -200,7 +200,7 @@ function pageRooms(){
 
   if (!years.length)
     return `<div class="pagehead"><h2>강의실 관리</h2>${addBtn}</div>
-      <div class="empty">학년도가 없다.</div>`;
+      <div class="empty">학년도가 없습니다.</div>`;
 
   const courses = M.getCourses(state.year);
   const byClass = state.roomGroup === 'class';
@@ -247,7 +247,7 @@ function pageRooms(){
 
   let rowsHtml;
   if (!list.length){
-    rowsHtml = `<div class="empty">강의실이 없다.</div>`;
+    rowsHtml = `<div class="empty">강의실이 없습니다.</div>`;
   } else {
     const keyOf = c => byClass ? M.roomNo(c) : c.subject;
     const out = []; let last = null, first = true;
@@ -279,7 +279,7 @@ function roomDetailPanel(c){
       <input class="f dateinput ds-${st}" data-act="cl-date" data-id="${cl.id}" value="${esc(cl.date || '')}" inputmode="numeric" aria-label="수업일자">
       <button class="ib ib-sm ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}" title="${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
     </div>`;
-  }).join('') : `<div class="empty">개설된 강의가 없다.</div>`;
+  }).join('') : `<div class="empty">개설된 강의가 없습니다.</div>`;
   const moreBtn = (!state.roomLessonsMore && lessons.length > MAX_LESSONS)
     ? `<button class="btn-link morebtn" data-act="room-lessons-more">더보기 (${lessons.length - MAX_LESSONS}강)</button>` : '';
   const left = `<div class="dcol">
@@ -302,7 +302,7 @@ function roomDetailPanel(c){
     const row = `<div class="row compact rowlink" data-act="stu-score" data-no="${s.studentNo}" data-id="${c.id}">
       <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div></div>`;
     return open ? row + studentCard(c.id, s.studentNo) : row;
-  }).join('') : `<div class="empty">학생이 없다.</div>`;
+  }).join('') : `<div class="empty">학생이 없습니다.</div>`;
 
   const stuHead = editing
     ? `<div class="sectionlabel between">학생 명단
@@ -335,14 +335,14 @@ function studentCard(courseId, studentNo){
   </div>`;
 
   let port;
-  if (!sc){ port = `<div class="score-empty">성적 기록이 없다.</div>`; }
+  if (!sc){ port = `<div class="score-empty">성적 기록이 없습니다.</div>`; }
   else {
     const lines = M.PART_TYPES.filter(p => p.portfolio).map(p => {
       const got = sc.items?.[p.key]; if (got == null) return '';
       return `<div class="score-line"><span>${esc(p.name)}</span><span class="mono">${got} / ${sc.max?.[p.key] ?? 0}점</span></div>`;
     }).filter(Boolean).join('');
     const tot = sum ? `<div class="score-line tot"><span>합계</span><span class="mono">${sum.got} / ${sum.max}점</span></div>` : '';
-    port = (lines + tot) || `<div class="score-empty">기록된 칸이 없다.</div>`;
+    port = (lines + tot) || `<div class="score-empty">기록된 칸이 없습니다.</div>`;
   }
   return `<div class="score-detail">${stats}<div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
 }
@@ -356,7 +356,7 @@ function pageProgress(){
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
   const head = `<div class="pagehead"><h2>진도 관리</h2>${years.length?yearSel:''}</div>`;
-  if (!years.length) return `${head}<div class="empty">학년도가 없다.</div>`;
+  if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
 
   const courses = M.getCourses(state.year)
     .slice().sort((a,b) => a.subject.localeCompare(b.subject,'ko') || a.grade - b.grade || a.classNo - b.classNo);
@@ -364,8 +364,8 @@ function pageProgress(){
   courses.forEach(c => { placed[c.id] = M.getCourseLessons(c.id); placed[c.id].forEach(cl => placedIds.add(cl.lessonId)); });
   const lessons = M.getLessons().filter(l => placedIds.has(l.id));
 
-  if (!courses.length) return `${head}<div class="empty">강의실이 없다.</div>`;
-  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없다.</div>`;
+  if (!courses.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
+  if (!lessons.length) return `${head}<div class="empty">개설된 강의가 없습니다.</div>`;
 
   const th = courses.map(c => `<th title="${esc(M.roomName(c))}">${esc(M.roomName(c))}</th>`).join('');
   const body = lessons.map((l, li) => {
@@ -438,9 +438,9 @@ function openAddModal(initial){
   const submit = () => {
     if (tab === 'year'){
       const y = (modal.querySelector('#a-year')?.value || '').trim();
-      if (!y){ err('학년도를 적는다.'); return; }
+      if (!y){ err('학년도를 적어 주세요.'); return; }
       try { const row = M.addYear(y); state.year = row.year; state.fSubject = null; state.editRoomId = null;
-        toast(`${row.year}학년도를 만들었다.`); close(); render(); }
+        toast(`${row.year}학년도를 만들었습니다.`); close(); render(); }
       catch(e){ err(e.message); }
     } else {
       const sel = modal.querySelector('#a-subject-sel');
@@ -449,9 +449,9 @@ function openAddModal(initial){
         : (modal.querySelector('#a-subject-new')?.value || '').trim();
       const grade = (modal.querySelector('#a-grade')?.value || '').trim();
       const classNo = (modal.querySelector('#a-class')?.value || '').trim();
-      if (!subject || !grade || !classNo){ err('과목, 학년, 반을 적는다.'); return; }
+      if (!subject || !grade || !classNo){ err('과목, 학년, 반을 적어 주세요.'); return; }
       try { const c = M.addCourse({ year:state.year, subject, grade, classNo });
-        state.fSubject = c.subject; toast(`${M.roomName(c)} 강의실을 만들었다.`); close(); render(); }
+        state.fSubject = c.subject; toast(`${M.roomName(c)} 강의실을 만들었습니다.`); close(); render(); }
       catch(e){ err(e.message); }
     }
   };
@@ -482,7 +482,7 @@ function pageStudents(){
   const years = M.getYears();
   const addBtn = `<button class="btn-add" data-act="stu-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button>`;
   if (!years.length)
-    return `<div class="pagehead"><h2>학생 관리</h2>${addBtn}</div><div class="empty">학년도가 없다.</div>`;
+    return `<div class="pagehead"><h2>학생 관리</h2>${addBtn}</div><div class="empty">학년도가 없습니다.</div>`;
 
   const all = M.getStudentsByYear(state.year);
   const byRoom = {};
@@ -510,7 +510,7 @@ function pageStudents(){
         <button class="ib ib-danger" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
     return open ? row + studentDetailPanel(sno, name) : row;
-  }).join('') : `<div class="empty">학생이 없다.</div>`;
+  }).join('') : `<div class="empty">학생이 없습니다.</div>`;
 
   return `${head}${filterLine}${list}`;
 }
@@ -528,7 +528,7 @@ function studentDetailPanel(sno, name){
   const checks = classCourses.length ? classCourses.map(c => `<label class="checkline">
     <input type="checkbox" data-act="stu-enroll" data-id="${c.id}" data-no="${sno}" ${enrolled.has(c.id)?'checked':''}>
     <span>${esc(M.roomName(c))}</span></label>`).join('')
-    : `<div class="empty">${grade}${String(classNo).padStart(2,'0')} 반으로 만든 강의실이 없다.</div>`;
+    : `<div class="empty">${grade}${String(classNo).padStart(2,'0')} 반으로 만든 강의실이 없습니다.</div>`;
 
   const left = `<div class="dcol">
     <div class="sectionlabel">수강 과목</div>${checks}
@@ -541,7 +541,7 @@ function studentDetailPanel(sno, name){
       sum ? `포트폴리오 ${sum.got}/${sum.max}점` : '포트폴리오 기록 없음'];
     return `<div class="row compact"><div class="grow"><div class="t">${esc(M.roomName(c))}</div>
       <div class="s">${bits.join(', ')}</div></div></div>`;
-  }).join('') : `<div class="empty">수강 중인 과목이 없다.</div>`;
+  }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
   const right = `<div class="dcol">
     <div class="sectionlabel">과목별 성적</div>
     ${scoreRows}</div>`;
@@ -594,12 +594,12 @@ function openStudentModal(){
     const classNo = (modal.querySelector('#st-class')?.value || '').trim();
     const n = (modal.querySelector('#st-no')?.value || '').trim();
     const nm = (modal.querySelector('#st-name')?.value || '').trim();
-    if (!grade || !classNo || !n || !nm){ err('학년, 반, 번호, 이름을 적는다.'); return; }
+    if (!grade || !classNo || !n || !nm){ err('학년, 반, 번호, 이름을 적어 주세요.'); return; }
     const studentNo = `${grade}${String(classNo).padStart(2,'0')}${String(n).padStart(2,'0')}`;
     const { rooms, added } = M.addStudent({ year:state.year, grade, classNo, studentNo, name:nm });
-    if (!rooms.length){ err('그 반으로 만든 강의실이 없다. 먼저 강의실을 만든다.'); return; }
+    if (!rooms.length){ err('그 반으로 만든 강의실이 없습니다. 먼저 강의실을 만들어 주세요.'); return; }
     state.studentClass = `${grade}${String(classNo).padStart(2,'0')}`;
-    toast(`${nm}(${studentNo})을 ${added.length}개 강의실에 등록했다.`); close(); render();
+    toast(`${nm}(${studentNo})을 ${added.length}개 강의실에 등록했습니다.`); close(); render();
   };
   const onKey = e => {
     if (e.key === 'Escape'){ close(); return; }
@@ -611,7 +611,7 @@ function openStudentModal(){
     if (s){ tab = s.dataset.seg; draw(); return; }
     const m = e.target.closest('[data-m]'); if (!m) return;
     if (m.dataset.m === 'ok') submit();
-    else if (m.dataset.m === 'upload') toast('엑셀 올리기는 뼈대다(다음 단계).');
+    else if (m.dataset.m === 'upload') toast('엑셀 올리기는 다음 단계에서 만듭니다.');
     else close();
   });
   document.addEventListener('keydown', onKey);
@@ -623,7 +623,7 @@ function pageLessons(){
   const listSide = lessons.map(l => `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
       <div class="grow"><div class="t">${esc(l.title)}</div>
         <div class="s">${(l.order||[]).map(k => M.partDef(k)?.name).filter(Boolean).join(', ') || '빈 강의'}</div></div>
-      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`).join('') || `<div class="empty">강의가 없다.</div>`;
+      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`).join('') || `<div class="empty">강의가 없습니다.</div>`;
 
   const addForm = `<div class="formrow">
     <input class="f grow" id="l-title" placeholder="새 강의 제목">
@@ -655,7 +655,7 @@ function lessonEditor(l){
         <button class="ib" data-act="part-down" data-k="${k}" ${i===order.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',16)}</button>
         <button class="ib" data-act="part-off" data-k="${k}" title="빼기" aria-label="빼기">${icon('x',16)}</button>
       </div></div>`;
-  }).join('') : `<div class="placeholder">칸이 없다. 오른쪽에서 추가한다.</div>`;
+  }).join('') : `<div class="placeholder">칸이 없습니다. 오른쪽에서 추가해 주세요.</div>`;
 
   const palette = M.PART_TYPES.map(p => {
     const has = order.includes(p.key);
@@ -669,7 +669,7 @@ function lessonEditor(l){
     <div class="palette"><div class="sectionlabel">칸 넣고 빼기</div>${palette}
       <div class="formrow" style="margin-top:10px;flex-direction:column;align-items:stretch">
         <button class="btn-text" data-act="lesson-import" style="display:flex;align-items:center;justify-content:center;gap:8px"
-          title="활동지를 올려 개념노트를 만든다">${icon('upload',16)}<span>활동지 올리기</span></button>
+          title="활동지를 올려 개념노트를 만듭니다">${icon('upload',16)}<span>활동지 올리기</span></button>
       </div>
     </div></div>`;
 }
@@ -699,7 +699,7 @@ function pageConcept(){
     return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
 
   const lessons = M.getLessonsWithPart('concept');
-  if (!lessons.length) return head + `<div class="empty">개념 노트가 있는 강의가 없다.</div>`;
+  if (!lessons.length) return head + `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
   const list = lessons.map(l => {
     const open = state.conceptLessonId === l.id;
     const row = `<div class="row ${open?'on':''}">
@@ -724,7 +724,7 @@ function conceptEditor(l){
         <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.title)}">${tools}</div>`;
     return `<div class="ce-line"><span class="ce-bullet"></span>
       <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.text)}">${tools}</div>`;
-  }).join('') : `<div class="placeholder">내용이 없다.</div>`;
+  }).join('') : `<div class="placeholder">내용이 없습니다.</div>`;
   const add = `<div class="ce-add">
     <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="divider">${icon('plus',13)}페이지</button>
     <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="row">${icon('plus',13)}내용 줄</button></div>`;
@@ -758,7 +758,7 @@ function pageMission(){
       <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
       <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
       <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-    </div></div>`).join('') : `<div class="empty">연결한 앱이 없다.</div>`;
+    </div></div>`).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
 
   return `${head}${tabline}${list}`;
 }
@@ -791,7 +791,7 @@ function openMissionModal(app){
     try {
       if (app) M.updateMissionApp(app.id, { name, studentUrl:su, adminUrl:auu });
       else M.addMissionApp({ name, studentUrl:su, adminUrl:auu, key });
-      toast(app ? '앱을 저장했다.' : '앱을 추가했다.'); close(); render();
+      toast(app ? '앱을 저장했습니다.' : '앱을 추가했습니다.'); close(); render();
     } catch(e){ err(e.message); }
   };
   const onKey = e => { if (e.key==='Escape') close(); if (e.key==='Enter'){ e.preventDefault(); submit(); } };
@@ -812,7 +812,7 @@ function pageQuestion(){
 
   if (state.questionTab === 'manage'){
     const lessons = M.getLessonsWithPart('question');
-    if (!lessons.length) return head + `<div class="empty">질문이 걸린 강의가 없다.</div>`;
+    if (!lessons.length) return head + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
     const list = lessons.map(l => {
       const open = state.questionLessonId === l.id, q = l.parts.question;
       const row = `<div class="row ${open?'on':''}">
@@ -830,7 +830,7 @@ function pageQuestion(){
   }
 
   const courses = M.getCourses(state.year);
-  if (!courses.length) return head + `<div class="empty">강의실이 없다.</div>`;
+  if (!courses.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
   if (!courses.some(c => c.id === state.questionCourseId)) state.questionCourseId = courses[0].id;
 
   const cls = M.getCourseLessons(state.questionCourseId).filter(cl => cl.lesson?.parts?.question);
@@ -846,7 +846,7 @@ function pageQuestion(){
         : `<option>질문이 걸린 강의 없음</option>`}
     </select></div>`;
 
-  if (!state.questionClId) return head + pickers + `<div class="empty">질문이 걸린 강의가 없다.</div>`;
+  if (!state.questionClId) return head + pickers + `<div class="empty">질문이 걸린 강의가 없습니다.</div>`;
 
   const subs = M.getQuestionSubs(state.questionClId);
   const body = subs.length ? subs.map(s => `<div class="row">
@@ -856,7 +856,7 @@ function pageQuestion(){
       <input class="f dateinput" data-act="q-score" data-id="${s.id}" value="${s.score ?? ''}" inputmode="numeric" aria-label="점수">
       <span class="unit">/ ${s.max}</span>
       <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
-    </div></div>`).join('') : `<div class="empty">제출된 답변이 없다.</div>`;
+    </div></div>`).join('') : `<div class="empty">제출된 답변이 없습니다.</div>`;
 
   return head + pickers + body;
 }
@@ -871,7 +871,7 @@ function pageFormative(){
       <div class="grow"><div class="t">${esc(l.title)}</div>
         <div class="s">${esc(l.parts.formative.title || '')}</div></div>
       <div class="tools"><span class="chev">${icon('chevron-right',16)}</span></div>
-    </div>`).join('') : `<div class="empty">형성평가가 있는 강의가 없다.</div>`;
+    </div>`).join('') : `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
     return `<div class="pagehead"><h2>형성평가</h2></div>${list}`;
   }
 
@@ -887,7 +887,7 @@ function pageFormative(){
       <div class="tools">
         <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="noop" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-      </div></div>`).join('') : `<div class="placeholder">문항이 없다.</div>`;
+      </div></div>`).join('') : `<div class="placeholder">문항이 없습니다.</div>`;
 
   const palette = M.FORMATIVE_TYPES.map(t =>
     `<div class="pchip" data-act="fm-add" data-k="${t.key}"><span class="grow">${esc(t.name)}</span>${icon('plus',15)}</div>`).join('');
@@ -955,7 +955,7 @@ document.getElementById('shell').addEventListener('click', e => {
       const nos = [...state.roomStuSel]; if (!nos.length) break;
       nos.forEach(sno => M.unenrollStudent(id, sno));
       state.roomStuSel = new Set();
-      toast(`${nos.length}명을 ${M.roomName(c)}에서 제외했다.`); render(); break;
+      toast(`${nos.length}명을 ${M.roomName(c)}에서 제외했습니다.`); render(); break;
     }
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
     case 'stu-score': {
@@ -971,9 +971,9 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'room-cancel': state.editRoomId = null; render(); break;
     case 'room-save': {
       const subject = val('e-subject'), grade = val('e-grade'), classNo = val('e-class');
-      if (!subject || !grade || !classNo){ toast('과목, 학년, 반을 적는다.'); return; }
+      if (!subject || !grade || !classNo){ toast('과목, 학년, 반을 적어 주세요.'); return; }
       const c = run(() => M.updateCourse(id, { subject, grade, classNo }));
-      if (c){ state.editRoomId = null; toast(`${M.roomName(c)} 강의실로 저장했다.`); render(); }
+      if (c){ state.editRoomId = null; toast(`${M.roomName(c)} 강의실로 저장했습니다.`); render(); }
       break;
     }
     case 'room-del': {
@@ -988,15 +988,15 @@ document.getElementById('shell').addEventListener('click', e => {
         title: `${name} 강의실 삭제`,
         // 목록 끝 낱말이 무엇이냐에 따라 조사가 달라지므로 아예 조사를 쓰지 않는다
         bodyHtml: (gone.length
-          ? `같이 없어지는 것: ${gone.join(', ')}.<ul><li>강의 내용 자체는 창고에 남는다</li></ul>`
-          : `되돌릴 수 없다.`) + `<br>지우려면 <b>${esc(name)}</b>을 그대로 적는다.`,
+          ? `같이 없어지는 것: ${gone.join(', ')}.<ul><li>강의 내용 자체는 창고에 남습니다</li></ul>`
+          : `되돌릴 수 없습니다.`) + `<br>지우려면 <b>${esc(name)}</b>을 그대로 적어 주세요.`,
         needText: name,
       }).then(ok => {
         if (!ok) return;
         M.deleteCourse(id);
         if (state.editRoomId === id) state.editRoomId = null;
         if (state.roomDetailId === id) state.roomDetailId = null;
-        toast(`${name} 강의실을 삭제했다.`); render();
+        toast(`${name} 강의실을 삭제했습니다.`); render();
       });
       break;
     }
@@ -1004,14 +1004,14 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'stu-add-open': openStudentModal(); break;
     case 'stu-open':
       state.studentDetailNo = state.studentDetailNo === no ? null : no; render(); break;
-    case 'stu-reset': toast('비밀번호 초기화는 뼈대다(다음 단계).'); break;
+    case 'stu-reset': toast('비밀번호 초기화는 다음 단계에서 만듭니다.'); break;
     case 'stu-del':
       M.removeStudentEverywhere(state.year, no);
       if (state.studentDetailNo === no) state.studentDetailNo = null;
-      toast('삭제했다.'); render(); break;
+      toast('삭제했습니다.'); render(); break;
 
     case 'lesson-add': {
-      const title = val('l-title'); if (!title){ toast('강의 제목을 적는다.'); return; }
+      const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }
       const l = M.addLesson(title); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
     }
     case 'lesson-open': state.lessonId = id; state.lessonTab = 'edit'; render(); break;
@@ -1025,8 +1025,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'place-toggle': {
       // 데모: 꽂기만(해제는 다음 단계). 꽂혀 있지 않으면 꽂는다.
       const already = M.getCourseLessons(id).some(cl => cl.lessonId === state.lessonId);
-      if (!already){ M.placeLesson(id, state.lessonId); toast('강의실에 꽂았다.'); }
-      else toast('해제는 다음 단계에서 붙이다.');
+      if (!already){ M.placeLesson(id, state.lessonId); toast('강의실에 꽂았습니다.'); }
+      else toast('해제는 다음 단계에서 붙입니다.');
       render(); break;
     }
     // 개념 노트
@@ -1050,12 +1050,12 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'mission-edit': openMissionModal(M.getMissionApp(v)); break;
     case 'mission-del': {
       const a = M.getMissionApp(v); if (!a) break;
-      confirmDelete({ title:`${a.name} 삭제`, bodyHtml:`연결을 지운다. 되돌릴 수 없다.`, needText:a.name })
+      confirmDelete({ title:`${a.name} 삭제`, bodyHtml:`연결을 지웁니다. 되돌릴 수 없습니다.`, needText:a.name })
         .then(ok => { if (!ok) return;
           M.deleteMissionApp(v);
           state.missionOpen = state.missionOpen.filter(x => x !== v);
           if (state.missionTab === v) state.missionTab = 'list';
-          toast(`${a.name}을 지웠다.`); render(); });
+          toast(`${a.name}을 지웠습니다.`); render(); });
       break;
     }
 
@@ -1081,7 +1081,7 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
 
-    case 'noop': toast('뼈대다(다음 단계).'); break;
+    case 'noop': toast('다음 단계에서 만듭니다.'); break;
   }
 });
 

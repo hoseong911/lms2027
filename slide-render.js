@@ -1026,7 +1026,7 @@
       out.push(Object.assign(blankSection('opening'), {
         title: '여는 질문', badge: 'Dive into History', kicker: 'Opening Question',
         question: dive.guide || dive.title || '',
-        guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 본다.',
+        guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 봅니다.',
         enabled: dive.openingEnabled !== false,
       }));
     }

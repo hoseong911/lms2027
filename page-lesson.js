@@ -58,7 +58,7 @@ async function init() {
   document.querySelector('[data-act="next"]').innerHTML = icon('chevron-right', 20);
 
   const res = await fetch(DATA_URL);
-  if (!res.ok) { el.name.textContent = '강의를 불러오지 못했다'; return; }
+  if (!res.ok) { el.name.textContent = '강의를 불러오지 못했습니다'; return; }
   state.lesson = await res.json();
 
   state.lesson.pages.forEach((p, i) => {

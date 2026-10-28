@@ -82,7 +82,7 @@ export function mountCharCounter(opts) {
   } = opts;
 
   if (!input || !counter || !max) {
-    throw new Error('[textLimit] input, counter, max는 필수이다.');
+    throw new Error('[textLimit] input, counter, max는 필수입니다.');
   }
 
   const countFn = excludeSpaces ? countCharsNoSpace : countChars;
@@ -117,7 +117,7 @@ export function mountCharCounter(opts) {
    앱마다 토스트가 있기도 없기도 하고, 있어도 테마 토큰에 기대는 경우가 있어
    어떤 페이지에 붙여도 똑같이 보이도록 스타일을 스스로 들고 있는다. */
 let _pasteNoticeEl = null, _pasteNoticeTimer = null;
-function pasteNotice(msg = '붙여넣기는 쓸 수 없어요. 직접 쓴다.') {
+function pasteNotice(msg = '붙여넣기는 쓸 수 없어요. 직접 써 주세요.') {
   if (typeof document === 'undefined' || !document.body) return;
   if (!_pasteNoticeEl) {
     _pasteNoticeEl = document.createElement('div');
@@ -211,26 +211,26 @@ export function validateText(text, opts = {}) {
   if (len < min) {
     return {
       ok: false, reason: 'too_short', length: len,
-      message: `공백 제외 ${min}자 이상 작성한다. (현재 ${len}자)`
+      message: `공백 제외 ${min}자 이상 작성해 주세요. (현재 ${len}자)`
     };
   }
   if (max && len > max) {
     return {
       ok: false, reason: 'too_long', length: len,
-      message: `최대 ${max}자까지 작성 가능한다. (현재 ${len}자)`
+      message: `최대 ${max}자까지 작성 가능합니다. (현재 ${len}자)`
     };
   }
   if (checkRepeats) {
     if (/ㅋ{5,}|ㅎ{5,}|ㅠ{5,}|ㅜ{5,}|\.{5,}/.test(text)) {
       return {
         ok: false, reason: 'repeat_chars', length: len,
-        message: '반복 문자 남발은 지양한다.'
+        message: '반복 문자 남발은 지양해 주세요.'
       };
     }
     if (text && text.match(/(.{4,})\1{2,}/)) {
       return {
         ok: false, reason: 'repeat_phrase', length: len,
-        message: '반복된 문구가 감지되었다.'
+        message: '반복된 문구가 감지되었습니다.'
       };
     }
   }

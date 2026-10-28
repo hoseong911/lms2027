@@ -19,11 +19,11 @@
 import {
   collection, getDocs, getDoc, doc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { CLAUDE_PROXY_URL } from "./shared/util.js?v=20261025a";
+import { CLAUDE_PROXY_URL } from "./shared/util.js?v=20261028f";
 import {
   lessonOrderKey as lecOrderKey, lessonTag as lecTag, courseShort, listCourses,
   listLessonCourses, setLessonCourses, syncLessonRows, deleteLessonEverywhere
-} from "./model.js?v=20261026a";
+} from "./model.js?v=20261028f";
 
 const LIB = 'lesson_library';
 const DESIGN_REF = () => doc(db, 'settings', 'concept_note_design');
@@ -344,7 +344,7 @@ window.ceManageThemes = async function() {
   if (themes.length) acts.push({ value: 'load', label: '테마 불러오기' }, { value: 'del', label: '테마 지우기' });
   const v = await ask({
     title: '디자인 테마',
-    body: themes.length ? themes.map(t => esc(t.name)).join('<br>') : '저장된 테마가 없다.',
+    body: themes.length ? themes.map(t => esc(t.name)).join('<br>') : '저장된 테마가 없습니다.',
     fields: [{ key: 'act', type: 'pick', value: 'save', options: acts }],
   });
   if (!v) return;
@@ -353,14 +353,14 @@ window.ceManageThemes = async function() {
     const n = await ask({
       title: '테마로 저장',
       fields: [{ key: 'name', type: 'text', placeholder: '테마 이름' }],
-      check: n => !n.name ? '이름을 적는다.'
-        : (ceThemes || []).some(t => t.name === n.name) ? '같은 이름이 있다.' : '',
+      check: n => !n.name ? '이름을 적어 주세요.'
+        : (ceThemes || []).some(t => t.name === n.name) ? '같은 이름이 있습니다.' : '',
     });
     if (!n) return;
     ceReadDesignInputs();                      // 화면의 값을 먼저 읽어 둔다
     ceThemes.push({ name: n.name, cs: ceDeepCopy(ceCs) });
-    try { await ceSaveThemes(); notify(`"${n.name}" 테마를 저장했다.`, 'ok'); }
-    catch (e) { notify('저장하지 못했다. ' + e.message); }
+    try { await ceSaveThemes(); notify(`"${n.name}" 테마를 저장했습니다.`, 'ok'); }
+    catch (e) { notify('저장하지 못했습니다. ' + e.message); }
     return;
   }
 
@@ -369,7 +369,7 @@ window.ceManageThemes = async function() {
       title: '테마 불러오기',
       fields: [{ key: 'idx', type: 'pick', value: '',
         options: themes.map((t, i) => ({ value: String(i), label: t.name })) }],
-      check: p => p.idx === '' ? '테마를 고른다.' : '',
+      check: p => p.idx === '' ? '테마를 골라 주세요.' : '',
     });
     if (!p) return;
     const t = ceThemes[+p.idx];
@@ -381,8 +381,8 @@ window.ceManageThemes = async function() {
       ceLoadDesignInputs();
       ceApplyDesignPreview();
       ceRenderPreview();
-      notify(`"${t.name}" 테마를 적용했다.`, 'ok');
-    } catch (e) { notify('적용하지 못했다. ' + e.message); }
+      notify(`"${t.name}" 테마를 적용했습니다.`, 'ok');
+    } catch (e) { notify('적용하지 못했습니다. ' + e.message); }
     return;
   }
 
@@ -390,13 +390,13 @@ window.ceManageThemes = async function() {
     title: '테마 지우기',
     fields: [{ key: 'idx', type: 'pick', value: '',
       options: themes.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: d => d.idx === '' ? '지울 테마를 고른다.' : '',
+    check: d => d.idx === '' ? '지울 테마를 골라 주세요.' : '',
     danger: true,
   });
   if (!d) return;
   const [gone] = ceThemes.splice(+d.idx, 1);
-  try { await ceSaveThemes(); notify(`"${gone.name}" 테마를 지웠다.`, 'ok'); }
-  catch (e) { notify('지우지 못했다. ' + e.message); }
+  try { await ceSaveThemes(); notify(`"${gone.name}" 테마를 지웠습니다.`, 'ok'); }
+  catch (e) { notify('지우지 못했습니다. ' + e.message); }
 };
 
 // ── 강의 목록 (Firestore) ──
@@ -462,11 +462,11 @@ function ceRenderRoomLabel() {
 
 window.cePickRooms = async function() {
   const lesson = ceCurrentLesson();
-  if (!lesson) { notify('강의를 먼저 고른다.'); return; }
+  if (!lesson) { notify('강의를 먼저 골라 주세요.'); return; }
   const year = getYear();
-  if (year == null) { notify('학년도가 없다.'); return; }
+  if (year == null) { notify('학년도가 없습니다.'); return; }
   await ceLoadCourses();
-  if (!ceCourses.length) { notify(`${year}학년도 강의실이 없다.`); return; }
+  if (!ceCourses.length) { notify(`${year}학년도 강의실이 없습니다.`); return; }
   const on = new Set(ceLessonRooms.map(r => r.courseId));
   const v = await ask({
     title: `${lecTag(lesson.num)} 올릴 강의실`,
@@ -488,10 +488,10 @@ window.cePickRooms = async function() {
       { id: lesson.docId, lessonNo: lesson.num, title: lesson.title, isOpen: lesson.isOpen === true },
       v.rooms, ceCourses.map(c => c.id));
     await ceLoadLessonRooms();
-    notify(added || removed ? `올린 강의실을 ${ceLessonRooms.length}개로 맞췄다.` : '바뀐 것이 없다.', 'ok');
+    notify(added || removed ? `올린 강의실을 ${ceLessonRooms.length}개로 맞췄습니다.` : '바뀐 것이 없습니다.', 'ok');
   } catch (e) {
     console.warn('[pickRooms]', e);
-    notify('강의실을 맞추지 못했다. ' + e.message);
+    notify('강의실을 맞추지 못했습니다. ' + e.message);
   }
 };
 
@@ -516,7 +516,7 @@ function renderCeLessonOrder() {
   if (!box) return;
   const list = ceLessonOrderList();
   if (!list.length) {
-    box.innerHTML = '<div class="empty-panel" style="padding:14px;font-size:13px">강의가 없다.</div>';
+    box.innerHTML = '<div class="empty-panel" style="padding:14px;font-size:13px">강의가 없습니다.</div>';
     return;
   }
   box.innerHTML = list.map((l, idx) => {
@@ -555,13 +555,13 @@ window.ceMoveLesson = async function(docId, dir, idx) {
     await ceGetLessonsFromFirestore();
     cePopulateLessonSelect();
     renderCeLessonOrder();
-  } catch(e) { notify('순서를 바꾸지 못했다. ' + e.message); }
+  } catch(e) { notify('순서를 바꾸지 못했습니다. ' + e.message); }
 };
 
 // 강의 선택 줄의 ▲▼: 현재 선택된 강의를 순서 목록에서 위/아래로 옮긴다(순서 모달 대체).
 window.ceMoveCurrentLesson = function(dir) {
   const num = document.getElementById('lesson-select')?.value;
-  if (!num) { notify('강의를 먼저 고른다.'); return; }
+  if (!num) { notify('강의를 먼저 골라 주세요.'); return; }
   const list = ceLessonOrderList();
   const idx = list.findIndex(l => String(l.num) === String(num));
   if (idx < 0) return;
@@ -605,8 +605,8 @@ async function addLesson() {
       // 섹션 구성을 템플릿에서 가져온다(2026-10-26). 고르지 않으면 표지와 슬라이드 하나로 시작한다.
       { key: 'tpl', type: 'pick', value: '0', options: tpls.map((t, i) => ({ value: String(i), label: t.name })) },
     ],
-    check: v => !v.num ? '강 번호를 입력한다.'
-      : ceLessonsCache.find(l => l.num === v.num) ? `${lecTag(v.num)}는 이미 있다.` : '',
+    check: v => !v.num ? '강 번호를 입력해 주세요.'
+      : ceLessonsCache.find(l => l.num === v.num) ? `${lecTag(v.num)}는 이미 있습니다.` : '',
   });
   if (!v) return;
   const num = v.num, title = v.title || '새 강의', unit = v.unit || '';
@@ -635,7 +635,7 @@ async function deleteLesson() {
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (!lesson) return;
   // 2026 문구는 "슬라이드 내용은 삭제되지 않는다"였지만 내용이 강의 문서 안에 있어 함께 지워진다.
-  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용과 올린 강의실까지 함께 지워지고 되돌릴 수 없다.', true)) return;
+  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용과 올린 강의실까지 함께 지워지고 되돌릴 수 없습니다.', true)) return;
   // 올려 둔 줄을 남기면 학생 화면에 내용 없는 강의가 뜬다.
   await deleteLessonEverywhere(db, lesson.docId);
   await ceGetLessonsFromFirestore();
@@ -771,7 +771,7 @@ const CE_BUILTIN_TEMPLATES = [
     { type: 'cover',   title: '표지' },
     { type: 'list',    title: '지난 시간', badge: 'Dive into History' },
     { type: 'opening', title: '여는 질문', badge: 'Dive into History', kicker: 'Opening Question',
-      guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 본다.' },
+      guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 봅니다.' },
     { type: 'list',    title: '학습 목표', badge: 'Dive into History' },
     { type: 'slides',  title: '개념', badge: '개념', review: true,  fontScale: 100 },
     { type: 'slides',  title: '미션', badge: '미션', review: false, fontScale: 90 },
@@ -829,7 +829,7 @@ async function ceAskTemplate(title) {
     title,
     fields: [{ key: 'tpl', type: 'pick', value: tpls[0] ? '0' : '',
       options: tpls.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: v => v.tpl === '' ? '템플릿을 고른다.' : '',
+    check: v => v.tpl === '' ? '템플릿을 골라 주세요.' : '',
   });
   if (!v) return null;
   return tpls[+v.tpl] || null;
@@ -844,7 +844,7 @@ window.ceManageTemplates = async function() {
     title: '강의 템플릿',
     body: tpls.length
       ? tpls.map(t => `${esc(t.name)}: 섹션 ${(t.sections || []).length}개`).join('<br>')
-      : '저장된 템플릿이 없다.',
+      : '저장된 템플릿이 없습니다.',
     fields: [{ key: 'act', type: 'pick', value: 'save', options: [
       { value: 'save', label: '지금 강의 구성을 템플릿으로' },
       { value: 'del',  label: '템플릿 지우기' },
@@ -852,17 +852,17 @@ window.ceManageTemplates = async function() {
   });
   if (!v) return;
   if (v.act === 'save') {
-    if (!ceCurrentLesson()) { notify('강의를 먼저 고른다.'); return; }
+    if (!ceCurrentLesson()) { notify('강의를 먼저 골라 주세요.'); return; }
     const n = await ask({
       title: '템플릿으로 저장',
       fields: [{ key: 'name', type: 'text', placeholder: '템플릿 이름' }],
-      check: n => !n.name ? '이름을 적는다.'
-        : (ceTemplates || []).some(t => t.name === n.name) ? '같은 이름이 있다.' : '',
+      check: n => !n.name ? '이름을 적어 주세요.'
+        : (ceTemplates || []).some(t => t.name === n.name) ? '같은 이름이 있습니다.' : '',
     });
     if (!n) return;
     ceTemplates.push({ name: n.name, sections: ceTemplateFromSections(ceCd.sections) });
-    try { await ceSaveTemplates(); notify(`"${n.name}" 템플릿을 저장했다.`, 'ok'); }
-    catch (e) { notify('저장하지 못했다. ' + e.message); }
+    try { await ceSaveTemplates(); notify(`"${n.name}" 템플릿을 저장했습니다.`, 'ok'); }
+    catch (e) { notify('저장하지 못했습니다. ' + e.message); }
     return;
   }
   if (!tpls.length) return;
@@ -870,13 +870,13 @@ window.ceManageTemplates = async function() {
     title: '템플릿 지우기',
     fields: [{ key: 'idx', type: 'pick', value: '',
       options: tpls.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: d => d.idx === '' ? '지울 템플릿을 고른다.' : '',
+    check: d => d.idx === '' ? '지울 템플릿을 골라 주세요.' : '',
     danger: true,
   });
   if (!d) return;
   const [gone] = ceTemplates.splice(+d.idx, 1);
-  try { await ceSaveTemplates(); notify(`"${gone.name}" 템플릿을 지웠다.`, 'ok'); }
-  catch (e) { notify('지우지 못했다. ' + e.message); }
+  try { await ceSaveTemplates(); notify(`"${gone.name}" 템플릿을 지웠습니다.`, 'ok'); }
+  catch (e) { notify('지우지 못했습니다. ' + e.message); }
 };
 
 /* ══════ 섹션 화면 (2026-10-26 범용화) ══════
@@ -934,7 +934,7 @@ function ceRenderSectionBody() {
   const box = document.getElementById('ce-section-body');
   if (!box) return;
   const sec = ceCurSection();
-  if (!sec) { box.innerHTML = '<p class="cl-empty">섹션이 없다.</p>'; return; }
+  if (!sec) { box.innerHTML = '<p class="cl-empty">섹션이 없습니다.</p>'; return; }
   const l = ceCd.lesson;
   let body = '';
   if (sec.type === 'cover') {
@@ -1020,7 +1020,7 @@ window.ceAddSection = async function() {
       { key: 'type', type: 'pick', value: 'slides', options: types.map(t => ({ value: t.type, label: t.name })) },
       { key: 'title', type: 'text', placeholder: '섹션 이름' },
     ],
-    check: v => !v.type ? '종류를 고른다.' : '',
+    check: v => !v.type ? '종류를 골라 주세요.' : '',
   });
   if (!v) return;
   const sec = SlideRender.blankSection(v.type, v.title || '');
@@ -1032,7 +1032,7 @@ window.ceAddSection = async function() {
 
 window.ceDeleteSection = async function(id) {
   const sec = ceSection(id); if (!sec) return;
-  if (!await confirmAsk('섹션 삭제', `"${sec.title || '이름 없음'}" 섹션과 그 안의 내용을 지운다.`, true)) return;
+  if (!await confirmAsk('섹션 삭제', `"${sec.title || '이름 없음'}" 섹션과 그 안의 내용을 지웁니다.`, true)) return;
   ceCd.sections.splice(ceSecIdx(id), 1);
   if (ceSecId === id) ceSecId = (ceSections()[0] || {}).id || '';
   ceRenderSections();
@@ -1075,7 +1075,7 @@ async function ceToggleLessonOpen() {
   // 학생 화면은 강의실 줄(course_lessons)만 읽으므로 올려 둔 줄의 isOpen도 같이 고친다.
   // 스위치는 강의 하나에 하나이고, 올린 강의실 전부가 같이 열리고 닫힌다.
   try { await syncLessonRows(db, lesson.docId, { isOpen: next }); }
-  catch (e) { console.warn('[syncOpen]', e); notify('올린 강의실에 반영하지 못했다. ' + e.message); }
+  catch (e) { console.warn('[syncOpen]', e); notify('올린 강의실에 반영하지 못했습니다. ' + e.message); }
   lesson.isOpen = next;
   ceRenderOpenToggle();
   await ceLoadLessonRooms();
@@ -1319,9 +1319,9 @@ async function mergeColsIntoPrevPage(target, i) {
   while (end < lines.length && lines[end].type !== 'divider') end++;
   const strayRows = end - i - 1;
   const msg = strayRows
-    ? `이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앤다.
-이 페이지에 안 쓰이고 남아 있던 행 ${strayRows}개도 함께 지운다.`
-    : '이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앤다.';
+    ? `이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앱니다.
+이 페이지에 안 쓰이고 남아 있던 행 ${strayRows}개도 함께 지웁니다.`
+    : '이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앱니다.';
   if (!await confirmAsk('위 페이지에 합치기', msg)) return;
   prev.bottomCols = (cur.cols || []).map(c => ({ head: c.head || '', body: c.body || '' }));
   prev.bottomColsTitle = cur.colsTitle || '';
@@ -1340,7 +1340,7 @@ function removeCol(target,i,j){ ceLinesFor(target)[i].cols.splice(j,1); ceRender
 function ceNoticeEditor(target, i, line) {
   return `
     <div class="cl-fmt-fields">
-      <textarea class="cl-fmt-grow" placeholder="예)&#10;- 수행평가 안내&#10;- 제출 기한: 다음 주 금요일&#10;&#10;**모둠별**로 발표 자료를 준비한다." oninput="updateLine('${target}',${i},'noticeText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.noticeText||'')}</textarea>
+      <textarea class="cl-fmt-grow" placeholder="예)&#10;- 수행평가 안내&#10;- 제출 기한: 다음 주 금요일&#10;&#10;**모둠별**로 발표 자료를 준비합니다." oninput="updateLine('${target}',${i},'noticeText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.noticeText||'')}</textarea>
     </div>`;
 }
 
@@ -1484,7 +1484,7 @@ function ceRenderContentLines(target) {
   const lines = ceLinesFor(target);
   const container = document.getElementById(ceContainerIdFor(target));
   if (!lines.length) {
-    container.innerHTML = '<p class="cl-empty">아직 내용이 없다.</p>';
+    container.innerHTML = '<p class="cl-empty">아직 내용이 없습니다.</p>';
     return;
   }
   const groups = ceBuildGroups(lines);
@@ -1534,7 +1534,7 @@ function ceRenderContentLines(target) {
             <input type="number" class="cl-img-input" min="10" max="100" value="${line.size != null ? line.size : 100}" oninput="updateLine('${target}',${i},'size',+this.value)">
             <span class="cl-img-label" style="font-weight:400;color:var(--stone)">%</span>
           </div>
-          ${legacy ? `<div style="padding:0 12px 8px;color:var(--stone);font-size:12px">※ 예전에 업로드한 이미지가 남아 있다. 번호를 입력하면 그 이미지로 교체된다.</div>` : ''}
+          ${legacy ? `<div style="padding:0 12px 8px;color:var(--stone);font-size:12px">※ 예전에 업로드한 이미지가 남아 있습니다. 번호를 입력하면 그 이미지로 교체됩니다.</div>` : ''}
         </div>`;
     }
     if (group.type === 'video') {
@@ -1550,7 +1550,7 @@ function ceRenderContentLines(target) {
           </div>
           ${line.videoId
             ? `<div style="padding:8px 12px"><img src="https://img.youtube.com/vi/${line.videoId}/mqdefault.jpg" style="max-height:120px;border-radius:6px;border:1px solid var(--cborder)"></div>`
-            : `<div style="padding:10px 12px;color:var(--stone);font-size:13px">유효한 유튜브 URL을 입력하면 미리보기가 뜬다.</div>`}
+            : `<div style="padding:10px 12px;color:var(--stone);font-size:13px">유효한 유튜브 URL을 입력하면 미리보기가 뜹니다.</div>`}
         </div>`;
     }
     if (group.type === 'slide-group') {
@@ -1593,7 +1593,7 @@ function ceRenderContentLines(target) {
         // 본문 내용: 행 나열은 행들, 그 외(사료, 연표 등)는 형식 편집기. 어느 형식이든 래퍼+우측 세로 액션바는 동일.
         const contentInner = fmt !== 'rows'
           ? ceFormatPanelBody(target, divIdx, div)
-          : (rowIndices.length ? rowIndices.map(rowInner).join('') : `<div class="cl-norow-hint">내용이 없는 페이지이다. 행을 추가한다.</div>`);
+          : (rowIndices.length ? rowIndices.map(rowInner).join('') : `<div class="cl-norow-hint">내용이 없는 페이지입니다. 행을 추가합니다.</div>`);
         const bodyHtml = `<div class="cl-slide-row cl-slide-special"><div class="cl-special-editor">${contentInner}</div></div>`;
         const pageHandle = slides.length > 1 ? `<span class="cl-handle cl-page-handle" title="페이지 순서 변경">⋮⋮</span>` : '';
         const imgLayout = div.imgLayout || 'right';
@@ -1932,7 +1932,7 @@ function toggleDividerImg(target,i) {
   }
   ceRenderContentLines(target); ceRenderPreview();
 }
-function addContentRow(target)      { ceLinesFor(target).push({ type:'row', label:'새 라벨', items:['내용을 입력한다'] }); ceRenderContentLines(target); ceRenderPreview(); }
+function addContentRow(target)      { ceLinesFor(target).push({ type:'row', label:'새 라벨', items:['내용을 입력하세요'] }); ceRenderContentLines(target); ceRenderPreview(); }
 function addImageSlide(target)      { ceLinesFor(target).push({ type:'image', images:[{ img:1, caption:'' }], title:'' }); ceRenderContentLines(target); ceRenderPreview(); }
 function updateImageItem(target,li,ii,f,v) { ceLinesFor(target)[li].images[ii][f] = v; ceRenderPreview(); }
 function addImageItem(target,li)     { ceLinesFor(target)[li].images.push({ img:1, caption:'' }); ceRenderContentLines(target); ceRenderPreview(); }
@@ -1984,7 +1984,7 @@ function updateVideoUrl(target, i, v) {
   line.url = v.trim();
   line.videoId = ceParseYouTubeId(v);
   line.videoStart = ceParseYouTubeStart(v); // 주소에 시작 시간이 있으면 그 지점부터 재생한다
-  if (v.trim() && !line.videoId) notify('유튜브 주소를 알아보지 못했다. 주소를 확인한다.');
+  if (v.trim() && !line.videoId) notify('유튜브 주소를 알아보지 못했습니다. 주소를 확인해 주세요.');
   ceRenderContentLines(target); ceRenderPreview();
 }
 
@@ -2131,7 +2131,7 @@ async function saveContent() {
 }
 
 async function resetContent() {
-  if (!await confirmAsk('내용 초기화', '이 강의의 슬라이드 내용을 비운다.', true)) return;
+  if (!await confirmAsk('내용 초기화', '이 강의의 슬라이드 내용을 비웁니다.', true)) return;
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (lesson) {
     await updateDoc(doc(db, LIB, lesson.docId), { content: null });
@@ -2247,11 +2247,11 @@ async function ceRequestLessonJson(content) {
   }
   const data = await res.json();
   if (data.stop_reason === 'max_tokens') {
-    throw new Error('활동지 내용이 길어서 응답이 중간에 잘렸다. 활동지를 나눠서 올린다.');
+    throw new Error('활동지 내용이 길어서 응답이 중간에 잘렸습니다. 활동지를 나눠서 올려 주세요.');
   }
   const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI 응답에서 JSON을 찾을 수 없다.');
+  if (!jsonMatch) throw new Error('AI 응답에서 JSON을 찾을 수 없습니다.');
   return ceSanitizeParsedLesson(JSON.parse(jsonMatch[0]));
 }
 
@@ -2367,7 +2367,7 @@ async function ceHandleFileUpload(file) {
   const btnEl = document.getElementById('ce-file-btn');
   const inputEl = document.getElementById('ce-file-input');
   if (ext !== 'hwpx' && ext !== 'pdf') {
-    notify('.hwpx 또는 .pdf 파일만 된다.');
+    notify('.hwpx 또는 .pdf 파일만 됩니다.');
     inputEl.value = '';
     return;
   }
@@ -2380,29 +2380,29 @@ async function ceHandleFileUpload(file) {
   if (!num) {
     const v = await ask({
       title: '강 번호 입력',
-      body: '파일 이름에서 강 번호를 찾지 못했다.',
+      body: '파일 이름에서 강 번호를 찾지 못했습니다.',
       fields: [{ key: 'num', type: 'text', placeholder: '강 번호 (예: 24)', suffix: '강' }],
-      check: v => v.num ? '' : '강 번호를 입력한다.',
+      check: v => v.num ? '' : '강 번호를 입력해 주세요.',
     });
     num = v ? v.num : '';
     if (!num) { inputEl.value = ''; return; }
   }
-  if (ceLessonsCache.find(l => l.num === num)) { notify(`${lecTag(num)}는 이미 있다.`); inputEl.value = ''; return; }
+  if (ceLessonsCache.find(l => l.num === num)) { notify(`${lecTag(num)}는 이미 있습니다.`); inputEl.value = ''; return; }
 
   btnEl.disabled = true;
-  if (statusEl) statusEl.textContent = '파일을 읽고 있다. 1분쯤 걸릴 수 있다.';
+  if (statusEl) statusEl.textContent = '파일을 읽고 있습니다. 1분쯤 걸릴 수 있습니다.';
 
   try {
     let parsed;
     if (ext === 'hwpx') {
       const text = await ceExtractHwpxText(file);
-      if (!text.trim()) throw new Error('파일에서 텍스트를 찾지 못했다.');
+      if (!text.trim()) throw new Error('파일에서 텍스트를 찾지 못했습니다.');
       parsed = await ceRequestLessonJson(text);
     } else {
       const base64 = await ceFileToBase64(file);
       parsed = await ceRequestLessonJson({ data: base64 });
     }
-    if (!ceValidateParsedLesson(parsed)) throw new Error('AI 응답 구조가 올바르지 않다.');
+    if (!ceValidateParsedLesson(parsed)) throw new Error('AI 응답 구조가 올바르지 않습니다.');
 
     const order = lecOrderKey(num); // 강 번호 기준(큰 번호가 위)
     /* AI에게 보내는 형식(프롬프트)은 2026 것을 그대로 둔다: 오래 다듬은 것이라 건드리면
@@ -2436,10 +2436,10 @@ async function ceHandleFileUpload(file) {
     if (area) area.style.display = '';
     const prevBtn2 = document.getElementById('ce-preview-btn');
     if (prevBtn2) prevBtn2.style.display = '';
-    if (statusEl) statusEl.textContent = '만들었다. 내용을 확인하고 저장한다.';
+    if (statusEl) statusEl.textContent = '만들었습니다. 내용을 확인하고 저장하세요.';
   } catch (e) {
     if (statusEl) statusEl.textContent = '';
-    notify('강의를 만들지 못했다. ' + e.message);
+    notify('강의를 만들지 못했습니다. ' + e.message);
   } finally {
     btnEl.disabled = false;
     inputEl.value = '';

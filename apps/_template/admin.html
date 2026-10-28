@@ -48,7 +48,7 @@
                 <th scope="col"></th>
               </tr>
             </thead>
-            <tbody id="rows"><tr><td colspan="5" class="app-empty">불러오는 중이다.</td></tr></tbody>
+            <tbody id="rows"><tr><td colspan="5" class="app-empty">불러오는 중입니다.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -62,7 +62,7 @@
         <h2 class="app-card-title">설정</h2>
       </div>
       <div class="app-card-body">
-        <p class="app-empty">이 앱의 설정을 여기 둔다.</p>
+        <p class="app-empty">이 앱의 설정을 여기 둡니다.</p>
       </div>
     </div>
   </section>
@@ -79,8 +79,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "../../shared/firebase-config.js";
 import { icon } from "../../shared/icons.js?v=20261026a";
-import { markEmbedded, backToLms } from "../../shared/lms-session.js?v=20261026a";
-import { listSubmissions, setStatus } from "../../shared/lms-submit.js?v=20261026a";
+import { markEmbedded, backToLms } from "../../shared/lms-session.js?v=20261028f";
+import { listSubmissions, setStatus } from "../../shared/lms-submit.js?v=20261028f";
 
 const APP_KEY = '_template';
 // 어느 해를 보고 있는지. 3월 시작이라 1월과 2월은 전년도다(model.js의 schoolYear와 같은 셈).
@@ -130,7 +130,7 @@ async function load() {
       .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
   } catch (e) {
     console.warn('[load]', e);
-    $('rows').innerHTML = '<tr><td colspan="5" class="app-empty">불러오지 못했다.</td></tr>';
+    $('rows').innerHTML = '<tr><td colspan="5" class="app-empty">불러오지 못했습니다.</td></tr>';
     return;
   }
   render();
@@ -150,7 +150,7 @@ function render() {
         <button type="button" class="app-ib" data-act="pass" title="통과" aria-label="통과">${icon('check', 17)}</button>
         <button type="button" class="app-ib app-ib-danger" data-act="fail" title="미흡" aria-label="미흡">${icon('x', 17)}</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="5" class="app-empty">제출이 없다.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="5" class="app-empty">제출이 없습니다.</td></tr>';
 }
 
 $('rows').addEventListener('click', async ev => {
@@ -167,7 +167,7 @@ $('rows').addEventListener('click', async ev => {
     render();
   } catch (e) {
     console.warn('[grade]', e);
-    toast('채점하지 못했다. ' + e.message, 'err');
+    toast('채점하지 못했습니다. ' + e.message, 'err');
   }
 });
 </script>
