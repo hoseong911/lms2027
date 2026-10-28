@@ -5,8 +5,8 @@
 //
 // 조직 원리:
 //   강의실(course)은 "강의(차시)"와 "복습"을 담고,
-//   강의 하나는 개념노트 / 미션 / 질문노트 / 형성평가 네 칸을 각각 있거나 없거나로 채운다.
-//   각 종류 최대 1개, 순서 자유. 사료, 사진, 영상은 개념노트 안의 내용.
+//   강의 하나는 개념 노트, 미션 활동, 오늘의 질문, 형성평가 네 칸을 각각 있거나 없거나로 채운다.
+//   각 종류 최대 1개, 순서 자유. 사료, 사진, 영상은 개념 노트 안의 내용.
 //
 // ※ 지금은 Firestore 대신 아래 DEMO(메모리)로 돈다. 화면 뼈대를 먼저 보기 위함.
 //   컬렉션 이름과 문서 모양은 실제와 같게 맞춰 두었으므로, 다음 단계에서 이 파일의
@@ -51,9 +51,9 @@ export const COLLECTIONS = {
 // 강의 안 네 칸: 각 강의에 최대 1개, 순서 자유.
 //   portfolio: 성적(포트폴리오)에 들어가는가   submits: 학생 제출물이 생기는가
 export const PART_TYPES = [
-  { key:'concept',   name:'개념노트',  icon:'book-open',      portfolio:true,  submits:false },
-  { key:'mission',   name:'미션',      icon:'layout-grid',    portfolio:true,  submits:true  },
-  { key:'question',  name:'질문노트',  icon:'message-square', portfolio:true,  submits:true  },
+  { key:'concept',   name:'개념 노트',   icon:'book-open',      portfolio:true,  submits:false },
+  { key:'mission',   name:'미션 활동',   icon:'layout-grid',    portfolio:true,  submits:true  },
+  { key:'question',  name:'오늘의 질문', icon:'message-square', portfolio:true,  submits:true  },
   { key:'formative', name:'형성평가',  icon:'circle-check',   portfolio:false, submits:true  },
 ];
 export const PART_ORDER = PART_TYPES.map(p => p.key);
@@ -64,7 +64,7 @@ export const REVIEW = { key:'review', name:'복습', icon:'list-ordered' };
 
 /* 학생이 강의실 안에서 쓰는 세 배치 (선생님 지시 2026-10-27, 요구사항 85, 90)
  *   강의 보기: 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
- *   메뉴     : 개념노트만, 미션만 모아 본다. 2026 lms 메뉴와 같은 방식
+ *   메뉴     : 개념 노트만, 미션 활동만 모아 본다. 2026 lms 메뉴와 같은 방식
  *   콘텐츠   : 뽑기, 게임 같은 흥미 요소가 들어올 자리(요구사항 69의 다섯 번째 용도). 아직 비었다
  * 앞의 둘은 같은 내용으로 들어가는 두 개의 길이다. 메뉴에는 강의에 안 매인 복습과 성적도 선다. */
 export const STUDENT_VIEWS = [
@@ -80,7 +80,7 @@ export const STUDENT_MENUS = [
 
 // 어드민 왼쪽 메뉴
 // 가운데 넷(개념 노트, 미션 활동, 오늘의 질문, 형성평가)은 강의 안 네 칸을 각각 관리하는 자리다.
-// 칸 이름(PART_TYPES)과 메뉴 이름이 다른 것이 있다: 메뉴는 선생님이 부르는 이름으로 쓴다.
+// 칸 이름(PART_TYPES)과 메뉴 이름은 같다: 선생님이 부르는 이름 하나로 통일했다(2026-10-28).
 export const ADMIN_MENUS = [
   { key:'rooms',     name:'강의실 관리',     icon:'graduation-cap' },
   { key:'students',  name:'학생 관리',       icon:'users' },
@@ -98,7 +98,7 @@ export const ADMIN_MENUS = [
    강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
 export const ADMIN_SUBMENUS = {
   concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
-  question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변, 채점' }, { v:'pick', label:'PICK' } ],
+  question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변' }, { v:'pick', label:'PICK' } ],
   // 성적은 hoistory/lms의 성적 Check 세 화면(입력, 설정, 조회)을 그대로 옮긴 것이다.
   scores:   [ { v:'input',   label:'성적 입력' }, { v:'setting', label:'성적 설정' }, { v:'view',  label:'성적 조회' } ],
 };
@@ -112,7 +112,7 @@ export const ADMIN_SUBMENUS = {
    관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다.
 
    기본값은 선생님이 일반 설정에서 직접 입력한 문구를 그대로 옮긴 것이다(2026-10-28).
-   경어(~습니다체)로 쓴다 — "~다체로" 했던 지시는 같은 날 바로 정정됐다(CLAUDE.md 참고). */
+   경어(~습니다체)로 쓴다. "~다체로" 했던 지시는 같은 날 바로 정정됐다(CLAUDE.md 참고). */
 export const TEXT_FIELDS = [
   { group:'일반', items:[
     { key:'browserTitle', label:'브라우저 탭 제목',   def:'HO TEACHER LMS' },
@@ -147,7 +147,7 @@ export function getText(key){
   for (const g of TEXT_FIELDS){ const f = g.items.find(i => i.key === key); if (f) return f.def; }
   return '';
 }
-// 일반 설정의 저장 버튼이 한 번에 부른다 — 필드마다 따로 쓰지 않고 texts 맵 전체를 한 번에 쓴다.
+// 일반 설정의 저장 버튼이 한 번에 부른다: 필드마다 따로 쓰지 않고 texts 맵 전체를 한 번에 쓴다.
 export async function setTexts(patch){
   Object.entries(patch).forEach(([k, v]) => { siteTexts[k] = String(v ?? '').trim(); });
   await setDoc(doc(db, 'settings', 'general'), { texts: siteTexts }, { merge:true });
@@ -194,8 +194,8 @@ export function dateStatus(mmdd, today = new Date()){
 
 // ───────────────────────────────────────────────────────────────────────────
 // 메모리 캐시: 화면은 이 메모리를 보고, loadCore가 Firestore에서 채운다.
-// 제로베이스(2026-10-27): 가짜 시드 없이 빈 상태로 시작한다. 어드민에서 학년도 →
-// 강의실 → 학생 → 강의를 만들면 그때부터 Firestore에 쌓인다. 각 문서 모양은 아래 주석 참고.
+// 제로베이스(2026-10-27): 가짜 시드 없이 빈 상태로 시작한다. 어드민에서 학년도,
+// 강의실, 학생, 강의를 차례로 만들면 그때부터 Firestore에 쌓인다. 각 문서 모양은 아래 주석 참고.
 // ───────────────────────────────────────────────────────────────────────────
 const DEMO = {
   years:        [],   // school_years   { id:'2027', year:2027, status:'active' }
@@ -205,7 +205,7 @@ const DEMO = {
   courseLessons:[],   // course_lessons { id, courseId, lessonId, order, isOpen, date:'M/D' }
   submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
   grades:       [],   // course_grades   { id:'꽂힌강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
-  gradeConf:    { bands:null, lessons:[] },  // settings/grade  급간 표 + 성적에 반영할 강의 목록
+  gradeConf:    { bands:null, lessons:[], feedbackTemplates:[] },  // settings/grade  급간 표 + 반영 강의 + 피드백 템플릿
 
   // ── 나중 단계에서 채운다(지금은 비움) ──
   quizzes:       [],  // quizzes        { id, title, source, items:[] }
@@ -261,8 +261,10 @@ export async function loadCore(){
   DEMO.grades      = rows(grs);
   DEMO.missionApps = rows(mas);
   siteTexts        = gen.exists() ? (gen.data().texts || {}) : {};
-  DEMO.gradeConf   = grc.exists() ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [] }
-                                  : { bands:null, lessons:[] };
+  DEMO.gradeConf   = grc.exists()
+    ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [],
+        feedbackTemplates: grc.data().feedbackTemplates || [] }
+    : { bands:null, lessons:[], feedbackTemplates:[] };
 }
 
 // ── 조회 (메모리에서. loadCore가 Firestore에서 채워 둔다) ──
@@ -297,7 +299,7 @@ export function getPartItems(courseId, partKey){
     .filter(x => !!x.part);
 }
 
-// 그 칸(개념노트/미션/질문노트/형성평가)을 가진 강의만. 칸별 메뉴 넷이 쓴다.
+// 그 칸(개념 노트, 미션 활동, 오늘의 질문, 형성평가)을 가진 강의만. 칸별 메뉴 넷이 쓴다.
 export function getLessonsWithPart(key){ return DEMO.lessons.filter(l => !!l.parts?.[key]); }
 
 export function getMissionApps(){ return [...DEMO.missionApps]; }
@@ -522,24 +524,24 @@ export function setCourseSchedule(courseId, schedule){
    강의마다 영역별로 **달성**과 **기한** 두 칸을 체크하고, 전체 달성률을 **급간 표**로
    점수로 환산한다. 그래서 강의가 몇 개든 만점이 흔들리지 않는다.
 
-     1) 강의마다 학생마다 영역(개념노트, 미션, 질문노트)별로 달성 칸과 기한 칸.
-        가중치가 2배면 칸이 둘씩이라 반만 깎을 수 있다(lessons.parts.<칸>.weight)
+     1) 강의마다 학생마다 영역(개념 노트, 미션 활동, 오늘의 질문)별로 달성 칸과 기한 칸.
+        영역을 끄면 그 강의에서 미실시가 된다(칸이 있는가가 곧 실시, 미실시다)
      2) 달성률 = 켜진 칸 / 가능한 칸. 성적 설정의 반영 강의 목록에 든 강의만 센다
      3) 급간 표(bands)에서 그 달성률에 맞는 줄을 찾아 영역 점수를 읽는다
      4) 세 영역 점수를 더한 것이 포트폴리오 성적
 
    손으로 쓰기와 자동 끌어오기를 둘 다 둔다(선생님 지시):
-     자동 : 미션과 질문노트는 제출물(course_submissions)에서 달성과 기한을 계산한다.
+     자동 : 미션 활동과 오늘의 질문은 제출물(course_submissions)에서 달성과 기한을 계산한다.
             기한은 그 강의의 수업일자(course_lessons.date, 진도 관리에서 넣는 그 값)와
             제출 시각을 견준다. 진도 관리와 성적이 여기서 맞물린다
      손   : 어느 칸이든 교사가 눌러 바꾸면 그 영역은 manual로 표시되고, 다시 불러와도
-            자동 감지가 덮어쓰지 않는다. 개념노트는 LMS 밖 활동지라 늘 손으로만 넣는다
+            자동 감지가 덮어쓰지 않는다. 개념 노트는 LMS 밖 활동지라 늘 손으로만 넣는다
    형성평가와 복습은 성적에서 빠진다(요구사항 70). */
 
 // 성적에 드는 영역 셋. PART_TYPES의 portfolio 칸과 같다.
 export const GRADE_AREAS = PART_TYPES.filter(p => p.portfolio).map(p => ({ key:p.key, name:p.name }));
 
-/* 급간 표 기본값: hoistory/lms의 DEFAULT_BANDS를 그대로 옮겼다(생각체크 = 질문노트).
+/* 급간 표 기본값: hoistory/lms의 DEFAULT_BANDS를 그대로 옮겼다(생각체크 = 오늘의 질문).
    달성률이 min 이상인 첫 줄의 점수를 쓴다. 개념 30, 미션 40, 질문 30으로 100점. */
 export const DEFAULT_BANDS = [
   { min:90, concept:30, mission:40, question:30 },
@@ -568,7 +570,19 @@ export function toggleGradeLesson(lessonId, on){
   if (!on && i >= 0) list.splice(i, 1);
   return list;
 }
-// 성적 설정의 저장 버튼이 한 번에 부른다(급간 표와 반영 강의 목록을 같이 쓴다).
+/* 피드백 템플릿: 성적 설정에서 한 줄에 하나씩 적고, 성적 입력의 피드백 칸 옆 고르개에서 고른다
+   (선생님 지시 2026-10-28). 빈 줄과 중복은 버린다. */
+export function getFeedbackTemplates(){ return [...(DEMO.gradeConf.feedbackTemplates || [])]; }
+export function setFeedbackTemplates(list){
+  const clean = [];
+  (Array.isArray(list) ? list : String(list ?? '').split('\n')).forEach(t => {
+    const v = String(t ?? '').trim();
+    if (v && !clean.includes(v)) clean.push(v);
+  });
+  DEMO.gradeConf.feedbackTemplates = clean;
+  return clean;
+}
+// 성적 설정의 저장 버튼이 한 번에 부른다(급간 표, 반영 강의 목록, 피드백 템플릿을 같이 쓴다).
 export async function saveGradeConfig(bands){
   const clean = (bands || getBands()).map(b => ({
     min: Math.max(0, Math.min(100, Math.round(+b.min) || 0)),
@@ -576,25 +590,16 @@ export async function saveGradeConfig(bands){
     mission: Math.max(0, Math.round(+b.mission) || 0),
     question: Math.max(0, Math.round(+b.question) || 0),
   })).sort((a, b) => b.min - a.min);
-  DEMO.gradeConf = { bands:clean, lessons:getGradeLessons() };
+  DEMO.gradeConf = { bands:clean, lessons:getGradeLessons(), feedbackTemplates:getFeedbackTemplates() };
   await setDoc(doc(db, 'settings', 'grade'), DEMO.gradeConf);
   return DEMO.gradeConf;
 }
 
-/* 가중치: 그 강의의 그 칸이 몇 칸을 차지하는가(1 또는 2). 강의는 창고에 있는 것이라
-   그 강의를 꽂은 모든 강의실에 같이 걸린다. 칸이 없는 강의는 0(미실시)이다. */
+/* 그 강의의 그 칸이 성적에서 몇 칸을 차지하는가. 칸이 켜져 있으면 1, 꺼져 있으면 0(미실시)이다.
+   배수(1배, 2배) 고르개는 선생님 지시로 걷어냈다(2026-10-28). 강의는 창고에 있는 것이라
+   켜고 끄기는 그 강의를 꽂은 모든 강의실에 같이 걸린다. */
 export function partWeight(lessonId, partKey){
-  const p = getLesson(lessonId)?.parts?.[partKey];
-  if (!p) return 0;
-  const w = Math.round(+p.weight) || 1;
-  return Math.max(1, Math.min(2, w));
-}
-export function setPartWeight(lessonId, partKey, weight){
-  const l = getLesson(lessonId), p = l?.parts?.[partKey];
-  if (!p) throw new Error('그 칸이 없는 강의입니다.');
-  p.weight = (Math.round(+weight) === 2) ? 2 : 1;
-  put(COLLECTIONS.lessons, l);
-  return p.weight;
+  return getLesson(lessonId)?.parts?.[partKey] ? 1 : 0;
 }
 
 // ── 성적 기록 (course_grades, 문서 id = 꽂힌강의id_학번) ──
@@ -652,6 +657,20 @@ export function setGradeRowAll(clId, studentNo, on){
   });
   return saveGrade(g);
 }
+/* 한 열을 한 번에 켜고 끈다(머리줄의 달성, 기한 옆 체크표시). 결석 학생은 건너뛴다. */
+export function setGradeColAll(clId, studentNos, area, field, on){
+  const cl = DEMO.courseLessons.find(x => x.id === clId);
+  if (!cl) throw new Error('강의를 찾지 못했습니다.');
+  const w = partWeight(cl.lessonId, area);
+  if (!w) throw new Error('그 칸이 꺼져 있는 강의입니다.');
+  (studentNos || []).forEach(no => {
+    const g = gradeRecLive(clId, no);
+    if (g.absent) return;
+    g[area][field] = on ? w : 0;
+    g.manual[area] = true;
+    saveGrade(g);
+  });
+}
 export function setGradeFeedback(clId, studentNo, text){
   const g = gradeRecLive(clId, studentNo);
   g.feedback = String(text ?? '').trim();
@@ -669,7 +688,7 @@ export function toggleGradePublished(clId){
 /* ── 자동 감지 ──
    제출물에서 달성과 기한을 계산한다. 기한은 수업일자(cl.date)의 끝(자정)까지를 본다.
    날짜를 안 넣은 강의는 기한을 따지지 않고 통과로 둔다(진도 관리에서 날짜를 넣으면 그때 걸린다).
-   질문노트는 hoistory thinkVerdict의 뼈대를 옮겼다: 50자 미만은 미달성, 지연 제출은
+   오늘의 질문은 hoistory thinkVerdict의 뼈대를 옮겼다: 50자 미만은 미달성, 지연 제출은
    달성이지만 기한에서 깎인다. 미제출은 둘 다 0이다. */
 function lessonDueMs(cl){
   const d = resolveMmdd(cl?.date);
@@ -686,7 +705,7 @@ export function autoDetect(clId){
     const at = +s.at || 0;
     const onTime = (!due || !at) ? true : at <= due;
     let achieved = true, note = '통과';
-    // 질문노트는 오늘의 질문 채점 화면과 같은 판정(AI 채점, 선생님의 통과/미흡까지)을 쓴다.
+    // 오늘의 질문은 답변 채점 화면과 같은 판정(AI 채점, 선생님의 통과/미흡까지)을 쓴다.
     if (s.part === 'question'){ const v = questionVerdict(s); achieved = v.achieved; note = v.verdict; }
     else if (!onTime) note = '미흡(지연 제출)';
     out[s.studentNo] = out[s.studentNo] || {};
@@ -802,28 +821,31 @@ export function conceptDelLine(lessonId, idx){
 
 // ── 오늘의 질문 ──
 /* 질문 관리(선생님 지시 2026-10-28): 강의별 카드에서 편집 버튼을 눌러 질문과 설명문을 고친다.
-   질문노트가 필요 없는 강의는 토글로 칸을 통째로 끈다(칸이 있는가가 곧 성적의 실시, 미실시다).
+   오늘의 질문이 필요 없는 강의는 토글로 칸을 통째로 끈다(칸이 있는가가 곧 성적의 실시, 미실시다).
    끌 때 적어 둔 질문과 설명문은 partsOff에 맡겨 두었다가 다시 켜면 되살린다. */
 export function setQuestion(lessonId, patch){
   const l = getLesson(lessonId);
-  if (!l?.parts?.question) throw new Error('질문노트를 먼저 켜 주세요.');
+  if (!l?.parts?.question) throw new Error('오늘의 질문을 먼저 켜 주세요.');
   Object.assign(l.parts.question, patch);
   saveLesson(lessonId);
 }
-export function setQuestionEnabled(lessonId, on){
-  const l = getLesson(lessonId); if (!l) return;
+/* 칸 하나를 통째로 켜고 끈다. 끌 때 적어 둔 내용은 partsOff에 맡겨 두었다가 다시 켜면 되살린다.
+   오늘의 질문 관리의 스위치와 성적 입력의 영역 머리줄 버튼이 같이 쓴다(선생님 지시 2026-10-28). */
+export function setPartEnabled(lessonId, key, on){
+  const l = getLesson(lessonId); if (!l || !PART_ORDER.includes(key)) return;
   if (!on){
-    if (!l.parts?.question) return;
-    l.partsOff = { ...(l.partsOff || {}), question:{ ...l.parts.question } };
-    setLessonPart(lessonId, 'question', false);
+    if (!l.parts?.[key]) return;
+    l.partsOff = { ...(l.partsOff || {}), [key]:{ ...l.parts[key] } };
+    setLessonPart(lessonId, key, false);
     return;
   }
-  if (l.parts?.question) return;
-  const kept = l.partsOff?.question;
-  if (l.partsOff) delete l.partsOff.question;
-  setLessonPart(lessonId, 'question', true);
-  if (kept){ Object.assign(l.parts.question, kept); saveLesson(lessonId); }
+  if (l.parts?.[key]) return;
+  const kept = l.partsOff?.[key];
+  if (l.partsOff) delete l.partsOff[key];
+  setLessonPart(lessonId, key, true);
+  if (kept){ Object.assign(l.parts[key], kept); saveLesson(lessonId); }
 }
+export function setQuestionEnabled(lessonId, on){ return setPartEnabled(lessonId, 'question', on); }
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');
 }
