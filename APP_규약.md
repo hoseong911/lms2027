@@ -1,7 +1,7 @@
 # 미션 앱 규약
 
 새 활동 웹앱을 만들 때 **반드시 같게 할 것**을 모아 둔 문서다.
-구조는 2026 그대로다 — 앱을 따로 만들고 LMS는 주소로만 잇는다.
+구조는 2026 그대로다: 앱을 따로 만들고 LMS는 주소로만 잇는다.
 갈라진 적이 있는 네 가지만 여기서 고정한다.
 
 > 왜 이 문서가 생겼나 (2026-10-26)
@@ -15,7 +15,7 @@
 
 1. `apps/_template/` 폴더를 통째로 복사하고 폴더 이름을 앱 이름으로 바꾼다
 2. `index.html`과 `admin.html`의 `APP_KEY`를 **폴더 이름과 똑같이** 고친다
-3. `<title>`을 고친다 — 학생 화면은 "앱 이름", 어드민은 "앱 이름 : 관리자 모드"
+3. `<title>`을 고친다: 학생 화면은 "앱 이름", 어드민은 "앱 이름 : 관리자 모드"
 4. 내용을 만든다
 5. LMS 어드민의 **미션 체크**에서 [미션 추가]를 누르고 아래를 적는다
 
@@ -35,7 +35,7 @@
 
 ---
 
-## 1. 학생이 누구인지 — `shared/lms-session.js`만 쓴다
+## 1. 학생이 누구인지: `shared/lms-session.js`만 쓴다
 
 ```js
 import { requireStudent } from '../../shared/lms-session.js';
@@ -51,7 +51,7 @@ if (!me) { /* 안내가 이미 그려졌다. 여기서 끝 */ }
 
 ---
 
-## 2. 제출과 채점 — `shared/lms-submit.js`만 쓴다
+## 2. 제출과 채점: `shared/lms-submit.js`만 쓴다
 
 데이터를 두 군데로 나눈다.
 
@@ -61,7 +61,7 @@ if (!me) { /* 안내가 이미 그려졌다. 여기서 끝 */ }
 | `{앱키}_{기능}` | 작품 내용, 좌표, 그림 | 그 앱만 |
 
 ```js
-// 학생이 낼 때 — 이 한 줄이면 LMS 성적에 붙는다
+// 학생이 낼 때: 이 한 줄이면 LMS 성적에 붙는다
 await markSubmitted(db, APP_KEY, me);
 
 // 선생님이 채점할 때
@@ -76,7 +76,7 @@ await setStatus(db, APP_KEY, YEAR, studentId, 'pass');   // 'pass' | 'fail' | nu
 
 ---
 
-## 3. 컬렉션 이름 — `appCollection()`이 검사한다
+## 3. 컬렉션 이름: `appCollection()`이 검사한다
 
 ```js
 const WORKS = appCollection(APP_KEY, 'works');   // "j_interview_works"
@@ -94,7 +94,7 @@ const WORKS = appCollection(APP_KEY, 'works');   // "j_interview_works"
 
 ---
 
-## 4. 화면 — `shared/app-base.css`만 쓴다
+## 4. 화면: `shared/app-base.css`만 쓴다
 
 ```html
 <link rel="stylesheet" href="../../shared/app-base.css">
@@ -104,7 +104,7 @@ const WORKS = appCollection(APP_KEY, 'works');   // "j_interview_works"
 
 **색은 `--app-*` 변수로만 쓴다.** 앱 파일에 `#FF6B3D` 같은 값을 직접 적지 않는다.
 
-부품은 이미 있다 — `.app-card` `.app-btn` `.app-ib` `.app-tabs` `.app-badge` `.app-inp` `.app-table` `.app-toast` `.app-empty`.
+부품은 이미 있다: `.app-card` `.app-btn` `.app-ib` `.app-tabs` `.app-badge` `.app-inp` `.app-table` `.app-toast` `.app-empty`.
 
 **화면 규칙** (`CLAUDE.md`와 같다)
 - 알약 모양(`border-radius:999px`) 테두리를 쓰지 않는다
@@ -135,7 +135,7 @@ if (markEmbedded()) {           // <html class="has-own-back">와 <body class="e
 - 임베드되면 **자기 로그인 게이트를 건너뛴다.** 이미 LMS에 로그인돼 있다
 - 자기 로고와 로그아웃은 `.app-hide-embedded`로 숨는다
 - `has-own-back`을 달아야 LMS 쪽 중복 바가 사라진다
-- 머리 줄은 3열이고 각 칸에 `grid-column`이 박혀 있다. **빼지 말 것** — 로고를 숨겼을 때 탭이 왼쪽으로 밀린다
+- 머리 줄은 3열이고 각 칸에 `grid-column`이 박혀 있다. **빼지 말 것**: 로고를 숨겼을 때 탭이 왼쪽으로 밀린다
 - 탭 이름은 영문 대문자 (`ANSWER`, `SETTING`, `CONTENTS`, `STATUS`). 이미 쓴 단어가 있으면 그대로 재사용한다
 - 본문 폭은 `.app-main-wide`(1280px). 표가 많아 넉넉해야 한다
 

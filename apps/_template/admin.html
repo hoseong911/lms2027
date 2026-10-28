@@ -48,7 +48,7 @@
                 <th scope="col"></th>
               </tr>
             </thead>
-            <tbody id="rows"><tr><td colspan="5" class="app-empty">불러오는 중입니다.</td></tr></tbody>
+            <tbody id="rows"><tr><td colspan="5" class="app-empty">불러오는 중이다.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -73,7 +73,7 @@
 
 <script type="module">
 /* 미션 앱 어드민 뼈대.
-   채점은 공용 컬렉션(mission_submissions)의 status 한 칸이다 —
+   채점은 공용 컬렉션(mission_submissions)의 status 한 칸이다 :
    앱마다 채점 저장 자리를 새로 만들지 않는다. 자세한 건 APP_규약.md. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -130,7 +130,7 @@ async function load() {
       .sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
   } catch (e) {
     console.warn('[load]', e);
-    $('rows').innerHTML = '<tr><td colspan="5" class="app-empty">불러오지 못했습니다.</td></tr>';
+    $('rows').innerHTML = '<tr><td colspan="5" class="app-empty">불러오지 못했다.</td></tr>';
     return;
   }
   render();
@@ -150,7 +150,7 @@ function render() {
         <button type="button" class="app-ib" data-act="pass" title="통과" aria-label="통과">${icon('check', 17)}</button>
         <button type="button" class="app-ib app-ib-danger" data-act="fail" title="미흡" aria-label="미흡">${icon('x', 17)}</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="5" class="app-empty">제출이 없습니다.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="5" class="app-empty">제출이 없다.</td></tr>';
 }
 
 $('rows').addEventListener('click', async ev => {
@@ -167,7 +167,7 @@ $('rows').addEventListener('click', async ev => {
     render();
   } catch (e) {
     console.warn('[grade]', e);
-    toast('채점하지 못했습니다. ' + e.message, 'err');
+    toast('채점하지 못했다. ' + e.message, 'err');
   }
 });
 </script>

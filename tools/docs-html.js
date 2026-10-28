@@ -1,4 +1,4 @@
-// tools/docs-html.js — 레포 문서(.md)를 목차 달린 HTML로 굽는다. 쓰는 법: node tools/docs-html.js
+// tools/docs-html.js: 레포 문서(.md)를 목차 달린 HTML로 굽는다. 쓰는 법: node tools/docs-html.js
 // 문서를 고친 뒤 이걸 다시 돌려야 tools/*.html이 갱신된다. 색은 본체와 같은 네이비, 레드.
 const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..');  // 레포 뿌리
@@ -19,7 +19,7 @@ function render(md) {
   const lines = md.split(/\r?\n/);
   const out = []; const toc = [];
   let i = 0, listType = null, inCode = false;
-  // 깃허브와 같은 방식으로 제목 id를 만든다 — 문서 안 [링크](#제목)가 그대로 먹게.
+  // 깃허브와 같은 방식으로 제목 id를 만든다: 문서 안 [링크](#제목)가 그대로 먹게.
   const used = new Map();
   const slugify = s => {
     let g = s.toLowerCase().replace(/[*`_~]/g, '')
@@ -58,7 +58,7 @@ function render(md) {
       i++; continue;
     }
     if (/^\s*(-{3,}|\*{3,})\s*$/.test(L)) { closeList(); out.push('<hr>'); i++; continue; }
-    // 인용 — 이어지는 > 줄을 상자 하나로 묶는다(줄마다 상자가 생기면 못 읽는다)
+    // 인용: 이어지는 > 줄을 상자 하나로 묶는다(줄마다 상자가 생기면 못 읽는다)
     if (/^\s*>/.test(L)) {
       closeList();
       const q = [];

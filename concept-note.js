@@ -1,4 +1,4 @@
-/* 2027 개념 노트 편집기 — 2026 hoistory/lms/admin.js의 "개념 체크"(1705~3751행)를 옮겼다(2026-10-25).
+/* 2027 개념 노트 편집기: 2026 hoistory/lms/admin.js의 "개념 체크"(1705~3751행)를 옮겼다(2026-10-25).
  *
  * 선생님 지시: 개념 체크를 "개념 노트"라는 이름으로 이식. 기능만 옮기고 2026 강의 내용은 가져오지 않는다.
  *
@@ -33,15 +33,15 @@ let db = null, ask = null, toast = null, esc = s => String(s ?? '');
 // 올릴 강의실을 고르는 창은 그 학년도의 강의실만 보여야 해서 어드민이 고른 학년도를 받아 온다.
 let getYear = () => null;
 
-// 2026의 lecLabel — "N강. 제목"
+// 2026의 lecLabel: "N강. 제목"
 const lecLabel = (num, title) => `${lecTag(num)}${title ? '. ' + title : ''}`;
 
-// alert 대신 — 짧은 결과와 오류는 토스트로.
+// alert 대신: 짧은 결과와 오류는 토스트로.
 const notify = (msg, kind = 'err') => toast ? toast(msg, kind) : console.warn(msg);
-// confirm 대신 — 확인 창(빈 값이면 취소).
+// confirm 대신: 확인 창(빈 값이면 취소).
 const confirmAsk = async (title, body = '', danger = false) => !!(await ask({ title, body: esc(body), danger }));
 
-// 글꼴 크기 항목 정의는 slide-render.js의 FONT_SPEC 한 곳에만 둔다 — 어드민 패널과
+// 글꼴 크기 항목 정의는 slide-render.js의 FONT_SPEC 한 곳에만 둔다: 어드민 패널과
 // 수업 화면(lecture.html)이 같은 표를 읽어야 항목이 어긋나지 않는다.
 const CE_FONT_KEYS = SlideRender.FONT_KEYS;
 const CE_FONT_VAR_MAP = SlideRender.FONT_VARS;
@@ -76,14 +76,14 @@ let ceSecId = '';
 /* ── 섹션 (2026-10-26) ──
  * 2026은 표지, Dive, 개념, 미션, 생각 다섯 칸이 코드에 박혀 있었다. 이제 강의 내용은
  * 섹션 배열이고 선생님이 더하고 빼고 이름을 바꾸고 순서를 바꾼다. 종류 정의와 변환은
- * slide-render.js(SECTION_TYPES, blankSection, migrateToSections)에 한 곳으로 모여 있다 —
+ * slide-render.js(SECTION_TYPES, blankSection, migrateToSections)에 한 곳으로 모여 있다 :
  * 편집기와 수업 화면이 같은 표를 읽어야 두 쪽이 어긋나지 않는다. */
 const ceSections   = () => (ceCd.sections || []);
 const ceSection    = id => ceSections().find(s => s.id === id) || null;
 const ceCurSection = () => ceSection(ceSecId);
 const ceSecIdx     = id => ceSections().findIndex(s => s.id === id);
 
-/* 2026에는 여기 switchSubTab이 있었다 — HTML에 박힌 다섯 칸 중 하나를 보이게 하는 함수다.
+/* 2026에는 여기 switchSubTab이 있었다: HTML에 박힌 다섯 칸 중 하나를 보이게 하는 함수다.
    탭과 내용을 섹션 배열에서 만들게 되면서 ceOpenSection이 그 일을 한다(2026-10-26). */
 
 // ── 미리보기 스케일 ──
@@ -313,7 +313,7 @@ async function resetDesign() {
 /* ══════ 디자인 테마 (2026-10-26) ══════
  *
  * 색과 글꼴 한 벌에 이름을 붙여 저장해 두고 불러온다. 2026에는 설정 문서가 하나뿐이라
- * 모든 강의가 같은 모양이었다 — 역사 수업 톤 하나에 맞춰져 있었다는 뜻이기도 하다.
+ * 모든 강의가 같은 모양이었다: 역사 수업 톤 하나에 맞춰져 있었다는 뜻이기도 하다.
  * 과목이 늘면 톤도 갈려야 하므로(선생님 지시 2026-10-26) 한 벌씩 따로 들고 갈 수 있게 한다.
  *
  * 지금 쓰는 설정은 그대로 settings/concept_note_design이고, 테마는 보관함이다.
@@ -344,7 +344,7 @@ window.ceManageThemes = async function() {
   if (themes.length) acts.push({ value: 'load', label: '테마 불러오기' }, { value: 'del', label: '테마 지우기' });
   const v = await ask({
     title: '디자인 테마',
-    body: themes.length ? themes.map(t => esc(t.name)).join('<br>') : '저장된 테마가 없습니다.',
+    body: themes.length ? themes.map(t => esc(t.name)).join('<br>') : '저장된 테마가 없다.',
     fields: [{ key: 'act', type: 'pick', value: 'save', options: acts }],
   });
   if (!v) return;
@@ -353,14 +353,14 @@ window.ceManageThemes = async function() {
     const n = await ask({
       title: '테마로 저장',
       fields: [{ key: 'name', type: 'text', placeholder: '테마 이름' }],
-      check: n => !n.name ? '이름을 적어 주세요.'
-        : (ceThemes || []).some(t => t.name === n.name) ? '같은 이름이 있습니다.' : '',
+      check: n => !n.name ? '이름을 적는다.'
+        : (ceThemes || []).some(t => t.name === n.name) ? '같은 이름이 있다.' : '',
     });
     if (!n) return;
     ceReadDesignInputs();                      // 화면의 값을 먼저 읽어 둔다
     ceThemes.push({ name: n.name, cs: ceDeepCopy(ceCs) });
-    try { await ceSaveThemes(); notify(`"${n.name}" 테마를 저장했습니다.`, 'ok'); }
-    catch (e) { notify('저장하지 못했습니다. ' + e.message); }
+    try { await ceSaveThemes(); notify(`"${n.name}" 테마를 저장했다.`, 'ok'); }
+    catch (e) { notify('저장하지 못했다. ' + e.message); }
     return;
   }
 
@@ -369,20 +369,20 @@ window.ceManageThemes = async function() {
       title: '테마 불러오기',
       fields: [{ key: 'idx', type: 'pick', value: '',
         options: themes.map((t, i) => ({ value: String(i), label: t.name })) }],
-      check: p => p.idx === '' ? '테마를 골라 주세요.' : '',
+      check: p => p.idx === '' ? '테마를 고른다.' : '',
     });
     if (!p) return;
     const t = ceThemes[+p.idx];
     if (!t) return;
-    // 불러오면 바로 저장까지 한다 — 화면만 바뀌고 저장을 깜빡하면 수업 화면과 달라진다.
+    // 불러오면 바로 저장까지 한다: 화면만 바뀌고 저장을 깜빡하면 수업 화면과 달라진다.
     ceCs = ceDeepMerge(CE_SD, t.cs || {});
     try {
       await setDoc(DESIGN_REF(), ceCs);
       ceLoadDesignInputs();
       ceApplyDesignPreview();
       ceRenderPreview();
-      notify(`"${t.name}" 테마를 적용했습니다.`, 'ok');
-    } catch (e) { notify('적용하지 못했습니다. ' + e.message); }
+      notify(`"${t.name}" 테마를 적용했다.`, 'ok');
+    } catch (e) { notify('적용하지 못했다. ' + e.message); }
     return;
   }
 
@@ -390,13 +390,13 @@ window.ceManageThemes = async function() {
     title: '테마 지우기',
     fields: [{ key: 'idx', type: 'pick', value: '',
       options: themes.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: d => d.idx === '' ? '지울 테마를 골라 주세요.' : '',
+    check: d => d.idx === '' ? '지울 테마를 고른다.' : '',
     danger: true,
   });
   if (!d) return;
   const [gone] = ceThemes.splice(+d.idx, 1);
-  try { await ceSaveThemes(); notify(`"${gone.name}" 테마를 지웠습니다.`, 'ok'); }
-  catch (e) { notify('지우지 못했습니다. ' + e.message); }
+  try { await ceSaveThemes(); notify(`"${gone.name}" 테마를 지웠다.`, 'ok'); }
+  catch (e) { notify('지우지 못했다. ' + e.message); }
 };
 
 // ── 강의 목록 (Firestore) ──
@@ -462,11 +462,11 @@ function ceRenderRoomLabel() {
 
 window.cePickRooms = async function() {
   const lesson = ceCurrentLesson();
-  if (!lesson) { notify('강의를 먼저 골라 주세요.'); return; }
+  if (!lesson) { notify('강의를 먼저 고른다.'); return; }
   const year = getYear();
-  if (year == null) { notify('학년도가 없습니다.'); return; }
+  if (year == null) { notify('학년도가 없다.'); return; }
   await ceLoadCourses();
-  if (!ceCourses.length) { notify(`${year}학년도 강의실이 없습니다.`); return; }
+  if (!ceCourses.length) { notify(`${year}학년도 강의실이 없다.`); return; }
   const on = new Set(ceLessonRooms.map(r => r.courseId));
   const v = await ask({
     title: `${lecTag(lesson.num)} 올릴 강의실`,
@@ -488,15 +488,15 @@ window.cePickRooms = async function() {
       { id: lesson.docId, lessonNo: lesson.num, title: lesson.title, isOpen: lesson.isOpen === true },
       v.rooms, ceCourses.map(c => c.id));
     await ceLoadLessonRooms();
-    notify(added || removed ? `올린 강의실을 ${ceLessonRooms.length}개로 맞췄습니다.` : '바뀐 것이 없습니다.', 'ok');
+    notify(added || removed ? `올린 강의실을 ${ceLessonRooms.length}개로 맞췄다.` : '바뀐 것이 없다.', 'ok');
   } catch (e) {
     console.warn('[pickRooms]', e);
-    notify('강의실을 맞추지 못했습니다. ' + e.message);
+    notify('강의실을 맞추지 못했다. ' + e.message);
   }
 };
 
 // ── 강의 선택 드롭다운 공통 정렬 ──
-// 개념·성적(class_lessons)·생각(think_lectures) 세 체크의 강의 선택 드롭다운은 모두
+// 개념, 성적(class_lessons), 생각(think_lectures) 세 체크의 강의 선택 드롭다운은 모두
 // 이 비교 함수 하나만 쓴다: order 필드 내림차순(최신 강의가 위, OT/인트로처럼 order 낮은 건 맨 아래).
 // (예전엔 화면마다 asc+reverse / desc / num 파싱 등 기준이 제각각이라 OT(num="OT")가 튀어 올라왔다.)
 function lecSortByOrderDesc(a, b) { return (b.order ?? -1) - (a.order ?? -1); }
@@ -504,7 +504,7 @@ function lecSortByOrderDesc(a, b) { return (b.order ?? -1) - (a.order ?? -1); }
 function cePopulateLessonSelect() {
   const sel = document.getElementById('lesson-select');
   const cur = sel.value || ceCurrentLessonNum; // 선택 유지 (새 강의 추가/갱신 시)
-  sel.innerHTML = '<option value="">— 강의 선택 —</option>' +
+  sel.innerHTML = '<option value="">강의 선택</option>' +
     [...ceLessonsCache].sort(lecSortByOrderDesc).map(l => `<option value="${esc(l.num)}" ${cur && l.num===cur?'selected':''}>${lecLabel(esc(l.num), esc(String(l.title||'').replace(/\*\*/g,'').replace(/[{}]/g,'')))}</option>`).join('');
 }
 
@@ -516,7 +516,7 @@ function renderCeLessonOrder() {
   if (!box) return;
   const list = ceLessonOrderList();
   if (!list.length) {
-    box.innerHTML = '<div class="empty-panel" style="padding:14px;font-size:13px">강의가 없습니다.</div>';
+    box.innerHTML = '<div class="empty-panel" style="padding:14px;font-size:13px">강의가 없다.</div>';
     return;
   }
   box.innerHTML = list.map((l, idx) => {
@@ -555,13 +555,13 @@ window.ceMoveLesson = async function(docId, dir, idx) {
     await ceGetLessonsFromFirestore();
     cePopulateLessonSelect();
     renderCeLessonOrder();
-  } catch(e) { notify('순서를 바꾸지 못했습니다. ' + e.message); }
+  } catch(e) { notify('순서를 바꾸지 못했다. ' + e.message); }
 };
 
-// 강의 선택 줄의 ▲▼ — 현재 선택된 강의를 순서 목록에서 위/아래로 옮긴다(순서 모달 대체).
+// 강의 선택 줄의 ▲▼: 현재 선택된 강의를 순서 목록에서 위/아래로 옮긴다(순서 모달 대체).
 window.ceMoveCurrentLesson = function(dir) {
   const num = document.getElementById('lesson-select')?.value;
-  if (!num) { notify('강의를 먼저 골라 주세요.'); return; }
+  if (!num) { notify('강의를 먼저 고른다.'); return; }
   const list = ceLessonOrderList();
   const idx = list.findIndex(l => String(l.num) === String(num));
   if (idx < 0) return;
@@ -605,8 +605,8 @@ async function addLesson() {
       // 섹션 구성을 템플릿에서 가져온다(2026-10-26). 고르지 않으면 표지와 슬라이드 하나로 시작한다.
       { key: 'tpl', type: 'pick', value: '0', options: tpls.map((t, i) => ({ value: String(i), label: t.name })) },
     ],
-    check: v => !v.num ? '강 번호를 입력해 주세요.'
-      : ceLessonsCache.find(l => l.num === v.num) ? `${lecTag(v.num)}는 이미 있습니다.` : '',
+    check: v => !v.num ? '강 번호를 입력한다.'
+      : ceLessonsCache.find(l => l.num === v.num) ? `${lecTag(v.num)}는 이미 있다.` : '',
   });
   if (!v) return;
   const num = v.num, title = v.title || '새 강의', unit = v.unit || '';
@@ -634,8 +634,8 @@ async function addLesson() {
 async function deleteLesson() {
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (!lesson) return;
-  // 2026 문구는 "슬라이드 내용은 삭제되지 않습니다"였지만 내용이 강의 문서 안에 있어 함께 지워진다.
-  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용과 올린 강의실까지 함께 지워지고 되돌릴 수 없습니다.', true)) return;
+  // 2026 문구는 "슬라이드 내용은 삭제되지 않는다"였지만 내용이 강의 문서 안에 있어 함께 지워진다.
+  if (!await confirmAsk(`${lecTag(ceCurrentLessonNum)} 삭제`, '슬라이드 내용과 올린 강의실까지 함께 지워지고 되돌릴 수 없다.', true)) return;
   // 올려 둔 줄을 남기면 학생 화면에 내용 없는 강의가 뜬다.
   await deleteLessonEverywhere(db, lesson.docId);
   await ceGetLessonsFromFirestore();
@@ -649,7 +649,7 @@ async function deleteLesson() {
 }
 
 // ── 강의 내용 탭 ──
-/* 새 강의의 빈 내용. 섹션 구성은 템플릿에서 가져온다 — 템플릿을 안 고르면 표지와
+/* 새 강의의 빈 내용. 섹션 구성은 템플릿에서 가져온다: 템플릿을 안 고르면 표지와
    슬라이드 하나뿐인 가장 가벼운 구성으로 시작한다(2026-10-26 범용화 전에는 다섯 칸이
    무조건 따라붙었다. 역사 수업이 아니면 쓰지 않는 칸이 네 개였다). */
 function ceBlankLessonData(num, tpl) {
@@ -659,11 +659,11 @@ function ceBlankLessonData(num, tpl) {
   return { lesson: { num, title: '새 강의', unit: '', page: '' }, sections };
 }
 
-// dive(Dive into HISTORY)·미션 체크는 나중에 추가된 필드라 그 전에 저장된 강의는 없을 수
+// dive(Dive into HISTORY), 미션 체크는 나중에 추가된 필드라 그 전에 저장된 강의는 없을 수
 // 있다. 없으면 빈 값으로 채워서(기존 데이터를 지우지 않고) 렌더링이 깨지지 않게 한다.
 // 구버전에서 쓰던 opening{question,guide} 필드가 남아있으면 dive{title,guide}로 옮긴다.
 /* 불러온 내용을 지금 구조로 맞춘다. 옛 모양({dive, contentLines, mission, think})이면
-   섹션 배열로 옮기고, 옛 칸은 지운다 — 남겨 두면 저장할 때마다 따라다니고 어느 쪽이
+   섹션 배열로 옮기고, 옛 칸은 지운다: 남겨 두면 저장할 때마다 따라다니고 어느 쪽이
    진짜인지 헷갈린다. 변환 규칙은 slide-render.js에 한 곳으로 모아 뒀다. */
 function ceEnsureNewFields(cd) {
   if (!Array.isArray(cd.sections)) {
@@ -690,9 +690,9 @@ function ceEnsureNewFields(cd) {
 }
 
 // row는 반드시 앞선 divider(=페이지)에 딸려야 한다는 것이 편집기의 전제다. 그런데 페이지
-// 사이에 이미지·전면 이미지·영상이 끼어들면 그 뒤 row들이 divider를 잃어버리는 경우가 생긴다.
+// 사이에 이미지, 전면 이미지, 영상이 끼어들면 그 뒤 row들이 divider를 잃어버리는 경우가 생긴다.
 // 이렇게 붕 뜬 row를 편집기(ceBuildGroups)는 통째로 버려서 화면에서 사라지지만, 슬라이드
-// 렌더러(SlideRender.buildCheckSlides)는 제목 없는 슬라이드로 그려 준다 — 편집기에서는
+// 렌더러(SlideRender.buildCheckSlides)는 제목 없는 슬라이드로 그려 준다: 편집기에서는
 // 안 보이는데 실제 슬라이드에는 나오는 상태다. 로드 시점에 제목 없는 divider를 끼워 넣어
 // 두 쪽 해석을 일치시킨다. (title:''은 렌더러가 만드는 슬라이드와 같은 값)
 function ceNormalizeContentLines(lines) {
@@ -751,7 +751,7 @@ function ceLoadLessonData(num) {
  * 섹션 구성 한 벌에 이름을 붙여 저장해 두고, 새 강의를 만들 때 고른다. 선생님이 쓰던
  * 구성을 "지금 강의로 템플릿 만들기"로 그대로 저장할 수 있다.
  *
- * 내용(글, 슬라이드)은 담지 않고 **구성만** 담는다 — 섹션의 종류, 이름, 배지, 글자 배율,
+ * 내용(글, 슬라이드)은 담지 않고 **구성만** 담는다: 섹션의 종류, 이름, 배지, 글자 배율,
  * 복습 여부까지다. 내용까지 담으면 템플릿이 곧 강의 복사본이 되어, 고치려면 템플릿과
  * 강의 양쪽을 따라다녀야 한다.
  *
@@ -771,7 +771,7 @@ const CE_BUILTIN_TEMPLATES = [
     { type: 'cover',   title: '표지' },
     { type: 'list',    title: '지난 시간', badge: 'Dive into History' },
     { type: 'opening', title: '여는 질문', badge: 'Dive into History', kicker: 'Opening Question',
-      guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 보세요.' },
+      guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 본다.' },
     { type: 'list',    title: '학습 목표', badge: 'Dive into History' },
     { type: 'slides',  title: '개념', badge: '개념', review: true,  fontScale: 100 },
     { type: 'slides',  title: '미션', badge: '미션', review: false, fontScale: 90 },
@@ -799,7 +799,7 @@ async function ceSaveTemplates() {
 }
 
 /* 템플릿의 섹션 뼈대를 진짜 섹션으로 편다. 템플릿에는 종류와 이름만 들어 있으므로
-   빈 섹션을 만든 뒤 템플릿에 적힌 값만 덮어쓴다 — 새 칸이 생겨도 템플릿을 고칠 필요가 없다. */
+   빈 섹션을 만든 뒤 템플릿에 적힌 값만 덮어쓴다: 새 칸이 생겨도 템플릿을 고칠 필요가 없다. */
 function ceSectionsFromTemplate(tpl) {
   return (tpl.sections || []).map(t => {
     const s = SlideRender.blankSection(t.type, t.title);
@@ -829,13 +829,13 @@ async function ceAskTemplate(title) {
     title,
     fields: [{ key: 'tpl', type: 'pick', value: tpls[0] ? '0' : '',
       options: tpls.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: v => v.tpl === '' ? '템플릿을 골라 주세요.' : '',
+    check: v => v.tpl === '' ? '템플릿을 고른다.' : '',
   });
   if (!v) return null;
   return tpls[+v.tpl] || null;
 }
 
-/* 템플릿 관리 창 — 목록을 보여 주고, 지금 강의 구성을 새 템플릿으로 저장하거나 지운다.
+/* 템플릿 관리 창: 목록을 보여 주고, 지금 강의 구성을 새 템플릿으로 저장하거나 지운다.
    ask()는 값 묶음만 돌려주는 창이라 목록 안에서 바로 지우는 동작이 안 된다. 그래서
    "무엇을 할지"를 먼저 고르고 그에 맞는 창을 한 번 더 연다. */
 window.ceManageTemplates = async function() {
@@ -843,8 +843,8 @@ window.ceManageTemplates = async function() {
   const v = await ask({
     title: '강의 템플릿',
     body: tpls.length
-      ? tpls.map(t => `${esc(t.name)} — 섹션 ${(t.sections || []).length}개`).join('<br>')
-      : '저장된 템플릿이 없습니다.',
+      ? tpls.map(t => `${esc(t.name)}: 섹션 ${(t.sections || []).length}개`).join('<br>')
+      : '저장된 템플릿이 없다.',
     fields: [{ key: 'act', type: 'pick', value: 'save', options: [
       { value: 'save', label: '지금 강의 구성을 템플릿으로' },
       { value: 'del',  label: '템플릿 지우기' },
@@ -852,17 +852,17 @@ window.ceManageTemplates = async function() {
   });
   if (!v) return;
   if (v.act === 'save') {
-    if (!ceCurrentLesson()) { notify('강의를 먼저 골라 주세요.'); return; }
+    if (!ceCurrentLesson()) { notify('강의를 먼저 고른다.'); return; }
     const n = await ask({
       title: '템플릿으로 저장',
       fields: [{ key: 'name', type: 'text', placeholder: '템플릿 이름' }],
-      check: n => !n.name ? '이름을 적어 주세요.'
-        : (ceTemplates || []).some(t => t.name === n.name) ? '같은 이름이 있습니다.' : '',
+      check: n => !n.name ? '이름을 적는다.'
+        : (ceTemplates || []).some(t => t.name === n.name) ? '같은 이름이 있다.' : '',
     });
     if (!n) return;
     ceTemplates.push({ name: n.name, sections: ceTemplateFromSections(ceCd.sections) });
-    try { await ceSaveTemplates(); notify(`"${n.name}" 템플릿을 저장했습니다.`, 'ok'); }
-    catch (e) { notify('저장하지 못했습니다. ' + e.message); }
+    try { await ceSaveTemplates(); notify(`"${n.name}" 템플릿을 저장했다.`, 'ok'); }
+    catch (e) { notify('저장하지 못했다. ' + e.message); }
     return;
   }
   if (!tpls.length) return;
@@ -870,13 +870,13 @@ window.ceManageTemplates = async function() {
     title: '템플릿 지우기',
     fields: [{ key: 'idx', type: 'pick', value: '',
       options: tpls.map((t, i) => ({ value: String(i), label: t.name })) }],
-    check: d => d.idx === '' ? '지울 템플릿을 골라 주세요.' : '',
+    check: d => d.idx === '' ? '지울 템플릿을 고른다.' : '',
     danger: true,
   });
   if (!d) return;
   const [gone] = ceTemplates.splice(+d.idx, 1);
-  try { await ceSaveTemplates(); notify(`"${gone.name}" 템플릿을 지웠습니다.`, 'ok'); }
-  catch (e) { notify('지우지 못했습니다. ' + e.message); }
+  try { await ceSaveTemplates(); notify(`"${gone.name}" 템플릿을 지웠다.`, 'ok'); }
+  catch (e) { notify('지우지 못했다. ' + e.message); }
 };
 
 /* ══════ 섹션 화면 (2026-10-26 범용화) ══════
@@ -897,7 +897,7 @@ function ceRenderSectionTabs() {
     `<button type="button" class="sub-tab sub-tab-add" onclick="ceAddSection()" title="섹션 추가" aria-label="섹션 추가">${ceIconPlus()}</button>`;
 }
 
-/* 섹션 설정 줄 — 이름과 배지는 어느 종류든 있고, 종류별로 칸이 몇 개 더 붙는다.
+/* 섹션 설정 줄: 이름과 배지는 어느 종류든 있고, 종류별로 칸이 몇 개 더 붙는다.
    배지는 슬라이드 왼쪽 위에 뜨는 글자다. 2026에는 'Dive into History', '개념 Check',
    '생각 Check'가 코드에 박혀 있어 과목을 바꿀 수가 없었다. */
 function ceSectionSettingsHtml(sec) {
@@ -934,7 +934,7 @@ function ceRenderSectionBody() {
   const box = document.getElementById('ce-section-body');
   if (!box) return;
   const sec = ceCurSection();
-  if (!sec) { box.innerHTML = '<p class="cl-empty">섹션이 없습니다.</p>'; return; }
+  if (!sec) { box.innerHTML = '<p class="cl-empty">섹션이 없다.</p>'; return; }
   const l = ceCd.lesson;
   let body = '';
   if (sec.type === 'cover') {
@@ -1020,7 +1020,7 @@ window.ceAddSection = async function() {
       { key: 'type', type: 'pick', value: 'slides', options: types.map(t => ({ value: t.type, label: t.name })) },
       { key: 'title', type: 'text', placeholder: '섹션 이름' },
     ],
-    check: v => !v.type ? '종류를 골라 주세요.' : '',
+    check: v => !v.type ? '종류를 고른다.' : '',
   });
   if (!v) return;
   const sec = SlideRender.blankSection(v.type, v.title || '');
@@ -1032,7 +1032,7 @@ window.ceAddSection = async function() {
 
 window.ceDeleteSection = async function(id) {
   const sec = ceSection(id); if (!sec) return;
-  if (!await confirmAsk('섹션 삭제', `"${sec.title || '이름 없음'}" 섹션과 그 안의 내용을 지웁니다.`, true)) return;
+  if (!await confirmAsk('섹션 삭제', `"${sec.title || '이름 없음'}" 섹션과 그 안의 내용을 지운다.`, true)) return;
   ceCd.sections.splice(ceSecIdx(id), 1);
   if (ceSecId === id) ceSecId = (ceSections()[0] || {}).id || '';
   ceRenderSections();
@@ -1042,7 +1042,7 @@ window.ceDeleteSection = async function(id) {
 
 /* 표지 정보(강 번호, 제목, 단원, 쪽수)는 강의 하나에 한 벌이라 섹션이 아니라 lesson에 둔다.
    표지 섹션의 칸이 이 값을 고친다(ceRenderSectionBody). 학습 목표는 2026에 lesson 안에
-   있었는데, 번호 목록 섹션 하나로 빠졌다 — 목표가 없는 수업도 있기 때문이다. */
+   있었는데, 번호 목록 섹션 하나로 빠졌다: 목표가 없는 수업도 있기 때문이다. */
 function updateLesson(f, v) {
   ceCd.lesson[f] = v;
   if (f === 'num') ceRenderContentLinesAll();   // 그림 경로가 강 번호를 쓴다
@@ -1075,7 +1075,7 @@ async function ceToggleLessonOpen() {
   // 학생 화면은 강의실 줄(course_lessons)만 읽으므로 올려 둔 줄의 isOpen도 같이 고친다.
   // 스위치는 강의 하나에 하나이고, 올린 강의실 전부가 같이 열리고 닫힌다.
   try { await syncLessonRows(db, lesson.docId, { isOpen: next }); }
-  catch (e) { console.warn('[syncOpen]', e); notify('올린 강의실에 반영하지 못했습니다. ' + e.message); }
+  catch (e) { console.warn('[syncOpen]', e); notify('올린 강의실에 반영하지 못했다. ' + e.message); }
   lesson.isOpen = next;
   ceRenderOpenToggle();
   await ceLoadLessonRooms();
@@ -1171,7 +1171,7 @@ function toggleLabelPos(target, i, isChecked) {
 }
 
 // 페이지(슬라이드)별 본문 글자 크기 절대값(px). 비우면 필드를 지워 디자인 기본값을 따른다.
-// 페이지별 개념/미션 배지 숨김(A 기능) — 켜면 형식(rows 등) 상관없이 배지 없이 제목만 표시.
+// 페이지별 개념/미션 배지 숨김(A 기능): 켜면 형식(rows 등) 상관없이 배지 없이 제목만 표시.
 function toggleHideBadge(target, i, checked) {
   const line = ceLinesFor(target)[i];
   if (checked) line.hideBadge = true;
@@ -1180,7 +1180,7 @@ function toggleHideBadge(target, i, checked) {
 }
 
 /* 페이지별 본문 정렬. 기본은 왼쪽 정렬이고, 켠 페이지만 mode대로 바꾼다.
-   mode는 'justify'(행 나열·안내문 — 오른쪽 끝을 맞춤)와 'center'(비교표 — 가운데) 둘.
+   mode는 'justify'(행 나열, 안내문: 오른쪽 끝을 맞춤)와 'center'(비교표: 가운데) 둘.
    예전에는 미션 Check 슬라이드 전체가 CSS로 양쪽 정렬이라 끌 방법이 없었다. */
 function toggleAlign(target, i, mode, checked) {
   const line = ceLinesFor(target)[i];
@@ -1192,7 +1192,7 @@ function toggleAlign(target, i, mode, checked) {
 /* 세로 연표 "강조 사건" 선택칸 (페이지 설정 줄).
    고른 사건 하나만 제 색으로 두고 나머지는 연해진다. 사건마다 슬라이드를 따로 만들어
    번호만 바꿔 가며 넘기는 쓰임새라, 켜고 끄는 체크박스가 아니라 번호를 고르는 선택칸이다.
-   사건을 지워 저장된 번호가 범위를 넘으면 마지막 사건으로 당겨서 보여 준다 — 렌더러도
+   사건을 지워 저장된 번호가 범위를 넘으면 마지막 사건으로 당겨서 보여 준다: 렌더러도
    같은 규칙으로 당기므로(timelineVBodyHTML), 이렇게 해야 선택칸과 화면이 어긋나지 않는다. */
 function ceFocusEventSelect(target, divIdx, div) {
   const events = div.events || [];
@@ -1270,11 +1270,11 @@ function ceFormatPanelBody(target, i, line) {
   if (fmt === 'flow-h' || fmt === 'flow-v') return ceFlowEditor(target, i, line);
   if (fmt === 'notice') return ceNoticeEditor(target, i, line);
   if (fmt === 'cols') return ceColsEditor(target, i, line);
-  // 행 나열(rows)의 옵션(라벨 좌측·배지 숨김·글자 크기)과 하단 사료는 페이지 설정 패널에서 직접 렌더한다.
+  // 행 나열(rows)의 옵션(라벨 좌측, 배지 숨김, 글자 크기)과 하단 사료는 페이지 설정 패널에서 직접 렌더한다.
   return '';
 }
 
-// 중앙 나열(cols) 편집기 — 대제목은 슬라이드 제목칸, 항목마다 소제목+내용.
+// 중앙 나열(cols) 편집기: 대제목은 슬라이드 제목칸, 항목마다 소제목+내용.
 function ceColsEditor(target, i, line) {
   const cols = line.cols || [];
   const rows = cols.map((c, j) => `
@@ -1295,7 +1295,7 @@ function ceColsEditor(target, i, line) {
 
 /* 중앙 나열 페이지를 바로 위 행 나열 페이지의 "중앙 나열 블록"으로 옮겨 한 페이지로 합친다.
    (행 나열 페이지를 만들고 블록에 다시 타이핑하지 않아도 되도록 둔 단추.)
-   위 페이지가 행 나열이 아니면 단추를 아예 내보내지 않는다 — 블록은 행 나열에만 붙는다. */
+   위 페이지가 행 나열이 아니면 단추를 아예 내보내지 않는다: 블록은 행 나열에만 붙는다. */
 function cePrevDividerIdx(lines, i) {
   for (let k = i - 1; k >= 0; k--) if (lines[k].type === 'divider') return k;
   return -1;
@@ -1319,9 +1319,9 @@ async function mergeColsIntoPrevPage(target, i) {
   while (end < lines.length && lines[end].type !== 'divider') end++;
   const strayRows = end - i - 1;
   const msg = strayRows
-    ? `이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앱니다.
-이 페이지에 안 쓰이고 남아 있던 행 ${strayRows}개도 함께 지워집니다.`
-    : '이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앱니다.';
+    ? `이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앤다.
+이 페이지에 안 쓰이고 남아 있던 행 ${strayRows}개도 함께 지운다.`
+    : '이 중앙 나열을 위 페이지 아래에 붙이고 이 페이지를 없앤다.';
   if (!await confirmAsk('위 페이지에 합치기', msg)) return;
   prev.bottomCols = (cur.cols || []).map(c => ({ head: c.head || '', body: c.body || '' }));
   prev.bottomColsTitle = cur.colsTitle || '';
@@ -1336,11 +1336,11 @@ function updateColField(target,i,j,f,v){ ceLinesFor(target)[i].cols[j][f]=v; ceR
 function addCol(target,i){ ceLinesFor(target)[i].cols.push({head:'',body:''}); ceRenderContentLines(target); ceRenderPreview(); }
 function removeCol(target,i,j){ ceLinesFor(target)[i].cols.splice(j,1); ceRenderContentLines(target); ceRenderPreview(); }
 
-// 안내(OT·수행평가) 자유 문단 편집기 — 한 줄 = 한 문단, "- "로 시작하면 불릿, 빈 줄은 간격.
+// 안내(OT, 수행평가) 자유 문단 편집기: 한 줄 = 한 문단, "- "로 시작하면 불릿, 빈 줄은 간격.
 function ceNoticeEditor(target, i, line) {
   return `
     <div class="cl-fmt-fields">
-      <textarea class="cl-fmt-grow" placeholder="예)&#10;- 수행평가 안내&#10;- 제출 기한: 다음 주 금요일&#10;&#10;**모둠별**로 발표 자료를 준비하세요." oninput="updateLine('${target}',${i},'noticeText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.noticeText||'')}</textarea>
+      <textarea class="cl-fmt-grow" placeholder="예)&#10;- 수행평가 안내&#10;- 제출 기한: 다음 주 금요일&#10;&#10;**모둠별**로 발표 자료를 준비한다." oninput="updateLine('${target}',${i},'noticeText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.noticeText||'')}</textarea>
     </div>`;
 }
 
@@ -1357,7 +1357,7 @@ function ceBottomQuoteEditor(target, i, line) {
     </details>`;
 }
 
-/* 행 나열 아래에 붙는 중앙 나열 블록(선택) — 한 페이지에 행 나열 + 중앙 나열 두 유형을
+/* 행 나열 아래에 붙는 중앙 나열 블록(선택): 한 페이지에 행 나열 + 중앙 나열 두 유형을
    같이 두려고 만든 칸. 하단 사료 인용과 같은 방식으로, 페이지 형식은 '행 나열' 그대로 두고
    블록 데이터만 따로 담는다(bottomCols / bottomColsTitle). 칸을 다 비우면 안 붙는다. */
 function ceBottomColsEditor(target, i, line) {
@@ -1397,7 +1397,7 @@ function removeBottomCol(target,i,j){
   if (!line.bottomCols.length) delete line.bottomCols;
   ceRenderContentLines(target); ceRenderPreview();
 }
-// 블록 자체 글자 크기(소제목·내용 / 대제목). 비우면 필드를 지워 디자인 탭 기본값을 따른다.
+// 블록 자체 글자 크기(소제목, 내용 / 대제목). 비우면 필드를 지워 디자인 탭 기본값을 따른다.
 function setBottomColsSize(target,i,field,v){
   const line = ceLinesFor(target)[i];
   const n = parseInt(v, 10);
@@ -1444,7 +1444,7 @@ function updateCompareItems(target,i,side,v)  { ceLinesFor(target)[i][side].item
 function ceQuoteEditor(target, i, line) {
   return `
     <div class="cl-fmt-fields">
-      <input type="text" class="cl-fmt-sm" style="width:100%" placeholder="사료 소제목 (선택, 예: (가) 조선의 통치제도) — 전체 제목은 위 그룹 제목칸에서 편집" value="${esc(line.quoteLabel||'')}" oninput="updateLine('${target}',${i},'quoteLabel',this.value)">
+      <input type="text" class="cl-fmt-sm" style="width:100%" placeholder="사료 소제목 (선택, 예: (가) 조선의 통치제도). 전체 제목은 위 그룹 제목칸에서 편집" value="${esc(line.quoteLabel||'')}" oninput="updateLine('${target}',${i},'quoteLabel',this.value)">
       <textarea class="cl-fmt-grow" placeholder="원문 텍스트, {단어}는 빈칸" oninput="updateLine('${target}',${i},'quoteText',this.value);autoResizeTa(this)" onkeydown="handleContentKeydown(event)">${esc(line.quoteText||'')}</textarea>
       <input type="text" class="cl-fmt-sm" style="width:100%" placeholder="출처" value="${esc(line.quoteSource||'')}" oninput="updateLine('${target}',${i},'quoteSource',this.value)">
     </div>`;
@@ -1484,7 +1484,7 @@ function ceRenderContentLines(target) {
   const lines = ceLinesFor(target);
   const container = document.getElementById(ceContainerIdFor(target));
   if (!lines.length) {
-    container.innerHTML = '<p class="cl-empty">아직 내용이 없습니다.</p>';
+    container.innerHTML = '<p class="cl-empty">아직 내용이 없다.</p>';
     return;
   }
   const groups = ceBuildGroups(lines);
@@ -1534,7 +1534,7 @@ function ceRenderContentLines(target) {
             <input type="number" class="cl-img-input" min="10" max="100" value="${line.size != null ? line.size : 100}" oninput="updateLine('${target}',${i},'size',+this.value)">
             <span class="cl-img-label" style="font-weight:400;color:var(--stone)">%</span>
           </div>
-          ${legacy ? `<div style="padding:0 12px 8px;color:var(--stone);font-size:12px">※ 예전에 업로드한 이미지가 남아 있습니다. 번호를 입력하면 그 이미지로 교체됩니다.</div>` : ''}
+          ${legacy ? `<div style="padding:0 12px 8px;color:var(--stone);font-size:12px">※ 예전에 업로드한 이미지가 남아 있다. 번호를 입력하면 그 이미지로 교체된다.</div>` : ''}
         </div>`;
     }
     if (group.type === 'video') {
@@ -1550,7 +1550,7 @@ function ceRenderContentLines(target) {
           </div>
           ${line.videoId
             ? `<div style="padding:8px 12px"><img src="https://img.youtube.com/vi/${line.videoId}/mqdefault.jpg" style="max-height:120px;border-radius:6px;border:1px solid var(--cborder)"></div>`
-            : `<div style="padding:10px 12px;color:var(--stone);font-size:13px">유효한 유튜브 URL을 입력하면 미리보기가 표시됩니다.</div>`}
+            : `<div style="padding:10px 12px;color:var(--stone);font-size:13px">유효한 유튜브 URL을 입력하면 미리보기가 뜬다.</div>`}
         </div>`;
     }
     if (group.type === 'slide-group') {
@@ -1566,7 +1566,7 @@ function ceRenderContentLines(target) {
           [div, ...rowIndices.map(ri => lines[ri])], ceSection(target)
         ).length > 0;
         const pg = willRender ? ++pageNum : null;
-        // 페이지 단위 공통 액션바(가로, 페이지/형식 표시 옆) — 모든 형식에서 동일한 모양으로 쓴다.
+        // 페이지 단위 공통 액션바(가로, 페이지/형식 표시 옆): 모든 형식에서 동일한 모양으로 쓴다.
         const blockEnd = divIdx + 1 + rowIndices.length;   // 이 페이지 블록의 끝(다음 블록 시작 인덱스)
         const canUp = divIdx > 0, canDown = blockEnd < lines.length;
         const pageActions = `
@@ -1590,10 +1590,10 @@ function ceRenderContentLines(target) {
                 ${rowDelete}
               </div>`;
         };
-        // 본문 내용: 행 나열은 행들, 그 외(사료·연표 등)는 형식 편집기. 어느 형식이든 래퍼+우측 세로 액션바는 동일.
+        // 본문 내용: 행 나열은 행들, 그 외(사료, 연표 등)는 형식 편집기. 어느 형식이든 래퍼+우측 세로 액션바는 동일.
         const contentInner = fmt !== 'rows'
           ? ceFormatPanelBody(target, divIdx, div)
-          : (rowIndices.length ? rowIndices.map(rowInner).join('') : `<div class="cl-norow-hint">내용이 없는 페이지입니다. 행을 추가하세요.</div>`);
+          : (rowIndices.length ? rowIndices.map(rowInner).join('') : `<div class="cl-norow-hint">내용이 없는 페이지이다. 행을 추가한다.</div>`);
         const bodyHtml = `<div class="cl-slide-row cl-slide-special"><div class="cl-special-editor">${contentInner}</div></div>`;
         const pageHandle = slides.length > 1 ? `<span class="cl-handle cl-page-handle" title="페이지 순서 변경">⋮⋮</span>` : '';
         const imgLayout = div.imgLayout || 'right';
@@ -1658,11 +1658,11 @@ function ceRenderContentLines(target) {
   }).join('');
   ceWireDragEvents(target);
   requestAnimationFrame(() => requestAnimationFrame(() => container.querySelectorAll('textarea').forEach(autoResizeTa)));
-  /* 2026에는 여기서 반대 섹션(개념↔미션)을 한 번 더 그렸다 — 둘 다 화면에 있어서
+  /* 2026에는 여기서 반대 섹션(개념↔미션)을 한 번 더 그렸다: 둘 다 화면에 있어서
      페이지 번호를 맞춰야 했다. 지금은 탭이라 한 번에 한 섹션만 떠 있으므로 필요 없다. */
 }
 
-/* 이미지·전면 이미지·영상처럼 한 줄로 끝나는 슬라이드의 액션바.
+/* 이미지, 전면 이미지, 영상처럼 한 줄로 끝나는 슬라이드의 액션바.
    슬라이드 그룹의 페이지 액션바(pageActions)와 같은 모양으로 오른쪽 위에 붙이되,
    여기서 의미가 있는 것은 순서 이동과 삭제뿐이라 그 셋만 둔다. */
 function ceBlockActions(target, i, total, delCall, delTitle) {
@@ -1716,11 +1716,11 @@ function ceIconDown()    { return _svgDown; }
 
 /* 페이지(=divider + 딸린 row들)를 한 덩어리로 위/아래 인접 블록과 자리 바꾼다.
    그룹(제목) 경계도 넘나들 수 있어, 원하는 순서로 페이지를 재배치할 수 있다.
-   dir: -1(위) / +1(아래). 이미지·영상 등 단일 라인 블록과도 자리 바꿈이 된다. */
+   dir: -1(위) / +1(아래). 이미지, 영상 등 단일 라인 블록과도 자리 바꿈이 된다. */
 /* 페이지 블록 하나를 통째로 위아래로 옮긴다.
-   블록 = 시작 줄 + (구분선일 때만) 뒤따르는 행들. 이미지·전면 이미지·영상 줄은
-   그 자체로 한 블록이라 행을 딸려 세지 않는다 — 예전에는 구분선이 아니면 아예
-   돌려보냈고, 그래서 이미지·영상 슬라이드에 위아래 버튼을 달 수가 없었다. */
+   블록 = 시작 줄 + (구분선일 때만) 뒤따르는 행들. 이미지, 전면 이미지, 영상 줄은
+   그 자체로 한 블록이라 행을 딸려 세지 않는다: 예전에는 구분선이 아니면 아예
+   돌려보냈고, 그래서 이미지, 영상 슬라이드에 위아래 버튼을 달 수가 없었다. */
 function moveSlideBlock(target, divIdx, dir) {
   const lines = ceLinesFor(target);
   const head = lines[divIdx];
@@ -1874,7 +1874,7 @@ function updateLine(target,i,f,v)    { ceLinesFor(target)[i][f]=v; ceRenderPrevi
 // 배치 변경 시 '텍스트 폭' 입력 노출 여부가 바뀌므로 편집기까지 다시 그린다.
 function updateImgLayout(target,i,v) { const l=ceLinesFor(target)[i]; l.imgLayout=v; ceRenderContentLines(target); ceRenderPreview(); }
 /* "한 줄 = 한 항목" 편집칸의 글을 항목 배열로 나눈다.
-   행 나열 항목, 연표 사건 내용, 비교표 항목이 같은 규칙을 함께 쓴다 — 예전에는 행 나열만
+   행 나열 항목, 연표 사건 내용, 비교표 항목이 같은 규칙을 함께 쓴다: 예전에는 행 나열만
    이 규칙을 갖고 있어서, 연표와 비교표에서 Shift+Enter를 치면 그 줄이 별개 항목이 되어
    내어쓰기(a. 뒤에 맞춰 들여쓰는 것)가 풀렸다. */
 function itemsFromText(v) {
@@ -1889,7 +1889,7 @@ function itemsFromText(v) {
   for (const raw of lines) {
     const soft = raw.charCodeAt(0) === 0x200B;
     // ZWSP가 한 개가 아니라 여러 개 연달아 남아있는 경우(예전 버그로 실제 저장된 데이터에서
-    // 확인됨)에도 전부 걷어낸다 — 하나만 벗기면 남은 ZWSP 때문에 a./b. 마커 검사가 실패한다.
+    // 확인됨)에도 전부 걷어낸다: 하나만 벗기면 남은 ZWSP 때문에 a./b. 마커 검사가 실패한다.
     const ln = soft ? raw.replace(LEADING_ZWSP_RE, '') : raw;
     // a./b./c. 줄은 Shift+Enter(soft)로 넘어왔든 그냥 Enter로 넘어왔든 항상 하위 항목으로
     // 취급한다. soft만 먼저 걸러 무조건 LS로 이어붙이면, a. 다음 줄을 Shift+Enter로 쳤을 때
@@ -1910,7 +1910,7 @@ function itemsFromText(v) {
   return items;
 }
 /* 항목 배열을 편집칸 글로 되돌린다. 같은 항목 안 줄바꿈(U+2028)은 줄바꿈 + ZWSP로,
-   하위 항목(<br>)은 그냥 줄바꿈으로 편다 — a./b. 마커가 남아 있으므로 저장할 때
+   하위 항목(<br>)은 그냥 줄바꿈으로 편다: a./b. 마커가 남아 있으므로 저장할 때
    itemsFromText가 도로 하위 항목으로 합친다. */
 function itemsToText(items) {
   const LS = new RegExp(String.fromCharCode(0x2028), 'g');
@@ -1932,7 +1932,7 @@ function toggleDividerImg(target,i) {
   }
   ceRenderContentLines(target); ceRenderPreview();
 }
-function addContentRow(target)      { ceLinesFor(target).push({ type:'row', label:'새 라벨', items:['내용을 입력하세요'] }); ceRenderContentLines(target); ceRenderPreview(); }
+function addContentRow(target)      { ceLinesFor(target).push({ type:'row', label:'새 라벨', items:['내용을 입력한다'] }); ceRenderContentLines(target); ceRenderPreview(); }
 function addImageSlide(target)      { ceLinesFor(target).push({ type:'image', images:[{ img:1, caption:'' }], title:'' }); ceRenderContentLines(target); ceRenderPreview(); }
 function updateImageItem(target,li,ii,f,v) { ceLinesFor(target)[li].images[ii][f] = v; ceRenderPreview(); }
 function addImageItem(target,li)     { ceLinesFor(target)[li].images.push({ img:1, caption:'' }); ceRenderContentLines(target); ceRenderPreview(); }
@@ -1984,7 +1984,7 @@ function updateVideoUrl(target, i, v) {
   line.url = v.trim();
   line.videoId = ceParseYouTubeId(v);
   line.videoStart = ceParseYouTubeStart(v); // 주소에 시작 시간이 있으면 그 지점부터 재생한다
-  if (v.trim() && !line.videoId) notify('유튜브 주소를 알아보지 못했습니다. 주소를 확인해 주세요.');
+  if (v.trim() && !line.videoId) notify('유튜브 주소를 알아보지 못했다. 주소를 확인한다.');
   ceRenderContentLines(target); ceRenderPreview();
 }
 
@@ -2131,7 +2131,7 @@ async function saveContent() {
 }
 
 async function resetContent() {
-  if (!await confirmAsk('내용 초기화', '이 강의의 슬라이드 내용을 비웁니다.', true)) return;
+  if (!await confirmAsk('내용 초기화', '이 강의의 슬라이드 내용을 비운다.', true)) return;
   const lesson = ceLessonsCache.find(l => l.num === ceCurrentLessonNum);
   if (lesson) {
     await updateDoc(doc(db, LIB, lesson.docId), { content: null });
@@ -2146,7 +2146,7 @@ async function resetContent() {
 // pdf는 텍스트 추출 없이 파일 그대로 Claude에 문서로 전달한다(Claude가 PDF를 직접 읽을 수 있음).
 async function ceExtractHwpxText(file) {
   const zip = await JSZip.loadAsync(file);
-  // Preview/PrvText.txt는 한글이 미리보기·검색 색인용으로 만드는 요약 텍스트라
+  // Preview/PrvText.txt는 한글이 미리보기, 검색 색인용으로 만드는 요약 텍스트라
   // 문서가 길면 중간에서 잘려 있을 수 있다. 전체 본문이 들어있는 section*.xml을
   // 먼저 시도하고, 그게 비어 있을 때만 PrvText.txt로 대체한다.
   const sectionNames = Object.keys(zip.files)
@@ -2195,27 +2195,27 @@ const CE_LESSON_JSON_SCHEMA = `{
 
 const CE_LESSON_JSON_INSTRUCTION = `다음은 중학교 역사 수업 활동지 내용이다. 이 내용을 아래 JSON 스키마로 옮겨 적어줘.
 
-가장 중요한 원칙: 이건 활동지를 그대로 옮기는 "전사" 작업이다. 활동지에 없는 문장·설명·예시·학습 목표를 새로 만들어서 추가하지 마라. 활동지에 적힌 텍스트만 그대로 옮겨라. 아래 "빈칸 채우기"만 유일한 예외다(빈칸에 들어갈 정답을 채워 넣는 것).
+가장 중요한 원칙: 이건 활동지를 그대로 옮기는 "전사" 작업이다. 활동지에 없는 문장, 설명, 예시, 학습 목표를 새로 만들어서 추가하지 마라. 활동지에 적힌 텍스트만 그대로 옮겨라. 아래 "빈칸 채우기"만 유일한 예외다(빈칸에 들어갈 정답을 채워 넣는 것).
 
 활동지 내용은 성격에 따라 나눠 담아야 한다:
 - dive(Opening Question): 수업을 여는 질문. 활동지에 "오프닝 퀘스천" 또는 수업 시작 질문이 있으면 그 질문 문장을 guide에 담아라(질문 하나만, 따옴표 없이). title은 빈 문자열("")로 둔다. 이런 질문이 없으면 guide도 빈 문자열로 둔다.
 - chosungItems: 활동지에 초성 퀴즈(예: ㄱㄴㄷ으로 단어 맞히기)가 있으면 문제를 한 줄씩 배열로 그대로 옮겨라. 없으면 빈 배열로 둬라.
 - conceptContentLines: 개념 설명, 빈칸 채우기, 용어 정리 등 "배우는" 내용.
-- missionContentLines: 학생이 직접 해보는 활동·과제·퀘스트·게임형 미션 내용.
+- missionContentLines: 학생이 직접 해보는 활동, 과제, 퀘스트, 게임형 미션 내용.
 - think: 수업 마무리에 학생 스스로 생각해서 답하는 서술형 질문.
 
-conceptContentLines·missionContentLines 규칙 (정확히 지켜라. 표 하나를 예로 설명한다):
+conceptContentLines, missionContentLines 규칙 (정확히 지켜라. 표 하나를 예로 설명한다):
 활동지의 표는 왼쪽에 회색(음영) 칸, 오른쪽에 실제 내용이 있는 구조다.
-- 회색 칸 하나(행 라벨, 예: "1. 태조")가 슬라이드 하나에 대응한다. 회색 칸이 바뀔 때마다 반드시 새로 {"type":"divider","title":"..."}를 만들고 바로 뒤에 row 하나를 배치해라. 구분선 1개 + row 1개가 항상 짝을 이뤄 반복돼야 한다 — 회색 칸이 여러 개면 divider도 그 개수만큼 반복해서 각각 넣어라. 절대 두 개 이상의 row를 하나의 divider 아래 연달아 두지 마라.
+- 회색 칸 하나(행 라벨, 예: "1. 태조")가 슬라이드 하나에 대응한다. 회색 칸이 바뀔 때마다 반드시 새로 {"type":"divider","title":"..."}를 만들고 바로 뒤에 row 하나를 배치해라. 구분선 1개 + row 1개가 항상 짝을 이뤄 반복돼야 한다: 회색 칸이 여러 개면 divider도 그 개수만큼 반복해서 각각 넣어라. 절대 두 개 이상의 row를 하나의 divider 아래 연달아 두지 마라.
 - divider의 title은 그 표가 속한 절/구역의 부제목(활동지에서 "개념 체크" 뒤에 적힌 소제목)을 그대로 옮겨 적어라. 같은 부제 아래 회색 칸이 여러 개면 그 부제를 각 슬라이드 title에 반복해서 써라.
 - row의 label은 회색 칸에 적힌 텍스트를 그대로 옮겨라.
-- row의 items 배열은 원문자(①②③...) 단위로 하나씩 나눠 담아라 — ①로 시작하는 내용 전체가 items의 원소 하나, ②로 시작하는 내용이 다음 원소, 이런 식이다.
+- row의 items 배열은 원문자(①②③...) 단위로 하나씩 나눠 담아라: ①로 시작하는 내용 전체가 items의 원소 하나, ②로 시작하는 내용이 다음 원소, 이런 식이다.
 - 원문자 뒤에 a. b. c. 같은 하위 글자 목록이나 "→"로 이어지는 줄이 붙어 있으면, 그 하위 줄들은 새 item으로 쪼개지 말고 같은 item 문자열 안에 <br>로 이어붙여서 한 줄씩 표시되게 해라. (예: "① 건국 과정 : a. {이성계} : {위화도 회군} 이후 정권 장악<br>b. {과전법} 실시(1391) : 경기 지역의 토지에 한해 관직 복무 대가로 {수조권} 지급<br>c. 국가 통치 이념으로 {성리학}을 내세우고, {온건파} 사대부를 숙청 → {조선} 건국(1392)") <br> 태그는 한 번에 하나씩만 써라(<br><br> 같은 중복 금지).
-- 빈칸 처리: 활동지에 실제로 비어 있는 칸(밑줄 ___, 괄호 ( ), ○○, 네모칸 등 학생이 채워 넣도록 비워 둔 자리)에 대해서만 정답을 중괄호 한 겹으로 감싸라: {정답}. 이미 인쇄되어 있는(비어 있지 않은) 단어·문장은 그게 정답에 해당하더라도 절대 {}로 감싸지 마라 — 원문 그대로 둬라. 즉 원래 빈칸이 아닌 것을 빈칸으로 만들면 안 된다. 중괄호를 두 겹({{정답}})으로 쓰지 마라 — 항상 한 겹만. 빈칸의 정답을 확신할 수 없으면 빈칸 표시 없이 원문 그대로 둬라(추측해서 틀린 답을 넣지 마라).
+- 빈칸 처리: 활동지에 실제로 비어 있는 칸(밑줄 ___, 괄호 ( ), ○○, 네모칸 등 학생이 채워 넣도록 비워 둔 자리)에 대해서만 정답을 중괄호 한 겹으로 감싸라: {정답}. 이미 인쇄되어 있는(비어 있지 않은) 단어, 문장은 그게 정답에 해당하더라도 절대 {}로 감싸지 마라: 원문 그대로 둬라. 즉 원래 빈칸이 아닌 것을 빈칸으로 만들면 안 된다. 중괄호를 두 겹({{정답}})으로 쓰지 마라: 항상 한 겹만. 빈칸의 정답을 확신할 수 없으면 빈칸 표시 없이 원문 그대로 둬라(추측해서 틀린 답을 넣지 마라).
 - 빈칸을 채우는 것 외에는 원문에 있는 문구를 고치거나 다듬지 말고 그대로 옮겨라.
 - 활동지에 점선 테두리 박스(사료 인용)가 있으면 {"type":"divider","title":"슬라이드 제목","format":"quote","quoteText":"박스 안 원문","quoteSource":"출처(있을 경우)"} 형식으로 표현해라. 이 경우 row를 추가하지 않는다.
-  - 사료 title/quoteLabel 규칙: title에는 그 사료가 속한 "전체 슬라이드 제목"(활동지의 구역·소단원 제목, 예: "사료를 통해 바라본 조선 초기 국왕들의 모습")을 넣어라. 같은 구역에 속한 여러 사료는 title을 똑같이 맞춰라(그래야 한 묶음으로 표시된다). 사료 앞에 (가)/(나)/(다) 또는 ①/②/③ 같은 글머리 기호(그 뒤에 소제목이 붙어 있으면 소제목까지)가 있으면 그 부분을 quoteLabel에 넣고 quoteText에서는 뺀다. 예: 구역 제목 "…국왕들의 모습" 아래 "(가) 조선의 통치제도\n의정부의 여러 일을…" → title="…국왕들의 모습", quoteLabel="(가) 조선의 통치제도", quoteText="의정부의 여러 일을…". 글머리 기호가 없으면 quoteLabel은 빈 문자열("")로 둔다.
-- 표 안의 그림·도식은 텍스트로 옮길 수 없으면 생략해도 된다.
+  - 사료 title/quoteLabel 규칙: title에는 그 사료가 속한 "전체 슬라이드 제목"(활동지의 구역, 소단원 제목, 예: "사료를 통해 바라본 조선 초기 국왕들의 모습")을 넣어라. 같은 구역에 속한 여러 사료는 title을 똑같이 맞춰라(그래야 한 묶음으로 표시된다). 사료 앞에 (가)/(나)/(다) 또는 ①/②/③ 같은 글머리 기호(그 뒤에 소제목이 붙어 있으면 소제목까지)가 있으면 그 부분을 quoteLabel에 넣고 quoteText에서는 뺀다. 예: 구역 제목 "…국왕들의 모습" 아래 "(가) 조선의 통치제도\n의정부의 여러 일을…" → title="…국왕들의 모습", quoteLabel="(가) 조선의 통치제도", quoteText="의정부의 여러 일을…". 글머리 기호가 없으면 quoteLabel은 빈 문자열("")로 둔다.
+- 표 안의 그림, 도식은 텍스트로 옮길 수 없으면 생략해도 된다.
 - 해당하는 내용이 활동지에 없으면 빈 배열 []로 둬라.
 
 - objectives(학습 목표)와 chosungItems(초성 퀴즈 항목)는 화면에 표시할 때 자동으로 번호가 매겨지므로, 활동지에 적힌 번호(1. / ① / 가. 등)는 결과에 포함하지 말고 번호를 뗀 내용만 적어라.
@@ -2247,11 +2247,11 @@ async function ceRequestLessonJson(content) {
   }
   const data = await res.json();
   if (data.stop_reason === 'max_tokens') {
-    throw new Error('활동지 내용이 길어서 응답이 중간에 잘렸습니다. 활동지를 나눠서 올려주세요.');
+    throw new Error('활동지 내용이 길어서 응답이 중간에 잘렸다. 활동지를 나눠서 올린다.');
   }
   const raw = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI 응답에서 JSON을 찾을 수 없습니다.');
+  if (!jsonMatch) throw new Error('AI 응답에서 JSON을 찾을 수 없다.');
   return ceSanitizeParsedLesson(JSON.parse(jsonMatch[0]));
 }
 
@@ -2259,13 +2259,13 @@ async function ceRequestLessonJson(content) {
 // 1) 강조 중괄호를 {{정답}}처럼 두 겹으로 쓰는 경우 -> {정답}로 축소
 // 2) 하위 글자 목록(a. b. c.) 앞에 <br>을 빼먹은 경우 -> 자동으로 끼워 넣고, <br>이 중복된 경우 하나로 정리
 // 3) 회색 칸(행)마다 새 divider를 안 만들고 여러 row를 divider 하나에 몰아넣은 경우 -> row 앞에 divider가 없으면 자동으로 끼워 넣어서 슬라이드를 분리
-// 4) 학습 목표·초성 퀴즈 앞에 번호(1. / ① 등)가 남아있는 경우 -> 제거(화면에서 자동으로 번호가 붙으므로)
+// 4) 학습 목표, 초성 퀴즈 앞에 번호(1. / ① 등)가 남아있는 경우 -> 제거(화면에서 자동으로 번호가 붙으므로)
 function ceSanitizeParsedLesson(d) {
   const fixBraces = s => typeof s === 'string' ? s.replace(/\{{2,}/g, '{').replace(/\}{2,}/g, '}') : s;
   const fixBreaks = s => {
     if (typeof s !== 'string') return s;
     let out = fixBraces(s).replace(/(<br\s*\/?>|<\/br>)+/gi, '<br>');
-    // b. c. d. ...(a.는 제외 — 항상 첫 하위 항목이라 앞에 줄바꿈이 필요 없음) 앞에
+    // b. c. d. ...(a.는 제외: 항상 첫 하위 항목이라 앞에 줄바꿈이 필요 없음) 앞에
     // <br>이 빠져 있으면 자동으로 끼워 넣는다.
     out = out.replace(/(?<!<br>)\s+([b-z]\.\s)/g, '<br>$1');
     return out;
@@ -2308,7 +2308,7 @@ function ceSanitizeParsedLesson(d) {
     }
     return out;
   };
-  // enforceOnePerSlide 뒤에 남는 "빈 divider"(뒤에 행도 없고 사료 텍스트·이미지·특수형식 데이터도 없이
+  // enforceOnePerSlide 뒤에 남는 "빈 divider"(뒤에 행도 없고 사료 텍스트, 이미지, 특수형식 데이터도 없이
   // 제목만 있는 슬라이드)를 제거한다. AI가 사료 앞에 구역 제목용 빈 divider를 하나 더 만들어
   // 빈 페이지가 생기던 것을 막는다.
   const dropEmptyDividers = lines => lines.filter((line, k) => {
@@ -2367,7 +2367,7 @@ async function ceHandleFileUpload(file) {
   const btnEl = document.getElementById('ce-file-btn');
   const inputEl = document.getElementById('ce-file-input');
   if (ext !== 'hwpx' && ext !== 'pdf') {
-    notify('.hwpx 또는 .pdf 파일만 됩니다.');
+    notify('.hwpx 또는 .pdf 파일만 된다.');
     inputEl.value = '';
     return;
   }
@@ -2380,32 +2380,32 @@ async function ceHandleFileUpload(file) {
   if (!num) {
     const v = await ask({
       title: '강 번호 입력',
-      body: '파일 이름에서 강 번호를 찾지 못했습니다.',
+      body: '파일 이름에서 강 번호를 찾지 못했다.',
       fields: [{ key: 'num', type: 'text', placeholder: '강 번호 (예: 24)', suffix: '강' }],
-      check: v => v.num ? '' : '강 번호를 입력해 주세요.',
+      check: v => v.num ? '' : '강 번호를 입력한다.',
     });
     num = v ? v.num : '';
     if (!num) { inputEl.value = ''; return; }
   }
-  if (ceLessonsCache.find(l => l.num === num)) { notify(`${lecTag(num)}는 이미 있습니다.`); inputEl.value = ''; return; }
+  if (ceLessonsCache.find(l => l.num === num)) { notify(`${lecTag(num)}는 이미 있다.`); inputEl.value = ''; return; }
 
   btnEl.disabled = true;
-  if (statusEl) statusEl.textContent = '파일을 읽고 있습니다. 1분쯤 걸릴 수 있습니다.';
+  if (statusEl) statusEl.textContent = '파일을 읽고 있다. 1분쯤 걸릴 수 있다.';
 
   try {
     let parsed;
     if (ext === 'hwpx') {
       const text = await ceExtractHwpxText(file);
-      if (!text.trim()) throw new Error('파일에서 텍스트를 찾지 못했습니다.');
+      if (!text.trim()) throw new Error('파일에서 텍스트를 찾지 못했다.');
       parsed = await ceRequestLessonJson(text);
     } else {
       const base64 = await ceFileToBase64(file);
       parsed = await ceRequestLessonJson({ data: base64 });
     }
-    if (!ceValidateParsedLesson(parsed)) throw new Error('AI 응답 구조가 올바르지 않습니다.');
+    if (!ceValidateParsedLesson(parsed)) throw new Error('AI 응답 구조가 올바르지 않다.');
 
     const order = lecOrderKey(num); // 강 번호 기준(큰 번호가 위)
-    /* AI에게 보내는 형식(프롬프트)은 2026 것을 그대로 둔다 — 오래 다듬은 것이라 건드리면
+    /* AI에게 보내는 형식(프롬프트)은 2026 것을 그대로 둔다: 오래 다듬은 것이라 건드리면
        품질이 떨어진다. 받은 결과를 2026 모양으로 한 번 조립한 뒤 섹션으로 옮긴다. */
     const legacy = {
       lesson: {
@@ -2436,10 +2436,10 @@ async function ceHandleFileUpload(file) {
     if (area) area.style.display = '';
     const prevBtn2 = document.getElementById('ce-preview-btn');
     if (prevBtn2) prevBtn2.style.display = '';
-    if (statusEl) statusEl.textContent = '만들었습니다. 내용을 확인하고 저장해 주세요.';
+    if (statusEl) statusEl.textContent = '만들었다. 내용을 확인하고 저장한다.';
   } catch (e) {
     if (statusEl) statusEl.textContent = '';
-    notify('강의를 만들지 못했습니다. ' + e.message);
+    notify('강의를 만들지 못했다. ' + e.message);
   } finally {
     btnEl.disabled = false;
     inputEl.value = '';
@@ -2517,7 +2517,7 @@ export async function initConceptNote(deps = {}) {
 }
 
 /* 2026에서 옮겨 온 편집기는 인라인 onclick/oninput을 쓴다. 그래서 여기 적은 함수들은
- * window에 올라가 있어야 눌렸을 때 불린다 — 빠지면 오류 없이 조용히 아무 일도 안 난다
+ * window에 올라가 있어야 눌렸을 때 불린다: 빠지면 오류 없이 조용히 아무 일도 안 난다
  * (2026에서 실제로 다섯 개가 빠져 있었다).
  * 새로 붙이는 코드는 이 방식을 따르지 말고 data-act 위임을 쓸 것(CLAUDE.md 코드 규칙).
  * 아래 목록은 2026 admin.js의 Object.assign(window, ...)에서 개념 체크 몫만 가져온 것이다. */
@@ -2545,6 +2545,6 @@ Object.assign(window, {
   handleContentKeydown, handleItemsKeydown,
   // textarea 자동 높이. 2026에서 노출이 빠져 입력할 때 칸이 안 늘어났다.
   autoResizeTa,
-  // 미리보기 다시 그리기와 크기 맞추기 — 탭을 바꿀 때 부른다.
+  // 미리보기 다시 그리기와 크기 맞추기: 탭을 바꿀 때 부른다.
   ceRenderPreview, rescalePreview,
 });

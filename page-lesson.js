@@ -1,16 +1,16 @@
 /* ════════════════════════════════════════════════════════
-   교재 쪽(page) 강의 화면 — 시안
+   교재 쪽(page) 강의 화면: 시안
 
    활동지 PDF를 쪽 그림으로 구워 두고, 빈칸만 그 위에 겹쳐 올린다.
    빈칸의 자리(%)와 정답은 학생용/교사용 PDF 한 쌍을 대조해서 뽑은 것이다.
    (뽑는 쪽은 도구가 따로 한다. 여기는 뽑아 놓은 lesson.json만 읽는다)
 
    모드 셋
-     수업   — 빈칸을 눌러 하나씩 연다. 수업 중 투사용
-     채우기 — 정답 칩을 섞어 놓고 빈칸에 넣는다. 학생 활동용
-     정답   — 전부 열어 둔다. 교사용 책과 같은 상태
+     수업  : 빈칸을 눌러 하나씩 연다. 수업 중 투사용
+     채우기: 정답 칩을 섞어 놓고 빈칸에 넣는다. 학생 활동용
+     정답  : 전부 열어 둔다. 교사용 책과 같은 상태
 
-   코드 규칙(CLAUDE.md) — 인라인 onclick과 window 노출을 쓰지 않는다.
+   코드 규칙(CLAUDE.md): 인라인 onclick과 window 노출을 쓰지 않는다.
    data-act + 이벤트 위임, 모듈 최상위 상태는 state 하나.
    ════════════════════════════════════════════════════════ */
 
@@ -24,7 +24,7 @@ const state = {
   mode: 'blank',  // blank | fill | answer
   chips: [],      // 쪽마다 [{ id, text }] (섞어 둔 정답 칩)
   placed: [],     // 쪽마다 { 빈칸id: 칩id }
-  opened: [],     // 쪽마다 Set(빈칸id) — 수업 모드에서 연 빈칸
+  opened: [],     // 쪽마다 Set(빈칸id): 수업 모드에서 연 빈칸
   graded: [],     // 쪽마다 boolean
   picked: null,   // 지금 고른 칩 id
 };
@@ -58,7 +58,7 @@ async function init() {
   document.querySelector('[data-act="next"]').innerHTML = icon('chevron-right', 20);
 
   const res = await fetch(DATA_URL);
-  if (!res.ok) { el.name.textContent = '강의를 불러오지 못했습니다'; return; }
+  if (!res.ok) { el.name.textContent = '강의를 불러오지 못했다'; return; }
   state.lesson = await res.json();
 
   state.lesson.pages.forEach((p, i) => {

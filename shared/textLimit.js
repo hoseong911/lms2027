@@ -1,9 +1,9 @@
 /**
  * ============================================================
- *  HOISTORY · shared/textLimit.js  v1.0
+ *  HOISTORY, shared/textLimit.js  v1.0
  * ------------------------------------------------------------
- *  글자수 카운트·자르기·페이스트 차단 공통 모듈.
- *  blind_ryeo · s_threads · sillaver에 흩어져있던 동일 로직 통합.
+ *  글자수 카운트, 자르기, 페이스트 차단 공통 모듈.
+ *  blind_ryeo, s_threads, sillaver에 흩어져있던 동일 로직 통합.
  *
  *  사용:
  *    import { mountCharCounter, blockPaste }
@@ -18,13 +18,13 @@
  *    });
  *
  *    blockPaste(document.getElementById('answerText'), {
- *      onPaste: () => showToast('직접 작성해주세요!')
+ *      onPaste: () => showToast('직접 작성한다!')
  *    });
  * ============================================================
  */
 
 /**
- * 공백 제외 글자수를 셉니다.
+ * 공백 제외 글자수를 센다.
  * @param {string} text
  * @returns {number}
  */
@@ -34,14 +34,14 @@ export function countCharsNoSpace(text) {
 }
 
 /**
- * 공백 포함 글자수를 셉니다.
+ * 공백 포함 글자수를 센다.
  */
 export function countChars(text) {
   return text ? String(text).length : 0;
 }
 
 /**
- * 공백 제외 기준으로 입력을 최대 글자수까지 자릅니다.
+ * 공백 제외 기준으로 입력을 최대 글자수까지 자른다.
  * @param {string} text
  * @param {number} max - 공백 제외 최대 글자수
  * @returns {string}
@@ -59,7 +59,7 @@ export function truncateNoSpace(text, max) {
 }
 
 /**
- * Input/textarea에 글자수 카운터를 자동으로 wiring합니다.
+ * Input/textarea에 글자수 카운터를 자동으로 wiring한다.
  *
  * @param {Object} opts
  * @param {HTMLInputElement|HTMLTextAreaElement} opts.input
@@ -82,7 +82,7 @@ export function mountCharCounter(opts) {
   } = opts;
 
   if (!input || !counter || !max) {
-    throw new Error('[textLimit] input, counter, max는 필수입니다.');
+    throw new Error('[textLimit] input, counter, max는 필수이다.');
   }
 
   const countFn = excludeSpaces ? countCharsNoSpace : countChars;
@@ -117,7 +117,7 @@ export function mountCharCounter(opts) {
    앱마다 토스트가 있기도 없기도 하고, 있어도 테마 토큰에 기대는 경우가 있어
    어떤 페이지에 붙여도 똑같이 보이도록 스타일을 스스로 들고 있는다. */
 let _pasteNoticeEl = null, _pasteNoticeTimer = null;
-function pasteNotice(msg = '붙여넣기는 쓸 수 없어요. 직접 써 주세요.') {
+function pasteNotice(msg = '붙여넣기는 쓸 수 없어요. 직접 쓴다.') {
   if (typeof document === 'undefined' || !document.body) return;
   if (!_pasteNoticeEl) {
     _pasteNoticeEl = document.createElement('div');
@@ -145,9 +145,9 @@ function pasteNotice(msg = '붙여넣기는 쓸 수 없어요. 직접 써 주세
 }
 
 /**
- * 입력 요소에서 복사/붙여넣기를 차단합니다.
+ * 입력 요소에서 복사/붙여넣기를 차단한다.
  *
- * 붙여넣기(Ctrl+V, 길게 눌러 붙여넣기)만 막으면 뒷문이 하나 남는다 —
+ * 붙여넣기(Ctrl+V, 길게 눌러 붙여넣기)만 막으면 뒷문이 하나 남는다 :
  * 다른 탭에서 글을 드래그해 입력칸에 떨어뜨리는 길이다. 이 경로는 paste 이벤트가
  * 아예 발생하지 않아서 여기까지 막아야 한다(AI가 쓴 글을 그대로 옮겨 오는 데
  * 실제로 쓰이는 방법이다). drop에서 preventDefault를 하면 브라우저의 기본
@@ -187,7 +187,7 @@ export function blockPaste(el, opts = {}) {
 }
 
 /**
- * 양쪽 공백 + 중간 다중 공백을 단일 공백으로 정리합니다.
+ * 양쪽 공백 + 중간 다중 공백을 단일 공백으로 정리한다.
  * @param {string} text
  * @returns {string}
  */
@@ -211,26 +211,26 @@ export function validateText(text, opts = {}) {
   if (len < min) {
     return {
       ok: false, reason: 'too_short', length: len,
-      message: `공백 제외 ${min}자 이상 작성해주세요. (현재 ${len}자)`
+      message: `공백 제외 ${min}자 이상 작성한다. (현재 ${len}자)`
     };
   }
   if (max && len > max) {
     return {
       ok: false, reason: 'too_long', length: len,
-      message: `최대 ${max}자까지 작성 가능합니다. (현재 ${len}자)`
+      message: `최대 ${max}자까지 작성 가능한다. (현재 ${len}자)`
     };
   }
   if (checkRepeats) {
     if (/ㅋ{5,}|ㅎ{5,}|ㅠ{5,}|ㅜ{5,}|\.{5,}/.test(text)) {
       return {
         ok: false, reason: 'repeat_chars', length: len,
-        message: '반복 문자 남발은 지양해주세요.'
+        message: '반복 문자 남발은 지양한다.'
       };
     }
     if (text && text.match(/(.{4,})\1{2,}/)) {
       return {
         ok: false, reason: 'repeat_phrase', length: len,
-        message: '반복된 문구가 감지되었습니다.'
+        message: '반복된 문구가 감지되었다.'
       };
     }
   }

@@ -30,7 +30,7 @@
       overflow: hidden;
     }
 
-    /* ════ 슬라이드 위치·전환 애니메이션 (이 페이지 전용, 디자인은 slide-style.css 공용) ════
+    /* ════ 슬라이드 위치, 전환 애니메이션 (이 페이지 전용, 디자인은 slide-style.css 공용) ════
        .slide-cover는 공용 CSS에서 position:relative를 쓰므로, 여기서도 명시적으로
        다시 선언해 이 페이지의 절대 위치 지정이 항상 이기도록 한다. */
     .slide, .slide-cover {
@@ -62,7 +62,7 @@
     }
     #overlay-btns[hidden] { display: none; }
 
-    /* 홈 칩·모드 토글은 수업 화면을 가리지 않게 반투명하게 두고, 마우스 올리면 또렷해진다.
+    /* 홈 칩, 모드 토글은 수업 화면을 가리지 않게 반투명하게 두고, 마우스 올리면 또렷해진다.
        테두리 박스 없이 아이콘/이모지만 남긴다. */
     #back-btn {
       display: flex;
@@ -81,7 +81,7 @@
     #back-btn:hover { opacity: 1; }
     #back-btn svg { width: 70%; height: 70%; }
 
-    /* 완성형/빈칸형 클릭 토글 — 라인 아이콘만, 박스 없이, 반투명(홈 칩과 동일 톤) */
+    /* 완성형/빈칸형 클릭 토글: 라인 아이콘만, 박스 없이, 반투명(홈 칩과 동일 톤) */
     #mode-badge {
       display: flex;
       align-items: center;
@@ -168,7 +168,7 @@
     #typing-complete-btn[hidden] { display: none; }
     body.mobile-scroll #typing-complete-btn { bottom: 18px; padding: 12px 24px; font-size: 0.92rem; }
 
-    /* 영상 슬라이드 전용 넘김 버튼 — 재생 컨트롤을 가리지 않게 오른쪽 아래 구석에 둔다. */
+    /* 영상 슬라이드 전용 넘김 버튼: 재생 컨트롤을 가리지 않게 오른쪽 아래 구석에 둔다. */
     #video-next-btn {
       position: fixed;
       right: 28px;
@@ -261,11 +261,11 @@
     }
 
     /* ── 아이폰 강제 종료(메모리) 대책: 합성 비용이 큰 효과를 모바일에서만 끈다 ──
-       표지·초성·학습목표의 빛 쓸기(.intro-sweep)는 mix-blend-mode + 무한 애니메이션이라,
+       표지, 초성, 학습목표의 빛 쓸기(.intro-sweep)는 mix-blend-mode + 무한 애니메이션이라,
        슬라이드 한 장을 통째로 별도 비트맵에 그려 두고 계속 다시 그린다. 이 슬라이드들이
        덱 앞쪽에 몰려 있어 열자마자 다섯 장이 동시에 그 상태가 되고, 그 위에 큰 이미지까지
        올라오면 사파리가 탭을 종료한다. 모바일에서는 같은 자리에 멈춘 빛만 남긴다
-       (PC 발표 화면은 그대로 — body.mobile-scroll일 때만 적용). */
+       (PC 발표 화면은 그대로: body.mobile-scroll일 때만 적용). */
     body.mobile-scroll .intro-sweep {
       mix-blend-mode: normal;
       animation: none;
@@ -274,16 +274,16 @@
       opacity: 0.55;
     }
     /* 프로스티드 글래스(backdrop-filter)도 뒤 배경을 원본 해상도로 한 번 더 그리게 만든다.
-       생각체크의 뒤 배경은 단색(--slide-bg)이라 흐리게 해도 보이는 결과가 같다 —
+       생각체크의 뒤 배경은 단색(--slide-bg)이라 흐리게 해도 보이는 결과가 같다 :
        배경 반투명도(42%)는 그대로 두고 blur만 빼면 화면은 픽셀 단위로 동일하다. */
     body.mobile-scroll .think-guide {
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
 
-    /* 모바일 스크롤: 홈·토글을 읽기 좋은 크기의 플로팅 툴바로 우측 상단 구석에 고정한다.
+    /* 모바일 스크롤: 홈, 토글을 읽기 좋은 크기의 플로팅 툴바로 우측 상단 구석에 고정한다.
        position:fixed라 문서 흐름을 차지하지 않으므로 슬라이드가 아래로 밀리지 않는다.
-       PC(비 mobile-scroll)는 기존 좌표·크기를 그대로 쓴다. */
+       PC(비 mobile-scroll)는 기존 좌표, 크기를 그대로 쓴다. */
     body.mobile-scroll #overlay-btns {
       top: 10px;
       right: 10px;
@@ -301,7 +301,7 @@
       padding: 0.4em 0.9em;
     }
 
-    /* ════ 복습 모드: 세로화면이면 '가로로 돌려주세요' 안내로 덮는다 ════
+    /* ════ 복습 모드: 세로화면이면 '가로로 돌린다' 안내로 덮는다 ════
        터치 기기(pointer:coarse)에서 세로(portrait)일 때만 표시. 가로로 돌리면
        미디어쿼리가 자동으로 풀려 안내가 사라지고 복습 화면이 나온다. */
     #rotate-hint { display: none; }
@@ -349,7 +349,7 @@
   <div id="typing-score" hidden></div>
 </div>
 <button id="typing-complete-btn" hidden></button>
-<!-- 영상 슬라이드에서만 뜨는 넘김 버튼. 유튜브 iframe이 화면을 꽉 채워 키보드·휠이 안 먹을 때의 탈출구. -->
+<!-- 영상 슬라이드에서만 뜨는 넘김 버튼. 유튜브 iframe이 화면을 꽉 채워 키보드, 휠이 안 먹을 때의 탈출구. -->
 <button id="video-next-btn" hidden>다음 슬라이드</button>
 <div    id="slide-counter" hidden></div>
 <div    id="load-error"    hidden></div>
@@ -357,16 +357,16 @@
 <!-- ── 복습 모드 세로화면 안내(가로로 돌리면 자동으로 사라짐) ── -->
 <div id="rotate-hint">
   <svg class="rh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/></svg>
-  <div class="rh-title">가로로 돌려주세요</div>
+  <div class="rh-title">가로로 돌린다</div>
   <div class="rh-sub">화면을 가로로 돌리면<br>글자와 빈칸이 크게 잘 보여요</div>
 </div>
 
 <script src="slide-render.js?v=20261026a"></script>
 <script type="module">
-/* 2027 개념 노트 슬라이드 화면 — 2026 hoistory/lms/lecture.html을 옮겼다(2026-10-25).
+/* 2027 개념 노트 슬라이드 화면: 2026 hoistory/lms/lecture.html을 옮겼다(2026-10-25).
  * 바뀐 것: 강의는 lesson_library 문서 id(?id=)로 찾는다. 디자인은 settings/concept_note_design
  * (2026의 settings/class_design과 갈라 둬야 2026 슬라이드 모양이 안 바뀐다). 그림은 이 레포 img/.
- * 경험치(타이핑 복습 XP)는 2027 경험치가 아직 정해지지 않아 붙이지 않았다 — 복습 자체는 된다. */
+ * 경험치(타이핑 복습 XP)는 2027 경험치가 아직 정해지지 않아 붙이지 않았다: 복습 자체는 된다. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore, doc, getDoc, collection, query, where, getDocs, limit
@@ -378,9 +378,9 @@ import { blockPaste } from './shared/textLimit.js?v=20261025a';
 import { applyScreenProtection } from './shared/protect.js?v=20261025a';
 import { studyClosedReason, loadHolidays } from './shared/util.js?v=20261025a';
 
-// 학생 화면 복사/붙여넣기·우클릭 차단(부정행위 방지)
+// 학생 화면 복사/붙여넣기, 우클릭 차단(부정행위 방지)
 blockPaste(document);
-// 개념 노트 슬라이드 보호 — 우클릭·드래그·선택·인쇄 차단과 캡처 억제.
+// 개념 노트 슬라이드 보호: 우클릭, 드래그, 선택, 인쇄 차단과 캡처 억제.
 // (OS 스크린샷 자체는 웹에서 막을 수 없다. 자세한 한계는 shared/protect.js 주석 참고.)
 applyScreenProtection(document);
 
@@ -460,7 +460,7 @@ async function serverNow() {
 async function init() {
   // 강의는 강의 라이브러리(lesson_library) 문서 id로 찾는다. 강 번호는 해마다 겹칠 수 있어서.
   const id = new URLSearchParams(location.search).get('id');
-  if (!id) { showError('강의(?id=)가 없습니다.'); return; }
+  if (!id) { showError('강의(?id=)가 없다.'); return; }
 
   // 복습 모드는 이용 시간에만 연다(규칙은 shared/util.js의 studyClosedReason).
   // 학생 화면이 버튼에서 이미 막지만, 주소 직접 입력이나 예전 탭 새로고침 경로가 남아 여기서도 확인한다.
@@ -476,7 +476,7 @@ async function init() {
   ]);
   applySettings(designSnap.exists() ? designSnap.data() : {});
 
-  if (!lessonSnap.exists()) { showError('강의를 찾을 수 없습니다.'); return; }
+  if (!lessonSnap.exists()) { showError('강의를 찾을 수 없다.'); return; }
   const lessonDoc = lessonSnap.data();
   /* ── 볼 수 있는 강의인지 ──
    * 강의 내용은 lesson_library에 하나만 있고, 어느 강의실에서 쓰는지는 course_lessons가
@@ -486,9 +486,9 @@ async function init() {
    * 어드민 미리보기(?preview=1)는 비공개와 강의실 확인을 모두 통과시킨다. */
   const isAdminPreview = new URLSearchParams(location.search).get('preview') === '1';
   if (!isAdminPreview) {
-    if (lessonDoc.isOpen !== true) { showError('아직 공개되지 않은 강의입니다.'); return; }
+    if (lessonDoc.isOpen !== true) { showError('아직 공개되지 않은 강의이다.'); return; }
     const courseId = new URLSearchParams(location.search).get('course');
-    if (!courseId) { showError('어느 반의 강의인지 알 수 없습니다. 수업 홈에서 다시 열어 주세요.'); return; }
+    if (!courseId) { showError('어느 반의 강의인지 알 수 없다. 수업 홈에서 다시 연다.'); return; }
     let attached = false;
     try {
       const snap = await getDocs(query(collection(db, 'course_lessons'),
@@ -496,16 +496,16 @@ async function init() {
       attached = !snap.empty && snap.docs[0].data().isOpen === true;
     } catch (e) {
       console.warn('[courseLesson]', e);
-      showError('강의를 확인하지 못했습니다. 새로고침해 주세요.');
+      showError('강의를 확인하지 못했다. 새로고침한다.');
       return;
     }
-    if (!attached) { showError('이 반에 올라온 강의가 아닙니다.'); return; }
+    if (!attached) { showError('이 반에 올라온 강의가 아니다.'); return; }
   }
   const content = lessonDoc.content;
   // 섹션 구조(2026-10-26 이후)이거나 2026 모양(contentLines)이면 그린다.
   // 2026 모양은 buildSlidesFromData가 섹션으로 옮겨서 그려 준다.
   if (!content || !content.lesson || !(Array.isArray(content.sections) || Array.isArray(content.contentLines))) {
-    showError('아직 등록된 콘텐츠가 없습니다.');
+    showError('아직 등록된 콘텐츠가 없다.');
     return;
   }
 
@@ -521,7 +521,7 @@ async function init() {
   // 폰트가 캐시된 컴퓨터와 아닌 컴퓨터의 쪽 나눔이 서로 달라졌다(SlideRender.ensureSlideFonts 주석 참고).
   await SlideRender.ensureSlideFonts();
 
-  // 복습(타이핑) 모드는 개념 체크 슬라이드만 보여준다(표지·학습목표·생각 체크 등은 제외).
+  // 복습(타이핑) 모드는 개념 체크 슬라이드만 보여준다(표지, 학습목표, 생각 체크 등은 제외).
   const modeParam  = new URLSearchParams(location.search).get('mode');
   const reviewMode = modeParam === 'typing';
   let rawSlides = SlideRender.buildSlidesFromData(content);
@@ -550,7 +550,7 @@ async function init() {
   const SLIDES = [];
   for (const slide of rawSlides) {
     /* 연표(세로)는 사건이 세로로 쌓이므로, 많이 넣으면 아래쪽이 슬라이드 밖으로
-       밀려 잘려 나갔다(넘친 줄 알 길도 없었다). 넘치면 사건 단위로 쪽을 나눈다 —
+       밀려 잘려 나갔다(넘친 줄 알 길도 없었다). 넘치면 사건 단위로 쪽을 나눈다 :
        동그라미 항목 나누기와 같은 자(ruler)를 쓰므로 실제 렌더 높이가 기준이다.
        한 사건만으로도 넘치면 더 나눌 수 없으니 그대로 둔다(그때는 잘린다). */
     if (slide.format === 'timeline-v' && (slide.events || []).length > 1 && checkOverflow(slide)) {
@@ -594,8 +594,8 @@ async function init() {
 
   /* ── 모바일 판별: 좁은 화면은 push 전환 대신 슬라이드를 세로로 이어붙여
      스크롤로 넘기는 방식을 쓴다 ── */
-  // 복습 모드는 세로면 '가로로 돌려주세요' 안내를 띄우고 가로에서 진행하므로,
-  // 항상 데스크톱식(한 장 크게 보기) 레이아웃을 써서 가로에서 글자·커서가 크게 보이게 한다.
+  // 복습 모드는 세로면 '가로로 돌린다' 안내를 띄우고 가로에서 진행하므로,
+  // 항상 데스크톱식(한 장 크게 보기) 레이아웃을 써서 가로에서 글자, 커서가 크게 보이게 한다.
   if (reviewMode) document.body.classList.add('review-mode');
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches; // 터치 기기 여부
   // 좁은 화면(폰)뿐 아니라, PC라도 창이 좁거나(≤1024) 16:9에 안 맞게 세로로 긴 창이면
@@ -647,7 +647,7 @@ async function init() {
 
   // 완성형/빈칸형 모드 전환 + 주소창의 ?mode= 값을 항상 현재 상태와 일치시킨다
   // (새로고침해도, 링크를 복사해서 다시 열어도 마지막 상태 그대로 열리게).
-  // 박스·글자 없이 깔끔한 라인 아이콘(SVG)만으로 모드를 표시(수업 화면 방해 최소화).
+  // 박스, 글자 없이 깔끔한 라인 아이콘(SVG)만으로 모드를 표시(수업 화면 방해 최소화).
   // 이모지 눈은 기기별로 사실적으로 렌더돼 거슬려서 SVG로 되돌린다. 크기는 font-size(1em) 기준.
   const SVG_EYE     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const SVG_EYE_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -681,9 +681,9 @@ async function init() {
   });
 
   // ── 타이핑 모드: 빈칸을 입력칸으로 바꿔 학생이 정답을 직접 쳐보고 즉시 채점 ──
-  /* 채점용 정규화. 학생이 손으로 치는 답이므로 띄어쓰기와 부호는 따지지 않는다 —
+  /* 채점용 정규화. 학생이 손으로 치는 답이므로 띄어쓰기와 부호는 따지지 않는다 :
      「조의제문」은 "조의제문"으로, "위화도 회군"은 "위화도회군"으로 쳐도 맞다.
-     글자(한글·한자·영문)와 숫자만 남기고 전부 털어 낸다. NFC로 모으는 것은 IME에
+     글자(한글, 한자, 영문)와 숫자만 남기고 전부 털어 낸다. NFC로 모으는 것은 IME에
      따라 한글이 자모로 쪼개져 들어오는 일이 있어서다.
      정답이 부호로만 이루어져 털면 빈 문자열이 되는 경우에만 예전 방식으로 돌아간다. */
   function normAns(s) {
@@ -697,7 +697,7 @@ async function init() {
     return bare || raw.replace(/\s+/g, ' ');
   }
 
-  // 글자 수 기반(1자=1em 가정) 폭 계산은 한글은 맞지만 영문·숫자 답에서는 실제 글자보다
+  // 글자 수 기반(1자=1em 가정) 폭 계산은 한글은 맞지만 영문, 숫자 답에서는 실제 글자보다
   // 훨씬 넓게 잡혀 좌우에 빈 여백이 남는다. 실제 폰트로 캔버스에 그려 픽셀 폭을 재서 딱 맞춘다.
   let _typingMeasureCanvas = null;
   function measureTextWidth(text, font) {
@@ -864,7 +864,7 @@ async function init() {
       currentSlideIdx = 0;
       updateCounter();
       rescaleMobileSlides();
-      // hidden을 막 푼 직후라 첫 계산이 0으로 나올 수 있다 — 레이아웃이 끝난 다음 프레임에
+      // hidden을 막 푼 직후라 첫 계산이 0으로 나올 수 있다: 레이아웃이 끝난 다음 프레임에
       // 한 번 더 확실히 계산하고, 이후로는 ResizeObserver가 알아서 맞춘다.
       requestAnimationFrame(rescaleMobileSlides);
       watchMobileSlideSize();
@@ -901,7 +901,7 @@ async function init() {
         if (f.getAttribute('src') !== want) f.setAttribute('src', want);
       });
     });
-    // 영상 슬라이드일 때만 넘김 버튼을 띄운다(iframe이 키보드·휠을 먹는 경우의 탈출구).
+    // 영상 슬라이드일 때만 넘김 버튼을 띄운다(iframe이 키보드, 휠을 먹는 경우의 탈출구).
     const nextBtn = document.getElementById('video-next-btn');
     if (nextBtn) {
       const cur = slides[activeIdx];
@@ -935,7 +935,7 @@ async function init() {
   /* ── 세로 연표 제자리 전환("모핑") ──
      같은 연표를 여러 장으로 나눠 넘길 때, 슬라이드를 통째로 밀면 선까지 움직여서 연표를
      매번 다시 읽게 된다. 세로 연표끼리 넘어갈 때는 밀지 않고, 같은 사건을 찾아 예전 자리에서
-     새 자리로 미끄러뜨린다 — 2번 사건이 다음 장의 1번이면 그 자리까지 스르륵 올라간다.
+     새 자리로 미끄러뜨린다: 2번 사건이 다음 장의 1번이면 그 자리까지 스르륵 올라간다.
      선과 배지, 제목은 제자리에 그대로 있다.
 
      자리를 잴 때 getBoundingClientRect를 쓰지 않는 것은 #slides가 화면 크기에 맞춰
@@ -947,7 +947,7 @@ async function init() {
     return { x, y };
   }
 
-  /* 사건 목록 — 짝짓기 열쇠(글자)와 움직일 요소(라벨칸, 내용칸)를 함께 담는다.
+  /* 사건 목록: 짝짓기 열쇠(글자)와 움직일 요소(라벨칸, 내용칸)를 함께 담는다.
      라벨칸 안의 점은 absolute라 라벨칸을 옮기면 같이 따라온다. */
   function tlEvents(slide) {
     const tl = slide.querySelector('.fmt-timeline-v');
@@ -980,7 +980,7 @@ async function init() {
     const shift = offsetIn(fromMap.get(anchor.key).nodes[0], fromSlide).y
                 - offsetIn(anchor.nodes[0], toSlide).y;
 
-    /* 1) 들어오는 장 — 짝이 있는 사건은 예전 자리에 갖다 두고(여기서 출발한다),
+    /* 1) 들어오는 장: 짝이 있는 사건은 예전 자리에 갖다 두고(여기서 출발한다),
           새 사건은 들어올 방향에 투명하게 세워 둔다. */
     to.forEach(e => {
       const src = fromMap.get(e.key);
@@ -994,9 +994,9 @@ async function init() {
       });
     });
 
-    /* 2) 나가는 장 — 짝이 있는 사건은 즉시 감춘다(들어오는 장의 같은 사건이 대신 움직인다).
+    /* 2) 나가는 장: 짝이 있는 사건은 즉시 감춘다(들어오는 장의 같은 사건이 대신 움직인다).
           짝이 없는 사건(위에서 빠지는 것)만 남겨 같은 결로 내보낸다.
-          머리줄과 연표 선도 감춘다 — 들어오는 장의 것과 겹쳐 두 겹으로 보이기 때문. */
+          머리줄과 연표 선도 감춘다: 들어오는 장의 것과 겹쳐 두 겹으로 보이기 때문. */
     const leaving = [];
     from.forEach(e => {
       const stays = to.some(x => x.key === e.key);
@@ -1008,7 +1008,7 @@ async function init() {
     [fromSlide.querySelector('.slide-header'), fromSlide.querySelector('.tlv-line')]
       .forEach(el => { if (el) tweak(el, { transition: 'none', opacity: '0' }); });
 
-    /* 연표 선 — 라벨 칸이 max-content라 가장 긴 라벨이 바뀌면 선도 좌우로 옮겨 간다.
+    /* 연표 선: 라벨 칸이 max-content라 가장 긴 라벨이 바뀌면 선도 좌우로 옮겨 간다.
        나가는 장의 선은 위에서 감췄으므로, 들어오는 장의 선을 예전 자리에서 새 자리로
        사건과 같은 방식으로 옮긴다. 안 그러면 선만 툭 끊겨 보인다. */
     const lineFrom = fromSlide.querySelector('.tlv-line');
@@ -1022,7 +1022,7 @@ async function init() {
       }
     }
 
-    /* 들어오는 장의 배경을 비워 나가는 장이 비쳐 보이게 한다 — 빠지는 사건이 올라가며
+    /* 들어오는 장의 배경을 비워 나가는 장이 비쳐 보이게 한다: 빠지는 사건이 올라가며
        사라지는 모습을 보여 주려면 아래 장이 살아 있어야 한다. 배경은 나가는 장이 그린다. */
     toSlide.style.background = 'transparent';
 
@@ -1045,7 +1045,7 @@ async function init() {
       lineTo.style.transform  = 'translate(0, 0)';
     }
 
-    /* 정리 — 슬라이드 자체의 transform은 건드리지 않는다(지우면 CSS 기본값인
+    /* 정리: 슬라이드 자체의 transform은 건드리지 않는다(지우면 CSS 기본값인
        translateY(100%)로 돌아가 화면 밖으로 내려간다). 배경만 되돌린다. */
     return () => {
       touched.forEach(el => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; });
@@ -1055,7 +1055,7 @@ async function init() {
 
 
   /* ── 머리줄 고정 전환 ──
-     연표가 아닌 보통 슬라이드(개념·미션·생각·자료)끼리 넘어갈 때 쓴다. 배지와 제목은
+     연표가 아닌 보통 슬라이드(개념, 미션, 생각, 자료)끼리 넘어갈 때 쓴다. 배지와 제목은
      제자리에 두고 본문만 살짝 올라가며 바뀐다. 슬라이드를 통째로 미는 예전 방식은
      "개념 Check" 배지까지 매번 화면 밖으로 나갔다 들어와서 눈이 따라가기 번거로웠다.
 
@@ -1068,7 +1068,7 @@ async function init() {
 
   /* 배경이 서로 다른 짝(밝은 본문 ↔ 다크 인트로)인지. 본문만 바꿔치기하는 방식은 아래 장이
      배경을 그려 주는 것을 전제로 하므로, 배경이 다르면 들어오는 내용이 엉뚱한 배경 위에 뜬다.
-     그런 짝도 제자리 교차 페이드로 넘긴다 — 그래도 화면이 밀리지는 않는다. */
+     그런 짝도 제자리 교차 페이드로 넘긴다: 그래도 화면이 밀리지는 않는다. */
   function sameBackground(a, b) {
     const ca = getComputedStyle(a), cb = getComputedStyle(b);
     return ca.backgroundImage === cb.backgroundImage && ca.backgroundColor === cb.backgroundColor;
@@ -1081,8 +1081,8 @@ async function init() {
      본문과 함께 움직이도록 목록에 더한다. */
   function bodyParts(slide) {
     const wrap = slide.querySelector(':scope > .clayout-right, :scope > .clayout-bottom');
-    /* intro-sweep은 표지·인트로를 쓸고 지나가는 장식용 빛이다. 제 애니메이션으로 transform을
-       쓰고 있어 여기서 또 옮기면 서로 싸운다 — 내용이 아니므로 아예 뺀다. */
+    /* intro-sweep은 표지, 인트로를 쓸고 지나가는 장식용 빛이다. 제 애니메이션으로 transform을
+       쓰고 있어 여기서 또 옮기면 서로 싸운다: 내용이 아니므로 아예 뺀다. */
     const own = el => !el.classList.contains('slide-header') && !el.classList.contains('intro-sweep');
     if (!wrap) return Array.from(slide.children).filter(own);
     const main = wrap.querySelector(':scope > .clayout-main');
@@ -1104,7 +1104,7 @@ async function init() {
     const tweak = (el, css) => { touched.push(el); Object.assign(el.style, css); };
     const rise = BODY_RISE * (dir >= 0 ? 1 : -1);
 
-    /* 머리줄은 글자가 같으면 나가는 쪽만 감춘다 — 들어오는 쪽이 같은 자리에 같은 글자로
+    /* 머리줄은 글자가 같으면 나가는 쪽만 감춘다: 들어오는 쪽이 같은 자리에 같은 글자로
        서 있으므로 화면에서는 미동도 없다(배지가 고정돼 보이는 핵심). 글자가 다를 때만
        들어오는 쪽을 제자리에서 서서히 띄운다. 배지와 제목을 따로 보는 것은, 제목만
        바뀌었는데 머리줄을 통째로 페이드하면 같은 배지까지 깜빡이기 때문이다. */
@@ -1161,7 +1161,7 @@ async function init() {
     const fromSlide = slides[currentSlideIdx];
     const toSlide   = slides[targetIdx];
 
-    /* 들어오는 장을 제자리에 얹는다. 어떤 짝이든 슬라이드를 통째로 밀지 않는다 —
+    /* 들어오는 장을 제자리에 얹는다. 어떤 짝이든 슬라이드를 통째로 밀지 않는다 :
        배지가 매번 화면 밖으로 나갔다 들어오는 것을 없애는 것이 목적이라, 밀기 경로 자체를
        두지 않았다. 전환하는 두 장만 is-anim으로 그려지고 will-change도 이때만 붙는다. */
     fromSlide.classList.add('is-anim');
@@ -1179,8 +1179,8 @@ async function init() {
       ? morphTimeline(fromSlide, toSlide, dur)
       : morphBody(fromSlide, toSlide, dur, dir);
     if (!morphCleanup) {
-      /* 나눠 옮길 수 없는 짝 — 짝지을 사건이 없는 연표끼리, 배경이 다른 짝(밝은 본문 ↔
-         다크 인트로), 전면 이미지·영상. 움직임 없이 제자리에서 겹쳐 바꾼다.
+      /* 나눠 옮길 수 없는 짝: 짝지을 사건이 없는 연표끼리, 배경이 다른 짝(밝은 본문 ↔
+         다크 인트로), 전면 이미지, 영상. 움직임 없이 제자리에서 겹쳐 바꾼다.
          나가는 장은 건드리지 않는다. 들어오는 장이 불투명해서 다 덮으므로 그 장만 서서히
          올리면 된다. 양쪽을 같이 페이드하면 둘 다 반투명해져 뒤 배경이 비친다. */
       toSlide.style.opacity = '0';
@@ -1200,7 +1200,7 @@ async function init() {
       toSlide.classList.remove('is-anim');
       toSlide.classList.add('is-active');
       // 모핑으로 얹은 인라인 스타일을 전부 되돌린다. 슬라이드 자체의 transform은 어느 쪽도
-      // 건드리지 않는다 — 지우면 CSS 기본값(translateY(100%))으로 내려가 화면 밖이 된다.
+      // 건드리지 않는다: 지우면 CSS 기본값(translateY(100%))으로 내려가 화면 밖이 된다.
       // (나가는 장은 translateY(0)에 그대로 남지만 is-active가 아니라 visibility로 가려진다.)
       if (morphCleanup) morphCleanup();
       toSlide.style.opacity = '';
@@ -1239,7 +1239,7 @@ async function init() {
     } catch (e) { /* 다음 제스처에서 재시도 */ }
   }
 
-  /* ── 키보드·마우스휠·터치 탐색 (데스크톱 push 전환 전용, 모바일은 네이티브 스크롤 사용) ── */
+  /* ── 키보드, 마우스휠, 터치 탐색 (데스크톱 push 전환 전용, 모바일은 네이티브 스크롤 사용) ── */
   if (!isMobileLayout) {
     document.addEventListener('keydown', e => {
       if (slidesEl.hidden) return;
@@ -1269,7 +1269,7 @@ async function init() {
 
   /* ── 유튜브 영상 슬라이드 뒤 넘김 복구 ──
      영상을 재생하려고 iframe을 클릭하면 키보드 포커스가 iframe(다른 출처) 안으로 들어간다.
-     그때부터 화살표·PageDown이 유튜브 플레이어로 가버려서 위의 keydown 핸들러에 닿지 않고,
+     그때부터 화살표, PageDown이 유튜브 플레이어로 가버려서 위의 keydown 핸들러에 닿지 않고,
      iframe 위에서 굴린 휠도 부모로 올라오지 않아 "영상 다 보고 넘기려는데 안 넘어가는" 상태가 된다.
      그래서 포커스를 빼앗긴 걸 감지해 두고, 마우스가 영상 밖으로 나오는 순간 문서로 되돌린다. */
   document.getElementById('video-next-btn')?.addEventListener('click', () => {
@@ -1328,7 +1328,7 @@ async function init() {
     if (!frames.length) return;
     const w = frames[0].clientWidth || frames[0].getBoundingClientRect().width;
     if (!w) {
-      // 아직 레이아웃 전 — 다음 프레임에 다시 시도(무한 재시도는 하지 않는다).
+      // 아직 레이아웃 전: 다음 프레임에 다시 시도(무한 재시도는 하지 않는다).
       if (_mobileScaleRetry++ < 30) requestAnimationFrame(rescaleMobileSlides);
       return;
     }

@@ -1,17 +1,17 @@
-// 2027 LMS 학생 화면 — 제로베이스 뼈대 (2026-10-26, 큰 틀 2026-10-27)
+// 2027 LMS 학생 화면: 제로베이스 뼈대 (2026-10-26, 큰 틀 2026-10-27)
 // 로그인 → 강의실 고르기 → 강의실(두 배치) → 칸 보기.
 //
 // 선생님 지시 2026-10-27 (요구사항 84~87):
-//  · 강의실 고르기에 반 번호를 띄우지 않는다. 학생은 자기 반밖에 없으므로 "사회", "역사"로 끝낸다
-//  · 강의실 안은 배치 둘 — 강의별(1강, 2강 고르기)과 메뉴별(개념노트만, 미션만 모아 보기).
+//  - 강의실 고르기에 반 번호를 띄우지 않는다. 학생은 자기 반밖에 없으므로 "사회", "역사"로 끝낸다
+//  - 강의실 안은 배치 둘: 강의별(1강, 2강 고르기)과 메뉴별(개념노트만, 미션만 모아 보기).
 //    둘은 같은 내용으로 들어가는 두 길이다. 둘 다 필요하다
-//  · 학생은 폰과 패드로 들어온다. 화면은 모바일과 PC가 같은 것을 쓴다
-//  · 개념노트(강의 슬라이드)만 예외로 새 탭 전체화면으로 연다
+//  - 학생은 폰과 패드로 들어온다. 화면은 모바일과 PC가 같은 것을 쓴다
+//  - 개념노트(강의 슬라이드)만 예외로 새 탭 전체화면으로 연다
 //
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261028a';
+import * as M from './model.js?v=20261028d';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -27,24 +27,24 @@ const state = {
   menuKey: null,          // 메뉴별로 들어왔을 때 고른 메뉴
 
   // 로그인 화면 (선생님 지시 2026-10-28)
-  loginStep: 'check',     // 'check'(학번·이름·비밀번호) | 'setup'(첫 접속 — 비밀번호 만들기)
+  loginStep: 'check',     // 'check'(학번, 이름, 비밀번호) | 'setup'(첫 접속: 비밀번호 만들기)
   loginErr: '',           // 지금 보일 빨간 오류 문구(없으면 '')
-  loginBusy: false,       // Firestore 확인 중 — 중복 제출 막기
+  loginBusy: false,       // Firestore 확인 중: 중복 제출 막기
   pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name, courseId }
-  formSno: '', formName: '',  // 오류로 다시 그릴 때도 학번·이름은 남겨 둔다(비밀번호만 새로 친다)
+  formSno: '', formName: '',  // 오류로 다시 그릴 때도 학번, 이름은 남겨 둔다(비밀번호만 새로 친다)
 };
 
 // ── 부트 가드 ──
 // Firestore를 먼저 읽고 화면을 연다. 이게 없으면 메모리가 빈 채로 로그인을 판정해
-// 맞는 학번을 넣어도 "그 학번으로 든 강의실이 없습니다"가 된다.
+// 맞는 학번을 넣어도 "그 학번으로 든 강의실이 없다"가 된다.
 async function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
-  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
+  if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했다. 새로고침한다.'; return; }
   try {
     await M.loadCore();
   } catch (e) {
     console.error('loadCore', e);
-    document.getElementById('boot').textContent = '자료를 불러오지 못했습니다. 새로고침해 주세요.';
+    document.getElementById('boot').textContent = '자료를 불러오지 못했다. 새로고침한다.';
     return;
   }
   document.title = M.getText('browserTitle');
@@ -70,7 +70,7 @@ function topbar(title, backAct){
 /* ── 로그인 (선생님 지시 2026-10-28) ──
    순서: 제목 → 부제목 → 안내문구 → 학번 → 이름 → 비밀번호 → 입장하기 → (틀렸을 때) 빨간 문구
          → 오픈카톡 / 홈 화면에 추가.
-   화면 문구는 전부 M.getText(key)로 읽는다(하드코딩 금지 — CLAUDE.md). */
+   화면 문구는 전부 M.getText(key)로 읽는다(하드코딩 금지: CLAUDE.md). */
 function viewLogin(){
   if (state.loginStep === 'setup') return viewLoginSetup();
   const guide = M.getText('loginGuide');
@@ -87,7 +87,7 @@ function viewLogin(){
   </div>`;
 }
 
-// 처음 접속(비밀번호 문서가 없음) — 학번·이름은 이미 맞혀 둔 채 비밀번호만 새로 만든다.
+// 처음 접속(비밀번호 문서가 없음): 학번, 이름은 이미 맞혀 둔 채 비밀번호만 새로 만든다.
 function viewLoginSetup(){
   return `<div class="login">
     <h1>${esc(M.getText('loginTitle'))}</h1>
@@ -102,7 +102,7 @@ function viewLoginSetup(){
   </div>`;
 }
 
-// 입장하기 아래 — 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28). 링크는 일반 설정에서.
+// 입장하기 아래: 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28). 링크는 일반 설정에서.
 function loginExtras(){
   return `<div class="login-extra">
     <button class="extrabtn" data-act="go-kakao">${icon('message-circle',20)}<span>${esc(M.getText('kakaoCaption'))}</span></button>
@@ -110,7 +110,7 @@ function loginExtras(){
   </div>`;
 }
 function openExternal(url){
-  if (!url){ alertBox('링크가 아직 설정되지 않았습니다.'); return; }
+  if (!url){ alertBox('링크가 아직 설정되지 않았다.'); return; }
   window.open(url, '_blank', 'noopener');
 }
 
@@ -122,7 +122,7 @@ function viewRooms(){
         <span class="ic" style="background:var(--concept)">${icon('graduation-cap',22)}</span>
         <div class="body"><div class="t">${esc(roomLabel(c))}</div></div>
         <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`
-    : `<div class="empty">든 강의실이 없습니다.</div>`;
+    : `<div class="empty">든 강의실이 없다.</div>`;
   return topbar('강의실 고르기') + body;
 }
 
@@ -135,15 +135,15 @@ function viewHome(){
   return topbar(roomLabel(c), 'back-rooms') + tabs + pane();
 }
 
-// 배치 3 — 콘텐츠. 뽑기, 게임 같은 흥미 요소가 들어올 자리다(선생님 지시 2026-10-27). 아직 비었다.
+// 배치 3: 콘텐츠. 뽑기, 게임 같은 흥미 요소가 들어올 자리다(선생님 지시 2026-10-27). 아직 비었다.
 function paneExtras(){
-  return `<div class="empty">아직 없습니다.</div>`;
+  return `<div class="empty">아직 없다.</div>`;
 }
 
-// 배치 1 — 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.
+// 배치 1: 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.
 function paneByLesson(){
   const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
-  if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
+  if (!cls.length) return `<div class="empty">열린 강의가 없다.</div>`;
   return `<div class="grid">${cls.map((cl, i) => {
     const tags = (cl.lesson.order || []).map(k =>
       `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
@@ -154,7 +154,7 @@ function paneByLesson(){
   }).join('')}</div>`;
 }
 
-// 배치 2 — 메뉴별. 개념노트만, 미션만 모아 본다. 복습과 성적도 여기 선다.
+// 배치 2: 메뉴별. 개념노트만, 미션만 모아 본다. 복습과 성적도 여기 선다.
 function paneByMenu(){
   const counts = {};
   M.PART_TYPES.forEach(p => counts[p.key] = M.getPartItems(state.courseId, p.key).length);
@@ -176,15 +176,15 @@ function paneByMenu(){
 function viewMenu(){
   const c = M.getCourse(state.courseId);
   const m = M.STUDENT_MENUS.find(x => x.key === state.menuKey);
-  if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했습니다.</div>`;
+  if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했다.</div>`;
   const head = topbar(m.name, 'back-home');
 
   if (m.kind === 'score')  return head + scoreCard(c);
   if (m.kind === 'review') return head + reviewList();
 
-  // 칸 모아 보기 — 강의마다 그 칸 하나씩
+  // 칸 모아 보기: 강의마다 그 칸 하나씩
   const items = M.getPartItems(state.courseId, m.key);
-  if (!items.length) return head + `<div class="empty">아직 없습니다.</div>`;
+  if (!items.length) return head + `<div class="empty">아직 없다.</div>`;
   return head + `<div class="grid">${items.map(it => `
     <div class="card" data-act="open-part" data-lid="${it.lesson.id}" data-k="${m.key}">
       <span class="no">${it.no}강</span>
@@ -195,7 +195,7 @@ function viewMenu(){
 
 function reviewList(){
   const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
-  if (!qs.length) return `<div class="empty">열린 복습이 없습니다.</div>`;
+  if (!qs.length) return `<div class="empty">열린 복습이 없다.</div>`;
   return `<div class="grid">${qs.map(cq => `<div class="card" data-act="noop">
     <span class="ic" style="background:var(--review)">${icon('list-ordered',22)}</span>
     <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
@@ -209,17 +209,17 @@ function scoreCard(c){
   const rows = parts.map(p => {
     const v = s?.items?.[p.key], mx = s?.max?.[p.key];
     if (typeof v === 'number'){ total += v; maxTotal += (mx || 0); }
-    const val = typeof v === 'number' ? `${v}${mx ? ' / ' + mx : ''}` : '—';
+    const val = typeof v === 'number' ? `${v}${mx ? ' / ' + mx : ''}` : '없음';
     return `<div class="row"><span>${esc(p.name)}</span><b>${val}</b></div>`;
   }).join('');
   return `<div class="score"><div class="h">실시간 성적</div>${rows}
     <div class="row total"><span>최종</span><b>${maxTotal ? total + ' / ' + maxTotal : total}</b></div></div>`;
 }
 
-// ── 강의 하나를 고른 화면(배치 1) — 칸을 탭으로 넘긴다 ──
+// ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
 function viewLesson(){
   const l = M.getLesson(state.lessonId);
-  if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했습니다.</div>`;
+  if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했다.</div>`;
   const order = l.order || [];
   if (!state.partKey || !order.includes(state.partKey)) state.partKey = order[0] || null;
 
@@ -243,12 +243,12 @@ function viewLesson(){
 function viewPart(){
   const l = M.getLesson(state.lessonId);
   const d = M.partDef(state.partKey);
-  if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했습니다.</div>`;
+  if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했다.</div>`;
   return topbar(l.title, 'back-menu') + `<div class="partview">${partView(l, state.partKey)}</div>`;
 }
 
 /* 칸 하나의 알맹이.
-   개념노트만 여기서 안 펼친다 — 강의 슬라이드는 늘 새 탭 전체화면이다(요구사항 87). */
+   개념노트만 여기서 안 펼친다: 강의 슬라이드는 늘 새 탭 전체화면이다(요구사항 87). */
 function partView(l, k){
   const d = M.partDef(k); if (!d) return '';
   const p = l.parts?.[k] || {};
@@ -260,16 +260,16 @@ function partView(l, k){
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
   if (k === 'mission')
-    return head + `<div class="placeholder">미니앱이 여기 바로 열립니다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
-      제출하면 반 전체에 실시간 공유. (뼈대 — 연결은 다음 단계)</div>`;
+    return head + `<div class="placeholder">미니앱이 여기 바로 열린다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
+      제출하면 반 전체에 실시간 공유. (뼈대: 연결은 다음 단계)</div>`;
 
   if (k === 'question')
-    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`
-      + `<textarea placeholder="내 답변을 적습니다"></textarea>`
+    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없다.')}</p>`
+      + `<textarea placeholder="내 답변을 적는다"></textarea>`
       + `<button class="primary wide" data-act="submit-demo">제출</button>`;
 
   if (k === 'formative')
-    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열립니다. 성적에는 들어가지 않습니다. (뼈대)</div>`;
+    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열린다. 성적에는 들어가지 않는다. (뼈대)</div>`;
 
   return head;
 }
@@ -291,7 +291,7 @@ $app.addEventListener('click', e => {
       const sno = (document.getElementById('f-sno').value || '').trim();
       const name = (document.getElementById('f-name').value || '').trim();
       const pw = (document.getElementById('f-pw').value || '').trim();
-      state.formSno = sno; state.formName = name;   // 오류로 다시 그려도 학번·이름은 남긴다
+      state.formSno = sno; state.formName = name;   // 오류로 다시 그려도 학번, 이름은 남긴다
       const rooms = M.getCoursesOfStudent(YEAR, sno);
       if (!rooms.length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
       if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = M.getText('errNameMismatch'); render(); return; }
@@ -299,7 +299,7 @@ $app.addEventListener('click', e => {
       (async () => {
         try {
           const rec = await M.getAuthRecord(YEAR, sno);
-          if (!rec){   // 첫 접속 — 비밀번호를 아직 안 만들었다
+          if (!rec){   // 첫 접속: 비밀번호를 아직 안 만들었다
             state.loginBusy = false; state.pending = { sno, name, courseId: rooms[0].id };
             state.loginStep = 'setup'; render(); return;
           }
@@ -365,7 +365,7 @@ $app.addEventListener('click', e => {
       window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}`, '_blank', 'noopener');
       break;
 
-    case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
+    case 'submit-demo': alertBox('제출되었다. (데모)'); break;
     case 'noop': break;
   }
 });

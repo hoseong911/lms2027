@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════
-   교재 쪽(page) 강의 화면 — 시안
+   교재 쪽(page) 강의 화면: 시안
 
    활동지 PDF를 쪽 그림으로 굽고, 그 위에 빈칸을 겹쳐 올린다.
    빈칸의 자리와 정답은 학생용/교사용 PDF 한 쌍을 대조해서 뽑은 것이라
@@ -71,7 +71,7 @@ body{
   background:var(--point-l);color:var(--point);font-size:12.5px;font-weight:800;
 }
 
-/* 모드 고르기 — 테두리와 배경 없이 글자만, 켜진 것 아래 굵은 선 */
+/* 모드 고르기: 테두리와 배경 없이 글자만, 켜진 것 아래 굵은 선 */
 .pl-modes{display:flex;align-items:flex-end;column-gap:22px}
 .pick{
   position:relative;display:inline-flex;align-items:center;gap:6px;
@@ -101,7 +101,7 @@ body:not([data-mode="fill"]) .pl-count{display:none}
 }
 .pl-page img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none}
 
-/* 쪽 넘기기 — 무대 양 끝 */
+/* 쪽 넘기기: 무대 양 끝 */
 .pl-nav{
   position:absolute;top:50%;transform:translateY(-50%);
   width:40px;height:40px;z-index:5;

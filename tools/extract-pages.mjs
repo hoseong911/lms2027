@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════
    활동지 PDF 한 쌍에서 쪽 그림과 빈칸(자리 + 정답)을 뽑는다.
 
-   전제 — 학생용과 교사용을 **같은 원본에서 답 레이어만 켜고 끄고** 두 번 내보낸다.
+   전제: 학생용과 교사용을 **같은 원본에서 답 레이어만 켜고 끄고** 두 번 내보낸다.
    그래야 두 파일의 쪽수와 좌표가 같아서 대조가 성립한다.
      교사용에만 있는 텍스트        = 정답
      두 쪽을 그려서 픽셀이 다른 자리 = 빈칸 상자
@@ -12,7 +12,7 @@
      npm i pdfjs-dist @napi-rs/canvas
      node --max-old-space-size=8192 tools/extract-pages.mjs 학생용.pdf 교사용.pdf 출력폴더 20 21 22 23
 
-   나오는 것 — 출력폴더에 pNN.webp 여러 장과 pages.json
+   나오는 것: 출력폴더에 pNN.webp 여러 장과 pages.json
      pages.json = [{ page, image, w, h, blanks:[{ id, left, top, width, height, answer }] }]
      left/top/width/height는 쪽 그림 대비 %라서 화면 크기가 변해도 그대로 쓴다.
    ════════════════════════════════════════════════════════ */
@@ -83,7 +83,7 @@ function diffBoxes(aCtx, bCtx, W, H) {
 }
 
 /* 교사용에만 있는 텍스트 = 정답. 뷰포트 좌표로 바꿔서 돌려준다.
-   글자 크기(fontRel)도 같이 들고 나온다 — 빈칸 상자 높이로 글자 크기를 정하면
+   글자 크기(fontRel)도 같이 들고 나온다: 빈칸 상자 높이로 글자 크기를 정하면
    두 줄이 한 상자로 뭉친 칸에서만 글자가 커진다. 원본 크기를 쓰는 편이 맞다. */
 async function answerItems(sPage, tPage, vp, pageHeightPt) {
   const s = (await sPage.getTextContent()).items;

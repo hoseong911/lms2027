@@ -20,7 +20,7 @@
  *
  * 강의실(lms_cid)은 클래스 고르기에서 정해지므로 **세션에만** 있다.
  * 학생이 수업 홈에서 반을 고르고 활동을 누르면 같은 탭으로 넘어오므로 그대로 따라온다.
- * 세션을 **먼저** 본다 — 자동 로그인을 꺼도 같은 탭에서 넘어왔으면 세션에는 있다.
+ * 세션을 **먼저** 본다: 자동 로그인을 꺼도 같은 탭에서 넘어왔으면 세션에는 있다.
  */
 
 const S = { sid: 'lms_sid', sname: 'lms_sname', cid: 'lms_cid', year: 'lms_year' };
@@ -32,7 +32,7 @@ function read(store, key) {
 }
 const pick = key => read(sessionStorage, S[key]) || (L[key] ? read(localStorage, L[key]) : '');
 
-/* 학번 5자리 — 1자리 학년, 2~3자리 반, 4~5자리 번호.
+/* 학번 5자리: 1자리 학년, 2~3자리 반, 4~5자리 번호.
    model.js의 parseStudentNo와 같은 셈이다. 앱은 firebase를 안 쓸 수도 있어
    model.js를 import하지 않고 같은 규칙을 여기 둔다. 둘 중 하나를 고치면 다른 쪽도 고친다. */
 export function parseStudentNo(no) {
@@ -42,7 +42,7 @@ export function parseStudentNo(no) {
 }
 
 /* 지금 학생. 못 알아내면 null.
-   돌려주는 칸 이름은 고정이다 — studentId, name, courseId, year, grade, classNo, num.
+   돌려주는 칸 이름은 고정이다: studentId, name, courseId, year, grade, classNo, num.
    (2026에는 앱마다 name과 studentName이 갈려 있었다) */
 export function getStudent() {
   const studentId = pick('sid').trim();
@@ -63,8 +63,8 @@ export function requireStudent(el) {
   if (el) {
     el.innerHTML =
       '<div class="app-gate">' +
-      '<div class="app-gate-title">수업 홈에서 열어 주세요</div>' +
-      '<div class="app-gate-desc">로그인한 뒤 이 활동을 누르면 바로 들어옵니다.</div>' +
+      '<div class="app-gate-title">수업 홈에서 연다</div>' +
+      '<div class="app-gate-desc">로그인한 뒤 이 활동을 누르면 바로 들어온다.</div>' +
       '</div>';
     el.hidden = false;
   }

@@ -1,4 +1,4 @@
-/* 2027 LMS PWA 부트스트랩 — hoistory/pwa.js를 이 레포에 맞게 옮겼다.
+/* 2027 LMS PWA 부트스트랩: hoistory/pwa.js를 이 레포에 맞게 옮겼다.
    hoistory의 서비스워커(/hoistory/sw.js)는 스코프가 /hoistory/라 여기를 덮지 못하므로
    이 레포의 sw.js를 따로 등록한다. 경로는 상대경로라 /lms2027/ 아래 어디서든 맞다. */
 (function () {

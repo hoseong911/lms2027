@@ -1,4 +1,4 @@
-// model.js — LMS2027 뼈대 (2026-10-26 제로베이스 재설계)
+// model.js: LMS2027 뼈대 (2026-10-26 제로베이스 재설계)
 // ───────────────────────────────────────────────────────────────────────────
 // 데이터 모델의 단일 출처. 컬렉션 이름, 칸/메뉴 표, (지금은) 데모 데이터와 조회를 한곳에 둔다.
 // 학생 화면(index.js)과 어드민(admin.js)이 이 파일 하나만 읽어 같은 표를 쓴다.
@@ -6,7 +6,7 @@
 // 조직 원리:
 //   강의실(course)은 "강의(차시)"와 "복습"을 담고,
 //   강의 하나는 개념노트 / 미션 / 질문노트 / 형성평가 네 칸을 각각 있거나 없거나로 채운다.
-//   각 종류 최대 1개, 순서 자유. 사료·사진·영상은 개념노트 안의 내용.
+//   각 종류 최대 1개, 순서 자유. 사료, 사진, 영상은 개념노트 안의 내용.
 //
 // ※ 지금은 Firestore 대신 아래 DEMO(메모리)로 돈다. 화면 뼈대를 먼저 보기 위함.
 //   컬렉션 이름과 문서 모양은 실제와 같게 맞춰 두었으므로, 다음 단계에서 이 파일의
@@ -15,7 +15,7 @@
 
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 
-/* 컬렉션 설계 — 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
+/* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
  *   - 이름에 연도/버전을 박지 않는다. 학년도는 문서의 year 필드로 구분하고,
  *     지난 해는 status:'archived'로 숨긴다. (2028이 와도 같은 컬렉션을 그대로 쓴다)
@@ -36,7 +36,7 @@ export const COLLECTIONS = {
   lessons:            'lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
   courseSubmissions:  'course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
 
-  // ── 나중(예약) — 해당 단계에서 실제로 만든다 ──
+  // ── 나중(예약): 해당 단계에서 실제로 만든다 ──
   quizzes:            'quizzes',        // 복습 문제 창고            (5단계 복습 허브)
   courseQuizzes:      'course_quizzes', // 강의실에 걸린 복습        (5단계)
   missionApps:        'mission_apps',   // 미션 미니앱 등록부        (3단계)
@@ -45,7 +45,7 @@ export const COLLECTIONS = {
   courseXp:           'course_xp',       // 경험치/포인트            (6단계 게임 요소)
 };
 
-// 강의 안 네 칸 — 각 강의에 최대 1개, 순서 자유.
+// 강의 안 네 칸: 각 강의에 최대 1개, 순서 자유.
 //   portfolio: 성적(포트폴리오)에 들어가는가   submits: 학생 제출물이 생기는가
 export const PART_TYPES = [
   { key:'concept',   name:'개념노트',  icon:'book-open',      portfolio:true,  submits:false },
@@ -59,10 +59,10 @@ export function partDef(key){ return PART_TYPES.find(p => p.key === key) || null
 // 독립 메뉴
 export const REVIEW = { key:'review', name:'복습', icon:'list-ordered' };
 
-/* 학생이 강의실 안에서 쓰는 세 배치 (선생님 지시 2026-10-27, 요구사항 85·90)
- *   강의 보기 — 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
- *   메뉴      — 개념노트만, 미션만 모아 본다. 2026 lms 메뉴와 같은 방식
- *   콘텐츠    — 뽑기, 게임 같은 흥미 요소가 들어올 자리(요구사항 69의 다섯 번째 용도). 아직 비었다
+/* 학생이 강의실 안에서 쓰는 세 배치 (선생님 지시 2026-10-27, 요구사항 85, 90)
+ *   강의 보기: 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
+ *   메뉴     : 개념노트만, 미션만 모아 본다. 2026 lms 메뉴와 같은 방식
+ *   콘텐츠   : 뽑기, 게임 같은 흥미 요소가 들어올 자리(요구사항 69의 다섯 번째 용도). 아직 비었다
  * 앞의 둘은 같은 내용으로 들어가는 두 개의 길이다. 메뉴에는 강의에 안 매인 복습과 성적도 선다. */
 export const STUDENT_VIEWS = [
   { key:'byLesson', name:'강의 보기' },
@@ -77,7 +77,7 @@ export const STUDENT_MENUS = [
 
 // 어드민 왼쪽 메뉴
 // 가운데 넷(개념 노트, 미션 활동, 오늘의 질문, 형성평가)은 강의 안 네 칸을 각각 관리하는 자리다.
-// 칸 이름(PART_TYPES)과 메뉴 이름이 다른 것이 있다 — 메뉴는 선생님이 부르는 이름으로 쓴다.
+// 칸 이름(PART_TYPES)과 메뉴 이름이 다른 것이 있다: 메뉴는 선생님이 부르는 이름으로 쓴다.
 export const ADMIN_MENUS = [
   { key:'rooms',     name:'강의실 관리',     icon:'graduation-cap' },
   { key:'students',  name:'학생 관리',       icon:'users' },
@@ -90,7 +90,7 @@ export const ADMIN_MENUS = [
 ];
 
 /* 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
-   강의 라이브러리는 개념 노트의 서브 메뉴로 둔다(선생님 지시 2026-10-28) —
+   강의 라이브러리는 개념 노트의 서브 메뉴로 둔다(선생님 지시 2026-10-28) :
    강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
 export const ADMIN_SUBMENUS = {
   concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
@@ -118,17 +118,17 @@ export const TEXT_FIELDS = [
     { key:'loginBtn',       label:'로그인 버튼 글자',         def:'입장하기' },
     { key:'kakaoCaption',   label:'오픈카톡 버튼 문구',       def:'오픈카톡' },
     { key:'installCaption', label:'홈 화면에 추가 버튼 문구', def:'홈 화면에 추가' },
-    { key:'setupGuide',     label:'첫 접속 — 안내문구',       def:'처음 오셨네요. 쓸 비밀번호를 만들어 주세요.' },
-    { key:'setupBtn',       label:'첫 접속 — 버튼 글자',      def:'비밀번호 만들기' },
+    { key:'setupGuide',     label:'첫 접속 안내문구',        def:'처음 들어왔다. 쓸 비밀번호를 만든다.' },
+    { key:'setupBtn',       label:'첫 접속 버튼 글자',       def:'비밀번호 만들기' },
   ]},
-  { group:'오류·안내 문구', items:[
-    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'그 학번으로 든 강의실이 없습니다.' },
-    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 명단과 다릅니다.' },
-    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호를 입력해 주세요.' },
-    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 틀렸습니다.' },
-    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호를 4자 이상으로 만들어 주세요.' },
-    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'두 비밀번호가 서로 다릅니다.' },
-    { key:'errNetwork',      label:'저장·연결에 문제가 있을 때',      def:'연결이 원활하지 않습니다. 다시 시도해 주세요.' },
+  { group:'오류와 안내 문구', items:[
+    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'그 학번으로 든 강의실이 없다.' },
+    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 명단과 다르다.' },
+    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호가 비었다.' },
+    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 틀렸다.' },
+    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호는 4자 이상이어야 한다.' },
+    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'두 비밀번호가 서로 다르다.' },
+    { key:'errNetwork',      label:'저장과 연결에 문제가 있을 때',     def:'연결이 원활하지 않다. 다시 해 본다.' },
   ]},
 ];
 let siteTexts = {};   // 관리자가 고친 값만. loadCore가 settings/general에서 채운다.
@@ -158,7 +158,7 @@ export function roomName(course){ return `${course.subject} ${course.grade}${pad
 export function roomNo(course){ return `${course.grade}${pad2(course.classNo)}`; }
 
 // ───────────────────────────────────────────────────────────────────────────
-// 메모리 캐시 — 화면은 이 메모리를 보고, loadCore가 Firestore에서 채운다.
+// 메모리 캐시: 화면은 이 메모리를 보고, loadCore가 Firestore에서 채운다.
 // 제로베이스(2026-10-27): 가짜 시드 없이 빈 상태로 시작한다. 어드민에서 학년도 →
 // 강의실 → 학생 → 강의를 만들면 그때부터 Firestore에 쌓인다. 각 문서 모양은 아래 주석 참고.
 // ───────────────────────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ const DEMO = {
   xp:            [],  // course_xp      { id:'강의실id_학번', courseId, studentNo, xp, point }
 };
 
-/* 레벨 표 — 2026 LMS shared/xp.js의 기본값을 그대로 옮겼다(누적 경험치 기준).
+/* 레벨 표: 2026 LMS shared/xp.js의 기본값을 그대로 옮겼다(누적 경험치 기준).
    표 끝을 넘으면 공식으로 이어 간다(마지막 간격 550, 레벨마다 25씩 커짐). */
 export const XP_LEVELS = [0,100,225,375,550,750,975,1225,1500,1800,
                           2125,2475,2850,3250,3675,4125,4600,5100,5625,6175];
@@ -197,7 +197,7 @@ export function levelFromXp(total){
    부팅 때 '지금 쓰는' 컬렉션을 메모리(DEMO)로 한 번 불러오고, 이후 화면은 이 메모리를 본다.
    쓰기는 메모리를 먼저 고치고(화면 즉시 반영) Firestore에도 보낸다(백그라운드).
    비밀번호(course_auth)는 로그인 때만 읽으므로 여기서 통째로 불러오지 않는다.
-   나중 단계 컬렉션(복습·미션앱·성적요약·경험치)은 그 단계에서 붙인다. */
+   나중 단계 컬렉션(복습, 미션앱, 성적요약, 경험치)은 그 단계에서 붙인다. */
 function put(coll, obj){ setDoc(doc(db, coll, obj.id), obj).catch(e => console.error('save', coll, obj.id, e)); }
 function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('del', coll, id, e)); }
 
@@ -245,7 +245,7 @@ export function getCourseLessons(courseId){
     .sort((a,b) => a.order - b.order)
     .map(cl => ({ ...cl, lesson: getLesson(cl.lessonId) }));
 }
-/* 메뉴별 배치가 쓰는 조회 — 한 강의실에서 그 칸을 가진 공개 강의만 차례로.
+/* 메뉴별 배치가 쓰는 조회: 한 강의실에서 그 칸을 가진 공개 강의만 차례로.
    돌려주는 것은 { cl(꽂힌 자리), lesson, part(그 칸의 내용), no(몇 번째 강의인가) }. */
 export function getPartItems(courseId, partKey){
   return getCourseLessons(courseId)
@@ -277,12 +277,12 @@ export function getXp(courseId, studentNo){
 // id는 새로고침해도 겹치지 않게 시각+증가값으로 만든다(예전 c_101 같은 재사용 충돌 방지).
 let seq = 0;
 const nid = p => `${p}${Date.now().toString(36)}${(seq++).toString(36)}`;
-/* 학년도 — 강의실이 없어도 학년도가 먼저 있어야 한다(요구사항 5, 16).
+/* 학년도: 강의실이 없어도 학년도가 먼저 있어야 한다(요구사항 5, 16).
    비어 있는 데이터베이스에서 제일 먼저 만드는 것이 이것이다. */
 export function addYear(year){
   const y = +year;
-  if (!(y >= 2000 && y <= 2199)) throw new Error('학년도를 확인해 주세요.');
-  if (DEMO.years.some(x => x.year === y)) throw new Error(`${y}학년도는 이미 있습니다.`);
+  if (!(y >= 2000 && y <= 2199)) throw new Error('학년도를 확인한다.');
+  if (DEMO.years.some(x => x.year === y)) throw new Error(`${y}학년도는 이미 있다.`);
   const row = { id:String(y), year:y };
   DEMO.years.push(row);
   DEMO.years.sort((a, b) => b.year - a.year);   // 큰 해부터
@@ -301,10 +301,10 @@ export function courseDeps(id){
 
 export function addCourse({ year, subject, grade, classNo }){
   const c = { id:nid('c_'), year:+year, subject:String(subject).trim(), grade:+grade, classNo:+classNo, status:'active' };
-  if (!c.subject) throw new Error('과목을 적어 주세요.');
-  if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인해 주세요.');
-  if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인해 주세요.');
-  if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있습니다.`);
+  if (!c.subject) throw new Error('과목을 적는다.');
+  if (!(c.grade >= 1 && c.grade <= 6)) throw new Error('학년을 확인한다.');
+  if (!(c.classNo >= 1 && c.classNo <= 99)) throw new Error('반을 확인한다.');
+  if (sameRoomExists(c)) throw new Error(`${roomName(c)} 강의실이 이미 있다.`);
   DEMO.courses.push(c); put(COLLECTIONS.courses, c); return c;
 }
 
@@ -315,17 +315,17 @@ function sameRoomExists({ id, year, subject, grade, classNo }){
 }
 
 export function updateCourse(id, { subject, grade, classNo }){
-  const c = getCourse(id); if (!c) throw new Error('강의실을 찾지 못했습니다.');
+  const c = getCourse(id); if (!c) throw new Error('강의실을 찾지 못했다.');
   const next = { id, year:c.year, subject:String(subject).trim(), grade:+grade, classNo:+classNo };
-  if (!next.subject) throw new Error('과목을 적어 주세요.');
-  if (!(next.grade >= 1 && next.grade <= 6)) throw new Error('학년을 확인해 주세요.');
-  if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인해 주세요.');
-  if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있습니다.`);
+  if (!next.subject) throw new Error('과목을 적는다.');
+  if (!(next.grade >= 1 && next.grade <= 6)) throw new Error('학년을 확인한다.');
+  if (!(next.classNo >= 1 && next.classNo <= 99)) throw new Error('반을 확인한다.');
+  if (sameRoomExists(next)) throw new Error(`${roomName(next)} 강의실이 이미 있다.`);
   Object.assign(c, { subject:next.subject, grade:next.grade, classNo:next.classNo });
   put(COLLECTIONS.courses, c); return c;
 }
 
-/* 강의실 하나 삭제 — 그 강의실에 매인 것(course_ 접두)이 전부 같이 없어진다.
+/* 강의실 하나 삭제: 그 강의실에 매인 것(course_ 접두)이 전부 같이 없어진다.
    창고(lessons, quizzes)는 건드리지 않는다. 강의 내용 자체는 남는다. */
 export function deleteCourse(id){
   const c = getCourse(id); if (!c) return null;
@@ -359,7 +359,7 @@ export function removeStudentEverywhere(year, studentNo){
     .forEach(s => del(COLLECTIONS.courseStudents, s.id));
   DEMO.students = DEMO.students.filter(s => !(ids.has(s.courseId) && s.studentNo === studentNo));
 }
-// 학생 한 명을 한 강의실에 넣고 빼기 — 수강 과목(강의실) 체크에 쓴다.
+// 학생 한 명을 한 강의실에 넣고 빼기: 수강 과목(강의실) 체크에 쓴다.
 export function enrollStudent(courseId, studentNo, name){
   const c = getCourse(courseId); if (!c) return null;
   const id = `${courseId}_${studentNo}`;
@@ -374,7 +374,7 @@ export function unenrollStudent(courseId, studentNo){
   if (DEMO.students.length < before){ del(COLLECTIONS.courseStudents, id); return true; }
   return false;
 }
-// 강의 본체를 Firestore에 통째로 저장한다(parts·order·개념 콘텐츠·질문이 다 lessons 문서 안에 있다).
+// 강의 본체를 Firestore에 통째로 저장한다(parts, order, 개념 콘텐츠, 질문이 다 lessons 문서 안에 있다).
 function saveLesson(lessonId){ const l = getLesson(lessonId); if (l) put(COLLECTIONS.lessons, l); }
 
 export function addLesson(title){
@@ -419,12 +419,12 @@ export function moveCourseLesson(courseId, clId, dir){
 export function toggleCourseQuizOpen(id){
   const cq = DEMO.courseQuizzes.find(c => c.id === id); if (cq) cq.isOpen = !cq.isOpen;
 }
-// 수업일자('M/D') 저장 — 진도표와 강의실 상세가 같은 course_lessons를 써서 서로 맞물린다.
+// 수업일자('M/D') 저장: 진도표와 강의실 상세가 같은 course_lessons를 써서 서로 맞물린다.
 export function setCourseLessonDate(clId, date){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
   cl.date = String(date ?? '').trim(); put(COLLECTIONS.courseLessons, cl); return cl;
 }
-// 포트폴리오(성적) 요약 — 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
+// 포트폴리오(성적) 요약: 학생 한 명의 성적 doc에서 들어가는 칸만 합산. 없으면 null.
 export function scoreSummary(courseId, studentNo){
   const s = getScore(courseId, studentNo); if (!s) return null;
   const keys = PART_TYPES.filter(p => p.portfolio).map(p => p.key);
@@ -479,11 +479,11 @@ export function toggleSubShared(subId){
   put(COLLECTIONS.courseSubmissions, s);
 }
 
-// ── 미션 앱 등록부 CRUD — 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
+// ── 미션 앱 등록부 CRUD: 문서 id가 곧 앱 키(apps/ 폴더 이름) ──
 export function addMissionApp({ name, studentUrl, adminUrl, key }){
-  const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
+  const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적는다.');
   const id = String(key || '').trim() || nid('app_');
-  if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
+  if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키이다.');
   const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim() };
   DEMO.missionApps.push(a); return a;
 }
@@ -496,14 +496,14 @@ export function updateMissionApp(id, patch){
 }
 export function deleteMissionApp(id){ DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id); }
 
-/* ── 학생 로그인 — 학번·이름·비밀번호 (선생님 지시 2026-10-28) ──────────────────
+/* ── 학생 로그인: 학번, 이름, 비밀번호 (선생님 지시 2026-10-28) ──────────────────
    Firebase Auth를 쓰지 않는다(2026-10-23 결정). course_auth 문서 { pw, courseId }를
    학년도_학번 id로 두고, 로그인 때만 그 한 건을 읽는다(통째로 불러오지 않는다).
    처음 온 학생(그 문서가 없음)은 비밀번호를 만드는 쪽으로, 그다음부터는
    비밀번호를 맞혀야 들어오는 쪽으로 index.js가 나눠 보낸다.
 
    필드 이름과 문서 모양은 hoistory의 firestore.rules가 이미 정해 둔 것을 그대로 따른다
-   (create 전용, hoistory/firestore.rules 506~516행) — `keys().hasOnly(['pw','courseId'])`,
+   (create 전용, hoistory/firestore.rules 506~516행): `keys().hasOnly(['pw','courseId'])`,
    `pw`는 `^[0-9a-f]{64}$`, `onYearRoster(id, courseId)`가 그 학번이 courseId 강의실
    명단(course_students)에 있고 그 강의실이 이 학년도인지를 본다. 필드 이름이나 모양을
    바꾸면 규칙에 막혀 학생이 비밀번호를 아예 못 만든다. */
@@ -521,11 +521,11 @@ export async function getAuthRecord(year, studentNo){
   const snap = await getDoc(doc(db, COLLECTIONS.courseAuth, `${year}_${studentNo}`));
   return snap.exists() ? snap.data() : null;
 }
-// 처음 한 번만 만든다(이미 있으면 안 덮어쓴다 — 비번 초기화는 어드민의 다음 단계).
+// 처음 한 번만 만든다(이미 있으면 안 덮어쓴다: 비번 초기화는 어드민의 다음 단계).
 // courseId는 그 학번이 든 강의실 중 아무 곳(규칙은 명단에 있는지만 본다).
 export async function createPassword(year, studentNo, password, courseId){
   const id = `${year}_${studentNo}`;
-  if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있습니다.');
+  if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있다.');
   await setDoc(doc(db, COLLECTIONS.courseAuth, id), { pw: await sha256Hex(password), courseId });
 }
 export async function verifyPassword(year, studentNo, password){

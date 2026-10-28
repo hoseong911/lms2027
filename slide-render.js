@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════
-   슬라이드 렌더링 엔진 — lesson.html(학생용)과 admin.html(미리보기)이
+   슬라이드 렌더링 엔진: lesson.html(학생용)과 admin.html(미리보기)이
    똑같이 이 파일을 불러써서, 슬라이드 HTML 생성 로직이 항상 일치하도록 한다.
    ════════════════════════════════════════════════════════ */
 (function (global) {
@@ -15,7 +15,7 @@
   }
 
   // 유튜브 주소에 붙은 시작 시간(t / start)을 초로 바꾼다. "90", "90s", "1m30s", "1h2m3s" 모두 처리.
-  // admin.js의 ceParseYouTubeStart와 같은 규칙 — 저장된 videoStart가 없는 예전 슬라이드도
+  // admin.js의 ceParseYouTubeStart와 같은 규칙: 저장된 videoStart가 없는 예전 슬라이드도
   // 원본 url에서 바로 읽어 쓸 수 있게 여기에도 둔다.
   function youTubeStartSec(url) {
     if (!url) return 0;
@@ -63,16 +63,16 @@
     return s;
   }
 
-  /* 줄 맨 앞의 글머리 기호(가운뎃점 · ㆍ ・ • / 대시·하이픈 - – — ―)를 따로 떼어내
+  /* 줄 맨 앞의 글머리 기호(가운뎃점 · ㆍ ・ • / 하이픈과 줄표 - – — ―)를 따로 떼어내
      "기호 + 본문" 가로 배치로 감싼다. 본문 칸이 flex:1 박스가 되므로 줄이 넘어가도
      둘째 줄부터 기호 뒤(본문 시작 위치)에 맞춰 내어쓰기된다.
-     가운뎃점류는 뒤 공백이 없어도(·내용) 인정하고, 하이픈/대시는 뒤에 공백이 있을 때만
+     가운뎃점류는 뒤 공백이 없어도(·내용) 인정하고, 하이픈과 줄표는 뒤에 공백이 있을 때만
      글머리 기호로 본다("-5도"처럼 기호가 내용의 일부인 경우를 건드리지 않기 위해). */
   const BULLET_RE = /^([·•∙‧ㆍ・]\s*|[-–—―]\s+)/;
 
   /* 여러 줄 텍스트를 줄 단위로 렌더한다. 글머리 기호로 시작하는 줄은 내어쓰기 블록으로,
      그 외 줄은 fmt()로 그대로 렌더하고 사이에 <br>을 넣는다. 내어쓰기 블록은 그 자체가
-     한 줄을 차지하므로(display:flex) 앞뒤에 <br>을 덧붙이지 않는다 — 넣으면 빈 줄이 하나
+     한 줄을 차지하므로(display:flex) 앞뒤에 <br>을 덧붙이지 않는다: 넣으면 빈 줄이 하나
      더 생긴다. fmt는 한 줄을 HTML로 바꾸는 함수(본문은 parseText, 생각 Check는 굵게만). */
   function linesWithBullets(text, fmt) {
     const lines = String(text == null ? '' : text)
@@ -94,7 +94,7 @@
     });
     return html;
   }
-  // 본문(빈칸·굵게 문법 적용) 한 덩어리를 글머리 기호 내어쓰기까지 반영해 렌더.
+  // 본문(빈칸, 굵게 문법 적용) 한 덩어리를 글머리 기호 내어쓰기까지 반영해 렌더.
   function parseTextB(str) { return linesWithBullets(str, parseText); }
 
   /* \n 또는 <br>/</br> 위치에서 줄바꿈 + 내어쓰기. <br>은 어드민 편집기의 textarea가
@@ -104,7 +104,7 @@
 
      " : "로 시작하는 줄(예: "b.유입 : ...")은 소제목(item-sublead)+본문(sub-body)을 가로
      flex(sub-line)로 묶는다. 그 다음에 이어지는, " : "가 없는 줄들(Shift+Enter로 추가한
-     줄바꿈)은 새 sub-line을 만들지 않고 직전 소제목의 sub-body 안에 <br>로 합쳐 넣는다 —
+     줄바꿈)은 새 sub-line을 만들지 않고 직전 소제목의 sub-body 안에 <br>로 합쳐 넣는다 :
      sub-body가 본문 시작 위치에서 시작하는 flex:1 박스이므로, 안에서 줄이 나뉘어도(수동
      줄바꿈이든 자동 줄바꿈이든) 항상 본문 시작 위치에 맞춰 내어쓰기된다. */
   function renderWithBreaks(text, abcIndent) {
@@ -115,7 +115,7 @@
     /* a./b./c. 들여쓰기는 항목이 "맨 처음부터" 마커로 시작할 때만 준다. 앞에 소제목
        (item-lead)이 붙는 항목은 이미 소제목 폭만큼 오른쪽으로 밀려 있어서, 거기에 또
        들여쓰면 층이 어긋나 보인다. 호출자가 abcIndent를 넘기지 않으면 넘겨받은 덩어리의
-       첫 줄로 판단한다(사료·흐름도처럼 소제목 없이 통째로 오는 텍스트). */
+       첫 줄로 판단한다(사료, 흐름도처럼 소제목 없이 통째로 오는 텍스트). */
     const allowAbc = abcIndent === undefined ? /^[a-z]\.\s/.test(lines[0] || '') : !!abcIndent;
     const out = [];
     let subLead = null, subBodyLines = null, subAbc = false;
@@ -164,7 +164,7 @@
     return out.join('');
   }
 
-  /* item 문자열이 "소제목 : <br>..." 형태 — 즉 Tab으로 소제목을 구분한 직후 곧바로
+  /* item 문자열이 "소제목 : <br>..." 형태: 즉 Tab으로 소제목을 구분한 직후 곧바로
      Shift+Enter를 눌러 본문이 빈 줄로 시작하는 형태인지 판별한다. rowHTML이 이 값을
      보고 <p>를 가로 배치(기존, 내어쓰기 있음) 대신 세로 배치(내어쓰기 없음)로 바꾼다. */
   function isStackedItem(str) {
@@ -176,7 +176,7 @@
 
   /* " : " 기준으로 소제목(item-lead)과 본문(item-text) 분리. 콜론은 제거.
      isStackedItem이 true인 경우, 본문 맨 앞의 빈 줄(<br>)은 렌더링에 쓰지 않고
-     제거한다 — 줄바꿈 자체는 rowHTML이 <p>를 세로 배치로 바꿔서 대신 표현하므로,
+     제거한다: 줄바꿈 자체는 rowHTML이 <p>를 세로 배치로 바꿔서 대신 표현하므로,
      여기 남겨두면 위쪽에 빈 줄이 하나 더 끼어드는 이중 간격이 생긴다. */
   function parseItemText(str) {
     // 원문자(①~㉿) 및 괄호숫자 (1) (2) 등 앞 번호 제거
@@ -187,7 +187,7 @@
       return `<span class="item-text">${renderWithBreaks(str, true)}</span>`;
     }
 
-    // Case 2: "제목<br>a./b./c. 하위항목" 형태 — ① 뗀 후 첫 줄이 제목, <br> 이후 a.b.c. 시작
+    // Case 2: "제목<br>a./b./c. 하위항목" 형태: ① 뗀 후 첫 줄이 제목, <br> 이후 a.b.c. 시작
     // e.g. "건국 과정<br>a. {이성계} : ...<br>b. ...<br>c. ..."
     const firstBr = str.indexOf('<br>');
     if (firstBr > -1 && /^[a-z]\.\s/.test(str.slice(firstBr + 4))) {
@@ -196,7 +196,7 @@
       return `<span class="item-lead">${parseText(heading)}</span><span class="item-text">${renderWithBreaks(subs, false)}</span>`;
     }
 
-    // Case 2b: "소제목 a. ..." 형태 — 소제목 앞에 ' : ' 없는 경우
+    // Case 2b: "소제목 a. ..." 형태: 소제목 앞에 ' : ' 없는 경우
     const subItemMatch = str.match(/^(.+?)\s([a-z]\.\s)/);
     if (subItemMatch && !subItemMatch[1].includes(' : ')) {
       const leadRaw = subItemMatch[1];
@@ -221,10 +221,10 @@
     return preserveSpaces(str).replace(/\*\*([^*\n]+)\*\*/g, '<em>$1</em>');
   }
   function coverHTML(lesson) {
-    // 제목은 \n 기준으로 줄을 나눠 각 줄이 좌·우에서 번갈아 밀려들어오는 스플릿 진입을 쓴다.
+    // 제목은 \n 기준으로 줄을 나눠 각 줄이 좌, 우에서 번갈아 밀려들어오는 스플릿 진입을 쓴다.
     const lines = String(lesson.title || '').split('\n');
     const titleLines = lines.map(l => `<span class="cline">${coverParse(l)}</span>`).join('');
-    // 단원명·교과서 페이지 메타. 둘 다 있을 때만 사이에 '|' 바를 넣고, 하나만 있으면 그것만,
+    // 단원명, 교과서 페이지 메타. 둘 다 있을 때만 사이에 '|' 바를 넣고, 하나만 있으면 그것만,
     // 둘 다 비어 있으면 메타 줄(바 포함) 자체를 렌더하지 않는다.
     const unit = String(lesson.unit || '').trim();
     const page = String(lesson.page || '').trim();
@@ -265,7 +265,7 @@
       </div>
     `;
   }
-  /* 번호 목록 슬라이드(학습 목표, 초성 퀴즈). 배지와 제목은 섹션이 들고 있는 값을 쓴다 —
+  /* 번호 목록 슬라이드(학습 목표, 초성 퀴즈). 배지와 제목은 섹션이 들고 있는 값을 쓴다 :
      2026에는 'Dive into History', '학습 목표', '지난 수업 시간에는?'이 코드에 박혀 있어서
      역사 수업 말고는 쓸 수가 없었다(선생님 지시 2026-10-26, 범용화). */
   function listHTML(slide) {
@@ -273,10 +273,10 @@
   }
 
   /* 초성 퀴즈 문항이 많으면 한 화면(약 8줄)을 넘기 전에 다음 페이지로 넘긴다.
-     글자수로 줄바꿈 줄 수를 어림잡는 방식은 실제 폭·폰트와 안 맞아 문항 하나가 이미
+     글자수로 줄바꿈 줄 수를 어림잡는 방식은 실제 폭, 폰트와 안 맞아 문항 하나가 이미
      8줄로 잡혀 "한 줄짜리 문항도 페이지 하나를 통째로 차지"하는 문제가 있었다. 대신
      실제 프로덕션과 똑같은 DOM(.slide-objectives .obj-item .obj-text)을 화면 밖에
-     그대로 만들어 각 문항을 진짜로 렌더해보고 줄바꿈 줄 수를 측정한다 — 폭·폰트가
+     그대로 만들어 각 문항을 진짜로 렌더해보고 줄바꿈 줄 수를 측정한다: 폭, 폰트가
      나중에 바뀌어도 이 숫자가 항상 실제와 일치한다. */
   let _chosungMeasureP = null;
   function ensureChosungMeasureP() {
@@ -302,7 +302,7 @@
     return p;
   }
   function measureChosungLines(text, scale) {
-    // document가 없는 극히 예외적인 상황(테스트 등) 대비 안전장치 — 글자수로 대략 추정.
+    // document가 없는 극히 예외적인 상황(테스트 등) 대비 안전장치: 글자수로 대략 추정.
     if (typeof document === 'undefined') {
       const len = String(text || '').replace(/[{}]/g, '').length;
       return Math.max(1, Math.ceil(len / 28));
@@ -361,11 +361,11 @@
 
   /* 좁은 좌측 라벨을 여러 줄로 세우는 규칙. 행 나열의 좌측 라벨과 연표(세로)의 라벨이
      화면에서 같은 자리(선 왼쪽의 좁은 칸)를 맡으므로 규칙도 함께 쓴다.
-       · 엔터(또는 <br>)로 나뉜 줄은 그대로 각 줄
-       · 줄 맨 앞의 '>' → 그 줄만 한 수준 작게
-       · 줄 끝의 (연도) 같은 괄호 → 아랫줄에 작게 분리
-       · 공백 포함 6자를 넘으면 6자 안쪽 마지막 빈칸에서 끊는다(빈칸이 없으면 6자에서)
-     narrow가 거짓이면(라벨 상단 배치) 6자 줄바꿈은 하지 않는다 — 칸이 화면 폭을 다
+       - 엔터(또는 <br>)로 나뉜 줄은 그대로 각 줄
+       - 줄 맨 앞의 '>' → 그 줄만 한 수준 작게
+       - 줄 끝의 (연도) 같은 괄호 → 아랫줄에 작게 분리
+       - 공백 포함 6자를 넘으면 6자 안쪽 마지막 빈칸에서 끊는다(빈칸이 없으면 6자에서)
+     narrow가 거짓이면(라벨 상단 배치) 6자 줄바꿈은 하지 않는다: 칸이 화면 폭을 다
      쓰므로 줄을 나눌 이유가 없다. 끝 괄호는 상단 배치에서도 떼어 작게 하지만, CSS가
      낮춘 줄을 같은 줄에 이어 붙이므로 "홍경래의 난 (1811)"처럼 옆에 작게 붙는다.
      돌려주는 것은 [{ t, sub }] 목록이다. */
@@ -403,7 +403,7 @@
     `<span class="${cls}${o.sub ? ' sub' : ''}"${o.scale ? ` style="font-size:${o.scale}em"` : ''}>${preserveSpaces(o.t)}</span>`;
 
   /* 원문자(①②③…)로 시작하면서 ' : '도 'a.'도 없는 줄이 "소제목"인지 "번호 매긴 문장"인지
-     가른다. 소제목은 짧고 문장부호가 없다("왕권 강화 기반", "세부 채점 기준"). 문장은 쉼표·
+     가른다. 소제목은 짧고 문장부호가 없다("왕권 강화 기반", "세부 채점 기준"). 문장은 쉼표, 
      마침표를 달고 있거나, 소제목이라기엔 길다.
        - 마침표는 뒤에 숫자가 오면 안 센다. "3.1 운동" "6.25 전쟁"은 문장이 아니라 제목이다.
        - 가운뎃점(·)도 안 센다. "정치·경제"처럼 제목에서 흔히 쓴다.
@@ -425,7 +425,7 @@
     // U+2028(Shift+Enter로 같은 항목 안에 이어붙인 줄바꿈) 뒤에 곧바로(또는 예전 편집기
     // 버그로 남은 U+200B 잔재 몇 개를 사이에 두고) a./b./c. 하위 항목 마커가 오면, 원래
     // 별도 하위 항목으로 갈라졌어야 하는데 그냥 이어붙여져 저장된 데이터다(a.는 굵게
-    // 나오는데 b.는 일반 텍스트로 보이던 문제 — 실제로 U+2028 뒤에 U+200B가 여러 개 낀
+    // 나오는데 b.는 일반 텍스트로 보이던 문제: 실제로 U+2028 뒤에 U+200B가 여러 개 낀
     // 채로 저장된 사례가 있었음). 그 경우만 줄바꿈으로 되살려 재분류하고, 그 외
     // U+2028(문장 중간 줄바꿈)은 그대로 둬서 기존 동작에 영향 없게 한다.
     const SOFT_SUBITEM_RE = new RegExp(String.fromCharCode(0x2028) + String.fromCharCode(0x200B) + '*(?=[a-z]\\.\\s)', 'g');
@@ -532,12 +532,12 @@
     // 라벨이 비어 있으면 라벨 칸(네이비 박스) 자체를 렌더하지 않고 내용이 폭을 다 쓰게 한다.
     const hasLabel = !!(row.label && String(row.label).trim());
     // 라벨 여러 줄 규칙:
-    //  · 그냥 줄바꿈(엔터/<br>) → 같은 수준(같은 크기)으로 다음 줄 (긴 라벨용)
-    //  · 줄 맨 앞에 '>' → 그 줄만 한 수준 낮게(작게·연하게)
-    //  · 줄 끝의 (연도) 같은 괄호 → 아랫줄에 작게 분리
+    //  - 그냥 줄바꿈(엔터/<br>) → 같은 수준(같은 크기)으로 다음 줄 (긴 라벨용)
+    //  - 줄 맨 앞에 '>' → 그 줄만 한 수준 낮게(작게, 연하게)
+    //  - 줄 끝의 (연도) 같은 괄호 → 아랫줄에 작게 분리
     let labelHtml = '';
     if (hasLabel) {
-      // 규칙은 labelLines가 쥐고 있다 — 연표(세로)의 라벨도 같은 것을 쓴다.
+      // 규칙은 labelLines가 쥐고 있다: 연표(세로)의 라벨도 같은 것을 쓴다.
       // 좁은 좌측 라벨일 때만 6자 줄바꿈이 걸리고, 상단 배치는 칸이 화면 폭을 다 쓰므로
       // 줄을 나누지 않는다(엔터로 나뉜 조각과 끝 괄호도 한 줄에 이어서 보인다).
       // 줄바꿈되면 라벨을 우측정렬(.multi).
@@ -545,7 +545,7 @@
       const multiCls = (labelPos === 'left' && lines.length > 1) ? ' multi' : '';
       const inner = lines.map(o => labelLineHTML(o, 'row-label-line')).join('');
       // 좌측 라벨 배치는 라벨과 '첫 소제목'만 세로 가운데로 맞춘다는 원래 정한 규칙 그대로
-      // 유지한다(전체 내용/그룹 개수와 무관) — 라벨·오렌지 세로선은 항상 첫 항목 높이만큼만.
+      // 유지한다(전체 내용/그룹 개수와 무관): 라벨, 오렌지 세로선은 항상 첫 항목 높이만큼만.
       // CSS grid(display:contents 트릭)로 라벨은 1행에, 항목(<p>)들은 각자 행에 자동 배치되고,
       // align-items:center로 라벨과 1행(첫 항목)만 상호 중앙정렬된다.
       labelHtml = `<div class="row-label${multiCls}">${inner}</div>`;
@@ -565,7 +565,7 @@
       </div>`;
   }
 
-  /* ── 새 슬라이드 형식(연표·비교표·사료 인용·플로우) 본문 렌더러 ──
+  /* ── 새 슬라이드 형식(연표, 비교표, 사료 인용, 플로우) 본문 렌더러 ──
      기존 행 나열(rows)과 달리 좌측 이미지 패널(clayout)은 지원하지 않는다. */
   function timelineHBodyHTML(slide) {
     const events = (slide.events || []).map(ev => `
@@ -585,7 +585,7 @@
 
   /* 연표(세로)의 라벨은 선 왼쪽의 좁은 칸에 선다. 그래서 행 나열의 좌측 라벨과 같은
      규칙으로 줄을 나눈다(6자 줄바꿈, 끝 괄호는 아랫줄에 작게).
-     점은 라벨 칸 안에 넣는다 — 그래야 라벨이 두 줄이 되어도 점이 그 세로 가운데를
+     점은 라벨 칸 안에 넣는다: 그래야 라벨이 두 줄이 되어도 점이 그 세로 가운데를
      따라간다(칸 밖에 두면 줄 전체 높이를 기준으로 잡혀 내용 쪽에 끌려간다). */
   /* 사건 전체를 격자 하나에 담는다. 사건마다 따로 격자를 만들면 라벨 칸 폭이 제각각이
      되어 선이 곧게 서지 않으므로, 한 격자 안에서 라벨은 1열, 선은 2열, 내용은 3열에
@@ -595,7 +595,7 @@
   function timelineVBodyHTML(slide) {
     const list = slide.events || [];
     /* 강조할 사건(focusEvent, 1부터). 지정하면 그 사건만 제 색으로 두고 나머지는 연하게
-       깐다. 사건을 지운 뒤 번호가 범위를 벗어나면 마지막 사건으로 당긴다 — 그냥 두면
+       깐다. 사건을 지운 뒤 번호가 범위를 벗어나면 마지막 사건으로 당긴다: 그냥 두면
        어느 사건도 안 맞아 전부 연해지고 강조가 사라진다. 0이나 없음이면 모두 제 색. */
     const focus = slide.focusEvent ? Math.min(slide.focusEvent, list.length) : 0;
     const cells = list.map((ev, i) => {
@@ -609,7 +609,7 @@
     // 사건 행 뒤에 빈 1fr 행을 하나 더 둔다. 이 행이 남는 높이를 전부 먹으므로 (a) 사건들은
     // 저절로 위쪽에 붙고 (b) 1/-1로 잡힌 선이 그 행 끝, 곧 페이지 아래까지 내려간다.
     // 선만 늘리려고 따로 절대배치하면 라벨 칸 폭(max-content)을 알 수 없어 가로 위치가
-    // 어긋난다 — 선을 격자 안에 둔 채 행을 늘리는 쪽이 맞다.
+    // 어긋난다: 선을 격자 안에 둔 채 행을 늘리는 쪽이 맞다.
     const rows = `grid-template-rows:repeat(${Math.max(1, list.length)},max-content) 1fr`;
     return `
       <div class="fmt-timeline-v">
@@ -636,7 +636,7 @@
   }
 
   /* 출처는 항상 겹낫표(『』)로 감싼다. 이미 낫표/꺽쇠류(「」『』〈〉《》【】<>)로 감싸져
-     있으면 그 바깥 기호를 벗겨내고 겹낫표로 통일한다 — 예전 데이터가 홑낫표「」로
+     있으면 그 바깥 기호를 벗겨내고 겹낫표로 통일한다: 예전 데이터가 홑낫표「」로
      저장돼 있어도 화면에는 겹낫표로 보이게 한다. */
   function normalizeSource(src) {
     let s = String(src || '').trim();
@@ -655,7 +655,7 @@
       </div>`;
   }
 
-  /* 안내(OT·수행평가 등) 자유 문단 슬라이드(1번 기능). 한 줄 = 한 문단,
+  /* 안내(OT, 수행평가 등) 자유 문단 슬라이드(1번 기능). 한 줄 = 한 문단,
      "- "로 시작하면 불릿, 빈 줄은 간격. 굵게/빈칸 문법 그대로 적용. */
   function noticeBodyHTML(slide) {
     const lines = String(slide.noticeText || '')
@@ -724,7 +724,7 @@
     return colsInnerHTML(slide.cols, slide.colsTitle, '');
   }
 
-  // 제목 없는 헤더(배지 없이 제목만) — 안내 슬라이드와 '배지 숨김' 옵션에서 공용.
+  // 제목 없는 헤더(배지 없이 제목만): 안내 슬라이드와 '배지 숨김' 옵션에서 공용.
   function titleOnlyHeaderHTML(title) {
     return title ? `<div class="slide-header slide-header-notice"><h2 class="slide-title">${preserveSpaces(title)}</h2></div>` : '';
   }
@@ -735,7 +735,7 @@
     const mkHeader = (title) => slide.hideBadge ? titleOnlyHeaderHTML(title) : checkHeaderHTML(badgeLabel, title);
 
     if (format === 'notice') {
-      // OT·수행 안내 등 자유 문단 슬라이드. 개념/미션 배지를 달지 않고 제목만 표시한다.
+      // OT, 수행 안내 등 자유 문단 슬라이드. 개념/미션 배지를 달지 않고 제목만 표시한다.
       // (제목이 비어 있으면 헤더 자체를 렌더하지 않는다.)
       return wrapWithImg(titleOnlyHeaderHTML(slide.title) + noticeBodyHTML(slide), slide, lesson);
     }
@@ -757,7 +757,7 @@
     if (format === 'flow-h')     return mkHeader(slide.title) + flowBodyHTML(slide, 'h');
     if (format === 'flow-v')     return mkHeader(slide.title) + flowBodyHTML(slide, 'v');
 
-    // format === 'rows' (기본값) — 행 나열 + (선택) 하단 사료 + 이미지 우/하 배치
+    // format === 'rows' (기본값): 행 나열 + (선택) 하단 사료 + 이미지 우/하 배치
     const header = mkHeader(slide.title);
     // 2번 기능: 하단 사료 인용(bottomQuote, 본문이 비어있지 않을 때만). 페이지 맨 아래에
     // 따로 떨어뜨리지 않고 마지막 행의 라벨 옆(내용 칸) 밑에 같이 붙여서, 그 행의 라벨과
@@ -769,7 +769,7 @@
         ${slide.rows.map((r, idx) => rowHTML(r, slide.labelPos, hasBQ && idx === slide.rows.length - 1 ? bq : null)).join('')}
       </div>`;
     /* 행 나열 + 중앙 나열 혼합: 행들 아래에 중앙 나열 블록(bottomCols)을 이어 붙인다.
-       하단 사료(bottomQuote)와 같은 방식 — 페이지의 형식(format)은 그대로 'rows'로 두고
+       하단 사료(bottomQuote)와 같은 방식: 페이지의 형식(format)은 그대로 'rows'로 두고
        다른 유형의 블록 하나만 덧붙이므로, 기존 행 나열 페이지는 필드가 없으면 그대로다.
        블록은 남은 높이의 가운데에 서고(cols-inline), 자리가 없으면 내용 높이만 차지한다. */
     const bcCols = (slide.bottomCols || []).filter(c => (c.head && c.head.trim()) || (c.body && c.body.trim()));
@@ -781,7 +781,7 @@
       slide.bottomColsSize      ? `--fs-cols-head:${slide.bottomColsSize}px;--fs-cols-body:${slide.bottomColsSize}px` : '',
       slide.bottomColsTitleSize ? `--fs-cols-title:${slide.bottomColsTitleSize}px` : ''
     ].filter(Boolean).join(';');
-    // 행이 하나도 없으면 블록 위 점선을 지운다(cols-solo) — 나눌 구역이 위에 없다.
+    // 행이 하나도 없으면 블록 위 점선을 지운다(cols-solo): 나눌 구역이 위에 없다.
     const hasRows = (slide.rows || []).some(r => (r.label && String(r.label).trim()) || (r.items || []).some(it => it && String(it).trim()));
     const colsBlock = (bcCols.length || bcTitle)
       ? colsInnerHTML(bcCols, bcTitle, ' cols-inline' + (hasRows ? '' : ' cols-solo'), bcVars) : '';
@@ -870,7 +870,7 @@
     return groups.length > 1 ? { row, groups } : null;
   }
 
-  /* contentLines(구분선/행/이미지 배열)를 slide 배열로 변환. 개념 체크·미션 체크가
+  /* contentLines(구분선/행/이미지 배열)를 slide 배열로 변환. 개념 체크, 미션 체크가
      같은 구조를 쓰므로 type만 다르게 해서 공유한다. */
   function buildCheckSlides(lines, sec) {
     const type = 'block';
@@ -951,7 +951,7 @@
       s.sectionId = sec.id;
       s.review = sec.review === true;
     });
-    // 내용이 비어 있는 슬라이드(제목만 있고 본문이 없는 사료·행 등)는 렌더하지 않는다.
+    // 내용이 비어 있는 슬라이드(제목만 있고 본문이 없는 사료, 행 등)는 렌더하지 않는다.
     return raw.filter(s => {
       if (s.type === 'image' || s.type === 'fullimage' || s.type === 'video') return true;
       if (s.img != null) return true;
@@ -1011,7 +1011,7 @@
   /* 2026 구조({dive, contentLines, mission, think})를 섹션 배열로 옮긴다.
      2027에 아직 실제 강의 내용이 없어서 옮길 데이터는 사실상 없지만, 10-25에 만들어 본
      강의가 남아 있을 수 있고 옛 모양으로 저장된 문서가 열리면 화면이 비기 때문에 둔다.
-     원본 칸은 지우지 않는다 — 저장하기 전까지는 되돌릴 수 있어야 한다. */
+     원본 칸은 지우지 않는다: 저장하기 전까지는 되돌릴 수 있어야 한다. */
   function migrateToSections(d) {
     if (!d || Array.isArray(d.sections)) return d;
     const out = [];
@@ -1026,7 +1026,7 @@
       out.push(Object.assign(blankSection('opening'), {
         title: '여는 질문', badge: 'Dive into History', kicker: 'Opening Question',
         question: dive.guide || dive.title || '',
-        guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 보세요.',
+        guide: '질문에 대한 본인의 답변을 자유롭게 생각해 보고 활동지에 작성해 본다.',
         enabled: dive.openingEnabled !== false,
       }));
     }
@@ -1080,7 +1080,7 @@
 
   /* slide + lesson 데이터를 받아 완성된 <div class="slide ...">...</div> HTML 문자열을 돌려준다 */
   /* 페이지별 글자 크기가 덮어써야 할 변수. 본문 글자를 그리는 변수만 적는다
-     (사료 인용의 소제목·출처, 연표의 연도처럼 곁다리 글자는 디자인 탭 값을 따른다). */
+     (사료 인용의 소제목, 출처, 연표의 연도처럼 곁다리 글자는 디자인 탭 값을 따른다). */
   const PAGE_FS_VARS = {
     rows:         ['--fs-rows-body'],
     quote:        ['--fs-qt-text'],
@@ -1137,7 +1137,7 @@
       inner = promptHTML(slide, lesson);
     }
     // 페이지별 본문 정렬. 기본은 왼쪽이고, 어드민에서 켠 페이지에만 클래스가 붙는다.
-    // justify는 행 나열·안내문(오른쪽 끝 맞춤), center는 비교표(가운데)에 쓴다.
+    // justify는 행 나열, 안내문(오른쪽 끝 맞춤), center는 비교표(가운데)에 쓴다.
     // 예전에는 미션 Check 전체가 CSS로 양쪽 정렬이라 끌 수가 없었다.
     if (slide.align === 'justify') extraClass += ' align-justify';
     else if (slide.align === 'center') extraClass += ' align-center';
@@ -1150,12 +1150,12 @@
     let fsStyle = '';
     const decls = [];
     if (slide.fontSize) {
-      // --fs-body 도 같이 남긴다 — 아직 PAGE_FS_VARS 에 안 올라온 규칙을 위한 안전판.
+      // --fs-body 도 같이 남긴다: 아직 PAGE_FS_VARS 에 안 올라온 규칙을 위한 안전판.
       decls.push(`--fs-body:${slide.fontSize}px`);
       (PAGE_FS_VARS[slide.format || 'rows'] || []).forEach(v => decls.push(`${v}:${slide.fontSize}px`));
     }
     if (slide.colsTitleSize) decls.push(`--fs-cols-title:${slide.colsTitleSize}px`);
-    /* 섹션 글자 배율 — 2026에는 미션 Check만 글자 크기를 따로 둘 수 있었다. 그러려고
+    /* 섹션 글자 배율: 2026에는 미션 Check만 글자 크기를 따로 둘 수 있었다. 그러려고
        CSS에 -m 변수 한 벌(.slide-mission)을 박아 뒀는데, 섹션을 몇 개든 만들 수 있게 된
        지금은 그 방식이 안 된다(섹션마다 변수 한 벌을 CSS에 더할 수는 없다).
        섹션마다 배율(%) 한 칸으로 바꾸고, 그 섹션 슬라이드에만 계산한 px를 인라인으로 건다.
@@ -1171,7 +1171,7 @@
     return `<div class="slide${extraClass}"${fsStyle}>${inner}</div>`;
   }
 
-  /* img 번호로 만든 경로는 확장자를 png로 가정하는데, 실제 저장 파일이 jpg·webp인
+  /* img 번호로 만든 경로는 확장자를 png로 가정하는데, 실제 저장 파일이 jpg, webp인
      경우가 섞여 있어서 로드 실패 시 jpg -> jpeg -> webp -> gif 순으로 다시 시도한다.
      선생님이 파일을 올릴 때 확장자를 신경 쓰지 않아도 되게 하는 것이 목적이므로,
      새 확장자를 쓰게 되면 여기 한 줄에 더한다.
@@ -1202,7 +1202,7 @@
        - capture 단계에서 잡는다. lecture.html의 슬라이드 넘김 핸들러도 document에
          걸려 있어서, bubble로 두면 등록 순서에 따라 슬라이드가 먼저 넘어가 버린다.
        - 사진을 닫은 키는 거기서 멈춘다(stopPropagation). 한 번 눌러 사진을 닫고 다시
-         눌러 넘어가는 것이 리모컨을 쥔 손에 자연스럽다 — 닫으면서 슬라이드까지
+         눌러 넘어가는 것이 리모컨을 쥔 손에 자연스럽다: 닫으면서 슬라이드까지
          건너뛰면 어디로 갔는지 모르게 된다.
        - 조합키(Ctrl+R 등)와 수식키 단독 누름, 빈칸 타이핑 중에는 흘려보낸다. */
     document.addEventListener('keydown', e => {
@@ -1239,7 +1239,7 @@
 
   /* 슬라이드에서 쓰는 웹폰트를 실제로 내려받을 때까지 기다린다.
 
-     쪽 나눔(줄 수·높이 측정)은 폰트 메트릭에 그대로 좌우되는데, document.fonts.ready만
+     쪽 나눔(줄 수, 높이 측정)은 폰트 메트릭에 그대로 좌우되는데, document.fonts.ready만
      기다리면 "그 시점까지 요청된" 폰트만 보장된다. Paperlogy나 Gowun Batang은 슬라이드가
      DOM에 들어가기 전까지 아무도 안 쓰므로 아직 요청조차 안 된 상태이고, 그러면 측정은
      대체 폰트(맑은 고딕 등) 기준으로 이뤄진다. 폰트가 이미 캐시된 컴퓨터는 진짜 폰트로,
@@ -1356,7 +1356,7 @@
   const FONT_KEYS = fontRows().map(r => r.key);
   const FONT_VARS = fontRows().reduce((m, r) => (m[r.key] = r.v, m), {});
 
-  /* 예전 설정(개념/미션이 label·body·bodyMission 세 값만 갖고 있던 시절)을 형식별 값으로 편다.
+  /* 예전 설정(개념/미션이 label, body, bodyMission 세 값만 갖고 있던 시절)을 형식별 값으로 편다.
      이미 있는 값은 절대 건드리지 않으므로, 처음 열었을 때 화면이 지금과 똑같이 나온다. */
   function normalizeFonts(fonts) {
     const f = Object.assign({}, fonts || {});
@@ -1373,7 +1373,7 @@
     put('objNum', 130);
     // 2026에는 초성 퀴즈 전용 크기(chosung 48, chosungNum 110)가 따로 있었다. 번호 목록
     // 섹션 하나로 합쳐지면서 obj/objNum 한 벌만 쓰고, 글자가 많으면 섹션 배율로 줄인다.
-    // 개념 — 예전엔 라벨 계열은 전부 --fs-label, 본문 계열은 전부 --fs-body를 썼다.
+    // 개념: 예전엔 라벨 계열은 전부 --fs-label, 본문 계열은 전부 --fs-body를 썼다.
     put('rowsLabel', label);        put('rowsBody', body);
     put('tlYear', Math.round(label * 1.1)); put('tlText', body);   // 연표 연도는 라벨의 1.1배였다
     put('tlvMemo', f.tlYear);   // 세로 연표 라벨은 연도 크기를 함께 쓰다가 따로 뗐다
@@ -1401,7 +1401,7 @@
     const f = normalizeFonts(fonts);
     _lastFonts = f;
     FONT_KEYS.forEach(k => { if (f[k] != null) el.style.setProperty(FONT_VARS[k], f[k] + 'px'); });
-    // 예전 변수도 남겨 둔다 — 혹시 스펙에 안 올라온 규칙이 있어도 예전처럼 동작하도록.
+    // 예전 변수도 남겨 둔다: 혹시 스펙에 안 올라온 규칙이 있어도 예전처럼 동작하도록.
     if (f.label != null) el.style.setProperty('--fs-label', f.label + 'px');
     if (f.body  != null) el.style.setProperty('--fs-body',  f.body  + 'px');
     return f;

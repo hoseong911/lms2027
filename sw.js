@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   2027 LMS 서비스워커 (hoistory/sw.js에서 옮김) — 런타임 캐싱으로 오프라인/빠른 로딩 지원.
+   2027 LMS 서비스워커 (hoistory/sw.js에서 옮김): 런타임 캐싱으로 오프라인/빠른 로딩 지원.
 
    전략
    - Firebase 실시간 데이터(Firestore/RTDB/Auth)는 건드리지 않는다(항상 네트워크 →
@@ -8,7 +8,7 @@
    - 그림도 네트워크 우선이다. CSS/JS는 ?v= 를 붙여 URL이 바뀌지만, 그림은 파일명을
      그대로 두고 내용만 갈아끼우는 일이 많아서(28_5.png를 다른 사진으로 교체 등)
      캐시 우선으로 두면 바꾼 그림이 다음 접속에서야 보인다. 캐시는 오프라인 대비로만 쓴다.
-   - 그 밖의 정적 자원(CSS·JS·폰트)은 캐시 우선 + 백그라운드 갱신
+   - 그 밖의 정적 자원(CSS, JS, 폰트)은 캐시 우선 + 백그라운드 갱신
      (stale-while-revalidate). ?v= 버전이 바뀐 파일은 URL이 달라 자동으로 새로 받는다.
 
    캐시 로직을 바꿀 땐 CACHE 이름의 버전을 올린다(예: v1 → v2). 그러면 activate에서
@@ -24,10 +24,10 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
   await self.clients.claim();
 })()));
 
-// Firebase 실시간/인증 계열 호스트 — SW가 관여하지 않고 네트워크로 그대로 보낸다.
+// Firebase 실시간/인증 계열 호스트: SW가 관여하지 않고 네트워크로 그대로 보낸다.
 const BYPASS = /firestore\.googleapis|firebasedatabase\.app|firebaseio\.com|identitytoolkit\.googleapis|securetoken\.googleapis/;
 
-// 이름은 그대로 두고 내용만 바뀌는 자원 — 그림. 캐시보다 네트워크를 먼저 본다.
+// 이름은 그대로 두고 내용만 바뀌는 자원: 그림. 캐시보다 네트워크를 먼저 본다.
 const IMAGE = /\.(png|jpe?g|gif|webp|avif|svg|ico)$/i;
 
 self.addEventListener('fetch', (e) => {

@@ -3,7 +3,7 @@
 // 생각 체크 등 AI 채점용 Claude 프록시(Cloud Function). 키는 서버 Secret Manager에만 있다.
 export const CLAUDE_PROXY_URL = 'https://asia-northeast3-ho0911seong-56638.cloudfunctions.net/claudeProxy';
 
-// 한국시간(KST, UTC+9) 기준 날짜(YYYY-MM-DD). 출석·마일리지·타이핑복습 일일 게이트, 대시보드 '오늘' 집계가 이 값을 쓴다.
+// 한국시간(KST, UTC+9) 기준 날짜(YYYY-MM-DD). 출석, 마일리지, 타이핑복습 일일 게이트, 대시보드 '오늘' 집계가 이 값을 쓴다.
 export function kstDate(ms = Date.now()) {
   return new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
@@ -49,6 +49,6 @@ export function studyClosedReason(ms = Date.now(), holidays = DEFAULT_HOLIDAYS) 
   const hour = new Date(ms + 9 * 3600 * 1000).getUTCHours();
   if (hour >= (rest ? STUDY_OPEN.restDay : STUDY_OPEN.weekday)) return null;
   return rest
-    ? '주말과 공휴일은 오전 6시부터 자정까지 할 수 있어요. 조금 뒤에 다시 와 주세요'
-    : '평일은 오후 3시부터 자정까지 할 수 있어요. 수업 마친 뒤에 다시 와 주세요';
+    ? '주말과 공휴일은 오전 6시부터 자정까지 할 수 있어요. 조금 뒤에 다시 온다'
+    : '평일은 오후 3시부터 자정까지 할 수 있어요. 수업 마친 뒤에 다시 온다';
 }
