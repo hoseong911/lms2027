@@ -1196,11 +1196,13 @@ function questionAnswers(rooms, placed, lessons){
   const one = targets.length === 1 && state.questionRoom !== 'all' ? targets[0].cl : null;
   const openBtn = one ? `<button class="btn-chip ${one.isOpen?'on':''}" data-act="cl-open" data-id="${one.id}">
       ${icon(one.isOpen?'eye':'eye-off',13)}${one.isOpen?'공개 중':'숨김'}</button>` : '';
-  const pickers = `<div class="formrow">
+  // 첫 줄: 강의 드롭다운 옆에 반 태그(선생님 지시 2026-10-28). 공개 토글은 줄 끝.
+  const pickers = `<div class="qbar">
     <select class="sel" data-act="q-lesson" aria-label="강의">
       ${qLessons.map(x => `<option value="${x.l.id}" ${x.l.id===lesson.id?'selected':''}>${x.no}강 ${esc(x.l.title)}</option>`).join('')}
-    </select>${openBtn}</div>`;
-  const roomTabs = catline(withCl.map(x => ({ v:x.c.id, label:`${x.c.classNo}반` })), state.questionRoom, 'q-room', '전체');
+    </select>
+    ${catline(withCl.map(x => ({ v:x.c.id, label:`${x.c.classNo}반` })), state.questionRoom, 'q-room', '전체',
+      openBtn ? `<span class="line-end">${openBtn}</span>` : '')}</div>`;
 
   const q = lesson.parts.question;
   const info = q.prompt ? `<div class="row"><div class="grow"><div class="t">${esc(q.prompt)}</div>
@@ -1217,10 +1219,10 @@ function questionAnswers(rooms, placed, lessons){
       <div class="tools">
         <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="공개 내리기" aria-label="공개 내리기">${icon('eye',14)}</button>
       </div></div>`).join('') : `<div class="empty">공유로 켜 둔 답변이 없습니다.</div>`;
-    return pickers + roomTabs + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
+    return pickers + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
   }
 
-  return pickers + roomTabs + info + questionGrade(targets, subs, one);
+  return pickers + info + questionGrade(targets, subs, one);
 }
 
 /* 채점 본문: hoistory 채점 모달(thUpdateGradeSummary, thRenderGradeBody)을 옮긴 것.
@@ -1237,11 +1239,20 @@ function questionGrade(targets, subs, one){
   const failing = judged.filter(x => !x.v.achieved);
   const passing = judged.filter(x => x.v.achieved);
 
+  // 셋째 줄: 채점, 통과, 미흡 탭과 AI 채점, 재채점 버튼을 한 줄에(선생님 지시 2026-10-28).
+  const ungraded = subs.filter(s => !s.graded).length, graded = subs.length - ungraded;
+  const busy = state.questionAiBusy;
+  const actions = `<span class="line-end">
+      ${state.questionAiStatus ? `<span class="gnote">${esc(state.questionAiStatus)}</span>` : ''}
+      <button class="btn-chip" data-act="q-ai-run" ${ungraded && !busy ? '' : 'disabled'}>${icon('sparkles',13)}AI 채점${ungraded ? ` (미채점 ${ungraded})` : ''}</button>
+      ${graded ? `<button class="btn-chip" data-act="q-ai-regrade" ${busy ? 'disabled' : ''}>${icon('rotate-ccw',13)}재채점 (${graded}명)</button>` : ''}
+      ${one ? `<button class="btn-chip" data-act="q-go-scores" data-id="${one.id}">${icon('trophy',13)}성적 입력으로</button>` : ''}
+    </span>`;
   const gtabs = catline([
     { v:'grade', label:'채점' },
     { v:'pass',  label:`통과 (${passing.length})` },
     { v:'fail',  label:`미흡 (${absent.length + failing.length})` },
-  ], state.questionGradeTab, 'q-gtab');
+  ], state.questionGradeTab, 'q-gtab', null, actions);
   const chip = (no, name, extra = '') => `<span class="qchip"><span class="mono">${esc(no)}</span> ${esc(name)}${extra}</span>`;
 
   let body;
@@ -1261,14 +1272,6 @@ function questionGrade(targets, subs, one){
       ? groups.map(([label, chips]) => `<div class="sectionlabel">${label} (${chips.length})</div><div class="qchips">${chips.join('')}</div>`).join('')
       : `<div class="empty">미흡 학생이 없습니다.</div>`;
   } else {
-    const ungraded = subs.filter(s => !s.graded).length, graded = subs.length - ungraded;
-    const busy = state.questionAiBusy;
-    const bar = `<div class="formrow">
-      <button class="btn-chip" data-act="q-ai-run" ${ungraded && !busy ? '' : 'disabled'}>${icon('sparkles',13)}AI 채점${ungraded ? ` (미채점 ${ungraded})` : ''}</button>
-      ${graded ? `<button class="btn-chip" data-act="q-ai-regrade" ${busy ? 'disabled' : ''}>${icon('rotate-ccw',13)}재채점 (${graded}명)</button>` : ''}
-      ${one ? `<button class="btn-chip" data-act="q-go-scores" data-id="${one.id}">${icon('trophy',13)}성적 입력으로</button>` : ''}
-      ${state.questionAiStatus ? `<span class="gnote">${esc(state.questionAiStatus)}</span>` : ''}
-    </div>`;
     const rows = judged.length ? judged.map(({ s, v }) => {
       const res = s.graded
         ? `<span class="gnote ${v.achieved ? '' : 'bad'}">${esc(s.aiVerdict || '')} / ${s.aiPt ?? 0}pt</span>`
@@ -1283,7 +1286,7 @@ function questionGrade(targets, subs, one){
           <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
         </div></div>`;
     }).join('') : `<div class="empty">제출된 답변이 없습니다.</div>`;
-    body = bar + rows;
+    body = rows;
   }
   return gtabs + body;
 }
