@@ -186,7 +186,7 @@ const A = {
 const LONG_TAIL = ['', ' 그래서 저는 이렇게 생각합니다.', ' 수업을 듣고 생각이 더 분명해졌습니다.', ' 친구들의 생각도 궁금합니다.'];
 const SHORT = ['잘 모르겠습니다.', '도움이 되었다고 생각합니다.', '백성을 위해서입니다.', '권력을 나누기 위해서'];
 
-const MISSION = {   // 강의 → { 앱 키, 가중치 }
+const MISSION = {   // 강의별 { 앱 키, 가중치 }
   h03:{ appKey:'j_interview', title:'사림 인물 인터뷰', weight:1 },
   h05:{ appKey:'j_wartimeline', title:'임진왜란 전쟁 타임라인', weight:2 },
   h07:{ appKey:'j_brain', title:'영조와 정조의 뇌구조', weight:1 },
@@ -203,7 +203,7 @@ const APPS = [
 const FORM = ['h02','h04','h06','h09','s02','s04','s06','s09'];
 
 /* ── 강의 채우기 ── */
-const lessonKey = id => id.replace('L_', '');            // L_h01 → h01
+const lessonKey = id => id.replace('L_', '');            // L_h01 은 h01
 function fillLesson(id, [title, ...pages]){
   const l = M.getLesson(id); if (!l) throw new Error('없는 강의 ' + id);
   const k = lessonKey(id);
