@@ -11,7 +11,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js';
+import * as M from './model.js?v=20261028a';
 import { icon } from './shared/icons.js';
 
 const YEAR = 2027;
@@ -25,6 +25,12 @@ const state = {
   lessonId: null,         // 강의별로 들어왔을 때 보는 강의
   partKey: null,          // 보고 있는 칸
   menuKey: null,          // 메뉴별로 들어왔을 때 고른 메뉴
+
+  // 로그인 화면 (선생님 지시 2026-10-28)
+  loginStep: 'check',     // 'check'(학번·이름·비밀번호) | 'setup'(첫 접속 — 비밀번호 만들기)
+  loginErr: '',           // 지금 보일 빨간 오류 문구(없으면 '')
+  loginBusy: false,       // Firestore 확인 중 — 중복 제출 막기
+  pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name }
 };
 
 // ── 부트 가드 ──
@@ -40,6 +46,7 @@ async function boot(){
     document.getElementById('boot').textContent = '자료를 불러오지 못했습니다. 새로고침해 주세요.';
     return;
   }
+  document.title = M.getText('browserTitle');
   document.documentElement.classList.add('lms-ready');
   $app.hidden = false;
   render();
@@ -59,16 +66,51 @@ function topbar(title, backAct){
   </div>`;
 }
 
-// ── 로그인 ──
+/* ── 로그인 (선생님 지시 2026-10-28) ──
+   순서: 제목 → 부제목 → 안내문구 → 학번 → 이름 → 비밀번호 → 입장하기 → (틀렸을 때) 빨간 문구
+         → 오픈카톡 / 홈 화면에 추가.
+   화면 문구는 전부 M.getText(key)로 읽는다(하드코딩 금지 — CLAUDE.md). */
 function viewLogin(){
+  if (state.loginStep === 'setup') return viewLoginSetup();
+  const guide = M.getText('loginGuide');
   return `<div class="login">
-    <h1>2027</h1>
-    <p class="lead">Dive into HISTORY</p>
-    <input class="field" id="f-sno" inputmode="numeric" placeholder="학번 (숫자 입력)">
-    <input class="field" id="f-name" placeholder="이름">
-    <input class="field" id="f-pw" type="password" placeholder="비밀번호">
-    <button class="primary" data-act="login">입장하기</button>
+    <h1>${esc(M.getText('loginTitle'))}</h1>
+    <p class="lead">${esc(M.getText('loginSubtitle'))}</p>
+    ${guide ? `<p class="guide">${esc(guide)}</p>` : ''}
+    <input class="field" id="f-sno" inputmode="numeric">
+    <input class="field" id="f-name">
+    <input class="field" id="f-pw" type="password">
+    <button class="primary" data-act="login" ${state.loginBusy ? 'disabled' : ''}>${esc(M.getText('loginBtn'))}</button>
+    ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
+    ${loginExtras()}
   </div>`;
+}
+
+// 처음 접속(비밀번호 문서가 없음) — 학번·이름은 이미 맞혀 둔 채 비밀번호만 새로 만든다.
+function viewLoginSetup(){
+  return `<div class="login">
+    <h1>${esc(M.getText('loginTitle'))}</h1>
+    <p class="lead">${esc(M.getText('loginSubtitle'))}</p>
+    <p class="guide">${esc(M.getText('setupGuide'))}</p>
+    <div class="fieldlabel">새 비밀번호</div>
+    <input class="field" id="f-pw1" type="password">
+    <div class="fieldlabel">비밀번호 확인</div>
+    <input class="field" id="f-pw2" type="password">
+    <button class="primary" data-act="setup-pw" ${state.loginBusy ? 'disabled' : ''}>${esc(M.getText('setupBtn'))}</button>
+    ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
+  </div>`;
+}
+
+// 입장하기 아래 — 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28). 링크는 일반 설정에서.
+function loginExtras(){
+  return `<div class="login-extra">
+    <button class="extrabtn" data-act="go-kakao">${icon('message-circle',20)}<span>${esc(M.getText('kakaoCaption'))}</span></button>
+    <button class="extrabtn" data-act="go-install">${icon('home',20)}<span>${esc(M.getText('installCaption'))}</span></button>
+  </div>`;
+}
+function openExternal(url){
+  if (!url){ alertBox('링크가 아직 설정되지 않았습니다.'); return; }
+  window.open(url, '_blank', 'noopener');
 }
 
 // ── 강의실 고르기 ── 과목만 보인다(요구사항 84)
@@ -244,16 +286,57 @@ $app.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   switch (el.dataset.act){
     case 'login': {
+      if (state.loginBusy) return;
       const sno = (document.getElementById('f-sno').value || '').trim();
-      const rooms = M.getCoursesOfStudent(YEAR, sno);
-      if (!rooms.length){ alertBox('그 학번으로 든 강의실이 없습니다.'); return; }
-      state.sno = sno;
-      state.name = (document.getElementById('f-name').value || '').trim()
-        || M.getStudentsByCourse(rooms[0].id).find(s => s.studentNo === sno)?.name || '';
-      state.view = 'rooms'; render(); break;
+      const name = (document.getElementById('f-name').value || '').trim();
+      const pw = (document.getElementById('f-pw').value || '').trim();
+      if (!M.getCoursesOfStudent(YEAR, sno).length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
+      if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = M.getText('errNameMismatch'); render(); return; }
+      state.loginBusy = true; state.loginErr = ''; render();
+      (async () => {
+        try {
+          const rec = await M.getAuthRecord(YEAR, sno);
+          if (!rec){   // 첫 접속 — 비밀번호를 아직 안 만들었다
+            state.loginBusy = false; state.pending = { sno, name }; state.loginStep = 'setup'; render(); return;
+          }
+          if (!pw){ state.loginBusy = false; state.loginErr = M.getText('errPwEmpty'); render(); return; }
+          const ok = await M.verifyPassword(YEAR, sno, pw);
+          state.loginBusy = false;
+          if (!ok){ state.loginErr = M.getText('errPwWrong'); render(); return; }
+          state.sno = sno; state.name = name; state.view = 'rooms'; render();
+        } catch (e) {
+          console.error('login', e);
+          state.loginBusy = false; state.loginErr = M.getText('errNetwork'); render();
+        }
+      })();
+      break;
     }
+    case 'setup-pw': {
+      if (state.loginBusy) return;
+      const pw1 = (document.getElementById('f-pw1').value || '').trim();
+      const pw2 = (document.getElementById('f-pw2').value || '').trim();
+      if (pw1.length < 4){ state.loginErr = M.getText('errPwShort'); render(); return; }
+      if (pw1 !== pw2){ state.loginErr = M.getText('errPwMismatch'); render(); return; }
+      state.loginBusy = true; state.loginErr = ''; render();
+      (async () => {
+        try {
+          await M.createPassword(YEAR, state.pending.sno, pw1);
+          state.sno = state.pending.sno; state.name = state.pending.name;
+          state.pending = null; state.loginStep = 'check'; state.loginBusy = false;
+          state.view = 'rooms'; render();
+        } catch (e) {
+          console.error('setup-pw', e);
+          state.loginBusy = false; state.loginErr = M.getText('errNetwork'); render();
+        }
+      })();
+      break;
+    }
+    case 'go-kakao': openExternal(M.getText('kakaoUrl')); break;
+    case 'go-install': openExternal(M.getText('installUrl')); break;
+
     case 'logout':
-      Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson' });
+      Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
+        loginStep:'check', loginErr:'', loginBusy:false, pending:null });
       render(); break;
 
     case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;

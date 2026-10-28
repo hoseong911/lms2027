@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261027o';
+import * as M from './model.js?v=20261028a';
 import { icon } from './shared/icons.js';
-import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261027n';
+import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
 const $side = document.getElementById('side');
@@ -76,7 +76,7 @@ function boot(){
     document.getElementById('login')?.remove();
     document.getElementById('boot').textContent = '불러오는 중…';
     document.getElementById('boot').style.display = 'grid';
-    try { await M.loadCore(); }
+    try { await M.loadCore(); document.title = `${M.getText('browserTitle')} : 관리자 모드`; }
     catch(e){ console.error(e); toast('데이터를 불러오지 못했습니다.'); }
     document.getElementById('boot').style.display = 'none';
     document.getElementById('shell').hidden = false;
@@ -617,7 +617,7 @@ function openStudentModal(){
   document.addEventListener('keydown', onKey);
 }
 
-// ── 강의 라이브러리 ──
+// ── 강의 라이브러리 (개념 노트의 서브 메뉴, 선생님 지시 2026-10-28) ──
 function pageLessons(){
   const lessons = M.getLessons();
   const listSide = lessons.map(l => `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
@@ -631,7 +631,7 @@ function pageLessons(){
   </div>`;
 
   if (!state.lessonId)
-    return `<div class="pagehead"><h2>강의 라이브러리</h2></div>${addForm}${listSide}`;
+    return `${addForm}${listSide}`;
 
   const l = M.getLesson(state.lessonId);
   const tabs = catline([{v:'edit',label:'강의 편집'},{v:'place',label:'강의실에 꽂기'}], state.lessonTab, 'lesson-tab');
@@ -691,6 +691,9 @@ function lessonPlacer(l){
 function pageConcept(){
   const tabs = catline(M.ADMIN_SUBMENUS.concept, state.conceptTab, 'concept-tab');
   const head = `<div class="pagehead"><h2>개념 노트</h2></div>${tabs}`;
+
+  if (state.conceptTab === 'library')
+    return head + pageLessons();
 
   if (state.conceptTab === 'design')
     return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
@@ -898,11 +901,25 @@ function pageFormative(){
     </div>`;
 }
 
+/* ── 일반 설정 (선생님 지시 2026-10-28) ──
+   화면 문구를 코드에 박지 않고 여기서 직접 심고 바꾼다(model.js의 TEXT_FIELDS 규칙 참고).
+   비워 두면 기본값이 그대로 쓰인다. 입력 칸은 포커스가 빠질 때(change) 저장한다. */
+function pageGeneral(){
+  const groups = M.TEXT_FIELDS.map(g => `
+    <div class="sectionlabel">${esc(g.group)}</div>
+    ${g.items.map(f => `<div class="row">
+      <div class="grow"><div class="t">${esc(f.label)}</div></div>
+      <input class="f w-lg" data-act="text-set" data-k="${f.key}" value="${esc(M.getText(f.key))}">
+    </div>`).join('')}`).join('');
+  return `<div class="pagehead"><h2>일반 설정</h2></div>${groups}`;
+}
+
 // ── 렌더 ──
 function render(){
   renderSide();
-  const p = { rooms:pageRooms, students:pageStudents, lessons:pageLessons, progress:pageProgress,
-              concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative }[state.page];
+  const p = { rooms:pageRooms, students:pageStudents, progress:pageProgress,
+              concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative,
+              general:pageGeneral }[state.page];
   $main.innerHTML = p ? p() : '';
 }
 
@@ -944,7 +961,8 @@ document.getElementById('shell').addEventListener('click', e => {
       state.openScore = state.openScore === key ? null : key; render(); break;
     }
     case 'go-progress': state.page = 'progress'; state.roomDetailId = null; render(); break;
-    case 'go-lessons': state.page = 'lessons'; state.roomDetailId = null; state.lessonId = null; render(); break;
+    case 'go-lessons':
+      state.page = 'concept'; state.conceptTab = 'library'; state.roomDetailId = null; state.lessonId = null; render(); break;
     case 'go-students': state.page = 'students'; state.studentClass = M.roomNo(M.getCourse(id)); state.roomDetailId = null; render(); break;
 
     case 'room-edit': state.editRoomId = id; render(); break;
@@ -1082,6 +1100,8 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setQuestion(el.dataset.id, { [el.dataset.k]: el.value });
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
+  } else if (el.dataset.act === 'text-set'){   // 일반 설정 — 화면 문구 저장(포커스가 빠질 때)
+    M.setText(el.dataset.k, el.value).catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
     const courseId = el.dataset.id, sno = el.dataset.no;
     if (el.checked){

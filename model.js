@@ -13,7 +13,7 @@
 //   조회 함수만 Firestore 호출로 바꾸면 화면은 그대로 둔다.
 // ───────────────────────────────────────────────────────────────────────────
 
-import { db, collection, getDocs, doc, setDoc, deleteDoc } from './shared/fb.js?v=20261027n';
+import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 
 /* 컬렉션 설계 — 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -81,19 +81,67 @@ export const STUDENT_MENUS = [
 export const ADMIN_MENUS = [
   { key:'rooms',     name:'강의실 관리',     icon:'graduation-cap' },
   { key:'students',  name:'학생 관리',       icon:'users' },
-  { key:'lessons',   name:'강의 라이브러리', icon:'book' },
   { key:'progress',  name:'진도 관리',       icon:'clipboard-list' },
   { key:'concept',   name:'개념 노트',       icon:'book-open' },
   { key:'mission',   name:'미션 활동',       icon:'layout-grid' },
   { key:'question',  name:'오늘의 질문',     icon:'message-square' },
   { key:'formative', name:'형성평가',        icon:'circle-check' },
+  { key:'general',   name:'일반 설정',       icon:'settings' },
 ];
 
-// 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
+/* 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
+   강의 라이브러리는 개념 노트의 서브 메뉴로 둔다(선생님 지시 2026-10-28) —
+   강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
 export const ADMIN_SUBMENUS = {
-  concept:  [ { v:'content', label:'콘텐츠' },    { v:'design',  label:'디자인' } ],
+  concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
   question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변, 채점' } ],
 };
+
+/* ── 화면 문구 (선생님 지시 2026-10-28) ──────────────────────────────────
+   "모든 건 하드코딩이 우선이 아니라 관리자가 모든 문구를 직접 심고 바꿀 수 있게."
+   화면에 보이는 글자(제목, 안내문, 버튼, 오류 메시지, 외부 링크 등)는 코드에 직접 적지 않고
+   여기 TEXT_FIELDS에 "키 + 기본값"으로만 등록한다. 화면은 항상 getText(key)로 읽는다.
+   어드민의 "일반 설정"은 이 표를 그대로 돌며 입력 칸을 그리므로, 새 문구를 추가할 때
+   이 표에 한 줄만 더하면 어드민 쪽은 따로 안 고쳐도 된다.
+   관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다. */
+export const TEXT_FIELDS = [
+  { group:'일반', items:[
+    { key:'browserTitle', label:'브라우저 탭 제목',   def:'2027' },
+    { key:'siteName',     label:'사이트 이름',         def:'2027' },
+    { key:'kakaoUrl',     label:'오픈카톡 링크',       def:'' },
+    { key:'installUrl',   label:'홈 화면에 추가 안내 링크', def:'' },
+  ]},
+  { group:'학생 로그인 화면', items:[
+    { key:'loginTitle',     label:'제목',                     def:'2027' },
+    { key:'loginSubtitle',  label:'부제목',                   def:'Dive into HISTORY' },
+    { key:'loginGuide',     label:'안내문구',                 def:'' },
+    { key:'loginBtn',       label:'로그인 버튼 글자',         def:'입장하기' },
+    { key:'kakaoCaption',   label:'오픈카톡 버튼 문구',       def:'오픈카톡' },
+    { key:'installCaption', label:'홈 화면에 추가 버튼 문구', def:'홈 화면에 추가' },
+    { key:'setupGuide',     label:'첫 접속 — 안내문구',       def:'처음 오셨네요. 쓸 비밀번호를 만들어 주세요.' },
+    { key:'setupBtn',       label:'첫 접속 — 버튼 글자',      def:'비밀번호 만들기' },
+  ]},
+  { group:'오류·안내 문구', items:[
+    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'그 학번으로 든 강의실이 없습니다.' },
+    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 명단과 다릅니다.' },
+    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호를 입력해 주세요.' },
+    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 틀렸습니다.' },
+    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호를 4자 이상으로 만들어 주세요.' },
+    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'두 비밀번호가 서로 다릅니다.' },
+    { key:'errNetwork',      label:'저장·연결에 문제가 있을 때',      def:'연결이 원활하지 않습니다. 다시 시도해 주세요.' },
+  ]},
+];
+let siteTexts = {};   // 관리자가 고친 값만. loadCore가 settings/general에서 채운다.
+export function getText(key){
+  const v = siteTexts[key];
+  if (v != null && v !== '') return v;
+  for (const g of TEXT_FIELDS){ const f = g.items.find(i => i.key === key); if (f) return f.def; }
+  return '';
+}
+export async function setText(key, value){
+  siteTexts[key] = String(value ?? '').trim();
+  await setDoc(doc(db, 'settings', 'general'), { texts: siteTexts }, { merge:true });
+}
 
 // 형성평가 문제 유형 넷 (선생님 지시 2026-10-27)
 export const FORMATIVE_TYPES = [
@@ -155,13 +203,14 @@ function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('d
 
 export async function loadCore(){
   const C = COLLECTIONS;
-  const [ys, cs, ss, cls, ls, subs] = await Promise.all([
+  const [ys, cs, ss, cls, ls, subs, gen] = await Promise.all([
     getDocs(collection(db, C.schoolYears)),
     getDocs(collection(db, C.courses)),
     getDocs(collection(db, C.courseStudents)),
     getDocs(collection(db, C.courseLessons)),
     getDocs(collection(db, C.lessons)),
     getDocs(collection(db, C.courseSubmissions)),
+    getDoc(doc(db, 'settings', 'general')),
   ]);
   const rows = snap => snap.docs.map(d => ({ ...d.data(), id:d.id }));
   DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
@@ -170,6 +219,7 @@ export async function loadCore(){
   DEMO.courseLessons = rows(cls);
   DEMO.lessons     = rows(ls);
   DEMO.submissions = rows(subs);
+  siteTexts        = gen.exists() ? (gen.data().texts || {}) : {};
 }
 
 // ── 조회 (메모리에서. loadCore가 Firestore에서 채워 둔다) ──
@@ -445,3 +495,33 @@ export function updateMissionApp(id, patch){
   return a;
 }
 export function deleteMissionApp(id){ DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id); }
+
+/* ── 학생 로그인 — 학번·이름·비밀번호 (선생님 지시 2026-10-28) ──────────────────
+   Firebase Auth를 쓰지 않는다(2026-10-23 결정). course_auth 문서 { hash }를
+   학년도_학번 id로 두고, 로그인 때만 그 한 건을 읽는다(통째로 불러오지 않는다).
+   처음 온 학생(그 문서가 없음)은 비밀번호를 만드는 쪽으로, 그다음부터는
+   비밀번호를 맞혀야 들어오는 쪽으로 index.js가 나눠 보낸다. */
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text)));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// 그 학년도에 든 강의실 중 한 곳이라도 명단 이름이 같으면 통과
+export function matchesRosterName(year, studentNo, name){
+  const nm = String(name ?? '').trim(); if (!nm) return false;
+  return getCoursesOfStudent(year, studentNo)
+    .some(c => DEMO.students.find(s => s.courseId === c.id && s.studentNo === studentNo)?.name === nm);
+}
+export async function getAuthRecord(year, studentNo){
+  const snap = await getDoc(doc(db, COLLECTIONS.courseAuth, `${year}_${studentNo}`));
+  return snap.exists() ? snap.data() : null;
+}
+// 처음 한 번만 만든다(이미 있으면 안 덮어쓴다 — 비번 초기화는 어드민의 다음 단계).
+export async function createPassword(year, studentNo, password){
+  const id = `${year}_${studentNo}`;
+  if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있습니다.');
+  await setDoc(doc(db, COLLECTIONS.courseAuth, id), { hash: await sha256Hex(password) });
+}
+export async function verifyPassword(year, studentNo, password){
+  const rec = await getAuthRecord(year, studentNo);
+  return !!rec && rec.hash === await sha256Hex(password);
+}

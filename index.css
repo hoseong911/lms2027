@@ -63,6 +63,9 @@ html:not(.lms-ready) #app{display:none}
 .login{max-width:360px;margin:10vh auto 0}
 .login h1{font-size:34px;text-align:center;margin:0 0 4px;letter-spacing:1px;color:var(--navy)}
 .login .lead{text-align:center;color:var(--sub);font-size:13px;margin:0 0 22px;letter-spacing:.5px}
+.login .guide{text-align:center;color:var(--sub);font-size:13px;margin:0 0 16px;line-height:1.6}
+.login .err{color:var(--red);font-size:13px;margin:10px 0 0;text-align:center}
+.login .fieldlabel{font-size:13px;color:var(--sub);margin:0 0 4px}
 .field{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:13px;font-size:16px;margin-bottom:8px;
   background:var(--card);color:var(--ink);font-family:inherit}
 /* 16px 밑으로 내리지 않는다 — 사파리가 입력 칸을 누를 때 화면을 확대한다 */
@@ -74,6 +77,13 @@ html:not(.lms-ready) #app{display:none}
 .primary:hover{background:var(--navy-800)}
 .primary.wide{width:100%;margin-top:12px}
 .login .primary{width:100%;margin-top:4px}
+
+/* 입장하기 아래 — 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28) */
+.login-extra{display:flex;gap:10px;margin-top:18px}
+.extrabtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--sub);
+  padding:12px 8px;font-size:12px;font-family:inherit;cursor:pointer;min-height:44px}
+.extrabtn:hover{border-color:var(--navy);color:var(--navy)}
 
 /* ── 성적 ── */
 .score{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}

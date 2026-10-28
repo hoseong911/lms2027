@@ -174,7 +174,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
   color:var(--ink);font-family:inherit}
 .f::placeholder{color:var(--sub)}
 .f:focus{outline:none;border-color:var(--navy);box-shadow:inset 0 -2px 0 -1px var(--navy)}
-.f.w-sm{width:84px}.f.w-md{width:130px}.f.grow{flex:1;min-width:120px}
+.f.w-sm{width:84px}.f.w-md{width:130px}.f.w-lg{width:320px}.f.grow{flex:1;min-width:120px}
 /* 숫자 칸 스피너 제거(혹시 type=number가 섞여도) */
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
@@ -268,6 +268,7 @@ input[type=number]{-moz-appearance:textfield}
   .f{min-height:44px;font-size:16px}    /* 16px 밑으로 내리면 사파리가 화면을 확대한다(예외) */
   .f.w-sm{width:72px}
   .f.w-md{flex:1;min-width:110px}
+  .f.w-lg{width:100%}
   .btn-text{min-height:44px}
   .ib{width:40px;height:40px}
   .catline{gap:14px}
