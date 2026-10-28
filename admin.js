@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028d';
+import * as M from './model.js?v=20261028e';
 import { icon } from './shared/icons.js';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -903,15 +903,17 @@ function pageFormative(){
 
 /* ── 일반 설정 (선생님 지시 2026-10-28) ──
    화면 문구를 코드에 박지 않고 여기서 직접 심고 바꾼다(model.js의 TEXT_FIELDS 규칙 참고).
-   비워 두면 기본값이 그대로 쓰인다. 입력 칸은 포커스가 빠질 때(change) 저장한다. */
+   비워 두면 기본값이 그대로 쓰인다. 칸마다 따로 저장하지 않고 저장 버튼 하나로 한 번에 쓴다. */
 function pageGeneral(){
   const groups = M.TEXT_FIELDS.map(g => `
     <div class="sectionlabel">${esc(g.group)}</div>
     ${g.items.map(f => `<div class="row">
       <div class="grow"><div class="t">${esc(f.label)}</div></div>
-      <input class="f w-lg" data-act="text-set" data-k="${f.key}" value="${esc(M.getText(f.key))}">
+      <input class="f w-lg" data-text-key="${f.key}" value="${esc(M.getText(f.key))}">
     </div>`).join('')}`).join('');
-  return `<div class="pagehead"><h2>일반 설정</h2></div>${groups}`;
+  return `<div class="pagehead"><h2>일반 설정</h2>
+      <button class="btn-add" data-act="general-save" title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button></div>
+    ${groups}`;
 }
 
 // ── 렌더 ──
@@ -1067,6 +1069,16 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'fm-close': state.formativeLessonId = null; render(); break;
     case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
 
+    // 일반 설정: 칸마다 따로 안 쓰고 저장 버튼을 누를 때 전부 한 번에 쓴다.
+    case 'general-save': {
+      const patch = {};
+      document.querySelectorAll('[data-text-key]').forEach(inp => { patch[inp.dataset.textKey] = inp.value; });
+      M.setTexts(patch)
+        .then(() => toast('저장했습니다.'))
+        .catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
+      break;
+    }
+
     case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
 
     case 'noop': toast('뼈대다(다음 단계).'); break;
@@ -1100,8 +1112,6 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setQuestion(el.dataset.id, { [el.dataset.k]: el.value });
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
-  } else if (el.dataset.act === 'text-set'){   // 일반 설정: 화면 문구 저장(포커스가 빠질 때)
-    M.setText(el.dataset.k, el.value).catch(() => toast('저장하지 못했다. 다시 해 본다.'));
   } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
     const courseId = el.dataset.id, sno = el.dataset.no;
     if (el.checked){

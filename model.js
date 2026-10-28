@@ -103,32 +103,35 @@ export const ADMIN_SUBMENUS = {
    여기 TEXT_FIELDS에 "키 + 기본값"으로만 등록한다. 화면은 항상 getText(key)로 읽는다.
    어드민의 "일반 설정"은 이 표를 그대로 돌며 입력 칸을 그리므로, 새 문구를 추가할 때
    이 표에 한 줄만 더하면 어드민 쪽은 따로 안 고쳐도 된다.
-   관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다. */
+   관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다.
+
+   기본값은 선생님이 일반 설정에서 직접 입력한 문구를 그대로 옮긴 것이다(2026-10-28).
+   경어(~습니다체)로 쓴다 — "~다체로" 했던 지시는 같은 날 바로 정정됐다(CLAUDE.md 참고). */
 export const TEXT_FIELDS = [
   { group:'일반', items:[
-    { key:'browserTitle', label:'브라우저 탭 제목',   def:'2027' },
-    { key:'siteName',     label:'사이트 이름',         def:'2027' },
+    { key:'browserTitle', label:'브라우저 탭 제목',   def:'HO TEACHER LMS' },
+    { key:'siteName',     label:'사이트 이름',         def:'호성T 수업 : 학습 관리 시스템' },
     { key:'kakaoUrl',     label:'오픈카톡 링크',       def:'' },
     { key:'installUrl',   label:'홈 화면에 추가 안내 링크', def:'' },
   ]},
   { group:'학생 로그인 화면', items:[
-    { key:'loginTitle',     label:'제목',                     def:'2027' },
-    { key:'loginSubtitle',  label:'부제목',                   def:'Dive into HISTORY' },
-    { key:'loginGuide',     label:'안내문구',                 def:'' },
-    { key:'loginBtn',       label:'로그인 버튼 글자',         def:'입장하기' },
-    { key:'kakaoCaption',   label:'오픈카톡 버튼 문구',       def:'오픈카톡' },
+    { key:'loginTitle',     label:'제목',                     def:'HO TEACHER LMS' },
+    { key:'loginSubtitle',  label:'부제목',                   def:'호성T 수업 : 학습 관리 시스템' },
+    { key:'loginGuide',     label:'안내문구',                 def:'호성쌤 수업에 대한 학습 관리 시스템에 오신 것을 환영합니다.' },
+    { key:'loginBtn',       label:'로그인 버튼 글자',         def:'로그인' },
+    { key:'kakaoCaption',   label:'오픈카톡 버튼 문구',       def:'호성T와 연락하기' },
     { key:'installCaption', label:'홈 화면에 추가 버튼 문구', def:'홈 화면에 추가' },
-    { key:'setupGuide',     label:'첫 접속 안내문구',        def:'처음 들어왔다. 쓸 비밀번호를 만든다.' },
-    { key:'setupBtn',       label:'첫 접속 버튼 글자',       def:'비밀번호 만들기' },
+    { key:'setupGuide',     label:'첫 접속 안내문구',        def:'LMS에 처음 접속하셨습니다. 사용하실 비밀번호를 생성하시길 바랍니다.' },
+    { key:'setupBtn',       label:'첫 접속 버튼 글자',       def:'비밀번호 생성' },
   ]},
   { group:'오류와 안내 문구', items:[
-    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'그 학번으로 든 강의실이 없다.' },
-    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 명단과 다르다.' },
-    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호가 비었다.' },
-    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 틀렸다.' },
-    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호는 4자 이상이어야 한다.' },
-    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'두 비밀번호가 서로 다르다.' },
-    { key:'errNetwork',      label:'저장과 연결에 문제가 있을 때',     def:'연결이 원활하지 않다. 다시 해 본다.' },
+    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'학번에 해당하는 강의실이 개설되지 않았습니다.' },
+    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 학생 명단과 일치하지 않습니다.' },
+    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호를 입력하시길 바랍니다.' },
+    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 일치하지 않습니다.' },
+    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호는 4자 이상이어야 합니다.' },
+    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'비밀번호가 일치하지 않습니다.' },
+    { key:'errNetwork',      label:'저장과 연결에 문제가 있을 때',     def:'연결이 원활하지 않습니다.' },
   ]},
 ];
 let siteTexts = {};   // 관리자가 고친 값만. loadCore가 settings/general에서 채운다.
@@ -138,8 +141,9 @@ export function getText(key){
   for (const g of TEXT_FIELDS){ const f = g.items.find(i => i.key === key); if (f) return f.def; }
   return '';
 }
-export async function setText(key, value){
-  siteTexts[key] = String(value ?? '').trim();
+// 일반 설정의 저장 버튼이 한 번에 부른다 — 필드마다 따로 쓰지 않고 texts 맵 전체를 한 번에 쓴다.
+export async function setTexts(patch){
+  Object.entries(patch).forEach(([k, v]) => { siteTexts[k] = String(v ?? '').trim(); });
   await setDoc(doc(db, 'settings', 'general'), { texts: siteTexts }, { merge:true });
 }
 
