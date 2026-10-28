@@ -290,14 +290,16 @@ $app.addEventListener('click', e => {
       const sno = (document.getElementById('f-sno').value || '').trim();
       const name = (document.getElementById('f-name').value || '').trim();
       const pw = (document.getElementById('f-pw').value || '').trim();
-      if (!M.getCoursesOfStudent(YEAR, sno).length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
+      const rooms = M.getCoursesOfStudent(YEAR, sno);
+      if (!rooms.length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
       if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = M.getText('errNameMismatch'); render(); return; }
       state.loginBusy = true; state.loginErr = ''; render();
       (async () => {
         try {
           const rec = await M.getAuthRecord(YEAR, sno);
           if (!rec){   // 첫 접속 — 비밀번호를 아직 안 만들었다
-            state.loginBusy = false; state.pending = { sno, name }; state.loginStep = 'setup'; render(); return;
+            state.loginBusy = false; state.pending = { sno, name, courseId: rooms[0].id };
+            state.loginStep = 'setup'; render(); return;
           }
           if (!pw){ state.loginBusy = false; state.loginErr = M.getText('errPwEmpty'); render(); return; }
           const ok = await M.verifyPassword(YEAR, sno, pw);
@@ -320,7 +322,7 @@ $app.addEventListener('click', e => {
       state.loginBusy = true; state.loginErr = ''; render();
       (async () => {
         try {
-          await M.createPassword(YEAR, state.pending.sno, pw1);
+          await M.createPassword(YEAR, state.pending.sno, pw1, state.pending.courseId);
           state.sno = state.pending.sno; state.name = state.pending.name;
           state.pending = null; state.loginStep = 'check'; state.loginBusy = false;
           state.view = 'rooms'; render();

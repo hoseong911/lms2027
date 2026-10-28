@@ -497,10 +497,16 @@ export function updateMissionApp(id, patch){
 export function deleteMissionApp(id){ DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id); }
 
 /* ── 학생 로그인 — 학번·이름·비밀번호 (선생님 지시 2026-10-28) ──────────────────
-   Firebase Auth를 쓰지 않는다(2026-10-23 결정). course_auth 문서 { hash }를
+   Firebase Auth를 쓰지 않는다(2026-10-23 결정). course_auth 문서 { pw, courseId }를
    학년도_학번 id로 두고, 로그인 때만 그 한 건을 읽는다(통째로 불러오지 않는다).
    처음 온 학생(그 문서가 없음)은 비밀번호를 만드는 쪽으로, 그다음부터는
-   비밀번호를 맞혀야 들어오는 쪽으로 index.js가 나눠 보낸다. */
+   비밀번호를 맞혀야 들어오는 쪽으로 index.js가 나눠 보낸다.
+
+   필드 이름과 문서 모양은 hoistory의 firestore.rules가 이미 정해 둔 것을 그대로 따른다
+   (create 전용, hoistory/firestore.rules 506~516행) — `keys().hasOnly(['pw','courseId'])`,
+   `pw`는 `^[0-9a-f]{64}$`, `onYearRoster(id, courseId)`가 그 학번이 courseId 강의실
+   명단(course_students)에 있고 그 강의실이 이 학년도인지를 본다. 필드 이름이나 모양을
+   바꾸면 규칙에 막혀 학생이 비밀번호를 아예 못 만든다. */
 async function sha256Hex(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text)));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -516,12 +522,13 @@ export async function getAuthRecord(year, studentNo){
   return snap.exists() ? snap.data() : null;
 }
 // 처음 한 번만 만든다(이미 있으면 안 덮어쓴다 — 비번 초기화는 어드민의 다음 단계).
-export async function createPassword(year, studentNo, password){
+// courseId는 그 학번이 든 강의실 중 아무 곳(규칙은 명단에 있는지만 본다).
+export async function createPassword(year, studentNo, password, courseId){
   const id = `${year}_${studentNo}`;
   if (await getAuthRecord(year, studentNo)) throw new Error('이미 비밀번호가 있습니다.');
-  await setDoc(doc(db, COLLECTIONS.courseAuth, id), { hash: await sha256Hex(password) });
+  await setDoc(doc(db, COLLECTIONS.courseAuth, id), { pw: await sha256Hex(password), courseId });
 }
 export async function verifyPassword(year, studentNo, password){
   const rec = await getAuthRecord(year, studentNo);
-  return !!rec && rec.hash === await sha256Hex(password);
+  return !!rec && rec.pw === await sha256Hex(password);
 }

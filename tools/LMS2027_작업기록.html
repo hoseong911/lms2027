@@ -89,8 +89,8 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li>오류 문구 일곱 가지를 나눠 뒀다(그 학번 강의실 없음, 이름 불일치, 비밀번호 빈칸/오류/짧음/확인 불일치, 연결 오류) — 전부 <code>TEXT_FIELDS</code>의 "오류·안내 문구" 묶음이라 어드민에서 바로 고칠 수 있다.</li>
 <li>입장하기 아래에 오픈카톡/홈 화면에 추가 두 버튼(SVG 아이콘 + 짧은 문구). 링크는 일반 설정의 <code>kakaoUrl</code>/<code>installUrl</code> — 비어 있으면 누를 때 "링크가 아직 설정되지 않았습니다" 안내만 뜬다.</li>
 <li><code>shared/fb.js</code>에 <code>getDoc</code>을 새로 export해서 <code>model.js</code>가 로그인 때 <code>course_auth</code> 한 건만 읽는다 (전체를 불러오지 않는다는 기존 설계 그대로).</li>
-<li><strong>남은 것 — 이번엔 안 건드림</strong>: <code>course_auth</code>의 Firestore 쓰기 규칙. 지금은 <code>createPassword</code>가 "문서가 없을 때만 만든다"를 코드에서만 막는다. <code>LMS2027.md</code> 4번이 이미 적어 둔 대로 <strong>규칙도 create 전용으로 좁혀야</strong> 한다(<code>hoistory/firestore.rules</code>, 배포는 그 레포에서). 다음에 손볼 것.</li>
-<li><strong>hoistory의 2026 LMS에도 같은 첫 접속 흐름을 넣어 달라는 지시(2026-10-28)는 아직 안 했다</strong> — 그 레포로 건너가 따로 확인하고 적용해야 한다.</li>
+<li><strong>처음엔 문서 모양을 잘못 짰다 — 바로 고침.</strong> <code>hoistory/firestore.rules</code>를 열어 보니 <code>course_auth</code> 규칙(ebc8822, <strong>이미 배포됨</strong>)이 진작부터 <code>allow create</code>를 <code>keys().hasOnly(['pw','courseId'])</code>, <code>pw</code>는 <code>^[0-9a-f]{64}$</code>, <code>onYearRoster(id, courseId)</code>로 좁혀 두고 있었다. 처음엔 이걸 안 보고 <code>{ hash }</code>로만 썼는데, 그러면 <strong>배포된 규칙에 막혀 학생이 비밀번호를 아예 못 만들었을 것</strong>이다. <code>createPassword</code>가 <code>{ pw, courseId }</code>를 쓰게 고쳤다(<code>courseId</code>는 그 학번이 든 강의실 중 첫 곳). 규칙 쪽은 손댈 게 없었다 — <strong>이미 이 모양으로 배포돼 있었다.</strong></li>
+<li><strong>"hoistory의 2026 LMS에도 같은 첫 접속 흐름을" 지시는 — 확인해 보니 hoistory <code>lms/index.js</code>가 이미 똑같이 하고 있었다</strong>(<code>lms_auth/{학번}</code> 문서 유무로 "처음이시네요, 비밀번호를 설정하세요"와 "비밀번호를 쳐야 들어옴"을 가른다. 다만 화면을 나누지 않고 같은 비밀번호 칸 하나로 live 안내만 바꾼다). 그래서 선생님 말씀은 "hoistory처럼 만들어라"는 뜻이었던 것으로 보고, <strong>hoistory 코드는 건드리지 않았다.</strong> 위 <code>course_auth</code> 필드 모양을 hoistory 쪽(<code>lms_auth</code>는 <code>pw</code> 필드, 해시 방식도 같은 <code>SHA-256</code>)과 맞춘 것이 그 적용이다. 화면 흐름(별도 단계 vs 같은 칸)까지 hoistory와 똑같이 맞출지는 다음에 여쭤볼 것 — 지금은 요구사항 3번이 적은 순서(학번→이름→비밀번호→ 입장하기)를 그대로 따라 별도 단계로 뒀다.</li>
 </ul>
 <hr>
 <h2 id="2026-10-27">2026-10-27</h2>
