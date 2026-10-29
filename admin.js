@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029d';
+import * as M from './model.js?v=20261029e';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -34,8 +34,6 @@ const state = {
   // 칸별 메뉴 넷 (2026-10-27)
   conceptTab: 'content',           // 개념 노트 서브 메뉴 'content' | 'design'
   conceptLessonId: null,           // 콘텐츠에서 펼친 강의
-  missionTab: 'list',              // 미션 활동 탭 'list' 또는 열어 둔 앱 키
-  missionOpen: [],                 // 같은 창 안에 탭으로 열어 둔 앱 키들(요구사항 67)
   questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers' | 'pick'
   questionSubject: null,           // 오늘의 질문 과목 탭(서브 메뉴 셋 공통)
   questionOpenId: null,            // 질문 관리에서 설명문을 펼친 강의
@@ -184,8 +182,9 @@ function renderSide(){
 // ── 카테고리 줄(구분선) ──
 // extra를 주면 줄 오른쪽 끝에 붙는다(학년도 줄의 "학년도 만들기" 칸).
 function catline(items, active, act, allLabel, extra = '', cls = ''){
-  const all = allLabel ? `<button class="cat ${active==null||active==='all'?'on':''}" data-act="${act}" data-v="all">${esc(allLabel)}</button>` : '';
-  const rest = items.map(it => `<button class="cat ${String(active)===String(it.v)?'on':''}" data-act="${act}" data-v="${esc(it.v)}">${esc(it.label)}</button>`).join('');
+  // data-label: 켜진 탭은 굵은 글씨다. 굵어져도 폭이 안 늘게 CSS가 이 글자로 굵은 폭을 미리 잡아 둔다.
+  const all = allLabel ? `<button class="cat ${active==null||active==='all'?'on':''}" data-act="${act}" data-v="all" data-label="${esc(allLabel)}">${esc(allLabel)}</button>` : '';
+  const rest = items.map(it => `<button class="cat ${String(active)===String(it.v)?'on':''}" data-act="${act}" data-v="${esc(it.v)}" data-label="${esc(it.label)}">${esc(it.label)}</button>`).join('');
   return `<div class="catline ${cls}">${all}${rest}${extra}</div>`;
 }
 
@@ -1130,25 +1129,15 @@ function conceptEditor(l){
    hoistory 카드가 들고 있던 것을 그대로 옮겼다: 제목, 웹앱 주소, 어드민 주소, 아이콘,
    연결할 강의, 팝업으로 열기, 그리고 아카이브 세 칸(수업 주제, 활동 의도, 아카이브 내용).
    아카이브 칸은 접어 두고 아이콘 단추로 펼친다(hoistory의 아카이브 아코디언과 같다).
-   앱 어드민은 오버레이로 화면을 덮지 않고 같은 창 안의 탭으로 연다(요구사항 67). */
+   앱 어드민은 브라우저 새 탭으로 연다(선생님 지시 2026-10-29: 학생 활동을 보면서 성적을 매기려면
+   어드민이 따로 떠 있어야 한다). 같은 창 안의 탭(요구사항 67)은 이 지시로 걷어냈다.
+   목록은 두 단이고 새로 추가한 앱이 늘 맨 위에 선다. 위, 아래 단추로 순서를 바꾼다(M.moveMissionApp). */
 function pageMission(){
   const head = `<div class="pagehead"><h2>${esc(M.menuName('mission'))}</h2>
     <button class="btn-add" data-act="mission-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
 
-  const openTabs = state.missionOpen.map(key => M.getMissionApp(key)).filter(Boolean);
-  const tabline = `<div class="catline">
-    <button class="cat ${state.missionTab==='list'?'on':''}" data-act="mission-tab" data-v="list">미션 목록</button>
-    ${openTabs.map(a => `<span class="cat-wrap">
-      <button class="cat ${state.missionTab===a.id?'on':''}" data-act="mission-tab" data-v="${esc(a.id)}">${esc(a.name)}</button>
-      <button class="cat-x" data-act="mission-tab-close" data-v="${esc(a.id)}" title="탭 닫기" aria-label="탭 닫기">${icon('x',14)}</button>
-    </span>`).join('')}</div>`;
-
-  const openApp = state.missionTab === 'list' ? null : M.getMissionApp(state.missionTab);
-  if (openApp)
-    return `${head}${tabline}<iframe class="appframe" src="${esc(openApp.adminUrl)}" title="${esc(openApp.name)} 관리자 모드"></iframe>`;
-
   const apps = M.getMissionApps();
-  const list = apps.length ? apps.map(a => {
+  const list = apps.length ? apps.map((a, i) => {
     const lesson = a.lessonId ? M.getLesson(a.lessonId) : null;
     const arch = a.archive || {};
     const bits = [lesson ? `연결 강의 ${lesson.title}` : '연결한 강의 없음',
@@ -1159,13 +1148,22 @@ function pageMission(){
         <div class="s">${esc(bits)}</div>
         ${arch.topic ? `<div class="s">아카이브 ${esc(arch.topic)}</div>` : ''}</div>
       <div class="tools">
-        <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" title="앱 어드민" aria-label="앱 어드민">${icon('wrench',16)}</button>
+        <button class="ib" data-act="mission-up" data-v="${esc(a.id)}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',16)}</button>
+        <button class="ib" data-act="mission-down" data-v="${esc(a.id)}" ${i===apps.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',16)}</button>
+        <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" ${a.adminUrl?'':'disabled'}
+          title="${a.adminUrl ? '앱 어드민 (새 탭)' : '어드민 주소가 없습니다.'}" aria-label="앱 어드민">${icon('wrench',16)}</button>
         <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
-  }).join('') : `<div class="empty">연결한 앱이 없습니다.</div>`;
+  }).join('') : '';
 
-  return `${head}${tabline}<div class="sectionlabel">현재 연결된 미션</div>${list}`;
+  return `${head}<div class="sectionlabel">현재 연결된 미션</div>`
+    + (apps.length ? `<div class="mission-cols">${list}</div>` : `<div class="empty">연결한 앱이 없습니다.</div>`);
+}
+// 앱 어드민을 브라우저 새 탭으로 연다(미션 목록의 렌치 단추, 강의실 상세의 미션 활동 바로가기 공용).
+function openMissionAdmin(app){
+  if (!app?.adminUrl){ toast('어드민 주소가 없습니다.'); return; }
+  window.open(new URL(app.adminUrl, location.href).href, '_blank', 'noopener');
 }
 
 /* 미션 앱 등록, 수정 팝업. hoistory 카드 추가 폼의 칸을 그대로 옮겼다. */
@@ -1581,13 +1579,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'stu-score-course': state.stuScoreCourseId = id; render(); break;   // 학생 관리 상세: 성적을 볼 과목
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
     // 강의 진도 줄의 바로가기: 미션 활동(연결한 앱 열기), 오늘의 질문 답변
-    case 'cl-mission': {
-      const app = M.getMissionApps().find(a => a.lessonId === el.dataset.lid);
-      if (!app) break;
-      if (!state.missionOpen.includes(app.id)) state.missionOpen.push(app.id);
-      Object.assign(state, { page:'mission', missionTab:app.id, roomDetailId:null });
-      render(); break;
-    }
+    case 'cl-mission':
+      openMissionAdmin(M.getMissionApps().find(a => a.lessonId === el.dataset.lid)); break;
     case 'cl-question': {
       const c = M.getCourse(id); if (!c) break;
       Object.assign(state, { page:'question', questionTab:'answers', questionSubject:c.subject,
@@ -1686,15 +1679,10 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
     case 'ce-del': M.conceptDelLine(id, +k); render(); break;
 
-    // 미션 활동: 앱 어드민을 같은 창 안의 탭으로 열고 닫는다
-    case 'mission-tab': state.missionTab = v; render(); break;
-    case 'mission-admin':
-      if (!state.missionOpen.includes(v)) state.missionOpen.push(v);
-      state.missionTab = v; render(); break;
-    case 'mission-tab-close':
-      state.missionOpen = state.missionOpen.filter(x => x !== v);
-      if (state.missionTab === v) state.missionTab = 'list';
-      render(); break;
+    // 미션 활동: 앱 어드민은 브라우저 새 탭으로. 순서는 위, 아래 단추로 한 칸씩
+    case 'mission-admin': openMissionAdmin(M.getMissionApp(v)); break;
+    case 'mission-up': M.moveMissionApp(v, -1); render(); break;
+    case 'mission-down': M.moveMissionApp(v, 1); render(); break;
     case 'mission-add-open': openMissionModal(); break;
     case 'mission-edit': openMissionModal(M.getMissionApp(v)); break;
     case 'mission-del': {
@@ -1702,8 +1690,6 @@ document.getElementById('shell').addEventListener('click', e => {
       confirmDelete({ title:`${a.name} 삭제`, bodyHtml:`연결을 지웁니다. 되돌릴 수 없습니다.`, needText:a.name })
         .then(ok => { if (!ok) return;
           M.deleteMissionApp(v);
-          state.missionOpen = state.missionOpen.filter(x => x !== v);
-          if (state.missionTab === v) state.missionTab = 'list';
           toast(`${a.name}을 지웠습니다.`); render(); });
       break;
     }

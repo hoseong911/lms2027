@@ -334,7 +334,10 @@ export function getPartItems(courseId, partKey){
 // 그 칸(개념 노트, 미션 활동, 오늘의 질문, 형성평가)을 가진 강의만. 칸별 메뉴 넷이 쓴다.
 export function getLessonsWithPart(key){ return DEMO.lessons.filter(l => !!l.parts?.[key]); }
 
-export function getMissionApps(){ return [...DEMO.missionApps]; }
+// 미션 앱은 order 오름차순(작을수록 위). 새 앱은 늘 맨 위로 들어간다(addMissionApp).
+// order가 없는 옛 문서는 order 있는 것들 뒤에 불러온 차례대로 선다.
+const missionOrder = a => (typeof a.order === 'number' ? a.order : Infinity);
+export function getMissionApps(){ return [...DEMO.missionApps].sort((a, b) => missionOrder(a) - missionOrder(b)); }
 export function getMissionApp(appKey){ return DEMO.missionApps.find(a => a.id === appKey) || null; }
 
 export function getQuizzes(){ return [...DEMO.quizzes]; }
@@ -1039,10 +1042,21 @@ export function addMissionApp({ name, studentUrl, adminUrl, key, icon, lessonId,
   const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
   const id = String(key || '').trim() || nid('app_');
   if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
+  // 새 앱은 무조건 맨 위(선생님 지시 2026-10-29): 지금 가장 작은 order보다 하나 작게.
+  const top = Math.min(0, ...DEMO.missionApps.map(x => x.order).filter(n => typeof n === 'number'));
   const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim(),
-              icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal,
+              icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal, order:top - 1,
               archive:{ topic:'', intent:'', content:'', ...(archive || {}) } };
   DEMO.missionApps.push(a); put(COLLECTIONS.missionApps, a); return a;
+}
+// 미션 앱 순서를 한 칸 위(dir -1)나 아래(+1)로. 지금 보이는 차례대로 0부터 다시 매기고
+// 둘을 맞바꾼 뒤, order가 바뀐 문서만 저장한다(order 없던 옛 문서도 이때 번호를 받는다).
+export function moveMissionApp(id, dir){
+  const list = getMissionApps();
+  const i = list.findIndex(a => a.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  list.forEach((a, n) => { if (a.order !== n){ a.order = n; put(COLLECTIONS.missionApps, a); } });
 }
 export function updateMissionApp(id, patch){
   const a = getMissionApp(id); if (!a) return null;

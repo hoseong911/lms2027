@@ -40,6 +40,11 @@ html:not(.lms-ready) #shell{display:none}
 .gen-cols .sectionlabel{margin-top:4px}
 .gen-label{flex:0 0 150px}
 @media (max-width:1000px){ .gen-cols{grid-template-columns:minmax(0,1fr)} .gen-col + .gen-col{margin-top:18px} }
+/* 미션 활동 목록 두 단(선생님 지시 2026-10-29). 왼쪽 단을 위에서 아래로 다 채우고 오른쪽 단으로 이어지므로
+   위, 아래 단추가 눈에 보이는 위, 아래와 같다. 맞닿는 줄 합치기(.row + .row)가 단 경계에서 끊기므로 아래 선만 쓴다 */
+.mission-cols{columns:2;column-gap:48px;border-top:1px solid var(--line)}
+.mission-cols > .row{break-inside:avoid;border-top:0;border-bottom:1px solid var(--line)}
+@media (max-width:1000px){ .mission-cols{columns:1} }
 /* 일반 설정의 어드민 메뉴 줄: 아이콘, 이름 칸, 위아래 단추. 구분선 줄은 선 하나로 보여 준다 */
 .menu-ico{display:inline-grid;place-items:center;color:var(--sub)}
 .menu-sep-line{border-top:1px solid var(--line-strong);margin:0 2px}
@@ -344,17 +349,13 @@ div.selrow{cursor:default}
 .catline{display:flex;align-items:flex-start;gap:18px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:14px;flex-wrap:wrap}
 /* 탭 높이를 조작 칸 높이에 맞춰, 줄 끝에 토글이나 검색 칸이 붙어도 카테고리 줄 높이가 늘 같다 */
 .cat{font-size:var(--fs-body);color:var(--sub);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;
-  height:calc(var(--h-ctl) + 9px);padding:0 0 7px;margin-bottom:-9px;display:inline-flex;align-items:center;
-  font-family:inherit}
+  height:calc(var(--h-ctl) + 9px);padding:0 0 7px;margin-bottom:-9px;
+  display:inline-flex;flex-direction:column;justify-content:center;align-items:center;font-family:inherit}
 .cat:hover{color:var(--ink)}
-.cat.on{color:var(--accent);-webkit-text-stroke:.5px var(--accent);border-bottom:2px solid var(--accent)}
-/* 미션 활동: 열어 둔 앱 어드민 탭. 탭 글자 옆에 닫기 하나를 붙인다 */
-.cat-wrap{display:flex;align-items:center;gap:4px}
-.cat-x{border:0;background:none;color:var(--sub);cursor:pointer;padding:0 0 8px;margin-bottom:-9px;
-  display:inline-grid;place-items:center;font-family:inherit}
-.cat-x:hover{color:var(--ink)}
-.appframe{width:100%;height:calc(100vh - 210px);min-height:420px;border:1px solid var(--line);
-  border-radius:var(--r);background:transparent;display:block}
+/* 켜진 탭은 진짜 굵은 글씨(선생님 지시 2026-10-29: 더 굵게). 옆 탭이 밀리지 않게 ::after가 같은 글자를
+   굵게, 높이 0으로 깔아 탭 폭을 늘 굵은 폭으로 잡아 둔다(글자는 catline()의 data-label) */
+.cat::after{content:attr(data-label);font-weight:700;height:0;overflow:hidden;visibility:hidden;pointer-events:none;user-select:none}
+.cat.on{color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent)}
 
 /* 목록 줄: 한 묶음은 카드 하나로 담는다. 줄마다 카드를 나누지 않는다 (화면 규칙 2026-10-28).
    맞닿는 테두리를 하나로 합치고, 묶음의 첫 줄과 끝 줄에만 모서리를 둥글린다.
