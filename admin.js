@@ -276,7 +276,7 @@ function pageRooms(){
         <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
         <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div></div>`;
-  return `${head}${filterLine}<div class="split"><div class="split-list">${left}</div>
+  return `${head}${filterLine}<div class="split split-room"><div class="split-list">${left}</div>
     <div class="pane">${paneHead}<div class="two">${roomDetailCols(c)}</div></div></div>`;
 }
 
