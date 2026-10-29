@@ -33,8 +33,8 @@ const state = {
   pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name, courseId }
   formSno: '', formName: '',  // 오류로 다시 그릴 때도 학번, 이름은 남겨 둔다(비밀번호만 새로 친다)
 
-  // 형성평가: 제출하면 그 자리에서 채점해 보여 준다(성적 무관). { lessonId, given:[], correct, total }
-  fmResult: null,
+  // 형성평가: 한 문제씩 푼다. { lessonId, idx, result:{given,correct}|null }
+  fm: null,
 };
 
 // ── 부트 가드 ──
@@ -189,6 +189,24 @@ function viewMenu(){
   // 칸 모아 보기: 강의마다 그 칸 하나씩
   const items = M.getPartItems(state.courseId, m.key);
   if (!items.length) return head + `<div class="empty">아직 없습니다.</div>`;
+
+  // 규칙(선생님 지시 2026-10-29): 오늘의 질문과 형성평가는 목록 모양이 똑같다.
+  //   큰 강의 차수 + 강의명만. 칸 이름(질문노트 등 부제목)은 띄우지 않는다.
+  if (m.key === 'question' || m.key === 'formative')
+    return head + `<div class="grid">${items.map(bigLessonCard).join('')}</div>`;
+
+  // 미션 활동: 카드를 누르면 아이프레임이 아니라 바로 새 탭으로 미니앱을 연다(선생님 지시 2026-10-29).
+  if (m.key === 'mission')
+    return head + `<div class="grid">${items.map(it => {
+      const app = M.getMissionApps().find(a => a.lessonId === it.lesson.id && a.studentUrl);
+      const act = app ? `data-act="open-ext" data-url="${esc(app.studentUrl)}"` : 'data-act="noop"';
+      return `<div class="card" ${act}>
+        <span class="no">${it.no}강</span>
+        <div class="body"><div class="t">${esc(it.lesson.title)}</div></div>
+        <span class="chev">${icon('globe',18)}</span></div>`;
+    }).join('')}</div>`;
+
+  // 그 밖(개념 노트): 기존 카드
   return head + `<div class="grid">${items.map(it => `
     <div class="card" data-act="open-part" data-lid="${it.lesson.id}" data-k="${m.key}">
       <span class="no">${it.no}강</span>
@@ -197,13 +215,21 @@ function viewMenu(){
       <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`;
 }
 
+// 오늘의 질문·형성평가 공용 목록 카드(규칙: 둘은 목록이 똑같다). 큰 차수 + 강의명.
+function bigLessonCard(it){
+  return `<div class="card bigcard" data-act="open-part" data-lid="${it.lesson.id}" data-k="${state.menuKey}">
+    <span class="bigno">${it.no}강</span>
+    <div class="body"><div class="t big">${esc(it.lesson.title)}</div></div>
+    <span class="chev">${icon('chevron-right',18)}</span></div>`;
+}
+
 function reviewList(){
   const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
   if (!qs.length) return `<div class="empty">열린 복습이 없습니다.</div>`;
   return `<div class="grid">${qs.map(cq => `<div class="card" data-act="noop">
     <span class="ic" style="background:var(--review)">${icon('list-ordered',22)}</span>
     <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
-      <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'} (성적 무관)</div></div></div>`).join('')}</div>`;
+      <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'}</div></div></div>`).join('')}</div>`;
 }
 
 /* 성적(요구사항 4의 성적 창구): model.js studentGrade로 그 자리에서 계산한다.
@@ -259,114 +285,101 @@ function viewPart(){
 function partView(l, k){
   const d = M.partDef(k); if (!d) return '';
   const p = l.parts?.[k] || {};
-  const head = `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div>
-    <div class="bigt">${esc(p.title || d.name)}</div>`;
 
   if (k === 'concept')
-    return head + `<button class="primary wide" data-act="open-slide" data-lid="${l.id}">
+    return `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div>
+      <div class="bigt">${esc(p.title || d.name)}</div>
+      <button class="primary wide" data-act="open-slide" data-lid="${l.id}">
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
   if (k === 'mission'){
-    // 미션 앱은 강의에 연결된다(a.lessonId). 팝업형(modal)은 새 탭으로, 그 밖은 바로 끼워 보여 준다.
+    // 미션은 아이프레임 없이 늘 새 탭으로 연다(선생님 지시 2026-10-29).
     const app = M.getMissionApps().find(a => a.lessonId === l.id && a.studentUrl);
-    if (!app) return head + `<div class="placeholder">아직 연결된 미션 활동이 없습니다.</div>`;
-    if (app.modal)
-      return head + `<p class="prompt">${esc(app.name)}</p>
-        <button class="primary wide" data-act="open-ext" data-url="${esc(app.studentUrl)}">
-          ${icon('globe',18)}<span>미션 활동 열기</span></button>`;
-    return head + `<div class="mission-embed"><iframe src="${esc(app.studentUrl)}" title="${esc(app.name)}"
-        allow="clipboard-write; fullscreen" loading="lazy"></iframe></div>
-      <button class="linkbtn" data-act="open-ext" data-url="${esc(app.studentUrl)}">
-        ${icon('globe',16)}<span>새 탭으로 열기</span></button>`;
+    if (!app) return `<div class="placeholder">아직 연결된 미션 활동이 없습니다.</div>`;
+    return `<div class="bigt">${esc(app.name)}</div>
+      <button class="primary wide" data-act="open-ext" data-url="${esc(app.studentUrl)}">
+        ${icon('globe',18)}<span>미션 활동 열기</span></button>`;
   }
 
-  if (k === 'question'){
-    const prompt = `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`;
-    const guide = p.guide ? `<div class="q-guide">${esc(p.guide)}</div>` : '';
-    return head + prompt + guide
-      + `<textarea aria-label="내 생각"></textarea>`
-      + `<button class="primary wide" data-act="submit-demo">제출</button>`;
-  }
-
-  if (k === 'formative')
-    return head + formativeQuiz(l, p);
-
-  return head;
+  if (k === 'question') return questionView(p);
+  if (k === 'formative') return formativeStep(l, p);
+  return '';
 }
 
-/* ── 형성평가 퀴즈(학생) ── 어드민 문제 관리와 같은 다섯 유형을 그대로 받아 그린다.
-   진위형 OX 라디오 / 초성형, 단답형 한 줄 입력 / 선택형, 합답형 라디오(제시문, 보기 포함).
-   제출하면 그 자리에서 채점해 맞고 틀림과 정답을 보여 준다. 성적에는 안 들어간다(요구사항 70). */
+/* 오늘의 질문(학생): 본 질문을 큰 글씨로, 설명문, 답 칸, 글자수(공백 제외), 작은 제출 단추. */
+function questionView(p){
+  const guide = p.guide ? `<div class="q-guide">${esc(p.guide)}</div>` : '';
+  return `<div class="q-big">${esc(p.prompt || '질문이 아직 없습니다.')}</div>${guide}
+    <textarea id="q-answer" aria-label="내 생각"></textarea>
+    <div class="q-foot"><span class="q-count" id="q-count">0자</span>
+      <button class="btn-mini" data-act="submit-demo">제출</button></div>`;
+}
+
+/* ── 형성평가 퀴즈(학생): 한 문제씩 ── 어드민 다섯 유형을 그대로 받는다.
+   문제 하나 → 답 → [정답 확인]으로 정답/오답 표시 → [다음]으로 넘어가고,
+   마지막 문제의 확인 뒤 [끝내기]를 누르면 형성평가 목록(메인)으로 돌아온다. */
 const FM_LETTERS = ['①','②','③','④','⑤','⑥','⑦','⑧'];
 const fmNorm = v => String(v ?? '').replace(/\s+/g, '').toLowerCase();
 function fmIsCorrect(it, g){
   if (g == null || g === '') return false;
   return (it.type === 'choice' || it.type === 'combo') ? +g === +it.a : fmNorm(g) === fmNorm(it.a);
 }
-
-function formativeQuiz(l, p){
-  const items = p.items || [];
-  if (!items.length) return `<div class="placeholder">아직 출제된 문항이 없습니다.</div>`;
-  const done = state.fmResult && state.fmResult.lessonId === l.id ? state.fmResult : null;
-
-  const body = items.map((it, i) => fmItemView(it, i, done)).join('');
-  const foot = done
-    ? `<div class="fm-score"><b>${done.correct} / ${done.total}</b> 문제를 맞혔습니다.</div>
-       <p class="fm-note">형성평가는 성적에 들어가지 않습니다.</p>
-       <button class="primary wide" data-act="fm-retry" data-lid="${l.id}">다시 풀기</button>`
-    : `<p class="fm-note">형성평가는 성적에 들어가지 않습니다.</p>
-       <button class="primary wide" data-act="fm-submit" data-lid="${l.id}">제출</button>`;
-  return `<div class="fmquiz">${body}${foot}</div>`;
+function fmAnswerText(it){
+  return (it.type === 'choice' || it.type === 'combo') ? ((it.choices || [])[it.a] ?? '') : (it.a ?? '');
 }
 
-function fmItemView(it, i, done){
-  const g = done ? done.given[i] : null;
-  const ok = done ? fmIsCorrect(it, g) : null;
-  const dis = done ? 'disabled' : '';
-  const typeName = M.formativeTypeDef(it.type)?.name || '';
+function formativeStep(l, p){
+  const items = p.items || [];
+  if (!items.length) return `<div class="placeholder">아직 출제된 문항이 없습니다.</div>`;
+  if (!state.fm || state.fm.lessonId !== l.id) state.fm = { lessonId:l.id, idx:0, result:null };
+  const { idx, result } = state.fm;
+  const it = items[idx];
+  const last = idx === items.length - 1;
 
-  let field = '';
-  if (it.type === 'ox'){
-    field = `<div class="fm-ox">${['O','X'].map(v =>
-      `<label class="fm-oxb ${done && v===g?'sel':''}"><input type="radio" name="fmq${i}" value="${v}" ${done && v===g?'checked':''} ${dis}>${v}</label>`).join('')}</div>`;
-  } else if (it.type === 'choice' || it.type === 'combo'){
+  let foot;
+  if (!result){
+    foot = `<button class="primary wide" data-act="fm-check" data-lid="${l.id}">정답 확인</button>`;
+  } else {
+    const mark = `<div class="fm-mark ${result.correct?'ok':'no'}">${result.correct ? '정답' : '오답'}</div>`;
+    const reveal = result.correct ? '' : `<div class="fm-reveal">정답: ${esc(fmAnswerText(it))}</div>`;
+    foot = `${mark}${reveal}
+      <button class="primary wide" data-act="fm-next" data-lid="${l.id}">${last ? '끝내기' : '다음'}</button>`;
+  }
+  return `<div class="fmstep">
+    <div class="fm-progress">${idx + 1} / ${items.length}</div>
+    <div class="fm-q"><span class="fm-qnum">${idx + 1}</span><span class="fm-qtext">${esc(it.q || '')}</span></div>
+    ${fmField(it, result)}${foot}</div>`;
+}
+
+// 한 문제의 입력칸(유형별). result가 있으면(확인 후) 잠그고 고른 답/정답을 표시한다.
+function fmField(it, result){
+  const g = result ? result.given : null;
+  const dis = result ? 'disabled' : '';
+  if (it.type === 'ox')
+    return `<div class="fm-ox">${['O','X'].map(v =>
+      `<label class="fm-oxb"><input type="radio" name="fmq" value="${v}" ${result && v===g?'checked':''} ${dis}>${v}</label>`).join('')}</div>`;
+  if (it.type === 'choice' || it.type === 'combo'){
     const passage = it.passage ? `<div class="fm-passage">${esc(it.passage)}</div>` : '';
     const options = it.type === 'combo' && it.options ? `<div class="fm-options">${esc(it.options)}</div>` : '';
     const choices = (it.choices || []).map((c, ci) => {
-      const sel = done && String(ci) === String(g);
-      const isAns = done && ci === it.a;
+      const sel = result && String(ci) === String(g);
+      const isAns = result && ci === it.a;
       return `<label class="fm-choice ${sel?'sel':''} ${isAns?'ans':''}">
-        <input type="radio" name="fmq${i}" value="${ci}" ${sel?'checked':''} ${dis}>
+        <input type="radio" name="fmq" value="${ci}" ${sel?'checked':''} ${dis}>
         <span class="fm-letter">${FM_LETTERS[ci] || ci + 1}</span><span class="fm-ctext">${esc(c)}</span></label>`;
     }).join('');
-    field = `${passage}${options}<div class="fm-choices">${choices}</div>`;
-  } else {
-    field = `<input class="fm-input" id="fmq${i}" value="${esc(done ? (g || '') : '')}" ${dis} autocomplete="off">`;
+    return `${passage}${options}<div class="fm-choices">${choices}</div>`;
   }
-
-  const mark = done
-    ? `<span class="fm-mark ${ok?'ok':'no'}">${ok ? '정답' : '오답'}</span>` : '';
-  const reveal = done && !ok
-    ? `<div class="fm-reveal">정답: ${esc(it.type === 'choice' || it.type === 'combo'
-        ? ((it.choices || [])[it.a] ?? '') : (it.a ?? ''))}</div>` : '';
-
-  return `<div class="fm-item ${done ? (ok?'correct':'wrong') : ''}">
-    <div class="fm-q"><span class="fm-qnum">${i + 1}</span>
-      <span class="fm-qtext">${esc(it.q || '')}</span>
-      <span class="fm-type">${esc(typeName)}</span>${mark}</div>
-    ${field}${reveal}</div>`;
+  return `<input class="fm-input" id="fmq" value="${esc(result ? (g || '') : '')}" ${dis} autocomplete="off">`;
 }
-
-// 형성평가 답 모으기: 유형마다 입력이 다르다. 선택형, 합답형은 고른 번호(문자열)다.
-function fmCollect(items){
-  return items.map((it, i) => {
-    if (it.type === 'ox' || it.type === 'choice' || it.type === 'combo'){
-      const picked = document.querySelector(`input[name="fmq${i}"]:checked`);
-      return picked ? picked.value : '';
-    }
-    const el = document.getElementById(`fmq${i}`);
-    return el ? el.value.trim() : '';
-  });
+// 지금 화면의 한 문제 답을 읽는다.
+function fmReadOne(it){
+  if (it.type === 'ox' || it.type === 'choice' || it.type === 'combo'){
+    const picked = document.querySelector('input[name="fmq"]:checked');
+    return picked ? picked.value : '';
+  }
+  const el = document.getElementById('fmq');
+  return el ? el.value.trim() : '';
 }
 
 // ── 렌더 ──
@@ -437,7 +450,7 @@ $app.addEventListener('click', e => {
 
     case 'logout':
       Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
-        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fmResult:null });
+        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fm:null });
       render(); break;
 
     case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;
@@ -446,10 +459,10 @@ $app.addEventListener('click', e => {
     case 'back-menu': state.view = 'menu'; render(); break;
     case 'layout': state.layout = el.dataset.v; render(); break;
 
-    case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.view = 'lesson'; render(); break;
-    case 'open-menu': state.menuKey = el.dataset.k; state.view = 'menu'; render(); break;
+    case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.fm = null; state.view = 'lesson'; render(); break;
+    case 'open-menu': state.menuKey = el.dataset.k; state.fm = null; state.view = 'menu'; render(); break;
     case 'open-part':
-      state.lessonId = el.dataset.lid; state.partKey = el.dataset.k; state.view = 'part'; render(); break;
+      state.lessonId = el.dataset.lid; state.partKey = el.dataset.k; state.fm = null; state.view = 'part'; render(); break;
 
     case 'part': state.partKey = el.dataset.k; render(); break;
     case 'part-prev': shiftPart(-1); break;
@@ -463,19 +476,34 @@ $app.addEventListener('click', e => {
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
     case 'open-ext': openExternal(el.dataset.url); break;
 
-    case 'fm-submit': {
-      const l = M.getLesson(el.dataset.lid);
-      const items = l?.parts?.formative?.items || [];
-      const given = fmCollect(items);
-      if (given.some(a => a === '' || a == null)){ alertBox('모든 문항에 답해 주세요.'); break; }
-      const correct = items.reduce((n, it, i) => n + (fmIsCorrect(it, given[i]) ? 1 : 0), 0);
-      state.fmResult = { lessonId: el.dataset.lid, given, correct, total: items.length };
+    case 'fm-check': {
+      const items = M.getLesson(el.dataset.lid)?.parts?.formative?.items || [];
+      const it = items[state.fm.idx];
+      const given = fmReadOne(it);
+      if (given === '' || given == null){ alertBox('답을 입력해 주세요.'); break; }
+      state.fm.result = { given, correct: fmIsCorrect(it, given) };
       render(); break;
     }
-    case 'fm-retry': state.fmResult = null; render(); break;
+    case 'fm-next': {
+      const items = M.getLesson(el.dataset.lid)?.parts?.formative?.items || [];
+      if (state.fm.idx >= items.length - 1){   // 마지막 문제 → 형성평가 메인으로
+        state.fm = null;
+        if (state.view === 'part') state.view = 'menu';
+      } else {
+        state.fm.idx++; state.fm.result = null;
+      }
+      render(); break;
+    }
 
     case 'noop': break;
   }
+});
+
+// 오늘의 질문 답 칸 글자수(공백 제외)를 실시간으로 센다.
+$app.addEventListener('input', e => {
+  if (e.target.id !== 'q-answer') return;
+  const n = e.target.value.replace(/\s/g, '').length;
+  const c = document.getElementById('q-count'); if (c) c.textContent = `${n}자`;
 });
 
 function shiftPart(dir){
