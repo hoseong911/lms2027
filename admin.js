@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029g';
+import * as M from './model.js?v=20261029h';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1552,8 +1552,7 @@ function formativeManage(lessons){
       ? row(l, n) + `<div class="detail">${formativeEditor(l)}</div>` : row(l, n)).join('');
   return `<div class="split split-formative">
       <div class="split-list">${lessons.map(row).join('')}</div>
-      <div class="pane"><div class="pane-head"><h3>${i + 1}강. ${esc(sel.title)}</h3></div>
-        <div class="dscroll">${formativeEditor(sel)}</div></div></div>`;
+      <div class="pane"><div class="dscroll">${formativeEditor(sel)}</div></div></div>`;
 }
 
 /* 문항 목록과 문제 만들기. 꺼진 강의는 켜라는 말만 띄운다(왼쪽 눈 단추로 켠다).
@@ -1578,7 +1577,7 @@ function formativeEditor(l){
 }
 // 문항 목록 줄에 답을 짧게 적는다(열지 않고도 무슨 문제인지 알게).
 function fmAnswerText(it){
-  if (it.type === 'choice') return `정답 ${(it.choices || [])[it.a] ?? ''}`;
+  if (it.type === 'choice' || it.type === 'combo') return `정답 ${(it.choices || [])[it.a] ?? ''}`;
   return `정답 ${it.a ?? ''}`;
 }
 /* 문제 유형 가로 줄(선생님 지시 2026-10-29: "문제 유형은 가로로 나열해서 선택할 수 있게").
@@ -1592,26 +1591,32 @@ function fmCurType(){ return state.fmNewType || M.FORMATIVE_TYPES[0].key; }
 
 /* 문제 만들기 칸(선생님 지시 2026-10-29: "문제 내는건 ZEP에서 하는 거처럼").
    유형을 고르면 그 유형의 칸이 뜨고 적어서 넣는다.
-     단답, 초성 : 정답 한 칸 (초성 힌트는 저장할 때 model.js가 답에서 만든다)
-     OX         : O와 X 중 하나
-     선택형     : 보기 넷에 정답 라디오 (빈 보기는 저장할 때 떨어진다) */
+     진위형 : O와 X 중 하나
+     초성형 : 정답 한 칸 (초성은 교사가 문제 글에 직접 적는다, 자동 생성 안 한다)
+     단답형 : 정답 한 칸
+     선택형 : 제시문(비워도 됨) + 선택지 다섯에 정답 라디오 (빈 선택지는 저장할 때 떨어진다)
+     합답형 : 제시문 + 보기(ㄱㄴㄷㄹ 텍스트) + 선택지 다섯에 정답 라디오 */
+const FM_NCHOICES = 5;
 function fmForm(l){
   const t = fmCurType();
   const e = state.fmEditIdx == null ? null : (l.parts.formative.items || [])[state.fmEditIdx];
   const d = (e && e.type === t) ? e : null;   // 답은 유형이 같을 때만 되살린다
   const line = (label, ctl) => `<div class="row row-top"><div class="t gen-label">${label}</div>${ctl}</div>`;
 
-  let answer;
+  let extra = '', answer;
   if (t === 'ox'){
     answer = line('정답', `<div class="grow fmox">
       ${['O','X'].map(v => `<label class="fmoxb"><input type="radio" class="fmradio" name="fm-a" value="${v}" ${d?.a===v?'checked':''}>${v}</label>`).join('')}
     </div>`);
-  } else if (t === 'choice'){
+  } else if (t === 'choice' || t === 'combo'){
     const ch = d?.choices || [];
-    answer = `<div class="row row-top"><div class="t gen-label">보기</div><div class="grow fmchoices">
-      ${[0,1,2,3].map(i => `<div class="fmchoice">
+    if (t === 'combo')
+      extra += line('보기', `<textarea class="f grow" id="fm-options" rows="4" aria-label="보기">${esc(d?.options || '')}</textarea>`);
+    extra = line('제시문', `<textarea class="f grow" id="fm-passage" rows="3" aria-label="제시문">${esc(d?.passage || '')}</textarea>`) + extra;
+    answer = `<div class="row row-top"><div class="t gen-label">선택지</div><div class="grow fmchoices">
+      ${Array.from({ length:FM_NCHOICES }, (_, i) => `<div class="fmchoice">
         <input type="radio" class="fmradio" name="fm-a" value="${i}" ${d && d.a===i?'checked':''} aria-label="${i + 1}번이 정답">
-        <input class="f grow" id="fm-c${i}" value="${esc(ch[i] || '')}" aria-label="보기 ${i + 1}">
+        <input class="f grow" id="fm-c${i}" value="${esc(ch[i] || '')}" aria-label="선택지 ${i + 1}">
       </div>`).join('')}
     </div></div>`;
   } else {
@@ -1625,6 +1630,7 @@ function fmForm(l){
 
   return `<div class="fmform">
       ${line('문제', `<textarea class="f grow" id="fm-q" rows="2" aria-label="문제">${esc(e?.q || '')}</textarea>`)}
+      ${extra}
       ${answer}
       <div class="fmform-tools">${tools}</div>
     </div>`;
@@ -1633,10 +1639,16 @@ function fmForm(l){
 function fmReadForm(){
   const t = fmCurType();
   const q = val('fm-q');
-  if (t === 'ox' || t === 'choice'){
+  if (t === 'ox'){
     const picked = document.querySelector('input[name="fm-a"]:checked');
-    if (t === 'ox') return { type:t, q, a:picked?.value || '' };
-    return { type:t, q, a:picked ? +picked.value : -1, choices:[0,1,2,3].map(i => val(`fm-c${i}`)) };
+    return { type:t, q, a:picked?.value || '' };
+  }
+  if (t === 'choice' || t === 'combo'){
+    const picked = document.querySelector('input[name="fm-a"]:checked');
+    const raw = { type:t, q, a:picked ? +picked.value : -1,
+      choices:Array.from({ length:FM_NCHOICES }, (_, i) => val(`fm-c${i}`)), passage:val('fm-passage') };
+    if (t === 'combo') raw.options = val('fm-options');
+    return raw;
   }
   return { type:t, q, a:val('fm-a') };
 }

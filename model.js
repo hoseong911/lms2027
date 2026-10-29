@@ -169,12 +169,13 @@ export async function setTexts(patch){
   await setDoc(doc(db, 'settings', 'general'), { texts: siteTexts }, { merge:true });
 }
 
-// 형성평가 문제 유형 넷 (선생님 지시 2026-10-27)
+// 형성평가 문제 유형 다섯 (선생님 지시 2026-10-29: 진위형 초성형 단답형 선택형 합답형 순서)
 export const FORMATIVE_TYPES = [
-  { key:'short',   name:'단답' },
-  { key:'ox',      name:'OX' },
-  { key:'initial', name:'초성' },
+  { key:'ox',      name:'진위형' },
+  { key:'initial', name:'초성형' },
+  { key:'short',   name:'단답형' },
   { key:'choice',  name:'선택형' },
+  { key:'combo',   name:'합답형' },
 ];
 export function formativeTypeDef(key){ return FORMATIVE_TYPES.find(t => t.key === key) || null; }
 
@@ -902,32 +903,34 @@ export function setFormativeEnabled(lessonId, on){ return setPartEnabled(lessonI
 
 /* ── 형성평가 문항 만들기 (선생님 지시 2026-10-29) ──────────────────────────
    "문제 내는건 ZEP에서 하는 거처럼": 유형을 고르면 그 유형에 맞는 칸이 뜨고 적어서 넣는다.
-   문항 하나의 모양은 유형마다 다르다.
-     short   단답   { type, q, a }                        a는 글자
-     ox      OX     { type, q, a:'O'|'X' }
-     initial 초성   { type, q, a, hint }                  hint는 a의 초성(여기서 만든다)
-     choice  선택형 { type, q, choices:[...], a }          a는 choices의 자리(0부터)
+   문항 하나의 모양은 유형마다 다르다(선생님 지시 2026-10-29).
+     ox      진위형 { type, q, a:'O'|'X' }
+     initial 초성형 { type, q, a }                         초성은 교사가 문제 글에 직접 적는다(자동 생성 안 한다)
+     short   단답형 { type, q, a }                         a는 글자
+     choice  선택형 { type, q, passage, choices:[5], a }   passage는 제시문(비워도 됨), a는 choices의 자리(0부터)
+     combo   합답형 { type, q, passage, options, choices:[5], a }   options는 보기(ㄱㄴㄷㄹ 텍스트)
    답은 문항 안에 둔다. 채점은 읽을 때 formativeResult가 하므로 점수를 따로 적어 두지 않는다. */
-const CHOSUNG = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
-export function initialsOf(text){
-  return [...String(text || '')].map(ch => {
-    const n = ch.charCodeAt(0) - 0xAC00;
-    return (n >= 0 && n < 11172) ? CHOSUNG[Math.floor(n / 588)] : ch;
-  }).join('');
-}
 /* 화면에서 받은 날것을 문항 하나로 다듬는다. 빈 보기는 떨어뜨리고 정답 자리를 그만큼 당긴다.
    무엇이 비었으면 던진다: 화면이 그 글을 그대로 토스트로 보여 준다. */
-export function normFormativeItem({ type, q, a, choices }){
+export function normFormativeItem({ type, q, a, choices, passage, options }){
   if (!FORMATIVE_TYPES.some(t => t.key === type)) throw new Error('문제 유형을 골라 주세요.');
   const quest = String(q ?? '').trim();
   if (!quest) throw new Error('문제를 입력하시길 바랍니다.');
-  if (type === 'choice'){
+  if (type === 'choice' || type === 'combo'){
     const list = (choices || []).map(c => String(c ?? '').trim());
     const keep = list.map((c, i) => ({ c, i })).filter(x => x.c);
-    if (keep.length < 2) throw new Error('보기를 두 개 이상 입력하시길 바랍니다.');
+    if (keep.length < 2) throw new Error('선택지를 두 개 이상 입력하시길 바랍니다.');
     const at = keep.findIndex(x => x.i === +a);
-    if (at < 0) throw new Error('정답인 보기를 골라 주세요.');
-    return { type, q:quest, choices:keep.map(x => x.c), a:at };
+    if (at < 0) throw new Error('정답인 선택지를 골라 주세요.');
+    const out = { type, q:quest, choices:keep.map(x => x.c), a:at };
+    const pass = String(passage ?? '').trim();
+    if (pass) out.passage = pass;
+    if (type === 'combo'){
+      const opt = String(options ?? '').trim();
+      if (!opt) throw new Error('보기를 입력하시길 바랍니다.');
+      out.options = opt;
+    }
+    return out;
   }
   if (type === 'ox'){
     const v = String(a ?? '').trim().toUpperCase();
@@ -936,9 +939,7 @@ export function normFormativeItem({ type, q, a, choices }){
   }
   const ans = String(a ?? '').trim();
   if (!ans) throw new Error('정답을 입력하시길 바랍니다.');
-  return type === 'initial'
-    ? { type, q:quest, a:ans, hint:initialsOf(ans) }
-    : { type, q:quest, a:ans };
+  return { type, q:quest, a:ans };
 }
 function formativeItems(lessonId){
   const l = getLesson(lessonId);
@@ -998,7 +999,7 @@ export function saveSubmission({ clId, part, studentNo, answer, score, answers }
    성적에 들어가지 않는다(요구사항 70). 어드민의 "성취도 관리"가 반 명단을 끌어와
    학생마다 정답률과 오답률을 본다.
    답이 문제 안에 있으므로(lessons.parts.formative.items[].a) 점수를 따로 적어 두지 않고
-   읽을 때 센다. 선택형은 답이 번호(choices의 자리)고 나머지(단답, OX, 초성)는 글자다.
+   읽을 때 센다. 선택형과 합답형은 답이 번호(choices의 자리)고 나머지(진위형, 초성형, 단답형)는 글자다.
    글자는 공백을 떼고 대소문자를 맞춰 견준다.
    안 쓴 문항은 오답으로 센다: 정답률 + 오답률이 늘 100이 되게 한다(선생님이 둘을 같이 본다). */
 export function getFormativeSubs(clId){
@@ -1013,7 +1014,7 @@ export function formativeResult(sub, items){
     const g = given[i];
     if (g == null || g === '') return;
     answered++;
-    if (it.type === 'choice' ? +g === +it.a : norm(g) === norm(it.a)) correct++;
+    if (it.type === 'choice' || it.type === 'combo' ? +g === +it.a : norm(g) === norm(it.a)) correct++;
   });
   const total = list.length;
   return { total, answered, correct, wrong: total - correct,

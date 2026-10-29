@@ -505,6 +505,8 @@ input[type=number]{-moz-appearance:textfield}
   border-bottom:1px solid var(--line);border-radius:0;
   background:transparent;padding:11px 13px;margin-bottom:0}
 .partrow + .partrow{border-top:0}
+/* 형성평가 문항 번호는 크게(선생님 지시 2026-10-29) */
+.partrow .plnum{font-size:var(--fs-head)}
 .partrow .dot{width:10px;height:10px;flex:0 0 auto}
 .partrow .grow{flex:1}
 .partrow.off{opacity:.45}
