@@ -119,6 +119,17 @@ html:not(.lms-ready) #app{display:none}
   font-size:16px;font-family:inherit;resize:vertical;color:var(--ink);background:transparent}
 .partview textarea:focus{outline:none;border-color:var(--accent)}
 
+/* 오늘의 질문 설명문 */
+.q-guide{border:1px solid var(--line);border-radius:var(--r);background:var(--hover);
+  padding:13px 15px;margin:0 0 14px;font-size:var(--fs-body);line-height:1.7;white-space:pre-wrap;color:var(--ink)}
+
+/* 미션 활동 미니앱 끼워 보기 */
+.mission-embed{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff}
+.mission-embed iframe{display:block;width:100%;height:min(72vh,640px);border:0}
+.linkbtn{display:inline-flex;align-items:center;gap:7px;margin-top:10px;border:0;background:none;cursor:pointer;
+  color:var(--sub);font-family:inherit;font-size:var(--fs-meta)}
+.linkbtn:hover{color:var(--accent)}
+
 /* ── 형성평가 퀴즈(학생) ── */
 .fmquiz{display:flex;flex-direction:column;gap:0}
 .fm-item{padding:16px 0;border-top:1px solid var(--line)}

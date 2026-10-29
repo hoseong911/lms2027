@@ -266,14 +266,27 @@ function partView(l, k){
     return head + `<button class="primary wide" data-act="open-slide" data-lid="${l.id}">
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
-  if (k === 'mission')
-    return head + `<div class="placeholder">미니앱이 여기 바로 열립니다${p.appKey?' ('+esc(p.appKey)+')':''}.<br>
-      제출하면 반 전체에 실시간 공유. (뼈대: 연결은 다음 단계)</div>`;
+  if (k === 'mission'){
+    // 미션 앱은 강의에 연결된다(a.lessonId). 팝업형(modal)은 새 탭으로, 그 밖은 바로 끼워 보여 준다.
+    const app = M.getMissionApps().find(a => a.lessonId === l.id && a.studentUrl);
+    if (!app) return head + `<div class="placeholder">아직 연결된 미션 활동이 없습니다.</div>`;
+    if (app.modal)
+      return head + `<p class="prompt">${esc(app.name)}</p>
+        <button class="primary wide" data-act="open-ext" data-url="${esc(app.studentUrl)}">
+          ${icon('globe',18)}<span>미션 활동 열기</span></button>`;
+    return head + `<div class="mission-embed"><iframe src="${esc(app.studentUrl)}" title="${esc(app.name)}"
+        allow="clipboard-write; fullscreen" loading="lazy"></iframe></div>
+      <button class="linkbtn" data-act="open-ext" data-url="${esc(app.studentUrl)}">
+        ${icon('globe',16)}<span>새 탭으로 열기</span></button>`;
+  }
 
-  if (k === 'question')
-    return head + `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`
-      + `<textarea placeholder="내 답변을 적습니다"></textarea>`
+  if (k === 'question'){
+    const prompt = `<p class="prompt">${esc(p.prompt || '질문이 아직 없습니다.')}</p>`;
+    const guide = p.guide ? `<div class="q-guide">${esc(p.guide)}</div>` : '';
+    return head + prompt + guide
+      + `<textarea aria-label="내 생각"></textarea>`
       + `<button class="primary wide" data-act="submit-demo">제출</button>`;
+  }
 
   if (k === 'formative')
     return head + formativeQuiz(l, p);
@@ -328,8 +341,7 @@ function fmItemView(it, i, done){
     }).join('');
     field = `${passage}${options}<div class="fm-choices">${choices}</div>`;
   } else {
-    field = `<input class="fm-input" id="fmq${i}" value="${esc(done ? (g || '') : '')}" ${dis}
-      placeholder="정답 입력" autocomplete="off">`;
+    field = `<input class="fm-input" id="fmq${i}" value="${esc(done ? (g || '') : '')}" ${dis} autocomplete="off">`;
   }
 
   const mark = done
@@ -449,6 +461,7 @@ $app.addEventListener('click', e => {
       break;
 
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
+    case 'open-ext': openExternal(el.dataset.url); break;
 
     case 'fm-submit': {
       const l = M.getLesson(el.dataset.lid);
