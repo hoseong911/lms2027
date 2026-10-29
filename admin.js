@@ -1340,7 +1340,8 @@ function questionAnswers(rooms, placed, lessons){
       <div class="tools">
         <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="PICK에서 내리기" aria-label="PICK에서 내리기">${icon('star',14)}</button>
       </div></div>`).join('') : `<div class="empty">공유로 켜 둔 답변이 없습니다.</div>`;
-    return pickers + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
+    // 답변 탭의 채점, 통과, 미흡 줄과 같은 자리라 같은 탭 줄 모양으로 둔다(선생님 지시 2026-10-29: 글씨 크기를 맞춘다)
+    return pickers + info + catline([{ v:'pick', label:`PICK (${picked.length})` }], 'pick', 'q-pick-tab', null, '', 'gtabs') + body;
   }
 
   return pickers + info + questionGrade(targets, subs, one);
