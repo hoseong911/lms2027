@@ -203,6 +203,25 @@ function openExternal(url){
   window.open(url, '_blank', 'noopener');
 }
 
+/* 미션 앱을 새 탭으로 연다 (선생님 지시 2026-10-30).
+   새 탭은 보통 "자기를 열어 준 탭과 아무 관계도 없다"는 표시(noopener)를 달고 열었다.
+   그러면 브라우저가 **세션을 새 탭에 복사해 주지 않아** 미션 앱이 학생이 누군지 모른다
+   (자동 로그인을 켠 학생만 기기에 저장된 것으로 겨우 알고, 강의실은 못 읽었다).
+   그래서 우리 주소일 때만 그 표시를 떼서 세션을 물려준다. 세션은 주소(도메인)마다 따로 있으므로
+   남의 주소에는 떼어도 어차피 넘어가지 않는다. 남의 주소는 표시를 그대로 달아 둔다(우리 창을 못 건드리게).
+   표시를 뗀 자리는 열린 탭이 window.opener로 우리 창에 닿을 수 있는데, 우리가 만든 앱이라 괜찮다. */
+function openMissionApp(url){
+  if (!url){ alertBox('링크가 아직 설정되지 않았습니다.'); return; }
+  if (isOurUrl(url)) window.open(url, '_blank');
+  else window.open(url, '_blank', 'noopener');
+}
+
+// 우리 주소인가(같은 도메인). 잘못된 주소면 아니라고 본다.
+function isOurUrl(url){
+  try { return new URL(url, location.href).origin === location.origin; }
+  catch (e) { return false; }
+}
+
 // ── 강의실 고르기 ── 과목만 보인다(요구사항 84)
 function viewRooms(){
   const rooms = M.getCoursesOfStudent(YEAR, state.sno);
@@ -584,7 +603,7 @@ $app.addEventListener('click', e => {
       break;
 
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
-    case 'open-ext': openExternal(el.dataset.url); break;
+    case 'open-ext': openMissionApp(el.dataset.url); break;
 
     case 'fm-check': {
       const items = M.getLesson(el.dataset.lid)?.parts?.formative?.items || [];
