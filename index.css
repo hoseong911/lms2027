@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261027c");
+@import url("shared/theme.css?v=20261029d");
 /* 2027 LMS 학생 화면: 제로베이스 뼈대 (2026-10-26, 색 2026-10-27, 큰 틀 2026-10-27)
    색은 shared/theme.css 한 곳에서. 기조는 플랫 + 미니멀(그림자, 그라데이션, 알약 없음).
 
@@ -28,7 +28,7 @@ html:not(.lms-ready) #app{display:none}
 .topbar .who{font-size:12px;color:var(--sub);white-space:nowrap}
 @media (max-width:420px){ .topbar .who{display:none} }   /* 폰에서는 이름을 접는다 */
 .iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:0 0 auto;
-  border:1px solid var(--line);border-radius:var(--r-btn);background:var(--card);color:var(--sub);cursor:pointer}
+  border:1px solid var(--line);border-radius:var(--r-btn);background:transparent;color:var(--sub);cursor:pointer}
 .iconbtn:hover{background:var(--hover);color:var(--ink);border-color:var(--line-strong)}
 
 /* ── 배치 전환(강의별 / 메뉴별) ── 카테고리 줄 모양 그대로 */
@@ -36,15 +36,17 @@ html:not(.lms-ready) #app{display:none}
 .layouttab{padding:0 0 9px;font-size:14px;color:var(--sub);border:none;background:none;cursor:pointer;
   font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;min-height:38px}
 .layouttab:hover{color:var(--ink)}
-.layouttab.on{color:var(--navy);-webkit-text-stroke:.5px var(--navy);border-bottom-color:var(--navy)}
+.layouttab.on{color:var(--accent);-webkit-text-stroke:.5px var(--accent);border-bottom-color:var(--accent)}
 
 /* ── 카드 ── 폰에서는 한 줄, 넓어지면 두 줄 */
 .grid{display:grid;gap:8px}
 @media (min-width:640px){ .grid{grid-template-columns:1fr 1fr} }
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;
+/* 칸이 둘로 늘어나는 격자라 네 변 테두리를 둔다(쌓인 목록 줄이 아니다).
+   흰 바탕만 걷어 바탕이 비치게 한다(선생님 지시 2026-10-29) */
+.card{background:transparent;border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;
   cursor:pointer;display:flex;align-items:center;gap:12px;min-height:60px}
-.card:hover{border-color:var(--navy)}
-.card:active{background:var(--hover)}
+.card:hover{border-color:var(--accent)}
+.card:active{background:var(--accent-fade)}
 .card .ic{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
 .card .no{flex:0 0 auto;min-width:38px;font-size:13px;font-weight:700;color:var(--navy-600)}
 .card .body{flex:1;min-width:0}
@@ -67,14 +69,14 @@ html:not(.lms-ready) #app{display:none}
 .login .err{color:var(--red);font-size:13px;margin:10px 0 0;text-align:center}
 .login .fieldlabel{font-size:13px;color:var(--sub);margin:0 0 4px}
 .field{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:13px;font-size:16px;margin-bottom:8px;
-  background:var(--card);color:var(--ink);font-family:inherit}
+  background:transparent;color:var(--ink);font-family:inherit}
 /* 16px 밑으로 내리지 않는다: 사파리가 입력 칸을 누를 때 화면을 확대한다 */
 .field::placeholder{color:var(--sub)}
-.field:focus{outline:none;border-color:var(--navy)}
-.primary{background:var(--navy);color:#fff;border:none;border-radius:var(--r-btn);padding:13px 18px;
+.field:focus{outline:none;border-color:var(--accent)}
+.primary{background:var(--accent);color:#fff;border:none;border-radius:var(--r-btn);padding:13px 18px;
   font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;min-height:46px;
   display:inline-flex;align-items:center;justify-content:center;gap:8px}
-.primary:hover{background:var(--navy-800)}
+.primary:hover{background:var(--red-dark)}
 .primary.wide{width:100%;margin-top:12px}
 .login .primary{width:100%;margin-top:4px}
 
@@ -83,10 +85,12 @@ html:not(.lms-ready) #app{display:none}
 .extrabtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
   border:0;background:none;color:var(--sub);
   padding:12px 8px;font-size:12px;font-family:inherit;cursor:pointer;min-height:44px}
-.extrabtn:hover{color:var(--navy)}
+.extrabtn:hover{color:var(--accent)}
 
 /* ── 성적 ── */
-.score{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+/* 상세 패널 성격이라 양옆 테두리 없이 아주 연한 네이비 바탕(선생님 지시 2026-10-29) */
+.score{background:var(--navy-fade);border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;padding:14px 16px}
 .score .h{font-weight:700;font-size:14px;margin-bottom:10px}
 .score .row{display:flex;justify-content:space-between;font-size:15px;margin:8px 0}
 .score .row.total{border-top:1px solid var(--line);padding-top:10px;margin-top:10px;font-weight:700;color:var(--navy)}
@@ -100,9 +104,10 @@ html:not(.lms-ready) #app{display:none}
   border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;
   font-family:inherit;min-height:44px}
 .lessontab:hover{color:var(--ink)}
-.lessontab.on{color:var(--navy);-webkit-text-stroke:.5px var(--navy);border-bottom-color:var(--navy)}
+.lessontab.on{color:var(--accent);-webkit-text-stroke:.5px var(--accent);border-bottom-color:var(--accent)}
 
-.partview{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-height:240px}
+.partview{background:var(--navy-fade);border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;padding:18px;min-height:240px}
 @media (min-width:700px){ .partview{padding:22px} }
 .partview .pt{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
 .partview .bigt{font-size:20px;font-weight:700;margin:6px 0 14px;letter-spacing:-.2px}
@@ -110,13 +115,13 @@ html:not(.lms-ready) #app{display:none}
 .partview .placeholder{color:var(--sub);font-size:14px;border:1px dashed var(--line);border-radius:var(--r);
   padding:24px 16px;text-align:center;line-height:1.7}
 .partview textarea{width:100%;min-height:140px;border:1px solid var(--line);border-radius:var(--r);padding:12px;
-  font-size:16px;font-family:inherit;resize:vertical;color:var(--ink);background:var(--card)}
-.partview textarea:focus{outline:none;border-color:var(--navy)}
+  font-size:16px;font-family:inherit;resize:vertical;color:var(--ink);background:transparent}
+.partview textarea:focus{outline:none;border-color:var(--accent)}
 
 .lessonnav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
-.navbtn{border:1px solid var(--line);background:var(--card);border-radius:var(--r-btn);padding:0 18px;font-size:14px;
+.navbtn{border:1px solid var(--line);background:transparent;border-radius:var(--r-btn);padding:0 18px;font-size:14px;
   cursor:pointer;font-family:inherit;color:var(--ink);min-height:44px}
-.navbtn:hover:not(:disabled){border-color:var(--navy);color:var(--navy)}
+.navbtn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .navbtn:disabled{opacity:.35;cursor:default}
 
 #snack{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;

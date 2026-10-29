@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261029c");
+@import url("shared/theme.css?v=20261029d");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -139,7 +139,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pl-plus:hover{border-color:var(--accent);color:var(--accent);border-style:solid}
 
 /* 성적 입력 (hoistory 성적 Check 틀): 고르개 줄, 통계 칩, 체크 표 */
-.gradebar{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:14px}
+/* 고르개 묶음 바도 상세 패널과 같이 양옆 테두리 없이 연한 네이비 바탕(선생님 지시 2026-10-29) */
+.gradebar{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
+  background:var(--navy-fade);padding:12px 14px;margin-bottom:14px}
 .gradebar-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .gradebar-line + .gradebar-line{margin-top:10px}
 .sel-sm{padding:4px 6px;font-size:var(--fs-meta)}
@@ -179,9 +181,13 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .gsub{display:inline-block;font-size:var(--fs-meta);color:var(--sub);margin-left:5px}
 
 /* 오늘의 질문: 질문 관리의 강의별 카드(선생님 지시로 강의마다 따로 뗀 카드)와 채점 탭의 학생 칩 */
-.qcards{display:flex;flex-direction:column;gap:10px}
-.qcard{border:1px solid var(--line);border-radius:var(--r);background:transparent;padding:12px 14px}
-.qcard.open,.qcard.on{border-color:var(--accent);outline:1px solid var(--accent);outline-offset:-2px}
+/* 강의별 질문 카드도 목록 줄과 같이 한 묶음으로 합친다: 위아래 테두리만, 줄 사이 틈 없음
+   (선생님 지시 2026-10-29). 켜진 것은 레드 반투명 바탕 */
+.qcards{display:flex;flex-direction:column;gap:0}
+.qcard{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
+  background:transparent;padding:12px 14px}
+.qcard + .qcard{border-top:0}
+.qcard.open,.qcard.on{background:var(--accent-fade)}
 .qcard.off .t{color:var(--sub)}
 .qcard-top{display:flex;align-items:center;gap:12px}
 .qcard-top .grow{flex:1;min-width:0}
@@ -317,8 +323,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .tools{display:flex;gap:6px;flex:0 0 auto}
 
 /* 인라인 폼 줄 */
-.formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:transparent;
-  border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:14px}
+.formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--navy-fade);
+  border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
+  padding:12px;margin-bottom:14px}
 .f{border:1px solid var(--line);border-radius:var(--r);padding:0 10px;font-size:var(--fs-body);background:transparent;
   color:var(--ink);font-family:inherit}
 input.f{height:var(--h-ctl)}
@@ -350,12 +357,16 @@ input[type=number]{-moz-appearance:textfield}
 .partrow .grow{flex:1}
 .partrow.off{opacity:.45}
 .palette{flex:0 0 220px}
-.pchip{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:var(--r);
-  padding:9px 11px;margin-bottom:6px;cursor:pointer;background:transparent;font-size:var(--fs-body);font-family:inherit;
+/* 강의 편집기 팔레트도 한 묶음으로: 위아래 테두리만, 넣은 것은 레드 반투명 바탕 */
+.pchip{display:flex;align-items:center;gap:9px;border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;
+  padding:9px 11px;margin-bottom:0;cursor:pointer;background:transparent;font-size:var(--fs-body);font-family:inherit;
   width:100%;text-align:left;color:var(--ink)}
-.pchip:hover{border-color:var(--line-strong)}
+.pchip + .pchip{border-top:0}
+.pchip:hover{background:var(--hover)}
 .pchip .dot{width:10px;height:10px}
-.pchip.has{border-color:var(--accent);color:var(--accent);outline:1px solid var(--accent);outline-offset:-2px}
+.pchip.has{background:var(--accent-fade);color:var(--accent)}
+.pchip.has:hover{background:var(--accent-fade-hover)}
 /* 체크로 켜고 끄는 목록 줄: 목록 줄과 같이 테두리는 위아래만, 줄마다 카드를 나누지 않는다
    (선생님 지시 2026-10-29) */
 .checkline{display:flex;align-items:center;gap:9px;border:0;border-top:1px solid var(--line);
@@ -391,7 +402,7 @@ input[type=number]{-moz-appearance:textfield}
 .seg-b{flex:1;border:0;background:none;border-radius:calc(var(--r) - 3px);padding:8px 10px;font-size:var(--fs-body);
   color:var(--sub);cursor:pointer;font-family:inherit;font-weight:600}
 .seg-b:hover:not(.on):not(:disabled){color:var(--ink)}
-.seg-b.on{background:none;color:var(--accent);outline:1px solid var(--accent);outline-offset:-1px}
+.seg-b.on{background:var(--accent-fade);color:var(--accent)}
 .seg-b:disabled{opacity:.4;cursor:default}
 /* 작은 인라인 세그먼트(과목별/반별 토글): 카테고리 줄 끝에. 글자 크기는 본문과 같게 두고 패딩만 줄인다 */
 .seg.seg-inline{margin:0;padding:2px;align-self:center;height:var(--h-ctl)}
