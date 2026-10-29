@@ -20,7 +20,9 @@ html:not(.lms-ready) #shell{display:none}
   font-size:var(--fs-body);cursor:pointer;margin-bottom:2px}
 .side .mi:hover{background:var(--hover);color:var(--ink)}
 .side .mi.on{background:none;color:var(--accent);font-weight:700;border-color:var(--accent)}
-.main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto 0 0}
+/* 본문은 사이드바 바로 오른쪽에 붙는다. 가로 여백은 해상도를 따라간다(좁으면 40px, 넓으면 64px까지):
+   창이 1500px보다 좁으면 본문이 화면 끝까지 차서 이 여백이 그대로 스크롤바와의 거리가 된다 */
+.main{flex:1;min-width:0;padding:28px clamp(40px,3.5vw,64px) 80px;max-width:1280px;margin:0 auto 0 0}
 
 /* 로그아웃은 메뉴 맨 아래에 조금 띄워 둔다 */
 .side .mi.side-logout{margin-top:14px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
