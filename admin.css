@@ -74,7 +74,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .detail .sectionlabel:first-child{margin-top:12px}
 
 /* 넓은 화면의 두 칸(강의실 관리, 학생 관리): 왼쪽 목록 --w-list, 오른쪽 상세(선생님 지시 2026-10-29).
-   상세는 목록을 내려도 따라 내려온다. 좁은 화면에서는 admin.js가 이 틀을 쓰지 않는다 */
+   페이지째 스크롤한다(상세가 따라 내려오지 않는다). 좁은 화면에서는 admin.js가 이 틀을 쓰지 않는다 */
 .split{display:grid;grid-template-columns:var(--w-list) minmax(0,1fr);gap:20px;align-items:start}
 .split-list .row .t{font-weight:500}
 /* 강의실 관리는 목록이 '역사 301' 정도로 짧아 좁게 두고 상세 두 칸을 넓힌다(선생님 지시 2026-10-29) */
@@ -87,9 +87,10 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .split-stu .pane .dcol:first-child{flex:0 1 220px}
 .split-stu .pane .dcol:last-child{flex:1 1 0;min-width:320px}
 /* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
+/* 상세 안에서 따로 스크롤하지 않는다: 그러면 스크롤바가 글 바로 옆(화면 한가운데)에 생긴다.
+   페이지째 내려가게 두어 스크롤바가 늘 창 맨 오른쪽에 붙게 한다(선생님 지시 2026-10-29) */
 .pane{border:0;border-left:1px solid var(--line);border-radius:0;
-  background:transparent;padding:0 16px 20px 20px;   /* 오른쪽 16px: 상세 글과 스크롤바 사이 여백 */
-  position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+  background:transparent;padding:0 16px 20px 20px}
 .pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line)}
 .pane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
 .pane > .row{margin-bottom:10px}
