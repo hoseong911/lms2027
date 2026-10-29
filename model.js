@@ -27,27 +27,30 @@ import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
  * 학생이 낸 답은 종류를 가리지 않고 course_submissions 한 곳에 모은다(제출물 통합).
  *   종류는 part 필드(question/formative/mission)로 구분. 성적은 따로 컬렉션을 두지 않고
  *   이 제출물에서 뽑아 보여 주는 것으로 시작한다. */
+// 전 컬렉션은 hoclass_ 접두어로 통일한다(2026-10-29). 한 Firebase 프로젝트를
+// 아카이브(hoistory)·구 LMS(lms_*)와 공유하므로, 이 앱 것은 접두어로 딱 가른다.
+// 공용 컬렉션(mission_submissions: 미니앱 제출, settings: 공용 설정)만 예외로 둔다.
 export const COLLECTIONS = {
   // ── 지금 쓰는 7개 ──
-  schoolYears:        'school_years',   // { year, status }  문서 id = '2027'
-  courses:            'courses',        // 강의실 { year, subject, grade, classNo, status }
-  courseStudents:     'course_students',// 명단 { courseId, studentNo, name }  id = 강의실id_학번
-  courseRoster:       'course_roster',  // 학년도 학생 명부 { year, studentNo, name }  id = 학년도_학번
-                                        //   강의실 명단(course_students)에서 다 빠져도 학생은 여기 남는다(2026-10-29)
-  courseAuth:         'course_auth',    // 비밀번호 해시 { hash }  id = 학년도_학번 (로그인 때만 읽음)
-  courseLessons:      'course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
-  lessons:            'lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
-  courseSubmissions:  'course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
-  courseGrades:       'course_grades',  // 성적 기록 { clId, studentNo, 영역별 달성/기한, absent, feedback }
-                                        //   id = 꽂힌강의id_학번. 급간 표와 반영 강의는 settings/grade
+  schoolYears:        'hoclass_school_years',   // { year, status }  문서 id = '2027'
+  courses:            'hoclass_courses',        // 강의실 { year, subject, grade, classNo, status }
+  courseStudents:     'hoclass_course_students',// 명단 { courseId, studentNo, name }  id = 강의실id_학번
+  courseRoster:       'hoclass_course_roster',  // 학년도 학생 명부 { year, studentNo, name }  id = 학년도_학번
+                                        //   강의실 명단에서 다 빠져도 학생은 여기 남는다(2026-10-29)
+  courseAuth:         'hoclass_course_auth',    // 비밀번호 해시 { hash }  id = 학년도_학번 (로그인 때만 읽음)
+  courseLessons:      'hoclass_course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
+  lessons:            'hoclass_lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
+  courseSubmissions:  'hoclass_course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
+  courseGrades:       'hoclass_course_grades',  // 성적 기록 { clId, studentNo, 영역별 달성/기한, absent, feedback }
+                                        //   id = 꽂힌강의id_학번. 급간 표와 반영 강의는 hoclass_settings/grade
 
   // ── 나중(예약): 해당 단계에서 실제로 만든다 ──
-  quizzes:            'quizzes',        // 복습 문제 창고            (5단계 복습 허브)
-  courseQuizzes:      'course_quizzes', // 강의실에 걸린 복습        (5단계)
-  missionApps:        'mission_apps',   // 미션 미니앱 등록부 { name, studentUrl, adminUrl, lessonId, archive }
-  courseConsent:      'course_consent', // 학생 동의서              (학생 화면 붙일 때)
-  courseScores:       'course_scores',  // 안 쓴다. 성적은 course_grades와 제출물에서 집계한다
-  courseXp:           'course_xp',       // 경험치/포인트            (6단계 게임 요소)
+  quizzes:            'hoclass_quizzes',        // 복습 문제 창고            (5단계 복습 허브)
+  courseQuizzes:      'hoclass_course_quizzes', // 강의실에 걸린 복습        (5단계)
+  missionApps:        'hoclass_mission_apps',   // 미션 미니앱 등록부 { name, studentUrl, adminUrl, lessonId, archive }
+  courseConsent:      'hoclass_course_consent', // 학생 동의서              (학생 화면 붙일 때)
+  courseScores:       'hoclass_course_scores',  // 안 쓴다. 성적은 grades와 제출물에서 집계한다
+  courseXp:           'hoclass_course_xp',       // 경험치/포인트            (6단계 게임 요소)
 };
 
 // 강의 안 네 칸: 각 강의에 최대 1개, 순서 자유.
@@ -124,7 +127,7 @@ export function adminMenus(){
 }
 export async function setMenuOrder(order){
   menuOrder = [...order];
-  await setDoc(doc(db, 'settings', 'general'), { menuOrder }, { merge:true });
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { menuOrder }, { merge:true });
 }
 
 /* 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
@@ -166,7 +169,7 @@ export function getText(key){
 // 일반 설정의 저장 버튼이 한 번에 부른다: 필드마다 따로 쓰지 않고 texts 맵 전체를 한 번에 쓴다.
 export async function setTexts(patch){
   Object.entries(patch).forEach(([k, v]) => { siteTexts[k] = String(v ?? '').trim(); });
-  await setDoc(doc(db, 'settings', 'general'), { texts: siteTexts }, { merge:true });
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { texts: siteTexts }, { merge:true });
 }
 
 // 형성평가 문제 유형 다섯 (선생님 지시 2026-10-29: 진위형 초성형 단답형 선택형 합답형 순서)
@@ -267,8 +270,8 @@ export async function loadCore(){
     getDocs(collection(db, C.courseSubmissions)),
     getDocs(collection(db, C.courseGrades)),
     getDocs(collection(db, C.missionApps)),
-    getDoc(doc(db, 'settings', 'general')),
-    getDoc(doc(db, 'settings', 'grade')),
+    getDoc(doc(db, 'hoclass_settings', 'general')),
+    getDoc(doc(db, 'hoclass_settings', 'grade')),
   ]);
   const rows = snap => snap.docs.map(d => ({ ...d.data(), id:d.id }));
   DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
@@ -644,7 +647,7 @@ export async function saveGradeConfig(bands){
     question: Math.max(0, Math.round(+b.question) || 0),
   })).sort((a, b) => b.min - a.min);
   DEMO.gradeConf = { bands:clean, lessons:getGradeLessons(), feedbackTemplates:getFeedbackTemplates() };
-  await setDoc(doc(db, 'settings', 'grade'), DEMO.gradeConf);
+  await setDoc(doc(db, 'hoclass_settings', 'grade'), DEMO.gradeConf);
   return DEMO.gradeConf;
 }
 
