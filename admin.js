@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029e';
+import * as M from './model.js?v=20261029f';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -42,7 +42,10 @@ const state = {
   questionGradeTab: 'grade',       // 답변, 채점의 탭 'grade' | 'pass' | 'fail' (hoistory 채점 모달)
   questionAiBusy: false,           // AI 채점이 도는 중인가
   questionAiStatus: '',            // AI 채점 진행 문구
-  formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
+  formativeTab: 'manage',          // 서브 메뉴 'manage'(문제 관리) | 'result'(성취도 관리)
+  formativeLessonId: null,         // 문제 관리에서 문항을 편집 중인 강의
+  formativeResultId: null,         // 성취도 관리에서 고른 강의
+  formativeRoom: 'all',            // 성취도 관리에서 고른 반: 'all' 또는 강의실 id
   missionSel: null,                // 미션 활동에서 고른 앱 키, 새로 만드는 중이면 'new'
 
   progAdding: false,               // 진도표에서 강의 추가 줄을 열었는가
@@ -724,14 +727,17 @@ function scoreViewPanel(c){
   const body = students.map(s => {
     const g = M.studentGrade(c.id, s.studentNo);
     const open = state.scOpenNo === s.studentNo;
+    // 점수는 크고 뚜렷하게, 달성률은 그 아래에 깐다(선생님 지시 2026-10-29)
     const cells = M.GRADE_AREAS.map(a => {
       const it = g.areas[a.key];
-      return `<td class="num">${it.total ? `${it.score}<span class="gsub">${it.achieved}/${it.total} ${it.pct}%</span>` : '<span class="gsub">미실시</span>'}</td>`;
+      return `<td class="num">${it.total
+        ? `<span class="scnum">${it.score}</span><span class="gsub blk">${it.achieved}/${it.total} ${it.pct}%</span>`
+        : '<span class="gsub">미실시</span>'}</td>`;
     }).join('');
     const row = `<tr class="scrow ${open?'on':''}" data-act="sc-open" data-no="${s.studentNo}">
       <td class="lname">${WIDE.matches ? '' : `<span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>`}
         <span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</td>
-      ${cells}<td class="num tot">${g.total}<span class="gsub">/ ${g.maxScore}</span></td></tr>`;
+      ${cells}<td class="num tot"><span class="scnum">${g.total}</span><span class="gsub blk">/ ${g.maxScore}</span></td></tr>`;
     // 좁은 화면만 줄 아래로 펼친다(넓은 화면은 오른쪽 칸이 받는다)
     return (open && !WIDE.matches) ? row + `<tr class="sc-lines"><td colspan="${M.GRADE_AREAS.length + 2}">
       <div class="detail">${scoreLines(g)}</div></td></tr>` : row;
@@ -752,23 +758,33 @@ function scoreViewPanel(c){
 }
 
 /* 강의별 내역: 어디서 깎였는지 그대로 보인다(hoistory 2026-09-03과 같은 뜻).
-   강의 차수만 적고 제목은 빼므로(선생님 지시 2026-10-29) 좁은 칸에도 들어간다.
-   영역 셋의 달성, 기한 OX는 한 줄에 하나씩 세로로 쌓는다. O는 초록, X는 빨강(판정 두 색과 같다). */
+   영역마다 표 하나다(선생님 지시 2026-10-29: "개념 미션 질문을 3개 표로 나누면 될거같아
+   저렇게 나열식으로 하지말고"). 표마다 위에 영역 이름을 표제목으로 달고, 줄은 강의 차수,
+   칸은 달성과 기한의 OX다. 강의 제목은 빼므로(같은 지시) 좁은 칸에도 들어간다.
+   O는 초록, X는 빨강(판정 두 색과 같다). 피드백은 영역에 매이지 않아 맨 아래 따로 모은다. */
 function scoreLines(g){
   if (!g.rows.length) return `<div class="empty">반영된 강의가 없습니다.</div>`;
-  return g.rows.map(r => {
-    const bits = M.GRADE_AREAS.map(a => {
-      const v = r.areas[a.key]; if (!v) return '';
-      const mark = (n, w) => n >= w
-        ? '<span class="ox good">O</span>'
-        : (n > 0 ? '<span class="ox half">△</span>' : '<span class="ox bad">X</span>');
-      return `<span class="gnote">${esc(a.name)} ${mark(v.achievedN, v.weight)}${mark(v.onTimeN, v.weight)}</span>`;
-    }).filter(Boolean).join('');
-    return `<div class="row compact scvrow">
-      <div class="plnum">${r.no}강</div>
-      <div class="grow"><div class="scvbits">${bits}</div>${r.feedback ? `<div class="s">${esc(r.feedback)}</div>` : ''}</div>
-      ${r.absent ? `<span class="gnote bad">결석</span>` : ''}</div>`;
+  const mark = (n, w) => n >= w
+    ? '<span class="ox good">O</span>'
+    : (n > 0 ? '<span class="ox half">△</span>' : '<span class="ox bad">X</span>');
+  const tables = M.GRADE_AREAS.map(a => {
+    const head = `<div class="sectionlabel">${esc(a.name)}</div>`;
+    const rows = g.rows.filter(r => r.areas[a.key]);
+    if (!rows.length) return head + `<div class="empty">미실시</div>`;
+    const body = rows.map(r => {
+      const v = r.areas[a.key];
+      return `<tr><td class="no">${r.no}강</td>` + (r.absent
+        ? `<td colspan="2"><span class="gnote bad">결석</span></td>`
+        : `<td>${mark(v.achievedN, v.weight)}</td><td>${mark(v.onTimeN, v.weight)}</td>`) + `</tr>`;
+    }).join('');
+    return head + `<table class="prog oxtable">
+      <thead><tr><th class="no">강의</th><th>달성</th><th>기한</th></tr></thead>
+      <tbody>${body}</tbody></table>`;
   }).join('');
+  const fb = g.rows.filter(r => r.feedback);
+  if (!fb.length) return tables;
+  return tables + `<div class="sectionlabel">피드백</div>` + fb.map(r => `<div class="row compact scvrow">
+      <div class="plnum">${r.no}강</div><div class="grow"><div class="s">${esc(r.feedback)}</div></div></div>`).join('');
 }
 
 /* 추가 팝업: 학년도 생성 / 강의실 생성을 한곳에 모았다(요구사항 5).
@@ -1224,10 +1240,10 @@ function numberedLessons(lessons){
     const rooms = all.filter(c => c.subject === s);
     placedLessons(rooms).lessons.forEach((l, i) => {
       if (seen.has(l.id)) return; seen.add(l.id);
-      out.push({ l, label:`${subjects.length > 1 ? s + ' ' : ''}${i + 1}강. ${l.title}` });
+      out.push({ l, placed:true, label:`${subjects.length > 1 ? s + ' ' : ''}${i + 1}강. ${l.title}` });
     });
   });
-  lessons.filter(l => !seen.has(l.id)).forEach(l => out.push({ l, label:l.title }));
+  lessons.filter(l => !seen.has(l.id)).forEach(l => out.push({ l, placed:false, label:l.title }));
   return out;
 }
 // 저장 단추: 오른쪽 칸(좁으면 펼친 칸)의 값을 읽어 추가하거나 고친다.
@@ -1484,13 +1500,21 @@ async function runQuestionAI(regrade){
 
 /* ── 형성평가 ──
    성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27).
-   두 단(선생님 지시 2026-10-29): 왼쪽은 형성평가가 있는 강의 목록, 오른쪽은 고른 강의의 문항 편집기.
-   미션 활동, 오늘의 질문 질문 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다.
-   목록으로 돌아가는 단추(fm-close)는 오른쪽 칸이 늘 떠 있게 되어 없앴다. */
+   서브 메뉴 둘(선생님 지시 2026-10-29):
+     문제 관리   : 두 단. 왼쪽은 형성평가가 있는 강의 목록, 오른쪽은 고른 강의의 문항 편집기.
+                   미션 활동, 오늘의 질문 질문 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다
+     성취도 관리 : 학생들이 푼 결과. 강의를 고르고 반을 고르면 그 반 명단을 끌어와
+                   학생마다 정답률과 오답률을 본다(오늘의 질문 답변과 같은 고르개 줄 모양) */
 function pageFormative(){
-  const head = `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>`;
+  const tabs = catline(M.ADMIN_SUBMENUS.formative, state.formativeTab, 'fm-tab');
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>${tabs}`;
+  return head + (state.formativeTab === 'result' ? formativeResultPanel() : formativeManage());
+}
+
+// 문제 관리: 왼쪽 강의 목록, 오른쪽 문항 편집기.
+function formativeManage(){
   const lessons = M.getLessonsWithPart('formative');
-  if (!lessons.length) return head + `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
+  if (!lessons.length) return `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
   // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 강의를 고른다.
   if (!lessons.some(l => l.id === state.formativeLessonId))
     state.formativeLessonId = WIDE.matches ? lessons[0].id : null;
@@ -1501,9 +1525,9 @@ function pageFormative(){
   const sel = lessons.find(l => l.id === state.formativeLessonId);
 
   if (!WIDE.matches)
-    return head + lessons.map(l => l.id === state.formativeLessonId
+    return lessons.map(l => l.id === state.formativeLessonId
       ? row(l) + `<div class="detail">${formativeEditor(l)}</div>` : row(l)).join('');
-  return head + `<div class="split split-formative">
+  return `<div class="split split-formative">
       <div class="split-list">${lessons.map(row).join('')}</div>
       <div class="pane"><div class="pane-head"><h3>${esc(sel.title)}</h3></div>
         <div class="dscroll">${formativeEditor(sel)}</div></div></div>`;
@@ -1527,6 +1551,55 @@ function formativeEditor(l){
       <div class="deck"><div class="sectionlabel">문항</div>${deck}</div>
       <div class="palette"><div class="sectionlabel">문제 유형</div>${palette}</div>
     </div>`;
+}
+
+/* 성취도 관리 (선생님 지시 2026-10-29: "학생들이 푼 정답률, 오답률 이런거 확인하는거야 학생명단으로 끌고와서").
+   고르개 줄은 오늘의 질문 답변과 같다: 강의 드롭다운 + 반 카테고리 줄(전체 포함).
+   강의 차수는 진도 관리와 같이 그 과목 강의실들에 꽂힌 차례에서 나온다(numberedLessons).
+   맞고 틀림은 문제 안의 답(items[].a)과 견주어 M.formativeResult가 센다. 안 쓴 문항은 오답으로 센다. */
+function formativeResultPanel(){
+  const withPart = M.getLessonsWithPart('formative');
+  if (!withPart.length) return `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
+  // 어디에도 꽂히지 않은 강의는 푼 학생이 있을 수 없어 뺀다(placed:false)
+  const opts = numberedLessons(withPart).filter(x => x.placed && x.l.parts?.formative);
+  if (!opts.length) return `<div class="empty">강의실에 꽂힌 형성평가가 없습니다.</div>`;
+  if (!opts.some(x => x.l.id === state.formativeResultId)) state.formativeResultId = opts[0].l.id;
+
+  // 그 강의가 꽂힌 반만 선다
+  const withCl = M.getCourses(state.year)
+    .map(c => ({ c, cl:M.getCourseLessons(c.id).find(x => x.lessonId === state.formativeResultId) }))
+    .filter(x => x.cl)
+    .sort((a,b) => a.c.grade - b.c.grade || a.c.classNo - b.c.classNo);
+  if (state.formativeRoom !== 'all' && !withCl.some(x => x.c.id === state.formativeRoom)) state.formativeRoom = 'all';
+  const targets = state.formativeRoom === 'all' ? withCl : withCl.filter(x => x.c.id === state.formativeRoom);
+
+  const pickers = `<div class="qbar">
+    <select class="sel sel-lesson" data-act="fm-result-lesson" aria-label="강의">
+      ${opts.map(x => `<option value="${x.l.id}" ${x.l.id===state.formativeResultId?'selected':''}>${esc(x.label)}</option>`).join('')}
+    </select>
+    ${catline(withCl.map(x => ({ v:x.c.id, label:M.roomNo(x.c) })), state.formativeRoom, 'fm-room', '전체')}</div>`;
+
+  const items = M.getLesson(state.formativeResultId)?.parts?.formative?.items || [];
+  const byNo = (a, b) => String(a.studentNo).localeCompare(String(b.studentNo), undefined, { numeric:true });
+  const rows = targets.flatMap(({ c, cl }) => {
+    const subs = M.getFormativeSubs(cl.id);
+    return M.getStudentsByCourse(c.id).map(st => ({ st, sub:subs.find(s => s.studentNo === st.studentNo) || null }));
+  }).sort((a,b) => byNo(a.st, b.st));
+  if (!rows.length) return pickers + `<div class="empty">학생이 없습니다.</div>`;
+
+  const body = rows.map(({ st, sub }) => {
+    const name = `<td class="lname"><span class="mono">${esc(st.studentNo)}</span> &nbsp;${esc(st.name)}</td>`;
+    if (!sub) return `<tr>${name}<td class="num"><span class="gnote muted">미제출</span></td><td class="num"></td><td class="num"></td></tr>`;
+    const r = M.formativeResult(sub, items);
+    return `<tr>${name}
+      <td class="num">${r.correct} / ${r.total}</td>
+      <td class="num"><span class="ox good">${r.pct}%</span></td>
+      <td class="num"><span class="ox bad">${r.wrongPct}%</span></td></tr>`;
+  }).join('');
+
+  return pickers + `<div class="prog-wrap"><table class="prog scoretable">
+      <thead><tr><th class="lname">학생</th><th class="num">정답</th><th class="num">정답률</th><th class="num">오답률</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
 }
 
 /* ── 일반 설정 (선생님 지시 2026-10-28) ──
@@ -1608,7 +1681,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'page':
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
       state.studentDetailNo = null; state.roomStudentEdit = false;
-      state.conceptLessonId = null; state.formativeLessonId = null;
+      state.conceptLessonId = null; state.formativeLessonId = null; state.formativeTab = 'manage';
       state.progMemoId = null; state.genDraft = null; state.menuDraft = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
@@ -1779,6 +1852,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'q-verdict': M.setSubVerdict(id, v); render(); break;
 
     // 형성평가
+    case 'fm-tab': state.formativeTab = v; render(); break;
+    case 'fm-room': state.formativeRoom = v; render(); break;
     case 'fm-open':
       state.formativeLessonId = (!WIDE.matches && state.formativeLessonId === id) ? null : id;
       render(); break;
@@ -1930,6 +2005,8 @@ document.getElementById('shell').addEventListener('change', e => {
     render();
   } else if (el.dataset.act === 'q-lesson'){   // 오늘의 질문: 답변을 모아 볼 강의
     state.questionLessonId = el.value; render();
+  } else if (el.dataset.act === 'fm-result-lesson'){   // 형성평가 성취도: 결과를 볼 강의
+    state.formativeResultId = el.value; render();
   } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장

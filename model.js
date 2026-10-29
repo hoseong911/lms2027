@@ -133,6 +133,8 @@ export async function setMenuOrder(order){
 export const ADMIN_SUBMENUS = {
   concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
   question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변' }, { v:'pick', label:'PICK' } ],
+  // 형성평가는 문제를 만드는 자리와 학생들이 푼 결과를 보는 자리 둘이다(선생님 지시 2026-10-29).
+  formative:[ { v:'manage',  label:'문제 관리' }, { v:'result',  label:'성취도 관리' } ],
   // 성적은 hoistory/lms의 성적 Check 세 화면(입력, 설정, 조회)을 그대로 옮긴 것이다.
   scores:   [ { v:'input',   label:'입력' }, { v:'setting', label:'설정' }, { v:'view',  label:'조회' } ],
 };
@@ -902,7 +904,7 @@ export function getQuestionSubs(clId){
 /* 제출물 저장: 학생 화면과 미션 미니앱이 쓰는 한 길. 문서 id가 꽂힌강의, 칸, 학번이라
    다시 내면 같은 줄을 고친다. 처음 적힌 at(제출 시각)은 기한 판정의 기준이라 덮어쓰지 않는다
    (2026 네컷에서 다시 낼 때마다 시각이 덮여 기한이 지각으로 뒤집힌 적이 있다). */
-export function saveSubmission({ clId, part, studentNo, answer, score }){
+export function saveSubmission({ clId, part, studentNo, answer, score, answers }){
   const cl = DEMO.courseLessons.find(x => x.id === clId);
   if (!cl) throw new Error('강의를 찾지 못했습니다.');
   if (!PART_ORDER.includes(part)) throw new Error('칸 종류를 확인해 주세요.');
@@ -914,10 +916,39 @@ export function saveSubmission({ clId, part, studentNo, answer, score }){
                 name: stu?.name || prev?.name || '', at: prev?.at || Date.now() };
   if (answer != null) row.answer = String(answer);
   if (score != null) row.score = +score;
+  // 형성평가는 문항마다 답이 있어 배열로 받는다(글자 또는 선택형 번호). 문항 순서와 같은 자리다
+  if (answers != null) row.answers = Array.isArray(answers) ? answers.slice() : [];
   if (i >= 0) DEMO.submissions[i] = row; else DEMO.submissions.push(row);
   put(COLLECTIONS.courseSubmissions, row);
   return row;
 }
+/* ── 형성평가 성취도 (선생님 지시 2026-10-29) ───────────────────────────────
+   성적에 들어가지 않는다(요구사항 70). 어드민의 "성취도 관리"가 반 명단을 끌어와
+   학생마다 정답률과 오답률을 본다.
+   답이 문제 안에 있으므로(lessons.parts.formative.items[].a) 점수를 따로 적어 두지 않고
+   읽을 때 센다. 선택형은 답이 번호(choices의 자리)고 나머지(단답, OX, 초성)는 글자다.
+   글자는 공백을 떼고 대소문자를 맞춰 견준다.
+   안 쓴 문항은 오답으로 센다: 정답률 + 오답률이 늘 100이 되게 한다(선생님이 둘을 같이 본다). */
+export function getFormativeSubs(clId){
+  return DEMO.submissions.filter(s => s.clId === clId && s.part === 'formative');
+}
+export function formativeResult(sub, items){
+  const list = items || [];
+  const given = Array.isArray(sub?.answers) ? sub.answers : [];
+  const norm = v => String(v ?? '').replace(/s+/g, '').toLowerCase();
+  let correct = 0, answered = 0;
+  list.forEach((it, i) => {
+    const g = given[i];
+    if (g == null || g === '') return;
+    answered++;
+    if (it.type === 'choice' ? +g === +it.a : norm(g) === norm(it.a)) correct++;
+  });
+  const total = list.length;
+  return { total, answered, correct, wrong: total - correct,
+           pct: total ? Math.round(correct / total * 100) : 0,
+           wrongPct: total ? 100 - Math.round(correct / total * 100) : 0 };
+}
+
 export function setSubScore(subId, score){
   const s = DEMO.submissions.find(x => x.id === subId); if (!s) return;
   s.score = (score === '' || score == null) ? null : +score;

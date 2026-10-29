@@ -230,6 +230,31 @@ M.getCourses(2027).forEach(c => {
   });
 });
 
+/* ── 형성평가 제출물 (2026-10-29: 어드민 성취도 관리가 정답률, 오답률을 센다) ──
+   난수를 따로 쓴다(rndF): 위의 rnd 차례에 끼어들면 이미 돌려 둔 질문, 미션 더미가 다 바뀐다.
+   문항마다 답을 적는다. 맞히는 비율을 학생마다 다르게(0.45~0.95) 두어 명단에 잘하는 학생과
+   못하는 학생이 섞이게 한다. model.js formativeResult가 items[].a와 견주므로 틀린 답은 답과 다르면 된다. */
+let seedF = 20271009;
+const rndF = () => (seedF = (seedF * 1103515245 + 12345) % 2147483648) / 2147483648;
+M.getCourses(2027).forEach(c => {
+  const stu = M.getStudentsByCourse(c.id);
+  M.getCourseLessons(c.id).filter(cl => cl.isOpen && cl.lesson.parts.formative).forEach(cl => {
+    const items = cl.lesson.parts.formative.items || [];
+    stu.forEach(s => {
+      if (rndF() < 0.1) return;                                 // 안 푼 학생
+      const skill = 0.45 + rndF() * 0.5;
+      const answers = items.map(it => {
+        if (rndF() < skill) return it.a;
+        if (it.type === 'choice') return (it.a + 1 + Math.floor(rndF() * 3)) % 4;
+        if (it.type === 'ox') return it.a === 'O' ? 'X' : 'O';
+        return '잘 모르겠습니다';
+      });
+      const row = M.saveSubmission({ clId:cl.id, part:'formative', studentNo:s.studentNo, answers });
+      row.at = due(cl) + (10 + rndF() * 8) * HOUR;
+    });
+  });
+});
+
 /* ── AI 채점 결과: 1, 2강은 전부, 4강은 앞의 세 반만, 6강은 아직(버튼을 눌러 볼 수 있게) ──
    점수 환산은 model.js gradeQuestionsAI와 같다. */
 const graded = (k, c) => ['h01','h02'].includes(k) || (k === 'h04' && c.classNo <= 3);

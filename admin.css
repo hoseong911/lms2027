@@ -151,10 +151,6 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .split-scview .prog-wrap{overflow:visible}
 .split-scview .scoretable thead th{position:sticky;top:0;z-index:2;background:var(--bg)}
 .split-scview .scoretable thead th.lname{z-index:3}
-/* 오른쪽 내역: 강의 차수 왼쪽, 영역 셋의 OX를 한 줄에 하나씩 세로로 */
-.scvrow{align-items:flex-start;padding-block:8px}
-.scvbits{display:flex;flex-direction:column;gap:2px}
-.scvrow .gnote{margin-left:0}
 /* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
 /* 상세 안에서 따로 스크롤하지 않는다: 그러면 스크롤바가 글 바로 옆(화면 한가운데)에 생긴다.
    페이지째 내려가게 두어 스크롤바가 늘 창 맨 오른쪽에 붙게 한다(선생님 지시 2026-10-29) */
@@ -227,8 +223,10 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
    포커스를 받아도 레드 테두리를 두르지 않는다(같은 지시: "굳이 빨간색일 이유가 없다").
    표 칸 안이라 .prog td .f:focus와 .f:focus의 레드를 둘 다 되돌려 준다. */
 .pltable tr.pl-memo-row td{text-align:left;padding:8px 0 10px}
-.pl-memo{display:flex;align-items:stretch;gap:8px;width:100%}
-.pl-memo textarea.f{flex:1;min-width:0;resize:vertical;font:inherit;line-height:1.5;white-space:pre-wrap;border-color:var(--line)}
+.pl-memo{display:flex;align-items:flex-start;gap:8px;width:100%}
+/* 높이는 오른쪽 단추 둘을 쌓은 것과 같게(선생님 지시 2026-10-29): --h-ctl 둘 + 사이 틈 6px */
+.pl-memo textarea.f{flex:1;min-width:0;height:calc(var(--h-ctl) * 2 + 6px);
+  resize:vertical;font:inherit;line-height:1.5;white-space:pre-wrap;border-color:var(--line)}
 .pl-memo textarea.f:hover{border-color:var(--line-strong)}
 .pl-memo textarea.f:focus{border-color:var(--line-strong);box-shadow:none}
 .pl-memo .tools{flex-direction:column;gap:6px}
@@ -350,6 +348,12 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 성적 조회 표: 내용을 전부 가운데로 맞춘다(선생님 지시 2026-10-29).
    .prog이 가운데 정렬인데 학생 열(.lname)만 왼쪽이었다. 그 하나를 가운데로 되돌린다 */
 .scoretable{width:100%}
+/* 칸 높이가 좁다는 지시(2026-10-29)로 위아래를 벌렸다. 줄 높이는 목록 줄과 같은 --h-row 바탕 */
+.scoretable th{padding-block:12px}
+.scoretable td{padding-block:10px;height:var(--h-row)}
+/* 점수는 뚜렷하게(--fs-head), 달성률은 그 아래에 깐다(선생님 지시 2026-10-29) */
+.scnum{display:block;font-size:var(--fs-head);font-weight:700;color:var(--ink);line-height:1.2}
+.gsub.blk{display:block;margin-left:0;margin-top:2px}
 .scoretable td.lname,.scoretable th.lname{min-width:150px;text-align:center}
 .scoretable td.num{text-align:center;font-variant-numeric:tabular-nums;color:var(--ink)}
 .scoretable th.num{text-align:center}
@@ -362,6 +366,17 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .scoretable tr.on td.lname{background:linear-gradient(var(--accent-fade),var(--accent-fade)),var(--bg)}
 .scoretable tr.on:has(+ tr.sc-lines) td{border-bottom-color:transparent}
 .scoretable tr.sc-lines td{padding:0 0 8px;white-space:normal;text-align:left}
+/* 오른쪽 내역: 영역마다 표 하나(선생님 지시 2026-10-29). 줄은 강의 차수, 칸은 달성과 기한 OX.
+   좁은 칸이라 차수 열만 왼쪽에 붙이고 나머지는 가운데. 소제목(영역 이름)은 표 바로 위에 */
+.oxtable{width:100%;margin-bottom:2px}
+.oxtable th,.oxtable td{padding:7px 6px}
+.oxtable td.no,.oxtable th.no{text-align:left;font-weight:700;color:var(--navy);width:1%;white-space:nowrap}
+.oxtable th.no{font-weight:600;color:var(--sub)}
+.pane .dscroll > .sectionlabel:first-child{margin-top:12px}
+/* 피드백 줄: 강의 차수 왼쪽, 글은 줄바꿈해서 */
+.scvrow{align-items:flex-start;padding-block:8px}
+.scvrow .gnote{margin-left:0}
+.scvrow .s{white-space:pre-wrap}
 .sc-mark{font-size:var(--fs-meta);font-weight:700;color:var(--sub)}
 .sc-mark.on{color:var(--accent)}
 /* .ib-sm은 이제 .ib와 같은 크기다(높이 통일, 2026-10-29). 클래스만 남겨 둔다 */
