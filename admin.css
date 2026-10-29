@@ -139,10 +139,6 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 학생 관리 상세: 수강 과목은 강의실 이름 몇 줄뿐이라 좁게, 남는 폭은 과목별 성적이 받는다(선생님 지시 2026-10-29) */
 .split-stu .pane .dcol:first-child{flex:0 1 220px}
 .split-stu .pane .dcol:last-child{flex:1 1 0;min-width:320px}
-/* 형성평가 두 단(선생님 지시 2026-10-29): 왼쪽 강의 목록, 오른쪽 문항 편집기.
-   편집기 안의 팔레트는 오른쪽 칸이 좁으면 문항 아래로 내려간다 */
-.split-formative .pane .palette{flex:0 1 190px}
-.split-formative .pane .deck{min-width:240px}
 /* 성적 조회 두 단(선생님 지시 2026-10-29): 왼쪽이 표라 다른 화면과 거꾸로 왼쪽이 넓다.
    오른쪽은 강의 차수와 OX뿐이라 --w-sc-detail로 좁게 둔다 */
 .split.split-scview{grid-template-columns:minmax(0,1fr) var(--w-sc-detail)}
@@ -278,6 +274,20 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .gnote.bad{color:var(--fail)}
 .gnote.muted{color:var(--sub)}
 .gsub{display:inline-block;font-size:var(--fs-meta);color:var(--sub);margin-left:5px}
+/* 형성평가 문제 만들기 (선생님 지시 2026-10-29: "ZEP에서 하는 거처럼").
+   유형 줄은 catline(.cat)을 그대로 쓰므로 CSS가 따로 없다. 아래는 유형별 답 칸.
+   라디오는 다시 그리지 않고 브라우저가 고르므로 :has(:checked)로 켜진 것을 알린다 */
+.fmform{margin-top:2px}
+.fmform-tools{display:flex;align-items:center;gap:8px;margin-top:14px}
+.fmradio{width:16px;height:16px;flex:none;accent-color:var(--accent)}
+.fmox{display:flex;align-items:center;gap:22px}
+.fmoxb{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:var(--fs-body);font-weight:700;color:var(--ink)}
+.fmoxb:has(:checked){color:var(--accent)}
+.fmchoices{display:flex;flex-direction:column;gap:6px}
+.fmchoice{display:flex;align-items:center;gap:9px}
+.fmchoice .f{flex:1;min-width:0}
+.fmchoice:has(:checked) .f{border-color:var(--accent)}
+
 /* 글 칸 오른쪽 아래의 글자수(오늘의 질문 설명문, 선생님 지시 2026-10-29: 희미하게).
    글 칸 안에 겹쳐 띄우되 누름은 글 칸이 받는다(pointer-events 없음) */
 .tacount-wrap{position:relative;display:flex}
@@ -498,6 +508,7 @@ input[type=number]{-moz-appearance:textfield}
 .partrow .dot{width:10px;height:10px;flex:0 0 auto}
 .partrow .grow{flex:1}
 .partrow.off{opacity:.45}
+.partrow.on{background:var(--accent-fade)}
 .palette{flex:0 0 220px}
 /* 강의 편집기 팔레트도 한 묶음으로: 위아래 테두리만, 넣은 것은 레드 반투명 바탕 */
 .pchip{display:flex;align-items:center;gap:9px;border:0;border-top:1px solid var(--line);

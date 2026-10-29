@@ -898,6 +898,78 @@ export function setPartEnabled(lessonId, key, on){
   if (kept){ Object.assign(l.parts[key], kept); saveLesson(lessonId); }
 }
 export function setQuestionEnabled(lessonId, on){ return setPartEnabled(lessonId, 'question', on); }
+export function setFormativeEnabled(lessonId, on){ return setPartEnabled(lessonId, 'formative', on); }
+
+/* ── 형성평가 문항 만들기 (선생님 지시 2026-10-29) ──────────────────────────
+   "문제 내는건 ZEP에서 하는 거처럼": 유형을 고르면 그 유형에 맞는 칸이 뜨고 적어서 넣는다.
+   문항 하나의 모양은 유형마다 다르다.
+     short   단답   { type, q, a }                        a는 글자
+     ox      OX     { type, q, a:'O'|'X' }
+     initial 초성   { type, q, a, hint }                  hint는 a의 초성(여기서 만든다)
+     choice  선택형 { type, q, choices:[...], a }          a는 choices의 자리(0부터)
+   답은 문항 안에 둔다. 채점은 읽을 때 formativeResult가 하므로 점수를 따로 적어 두지 않는다. */
+const CHOSUNG = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+export function initialsOf(text){
+  return [...String(text || '')].map(ch => {
+    const n = ch.charCodeAt(0) - 0xAC00;
+    return (n >= 0 && n < 11172) ? CHOSUNG[Math.floor(n / 588)] : ch;
+  }).join('');
+}
+/* 화면에서 받은 날것을 문항 하나로 다듬는다. 빈 보기는 떨어뜨리고 정답 자리를 그만큼 당긴다.
+   무엇이 비었으면 던진다: 화면이 그 글을 그대로 토스트로 보여 준다. */
+export function normFormativeItem({ type, q, a, choices }){
+  if (!FORMATIVE_TYPES.some(t => t.key === type)) throw new Error('문제 유형을 골라 주세요.');
+  const quest = String(q ?? '').trim();
+  if (!quest) throw new Error('문제를 입력하시길 바랍니다.');
+  if (type === 'choice'){
+    const list = (choices || []).map(c => String(c ?? '').trim());
+    const keep = list.map((c, i) => ({ c, i })).filter(x => x.c);
+    if (keep.length < 2) throw new Error('보기를 두 개 이상 입력하시길 바랍니다.');
+    const at = keep.findIndex(x => x.i === +a);
+    if (at < 0) throw new Error('정답인 보기를 골라 주세요.');
+    return { type, q:quest, choices:keep.map(x => x.c), a:at };
+  }
+  if (type === 'ox'){
+    const v = String(a ?? '').trim().toUpperCase();
+    if (v !== 'O' && v !== 'X') throw new Error('정답을 O 또는 X로 골라 주세요.');
+    return { type, q:quest, a:v };
+  }
+  const ans = String(a ?? '').trim();
+  if (!ans) throw new Error('정답을 입력하시길 바랍니다.');
+  return type === 'initial'
+    ? { type, q:quest, a:ans, hint:initialsOf(ans) }
+    : { type, q:quest, a:ans };
+}
+function formativeItems(lessonId){
+  const l = getLesson(lessonId);
+  if (!l?.parts?.formative) throw new Error('형성평가를 먼저 켜 주세요.');
+  if (!Array.isArray(l.parts.formative.items)) l.parts.formative.items = [];
+  return { l, items:l.parts.formative.items };
+}
+export function addFormativeItem(lessonId, raw){
+  const { items } = formativeItems(lessonId);
+  items.push(normFormativeItem(raw));
+  saveLesson(lessonId);
+}
+export function setFormativeItem(lessonId, i, raw){
+  const { items } = formativeItems(lessonId);
+  if (i < 0 || i >= items.length) return;
+  items[i] = normFormativeItem(raw);
+  saveLesson(lessonId);
+}
+export function delFormativeItem(lessonId, i){
+  const { items } = formativeItems(lessonId);
+  if (i < 0 || i >= items.length) return;
+  items.splice(i, 1);
+  saveLesson(lessonId);
+}
+export function moveFormativeItem(lessonId, i, dir){
+  const { items } = formativeItems(lessonId);
+  const j = i + dir;
+  if (i < 0 || i >= items.length || j < 0 || j >= items.length) return;
+  [items[i], items[j]] = [items[j], items[i]];
+  saveLesson(lessonId);
+}
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');
 }
@@ -935,7 +1007,7 @@ export function getFormativeSubs(clId){
 export function formativeResult(sub, items){
   const list = items || [];
   const given = Array.isArray(sub?.answers) ? sub.answers : [];
-  const norm = v => String(v ?? '').replace(/s+/g, '').toLowerCase();
+  const norm = v => String(v ?? '').replace(/\s+/g, '').toLowerCase();
   let correct = 0, answered = 0;
   list.forEach((it, i) => {
     const g = given[i];

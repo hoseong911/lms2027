@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029f';
+import * as M from './model.js?v=20261029g';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -43,8 +43,11 @@ const state = {
   questionAiBusy: false,           // AI 채점이 도는 중인가
   questionAiStatus: '',            // AI 채점 진행 문구
   formativeTab: 'manage',          // 서브 메뉴 'manage'(문제 관리) | 'result'(성취도 관리)
+  formativeSubject: null,          // 과목 탭(오늘의 질문과 같이 과목 아래에서 움직인다)
   formativeLessonId: null,         // 문제 관리에서 문항을 편집 중인 강의
-  formativeResultId: null,         // 성취도 관리에서 고른 강의
+  fmNewType: null,                 // 문제 만들기에서 고른 유형(null이면 FORMATIVE_TYPES의 첫째)
+  fmEditIdx: null,                 // 고치는 중인 문항 자리(null이면 새로 만드는 중)
+  formativeResultId: null,         // 성취도 관리에서 고른 것: 강의 id 또는 FM_ALL(전체 누적)
   formativeRoom: 'all',            // 성취도 관리에서 고른 반: 'all' 또는 강의실 id
   missionSel: null,                // 미션 활동에서 고른 앱 키, 새로 만드는 중이면 'new'
 
@@ -1500,105 +1503,205 @@ async function runQuestionAI(regrade){
 
 /* ── 형성평가 ──
    성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27).
-   서브 메뉴 둘(선생님 지시 2026-10-29):
-     문제 관리   : 두 단. 왼쪽은 형성평가가 있는 강의 목록, 오른쪽은 고른 강의의 문항 편집기.
-                   미션 활동, 오늘의 질문 질문 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다
-     성취도 관리 : 학생들이 푼 결과. 강의를 고르고 반을 고르면 그 반 명단을 끌어와
-                   학생마다 정답률과 오답률을 본다(오늘의 질문 답변과 같은 고르개 줄 모양) */
+   오늘의 질문과 같이 **과목 탭 아래 꽂힌 강의 전체**를 세운다(선생님 지시 2026-10-29:
+   "형성평가는 강의랑 연동되어야 하니까 오늘의 질문처럼 연결된 강의에서 생성할 수 있게").
+   전에는 형성평가가 이미 있는 강의만 보여 줘서 새로 만들 길이 없었다.
+   서브 메뉴 둘:
+     문제 관리   : 두 단. 왼쪽은 꽂힌 강의 전체(눈 단추로 형성평가를 켜고 끈다),
+                   오른쪽은 고른 강의의 문항 목록과 문제 만들기 칸
+     성취도 관리 : 학생들이 푼 결과. 강의별과 전체 누적을 같은 드롭다운에서 고른다 */
 function pageFormative(){
   const tabs = catline(M.ADMIN_SUBMENUS.formative, state.formativeTab, 'fm-tab');
   const head = `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>${tabs}`;
-  return head + (state.formativeTab === 'result' ? formativeResultPanel() : formativeManage());
+
+  const all = M.getCourses(state.year);
+  if (!all.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  if (!subjects.includes(state.formativeSubject)) state.formativeSubject = subjects[0];
+  const subTabs = catline(subjects.map(s => ({ v:s, label:s })), state.formativeSubject, 'fm-subject');
+  const rooms = all.filter(c => c.subject === state.formativeSubject)
+    .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
+  const { placed, lessons } = placedLessons(rooms);
+
+  if (state.formativeTab === 'result') return head + subTabs + formativeResultPanel(rooms, placed, lessons);
+  return head + subTabs + formativeManage(lessons);
 }
 
-// 문제 관리: 왼쪽 강의 목록, 오른쪽 문항 편집기.
-function formativeManage(){
-  const lessons = M.getLessonsWithPart('formative');
-  if (!lessons.length) return `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
-  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 강의를 고른다.
+/* 문제 관리: 왼쪽은 꽂힌 강의 전체(차수, 제목, 눈 단추), 오른쪽은 고른 강의의 문항.
+   눈 단추가 형성평가 칸을 켜고 끈다(오늘의 질문 질문 관리와 같은 길, M.setFormativeEnabled).
+   끈 강의의 문항은 partsOff에 맡겨 두었다가 다시 켜면 되살아난다. */
+function formativeManage(lessons){
+  if (!lessons.length) return `<div class="empty">꽂힌 강의가 없습니다.</div>`;
   if (!lessons.some(l => l.id === state.formativeLessonId))
     state.formativeLessonId = WIDE.matches ? lessons[0].id : null;
 
-  const row = l => `<div class="row ${l.id===state.formativeLessonId?'on':''}">
-      <div class="grow rowlink stack" data-act="fm-open" data-id="${l.id}"><div class="t">${esc(l.title)}</div>
-        ${l.parts.formative.title ? `<div class="s">${esc(l.parts.formative.title)}</div>` : ''}</div></div>`;
-  const sel = lessons.find(l => l.id === state.formativeLessonId);
+  const row = (l, i) => {
+    const on = !!l.parts?.formative;
+    const n = on ? (l.parts.formative.items || []).length : 0;
+    return `<div class="row compact ${l.id===state.formativeLessonId?'on':''}">
+      <div class="grow rowlink" data-act="fm-open" data-id="${l.id}"><div class="t">${i + 1}강. ${esc(l.title)}${
+        on && n ? `<span class="gsub">${n}문항</span>` : ''}</div></div>
+      <div class="tools"><button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="fm-enable" data-id="${l.id}"
+        title="${on?'형성평가 있음 (누르면 끕니다)':'없음 (누르면 켭니다)'}" aria-label="형성평가 켜고 끄기">${icon('eye',14)}</button></div></div>`;
+  };
+  const i = lessons.findIndex(l => l.id === state.formativeLessonId);
+  const sel = lessons[i];
 
   if (!WIDE.matches)
-    return lessons.map(l => l.id === state.formativeLessonId
-      ? row(l) + `<div class="detail">${formativeEditor(l)}</div>` : row(l)).join('');
+    return lessons.map((l, n) => l.id === state.formativeLessonId
+      ? row(l, n) + `<div class="detail">${formativeEditor(l)}</div>` : row(l, n)).join('');
   return `<div class="split split-formative">
       <div class="split-list">${lessons.map(row).join('')}</div>
-      <div class="pane"><div class="pane-head"><h3>${esc(sel.title)}</h3></div>
+      <div class="pane"><div class="pane-head"><h3>${i + 1}강. ${esc(sel.title)}</h3></div>
         <div class="dscroll">${formativeEditor(sel)}</div></div></div>`;
 }
-// 문항 편집기: 왼쪽 문항 목록(deck)과 오른쪽 문제 유형 팔레트.
+
+/* 문항 목록과 문제 만들기. 꺼진 강의는 켜라는 말만 띄운다(왼쪽 눈 단추로 켠다).
+   문제 유형은 가로 한 줄로 늘어놓고(선생님 지시 2026-10-29) 고르면 그 아래에 그 유형의 칸이 뜬다. */
 function formativeEditor(l){
-  const items = l.parts?.formative?.items || [];
-  const deck = items.length ? items.map((it, i) => `<div class="partrow">
+  if (!l.parts?.formative) return `<div class="empty">형성평가가 꺼져 있습니다.</div>`;
+  const items = l.parts.formative.items || [];
+  const deck = items.length ? items.map((it, i) => `<div class="partrow ${state.fmEditIdx===i?'on':''}">
       <span class="plnum">${i + 1}</span>
       <div class="grow"><div class="t">${esc(it.q || '')}</div>
-        <div class="s">${esc(M.formativeTypeDef(it.type)?.name || '')}</div></div>
+        <div class="s">${esc(M.formativeTypeDef(it.type)?.name || '')} ${esc(fmAnswerText(it))}</div></div>
       <div class="tools">
-        <button class="ib" data-act="noop" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-        <button class="ib ib-danger" data-act="noop" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-      </div></div>`).join('') : `<div class="placeholder">문항이 없습니다.</div>`;
+        <button class="ib ib-sm" data-act="fm-it-up" data-id="${l.id}" data-k="${i}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
+        <button class="ib ib-sm" data-act="fm-it-down" data-id="${l.id}" data-k="${i}" ${i===items.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
+        <button class="ib ib-sm" data-act="fm-it-edit" data-id="${l.id}" data-k="${i}" title="수정" aria-label="수정">${icon('pencil',14)}</button>
+        <button class="ib ib-sm ib-danger" data-act="fm-it-del" data-id="${l.id}" data-k="${i}" title="삭제" aria-label="삭제">${icon('trash-2',14)}</button>
+      </div></div>`).join('') : `<div class="empty">문항이 없습니다.</div>`;
 
-  const palette = M.FORMATIVE_TYPES.map(t =>
-    `<div class="pchip" data-act="fm-add" data-k="${t.key}"><span class="grow">${esc(t.name)}</span>${icon('plus',15)}</div>`).join('');
+  return `<div class="sectionlabel">문항</div>${deck}
+    <div class="sectionlabel">${state.fmEditIdx == null ? '문제 만들기' : `${state.fmEditIdx + 1}번 문항 고치기`}</div>
+    ${fmTypeLine()}${fmForm(l)}`;
+}
+// 문항 목록 줄에 답을 짧게 적는다(열지 않고도 무슨 문제인지 알게).
+function fmAnswerText(it){
+  if (it.type === 'choice') return `정답 ${(it.choices || [])[it.a] ?? ''}`;
+  return `정답 ${it.a ?? ''}`;
+}
+/* 문제 유형 가로 줄(선생님 지시 2026-10-29: "문제 유형은 가로로 나열해서 선택할 수 있게").
+   이미 있는 카테고리 줄(catline)을 그대로 쓴다: 가로 한 줄에 글자만, 켜진 것은 굵은 레드에 밑줄.
+   유형 하나는 늘 골라 둔다. 처음에는 단답.
+   고치는 중에 유형을 바꿔도 적어 둔 문제 글은 남는다(답만 유형에 맞게 비워진다). */
+function fmTypeLine(){
+  return catline(M.FORMATIVE_TYPES.map(t => ({ v:t.key, label:t.name })), fmCurType(), 'fm-type');
+}
+function fmCurType(){ return state.fmNewType || M.FORMATIVE_TYPES[0].key; }
 
-  return `<div class="editor">
-      <div class="deck"><div class="sectionlabel">문항</div>${deck}</div>
-      <div class="palette"><div class="sectionlabel">문제 유형</div>${palette}</div>
+/* 문제 만들기 칸(선생님 지시 2026-10-29: "문제 내는건 ZEP에서 하는 거처럼").
+   유형을 고르면 그 유형의 칸이 뜨고 적어서 넣는다.
+     단답, 초성 : 정답 한 칸 (초성 힌트는 저장할 때 model.js가 답에서 만든다)
+     OX         : O와 X 중 하나
+     선택형     : 보기 넷에 정답 라디오 (빈 보기는 저장할 때 떨어진다) */
+function fmForm(l){
+  const t = fmCurType();
+  const e = state.fmEditIdx == null ? null : (l.parts.formative.items || [])[state.fmEditIdx];
+  const d = (e && e.type === t) ? e : null;   // 답은 유형이 같을 때만 되살린다
+  const line = (label, ctl) => `<div class="row row-top"><div class="t gen-label">${label}</div>${ctl}</div>`;
+
+  let answer;
+  if (t === 'ox'){
+    answer = line('정답', `<div class="grow fmox">
+      ${['O','X'].map(v => `<label class="fmoxb"><input type="radio" class="fmradio" name="fm-a" value="${v}" ${d?.a===v?'checked':''}>${v}</label>`).join('')}
+    </div>`);
+  } else if (t === 'choice'){
+    const ch = d?.choices || [];
+    answer = `<div class="row row-top"><div class="t gen-label">보기</div><div class="grow fmchoices">
+      ${[0,1,2,3].map(i => `<div class="fmchoice">
+        <input type="radio" class="fmradio" name="fm-a" value="${i}" ${d && d.a===i?'checked':''} aria-label="${i + 1}번이 정답">
+        <input class="f grow" id="fm-c${i}" value="${esc(ch[i] || '')}" aria-label="보기 ${i + 1}">
+      </div>`).join('')}
+    </div></div>`;
+  } else {
+    answer = line('정답', `<input class="f grow" id="fm-a" value="${esc(d?.a || '')}" aria-label="정답">`);
+  }
+
+  const tools = state.fmEditIdx == null
+    ? `<button class="btn-add" data-act="fm-it-add" data-id="${l.id}" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button>`
+    : `<button class="btn-add" data-act="fm-it-save" data-id="${l.id}" data-k="${state.fmEditIdx}" title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button>
+       <button class="btn-chip" data-act="fm-it-cancel">취소</button>`;
+
+  return `<div class="fmform">
+      ${line('문제', `<textarea class="f grow" id="fm-q" rows="2" aria-label="문제">${esc(e?.q || '')}</textarea>`)}
+      ${answer}
+      <div class="fmform-tools">${tools}</div>
     </div>`;
+}
+// 문제 만들기 칸에 적힌 것을 읽는다(유형마다 칸이 다르다). 다듬고 따지는 것은 model.js가 한다.
+function fmReadForm(){
+  const t = fmCurType();
+  const q = val('fm-q');
+  if (t === 'ox' || t === 'choice'){
+    const picked = document.querySelector('input[name="fm-a"]:checked');
+    if (t === 'ox') return { type:t, q, a:picked?.value || '' };
+    return { type:t, q, a:picked ? +picked.value : -1, choices:[0,1,2,3].map(i => val(`fm-c${i}`)) };
+  }
+  return { type:t, q, a:val('fm-a') };
 }
 
 /* 성취도 관리 (선생님 지시 2026-10-29: "학생들이 푼 정답률, 오답률 이런거 확인하는거야 학생명단으로 끌고와서").
-   고르개 줄은 오늘의 질문 답변과 같다: 강의 드롭다운 + 반 카테고리 줄(전체 포함).
-   강의 차수는 진도 관리와 같이 그 과목 강의실들에 꽂힌 차례에서 나온다(numberedLessons).
+   같은 날 보강: "강의별, 전체 누적 이렇게 다양하게 볼수 있게." 드롭다운 맨 위가 전체 누적이다.
+     전체 누적 : 그 과목에서 형성평가가 켜진 꽂힌 강의를 다 더한다. 응시 열이 몇 개를 풀었는지 알려 준다
+     강의별    : 그 강의가 꽂힌 반만 선다
+   고르개 줄 모양은 오늘의 질문 답변과 같다(드롭다운 + 반 카테고리 줄, 전체 포함).
    맞고 틀림은 문제 안의 답(items[].a)과 견주어 M.formativeResult가 센다. 안 쓴 문항은 오답으로 센다. */
-function formativeResultPanel(){
-  const withPart = M.getLessonsWithPart('formative');
-  if (!withPart.length) return `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
-  // 어디에도 꽂히지 않은 강의는 푼 학생이 있을 수 없어 뺀다(placed:false)
-  const opts = numberedLessons(withPart).filter(x => x.placed && x.l.parts?.formative);
-  if (!opts.length) return `<div class="empty">강의실에 꽂힌 형성평가가 없습니다.</div>`;
-  if (!opts.some(x => x.l.id === state.formativeResultId)) state.formativeResultId = opts[0].l.id;
+const FM_ALL = '__all__';
+function formativeResultPanel(rooms, placed, lessons){
+  // 형성평가가 켜진 꽂힌 강의만. 차수는 진도 관리와 같이 꽂힌 차례에서 나온다
+  const fmLessons = lessons.map((l, i) => ({ l, no:i + 1 })).filter(x => x.l.parts?.formative);
+  if (!fmLessons.length) return `<div class="empty">형성평가가 켜진 강의가 없습니다.</div>`;
+  const cum = state.formativeResultId === FM_ALL;
+  if (!cum && !fmLessons.some(x => x.l.id === state.formativeResultId)) state.formativeResultId = FM_ALL;
 
-  // 그 강의가 꽂힌 반만 선다
-  const withCl = M.getCourses(state.year)
-    .map(c => ({ c, cl:M.getCourseLessons(c.id).find(x => x.lessonId === state.formativeResultId) }))
-    .filter(x => x.cl)
-    .sort((a,b) => a.c.grade - b.c.grade || a.c.classNo - b.c.classNo);
-  if (state.formativeRoom !== 'all' && !withCl.some(x => x.c.id === state.formativeRoom)) state.formativeRoom = 'all';
-  const targets = state.formativeRoom === 'all' ? withCl : withCl.filter(x => x.c.id === state.formativeRoom);
+  // 전체 누적은 그 과목 반을 다 세우고, 강의별은 그 강의가 꽂힌 반만 세운다
+  const target = cum ? fmLessons : fmLessons.filter(x => x.l.id === state.formativeResultId);
+  const withRooms = rooms
+    .map(c => ({ c, cls:target.map(x => ({ x, cl:placed[c.id].find(p => p.lessonId === x.l.id) })).filter(y => y.cl) }))
+    .filter(x => x.cls.length);
+  if (state.formativeRoom !== 'all' && !withRooms.some(x => x.c.id === state.formativeRoom)) state.formativeRoom = 'all';
+  const picked = state.formativeRoom === 'all' ? withRooms : withRooms.filter(x => x.c.id === state.formativeRoom);
 
   const pickers = `<div class="qbar">
-    <select class="sel sel-lesson" data-act="fm-result-lesson" aria-label="강의">
-      ${opts.map(x => `<option value="${x.l.id}" ${x.l.id===state.formativeResultId?'selected':''}>${esc(x.label)}</option>`).join('')}
+    <select class="sel sel-lesson" data-act="fm-result-lesson" aria-label="볼 범위">
+      <option value="${FM_ALL}" ${cum?'selected':''}>전체 누적</option>
+      ${fmLessons.map(x => `<option value="${x.l.id}" ${x.l.id===state.formativeResultId?'selected':''}>${x.no}강. ${esc(x.l.title)}</option>`).join('')}
     </select>
-    ${catline(withCl.map(x => ({ v:x.c.id, label:M.roomNo(x.c) })), state.formativeRoom, 'fm-room', '전체')}</div>`;
+    ${catline(withRooms.map(x => ({ v:x.c.id, label:M.roomNo(x.c) })), state.formativeRoom, 'fm-room', '전체')}</div>`;
 
-  const items = M.getLesson(state.formativeResultId)?.parts?.formative?.items || [];
-  const byNo = (a, b) => String(a.studentNo).localeCompare(String(b.studentNo), undefined, { numeric:true });
-  const rows = targets.flatMap(({ c, cl }) => {
-    const subs = M.getFormativeSubs(cl.id);
-    return M.getStudentsByCourse(c.id).map(st => ({ st, sub:subs.find(s => s.studentNo === st.studentNo) || null }));
-  }).sort((a,b) => byNo(a.st, b.st));
+  // 학생마다 범위 안의 형성평가를 다 더한다
+  const byNo = (a, b) => String(a.no).localeCompare(String(b.no), undefined, { numeric:true });
+  const rows = picked.flatMap(({ c, cls }) => {
+    const scan = cls.map(({ x, cl }) => ({ items:x.l.parts.formative.items || [], subs:M.getFormativeSubs(cl.id) }));
+    return M.getStudentsByCourse(c.id).map(st => {
+      let done = 0, correct = 0, total = 0;
+      scan.forEach(({ items, subs }) => {
+        const sub = subs.find(s => s.studentNo === st.studentNo);
+        if (!sub) return;
+        done++;
+        const r = M.formativeResult(sub, items);
+        correct += r.correct; total += r.total;
+      });
+      const pct = total ? Math.round(correct / total * 100) : 0;
+      return { no:st.studentNo, name:st.name, taken:cls.length, done, correct, total, pct };
+    });
+  }).sort(byNo);
   if (!rows.length) return pickers + `<div class="empty">학생이 없습니다.</div>`;
 
-  const body = rows.map(({ st, sub }) => {
-    const name = `<td class="lname"><span class="mono">${esc(st.studentNo)}</span> &nbsp;${esc(st.name)}</td>`;
-    if (!sub) return `<tr>${name}<td class="num"><span class="gnote muted">미제출</span></td><td class="num"></td><td class="num"></td></tr>`;
-    const r = M.formativeResult(sub, items);
-    return `<tr>${name}
+  const body = rows.map(r => {
+    const name = `<td class="lname"><span class="mono">${esc(r.no)}</span> &nbsp;${esc(r.name)}</td>`;
+    const taken = cum ? `<td class="num">${r.done} / ${r.taken}</td>` : '';
+    if (!r.done) return `<tr>${name}${taken}<td class="num"><span class="gnote muted">미제출</span></td><td class="num"></td><td class="num"></td></tr>`;
+    return `<tr>${name}${taken}
       <td class="num">${r.correct} / ${r.total}</td>
       <td class="num"><span class="ox good">${r.pct}%</span></td>
-      <td class="num"><span class="ox bad">${r.wrongPct}%</span></td></tr>`;
+      <td class="num"><span class="ox bad">${100 - r.pct}%</span></td></tr>`;
   }).join('');
 
   return pickers + `<div class="prog-wrap"><table class="prog scoretable">
-      <thead><tr><th class="lname">학생</th><th class="num">정답</th><th class="num">정답률</th><th class="num">오답률</th></tr></thead>
+      <thead><tr><th class="lname">학생</th>${cum ? '<th class="num">응시</th>' : ''}
+        <th class="num">정답</th><th class="num">정답률</th><th class="num">오답률</th></tr></thead>
       <tbody>${body}</tbody></table></div>`;
 }
 
@@ -1682,6 +1785,7 @@ document.getElementById('shell').addEventListener('click', e => {
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
       state.studentDetailNo = null; state.roomStudentEdit = false;
       state.conceptLessonId = null; state.formativeLessonId = null; state.formativeTab = 'manage';
+      state.fmEditIdx = null; state.fmNewType = null;
       state.progMemoId = null; state.genDraft = null; state.menuDraft = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
@@ -1852,12 +1956,39 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'q-verdict': M.setSubVerdict(id, v); render(); break;
 
     // 형성평가
-    case 'fm-tab': state.formativeTab = v; render(); break;
+    case 'fm-tab': state.formativeTab = v; state.fmEditIdx = null; render(); break;
+    case 'fm-subject': state.formativeSubject = v; state.formativeLessonId = null;
+      state.formativeResultId = null; state.formativeRoom = 'all'; state.fmEditIdx = null; render(); break;
     case 'fm-room': state.formativeRoom = v; render(); break;
     case 'fm-open':
       state.formativeLessonId = (!WIDE.matches && state.formativeLessonId === id) ? null : id;
-      render(); break;
-    case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
+      state.fmEditIdx = null; render(); break;
+    // 형성평가 칸을 켜고 끈다(오늘의 질문 질문 관리와 같은 길). 끈 문항은 partsOff에 남는다
+    case 'fm-enable':
+      state.formativeLessonId = id; state.fmEditIdx = null;
+      run(() => M.setFormativeEnabled(id, !M.getLesson(id)?.parts?.formative)); break;
+    // 문제 유형 가로 줄: 고르면 그 유형의 칸이 뜬다
+    case 'fm-type': state.fmNewType = v; render(); break;
+    case 'fm-it-add': run(() => M.addFormativeItem(id, fmReadForm()), '문항을 넣었습니다.'); break;
+    case 'fm-it-save':
+      try { M.setFormativeItem(id, +k, fmReadForm()); state.fmEditIdx = null; toast('문항을 고쳤습니다.'); render(); }
+      catch (e){ toast(e.message); }
+      break;
+    case 'fm-it-cancel': state.fmEditIdx = null; render(); break;
+    case 'fm-it-edit': {
+      const it = (M.getLesson(id)?.parts?.formative?.items || [])[+k];
+      if (!it) break;
+      state.fmEditIdx = +k; state.fmNewType = it.type; render(); break;
+    }
+    case 'fm-it-up':   run(() => M.moveFormativeItem(id, +k, -1)); break;
+    case 'fm-it-down': run(() => M.moveFormativeItem(id, +k, 1)); break;
+    case 'fm-it-del': {
+      const it = (M.getLesson(id)?.parts?.formative?.items || [])[+k];
+      if (!it) break;
+      confirmDelete({ title:'문항 삭제', bodyHtml:`<b>${esc(it.q || '')}</b> 문항을 지웁니다.`, okText:'삭제' })
+        .then(ok => { if (!ok) return; state.fmEditIdx = null; run(() => M.delFormativeItem(id, +k), '문항을 지웠습니다.'); });
+      break;
+    }
 
     // 성적
     case 'sc-tab': state.scTab = v; state.scOpenNo = null; render(); break;
@@ -2005,7 +2136,7 @@ document.getElementById('shell').addEventListener('change', e => {
     render();
   } else if (el.dataset.act === 'q-lesson'){   // 오늘의 질문: 답변을 모아 볼 강의
     state.questionLessonId = el.value; render();
-  } else if (el.dataset.act === 'fm-result-lesson'){   // 형성평가 성취도: 결과를 볼 강의
+  } else if (el.dataset.act === 'fm-result-lesson'){   // 형성평가 성취도: 전체 누적 또는 한 강의
     state.formativeResultId = el.value; render();
   } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);

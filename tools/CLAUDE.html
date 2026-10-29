@@ -205,8 +205,13 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 </ul>
 <h3 id="형성평가는-서브-메뉴-둘-선생님-지시-2026-10-29">형성평가는 서브 메뉴 둘 (선생님 지시 2026-10-29)</h3>
 <ul>
-<li><strong>문제 관리</strong>: 지금까지의 문항 편집기. 두 단(왼쪽 강의 목록, 오른쪽 편집기).</li>
-<li><strong>성취도 관리</strong>: 학생들이 푼 결과. "학생들이 푼 정답률, 오답률 이런거 확인하는거야 학생명단으로 끌고와서." 고르개 줄은 오늘의 질문 답변과 같다(강의 드롭다운 + 반 카테고리 줄, 전체 포함). 표는 학생, 정답, 정답률, 오답률 넷.</li>
+<li><strong>오늘의 질문과 같이 과목 탭 아래에서 움직이고, 왼쪽 목록은 꽂힌 강의 전체다 (같은 날 보강 지시: "형성평가는 강의랑 연동되어야 하니까 오늘의 질문처럼 연결된 강의에서 생성할 수 있게").</strong> 전에는 <code>getLessonsWithPart('formative')</code>로 <strong>이미 형성평가가 있는 강의만</strong> 세워서 새로 만들 길이 아예 없었다. 이제 <code>placedLessons(rooms)</code>로 꽂힌 강의를 다 세우고 줄의 <strong>눈 단추가 형성평가 칸을 켜고 끈다</strong> (<code>M.setFormativeEnabled</code>, 오늘의 질문 질문 관리와 같은 길). 끈 강의의 문항은 <code>partsOff</code>에 남아 다시 켜면 되살아난다.</li>
+<li><strong>문제 관리</strong>: 문항 편집기. 두 단(왼쪽 강의 목록, 오른쪽 문항 목록 + 문제 만들기).</li>
+<li class="sub"><strong>문제 유형은 가로 한 줄</strong>이다(선생님 지시 2026-10-29). 새 CSS를 만들지 않고 <strong>카테고리 줄(<code>catline</code>)을 그대로</strong> 쓴다.</li>
+<li class="sub"><strong>문제 내는 모양은 ZEP을 본떴다</strong>(같은 지시): 유형을 고르면 그 유형의 칸이 뜨고 적어서 [추가]를 누른다. 단답과 초성은 정답 한 칸, OX는 O와 X 라디오, 선택형은 보기 넷에 정답 라디오(빈 보기는 저장할 때 떨어진다). 초성 문제의 힌트는 저장할 때 <code>model.js</code>의 <code>initialsOf()</code>가 답에서 만든다.</li>
+<li class="sub">문항을 다듬고 따지는 것은 전부 <code>model.js</code>의 <code>normFormativeItem()</code> 한 곳이다. 화면은 칸을 읽어 넘기기만 한다.</li>
+<li><strong>성취도 관리</strong>: 학생들이 푼 결과. "학생들이 푼 정답률, 오답률 이런거 확인하는거야 학생명단으로 끌고와서." 고르개 줄은 오늘의 질문 답변과 같다(드롭다운 + 반 카테고리 줄, 전체 포함). 표는 학생, 정답, 정답률, 오답률 넷.</li>
+<li class="sub"><strong>드롭다운 맨 위가 "전체 누적"이다</strong>(선생님 지시 2026-10-29: "강의별, 전체 누적 이렇게 다양하게 볼수 있게"). 전체 누적은 그 과목에서 형성평가가 켜진 꽂힌 강의를 다 더하고, <strong>응시 열</strong>이 몇 개를 풀었는지 알려 준다.</li>
 <li class="sub"><strong>점수를 따로 적어 두지 않는다.</strong> 답이 문제 안에 있으므로(<code>lessons.parts.formative.items[].a</code>) <code>model.js</code>의 <code>formativeResult()</code>가 읽을 때 센다. 선택형은 답이 번호, 나머지는 글자(공백 떼고 견준다).</li>
 <li class="sub"><strong>안 쓴 문항은 오답으로 센다</strong>: 정답률 + 오답률이 늘 100이 되게. 선생님이 둘을 같이 보기 때문이다.</li>
 <li class="sub">형성평가는 성적에 들어가지 않는다(요구사항 70). 성취도 관리도 성적과 이어지지 않는다.</li>
