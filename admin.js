@@ -1330,7 +1330,7 @@ function questionAnswers(rooms, placed, lessons){
       <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
         <div class="s">${esc(s.answer)}</div></div>
       <div class="tools">
-        <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="공개 내리기" aria-label="공개 내리기">${icon('eye',14)}</button>
+        <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="PICK에서 내리기" aria-label="PICK에서 내리기">${icon('star',14)}</button>
       </div></div>`).join('') : `<div class="empty">공유로 켜 둔 답변이 없습니다.</div>`;
     return pickers + info + `<div class="sectionlabel">PICK (${picked.length})</div>` + body;
   }
@@ -1355,7 +1355,7 @@ function answerRow(s, v){
     <div class="tools">
       <button class="btn-chip ${v.achieved?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
       <button class="btn-chip ${v.achieved?'':'on'}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
-      <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
+      <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'PICK에 올림 (누르면 내림)':'PICK에 올리기'}" aria-label="PICK 전환">${icon('star',14)}</button>
     </div></div>`;
 }
 // 미제출 학생 줄: 답변이 없어 통과, 미흡 버튼도 달지 않는다.
