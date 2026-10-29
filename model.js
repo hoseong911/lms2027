@@ -1213,8 +1213,8 @@ export async function verifyPassword(year, studentNo, password){
 }
 /* 비밀번호 초기화(어드민): course_auth 문서를 지워 학생이 다음 로그인 때 다시 만들게 한다.
    비밀번호를 잊은 학생을 선생님이 풀어 주는 길이다(2026-10-29: 초기화 살리기).
-   course_auth가 create 전용 규칙으로 보호되면 클라이언트 삭제가 막힐 수 있다:
-   그때는 오류를 위로 던져 화면이 안내하고, 파이어베이스 콘솔에서 직접 지운다. */
+   규칙(hoistory/firestore.rules course_auth)이 `allow update, delete: if isAdmin()`이라
+   로그인한 선생님은 지울 수 있다. 혹시 실패하면 화면이 오류를 안내한다. */
 export async function resetPassword(year, studentNo){
   await deleteDoc(doc(db, COLLECTIONS.courseAuth, `${year}_${studentNo}`));
 }
