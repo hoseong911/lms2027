@@ -11,7 +11,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261029i';
+import * as M from './model.js?v=20261029j';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
@@ -78,7 +78,7 @@ function topbar(title, backAct){
 function viewLogin(){
   if (state.loginStep === 'setup') return viewLoginSetup();
   return `<div class="login">
-    <h1>호클래스</h1>
+    <h1>HOCLASS</h1>
     <p class="lead">${esc(M.getText('siteName'))}</p>
     <p class="guide">호성쌤 수업에 대한 학습 관리 시스템에 오신 것을 환영합니다.</p>
     <input class="field" id="f-sno" inputmode="numeric" value="${esc(state.formSno)}">
@@ -93,7 +93,7 @@ function viewLogin(){
 // 처음 접속(비밀번호 문서가 없음): 학번, 이름은 이미 맞혀 둔 채 비밀번호만 새로 만든다.
 function viewLoginSetup(){
   return `<div class="login">
-    <h1>호클래스</h1>
+    <h1>HOCLASS</h1>
     <p class="lead">${esc(M.getText('siteName'))}</p>
     <p class="guide">LMS에 처음 접속하셨습니다. 사용하실 비밀번호를 생성하시길 바랍니다.</p>
     <div class="fieldlabel">새 비밀번호</div>

@@ -178,6 +178,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .score-line{display:flex;justify-content:space-between;font-size:var(--fs-body);padding:4px 0;border-bottom:1px dashed var(--line)}
 .score-line:last-child{border-bottom:0}
 .score-line.tot{font-weight:700;color:var(--ink)}
+.sc-auth{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .score-empty{font-size:var(--fs-body);color:var(--sub);padding:4px 0}
 
 /* 진도 관리 표: 강의 x 강의실, 칸은 수업일자 */

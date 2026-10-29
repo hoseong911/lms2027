@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029i';
+import * as M from './model.js?v=20261029j';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -391,7 +391,10 @@ function studentCard(courseId, studentNo){
     const tot = `<div class="score-line tot"><span>총점</span><span class="mono">${sc.total} / ${sc.maxScore}점</span></div>`;
     port = lines + tot;
   }
-  return `<div class="score-detail"><div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
+  return `<div class="score-detail">
+    <div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div>
+    <div class="sc-auth"><button class="btn-chip" data-act="stu-pw-reset" data-no="${studentNo}" data-name="${esc(M.getStudentsByCourse(courseId).find(s => s.studentNo === studentNo)?.name || '')}">${icon('rotate-ccw',13)}비밀번호 초기화</button></div>
+  </div>`;
 }
 
 /* ── 진도 관리 (hoistory/lms "설정 - SCHEDULE 반별 수업 스케줄" 틀 이식) ─────
@@ -1831,6 +1834,21 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'stu-score': {
       const key = `${id}_${no}`;
       state.openScore = state.openScore === key ? null : key; render(); break;
+    }
+    // 비밀번호 초기화(2026-10-29): 지우면 학생이 다음 로그인 때 새로 만든다.
+    case 'stu-pw-reset': {
+      const nm = el.dataset.name || '';
+      confirmDelete({
+        title: '비밀번호 초기화',
+        bodyHtml: `<p><b>${esc(no)} ${esc(nm)}</b> 학생의 비밀번호를 초기화합니다.<br>학생은 다음 로그인 때 비밀번호를 새로 만듭니다.</p>`,
+        okText: '초기화',
+      }).then(ok => {
+        if (!ok) return;
+        M.resetPassword(state.year, no)
+          .then(() => toast('비밀번호를 초기화했습니다.'))
+          .catch(err => { console.error('resetPassword', err); toast('초기화에 실패했습니다. 콘솔에서 직접 삭제해야 할 수 있습니다.'); });
+      });
+      break;
     }
     // 강의실 상세에서 건너올 때는 그 강의실의 과목 탭이 열려 있게 한다.
     case 'go-progress':
