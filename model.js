@@ -147,7 +147,7 @@ export const ADMIN_SUBMENUS = {
    관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다. */
 export const TEXT_FIELDS = [
   { group:'일반', items:[
-    { key:'browserTitle', label:'브라우저 탭 제목',   def:'HO TEACHER LMS' },
+    { key:'browserTitle', label:'브라우저 탭 제목',   def:'호클래스' },
     { key:'siteName',     label:'사이트 이름',         def:'호성T 수업 : 학습 관리 시스템' },
     { key:'adminName',    label:'어드민 이름',         def:'2027' },
     { key:'kakaoUrl',     label:'오픈카톡 링크',       def:'' },
