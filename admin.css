@@ -44,6 +44,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
   color:var(--ink);font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none}
 .sel:hover{border-color:var(--line-strong)}
 .sel:focus{outline:none;border-color:var(--navy)}
+/* 강의 고르개: 긴 강의 제목이 잘리지 않게 넓게(선생님 지시 2026-10-29) */
+.sel.sel-lesson{width:min(460px,100%);text-overflow:ellipsis}
 
 /* 추가 버튼(생성 팝업 열기) */
 .btn-add{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--navy);color:#fff;background:var(--navy);
@@ -146,7 +148,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 피드백 칸: 글 칸 옆에 템플릿 고르개 */
 .fbcell{display:flex;align-items:center;gap:4px}
 .fbcell .f{flex:1;min-width:0}
-.fbpick{flex:none;width:auto;max-width:120px;padding:6px 26px 6px 10px;background-position:right 8px center}
+/* 템플릿 고르개: 글자 없이 화살표만 있는 정사각 단추(옆 글 칸과 높이를 맞춘다) */
+.fbpick{flex:none;width:38px;align-self:stretch;padding:0;background-position:center;color:transparent}
+.fbpick option{color:var(--ink)}
 .fbpick:disabled{opacity:.45;cursor:default}
 .fbtmpl{display:block;width:100%;resize:vertical;font:inherit;line-height:1.6}
 .gnote{display:inline-block;font-size:var(--fs-meta);color:var(--navy);margin-left:6px}

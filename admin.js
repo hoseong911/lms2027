@@ -512,7 +512,7 @@ function scoreInputPanel(c){
   if (!cls.some(cl => cl.id === state.scClId)) state.scClId = cls[0].id;
   const cl = cls.find(x => x.id === state.scClId);
 
-  const lessonSel = `<select class="sel" data-act="sc-lesson" aria-label="강의">
+  const lessonSel = `<select class="sel sel-lesson" data-act="sc-lesson" aria-label="강의">
     ${cls.map((x, i) => `<option value="${x.id}" ${x.id===state.scClId?'selected':''}>${i+1}강. ${esc(x.lesson?.title || '(삭제된 강의)')}</option>`).join('')}
   </select>`;
 
@@ -582,11 +582,11 @@ function scoreInputPanel(c){
       return `<span class="gnote ${manual?'muted':''}" title="${manual?'손으로 정한 칸이라 자동 감지가 덮지 않습니다':'자동 감지 결과'}">${esc(v.note)}</span>`;
     }).filter(Boolean).join('');
     // 피드백 칸 옆 고르개: 템플릿을 고르면 그 글이 칸에 들어간다(선생님 지시 2026-10-28).
-    // 템플릿이 없어도 고르개는 늘 보인다(선생님 지시 2026-10-29). 없으면 눌리지 않는다.
+    // 글자 없이 화살표만 있는 드롭다운 단추다(선생님 지시 2026-10-29). 템플릿이 없으면 눌리지 않는다.
     const fbPick = `<select class="sel sel-sm fbpick" data-act="sc-fb-pick"
         data-id="${cl.id}" data-no="${s.studentNo}" aria-label="피드백 템플릿" ${templates.length?'':'disabled'}
         title="${templates.length?'피드백 템플릿':'성적 설정에서 피드백 템플릿을 적으면 고를 수 있습니다.'}">
-        <option value="">템플릿</option>
+        <option value=""></option>
         ${templates.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select>`;
     return `<tr class="${g.absent?'absent':''}">
       <td class="lname">
@@ -1234,7 +1234,7 @@ function questionAnswers(rooms, placed, lessons){
       ${icon(one.isOpen?'eye':'eye-off',13)}${one.isOpen?'공개 중':'숨김'}</button>` : '';
   // 첫 줄: 강의 드롭다운 옆에 반 태그(선생님 지시 2026-10-28). 공개 토글은 줄 끝.
   const pickers = `<div class="qbar">
-    <select class="sel" data-act="q-lesson" aria-label="강의">
+    <select class="sel sel-lesson" data-act="q-lesson" aria-label="강의">
       ${qLessons.map(x => `<option value="${x.l.id}" ${x.l.id===lesson.id?'selected':''}>${x.no}강 ${esc(x.l.title)}</option>`).join('')}
     </select>
     ${catline(withCl.map(x => ({ v:x.c.id, label:`${x.c.classNo}반` })), state.questionRoom, 'q-room', '전체',
