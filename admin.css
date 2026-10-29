@@ -83,7 +83,20 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 
 /* 넓은 화면의 두 칸(강의실 관리, 학생 관리): 왼쪽 목록 --w-list, 오른쪽 상세(선생님 지시 2026-10-29).
    페이지째 스크롤한다(상세가 따라 내려오지 않는다). 좁은 화면에서는 admin.js가 이 틀을 쓰지 않는다 */
-.split{display:grid;grid-template-columns:var(--w-list) minmax(0,1fr);gap:20px;align-items:start}
+.split{display:grid;grid-template-columns:var(--w-list) minmax(0,1fr);gap:20px;align-items:stretch;min-height:0}
+/* 두 칸 화면은 창 높이에 딱 맞춘다: 머리줄(제목, 필터, 상세 머리, 칸 이름)은 제자리에 있고
+   줄 목록만 제자리에서 내려간다. 그 스크롤바는 숨긴다(선생님 지시 2026-10-29).
+   .split은 넓은 화면(min-width:1100px)에서만 admin.js가 그린다 */
+.main:has(.split){display:flex;flex-direction:column;
+  overflow:hidden;scrollbar-gutter:auto;padding-bottom:20px}
+.main:has(.split) > *{flex:0 0 auto}
+.main:has(.split) > .split{flex:1 1 auto;min-height:0}
+.split-list{min-height:0;overflow-y:auto}
+.dscroll{min-height:0}                 /* 좁은 화면의 펼침(.detail)에서는 그냥 묶음일 뿐이다 */
+.pane .dscroll{flex:1 1 auto;overflow-y:auto}
+/* 안에서 내려가는 칸들의 스크롤바는 보이지 않게 */
+.split-list,.pane .dscroll{scrollbar-width:none}
+.split-list::-webkit-scrollbar,.pane .dscroll::-webkit-scrollbar{display:none}
 .split-list .row .t{font-weight:500}
 /* 강의실 관리는 목록이 '역사 301' 정도로 짧아 좁게 두고 상세 두 칸을 넓힌다(선생님 지시 2026-10-29) */
 .split.split-room{grid-template-columns:var(--w-list-room) minmax(0,1fr)}
@@ -98,12 +111,14 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 상세 안에서 따로 스크롤하지 않는다: 그러면 스크롤바가 글 바로 옆(화면 한가운데)에 생긴다.
    페이지째 내려가게 두어 스크롤바가 늘 창 맨 오른쪽에 붙게 한다(선생님 지시 2026-10-29) */
 .pane{border:0;border-left:1px solid var(--line);border-radius:0;
-  background:transparent;padding:0 16px 20px 20px}
-.pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line)}
+  background:transparent;padding:0 16px 20px 20px;
+  display:flex;flex-direction:column;min-height:0}
+.pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line);
+  flex:0 0 auto}
 .pane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
 .pane > .row{margin-bottom:10px}
-.pane .two{display:flex;gap:24px;align-items:flex-start}
-.pane .dcol{flex:1;min-width:0}
+.pane .two{display:flex;gap:24px;align-items:stretch;flex:1 1 auto;min-height:0}
+.pane .dcol{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 
 /* 강의 진도 줄: 차수, 제목, 수업일자, 공개토글 */
 .plrow{gap:6px}
@@ -365,6 +380,7 @@ input[type=number]{-moz-appearance:textfield}
 .btn-text:hover{background:var(--red-dark);border-color:var(--red-dark)}
 
 .sectionlabel{font-size:var(--fs-head);color:var(--ink);font-weight:700;margin:22px 2px 10px;letter-spacing:-.2px}
+.pane .dcol > .sectionlabel{flex:0 0 auto}   /* 칸 이름은 줄어들지 않고 제자리에 */
 .empty{color:var(--sub);font-size:var(--fs-body);padding:16px 2px}
 .hi-ic{vertical-align:middle}
 

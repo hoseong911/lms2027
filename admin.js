@@ -319,7 +319,7 @@ function roomDetailCols(c){
     ? `<button class="btn-link morebtn" data-act="room-lessons-more">더보기 (${lessons.length - MAX_LESSONS}강)</button>` : '';
   const left = `<div class="dcol">
     <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress" data-id="${c.id}">진도 관리</button></div>
-    ${lessonRows}${moreBtn}</div>`;
+    <div class="dscroll">${lessonRows}${moreBtn}</div></div>`;
 
   // ── 오른쪽: 학생 명단 ──
   // 편집을 누르면 그 반(학번 앞 세 자리) 학생이 전부 뜨고, 체크가 곧 이 강의실 등록 여부다(선생님 지시 2026-10-29).
@@ -340,7 +340,8 @@ function roomDetailCols(c){
         <span class="grow"><span class="t"><span class="mono">${esc(no)}</span> &nbsp;${esc(name)}</span></span></div>`;
     }).join('') || `<div class="empty">학생이 없습니다.</div>`;
     return left + `<div class="dcol"><div class="sectionlabel between">학생 명단
-      <button class="btn-link" data-act="stu-edit-done">완료</button></div>${rows}</div>`;
+      <button class="btn-link" data-act="stu-edit-done">완료</button></div>
+      <div class="dscroll">${rows}</div></div>`;
   }
 
   const stuRows = students.length ? students.map(s => {
@@ -356,7 +357,7 @@ function roomDetailCols(c){
            <button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리</button>
          </span></div>`;
 
-  const right = `<div class="dcol">${stuHead}${stuRows}</div>`;
+  const right = `<div class="dcol">${stuHead}<div class="dscroll">${stuRows}</div></div>`;
 
   return left + right;
 }
@@ -913,7 +914,8 @@ function studentDetailCols(sno){
   // 비밀번호 초기화는 줄(좁은 화면)과 상세 머리줄(넓은 화면)의 아이콘 단추 하나로 끝낸다.
   // 여기 또 두면 같은 단추가 둘이라 낭비다(선생님 지시 2026-10-29).
   const left = `<div class="dcol">
-    <div class="sectionlabel">수강 과목</div>${checks}</div>`;
+    <div class="sectionlabel">수강 과목</div>
+    <div class="dscroll">${checks}</div></div>`;
 
   // 고른 과목 하나만, 강의실 관리 상세의 학생 카드와 같은 모양으로(선생님 지시 2026-10-29):
   // 강의실 이름 줄 아래에 레벨, 경험치, 포인트 칸과 영역별 포트폴리오 성적, 총점.
@@ -923,7 +925,7 @@ function studentDetailCols(sno){
     : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
   const right = `<div class="dcol">
     <div class="sectionlabel">과목별 성적</div>
-    ${scoreRows}</div>`;
+    <div class="dscroll">${scoreRows}</div></div>`;
 
   return left + right;
 }
