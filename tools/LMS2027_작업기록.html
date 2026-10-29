@@ -50,7 +50,7 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <p><strong>Firestore에서 지운 것 1955건</strong>: <code>courses</code> 6(<code>c_s301~c_s306</code>), <code>course_students</code> 150, <code>course_lessons</code> 60, <code>course_submissions</code> 827, <code>course_grades</code> 900, <code>lessons</code> 10(<code>L_s01~L_s10</code>), <code>mission_apps</code> 2(모의 국회, 모의 재판). <strong><code>settings/grade</code>의 반영 강의 목록</strong>에도 <code>L_s01~L_s06</code>이 박혀 있어 <code>L_h01~L_h06</code>만 남게 고쳤다. <code>course_auth</code>는 <code>학년도_학번</code>이라 과목과 무관하므로 건드리지 않았다(학생 150명의 비밀번호는 그대로 살아 있다).</p>
 <p>남은 더미: <code>courses</code> 6(역사 301~306), <code>course_students</code> 150, <code>course_lessons</code> 60, <code>lessons</code> 10, <code>course_submissions</code> 820, <code>course_grades</code> 900, <code>mission_apps</code> 3.</p>
 <p><strong>검증</strong>: <code>node --check</code> 통과. 어드민의 과목 탭과 드롭다운은 전부 <code>[...new Set(courses.map(c =&gt; c.subject))]</code>로 만들어지므로 과목이 하나여도 안 깨진다(탭 하나가 선다). 고친 <code>더미데이터.mjs</code>를 <code>commit()</code>만 막아 끝까지 돌려 보니 뽑아내는 수가 (<code>lessons</code> 10, <code>mission_apps</code> 3, <code>courses</code> 6, 제출물 820, 성적 900) 지금 Firestore 실제 상태와 그대로 맞는다.</p>
-<p><strong>열린 질문 하나</strong>: <code>fillLesson</code>의 형성평가 선택형 오답 보기에 <code>금융 실명제</code>가 그대로 있다. 사회 쪽을 보던 보기라 역사만 남은 지금은 어울리지 않는데, 시킨 범위가 아니라 두었다.</p>
+<p><strong>닫힌 질문</strong>: <code>fillLesson</code>의 형성평가 선택형 오답 보기에 <code>금융 실명제</code>가 남아 있는 것은 사회 쪽을 보던 보기라 역사만 남은 지금은 어울리지 않는다고 여쭸는데, 선생님이 "더미니까 걍 냅더"라고 하셨다. 그대로 둔다. 다시 꺼내지 말 것.</p>
 <hr>
 <h2 id="2026-10-29-성적-고르개-한-줄-피드백-칸-넓힘-메뉴-폭-맞춤-학번-검색-강의-추가-자리">2026-10-29: 성적 고르개 한 줄, 피드백 칸 넓힘, 메뉴 폭 맞춤, 학번 검색, 강의 추가 자리</h2>
 <p>선생님 지시 여섯 가지.</p>
