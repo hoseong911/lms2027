@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029a';
+import * as M from './model.js?v=20261029b';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1555,7 +1555,7 @@ document.getElementById('shell').addEventListener('click', e => {
       const c = M.getCourse(id); if (!c) return;
       const name = M.roomName(c), d = M.courseDeps(id);
       const gone = [
-        d.students ? `학생 ${d.students}명` : '',
+        d.students ? `학생 ${d.students}명의 이 강의실 등록` : '',
         d.lessons  ? `꽂힌 강의 ${d.lessons}개` : '',
         d.quizzes  ? `걸린 복습 ${d.quizzes}개` : '',
         d.subs     ? `제출물과 성적 ${d.subs}건` : '',
@@ -1564,7 +1564,7 @@ document.getElementById('shell').addEventListener('click', e => {
         title: `${name} 강의실 삭제`,
         // 목록 끝 낱말이 무엇이냐에 따라 조사가 달라지므로 아예 조사를 쓰지 않는다
         bodyHtml: (gone.length
-          ? `같이 없어지는 것: ${gone.join(', ')}.<ul><li>강의 내용 자체는 창고에 남습니다</li></ul>`
+          ? `같이 없어지는 것: ${gone.join(', ')}.<ul><li>강의 내용 자체는 창고에 남습니다</li><li>학생은 학생 관리에 남습니다</li></ul>`
           : `되돌릴 수 없습니다.`) + `<br>지우려면 <b>${esc(name)}</b>을 그대로 적어 주세요.`,
         needText: name,
       }).then(ok => {
@@ -1581,10 +1581,19 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'stu-open':
       state.studentDetailNo = (!WIDE.matches && state.studentDetailNo === no) ? null : no; render(); break;
     case 'stu-reset': toast('비밀번호 초기화는 다음 단계에서 만듭니다.'); break;
-    case 'stu-del':
-      M.removeStudentEverywhere(state.year, no);
-      if (state.studentDetailNo === no) state.studentDetailNo = null;
-      toast('삭제했습니다.'); render(); break;
+    // 학생 삭제: 학년도 명부와 모든 강의실에서 지운다. 확인 창을 거친다(2026-10-29, 모르고 눌러 학생이 사라졌다).
+    case 'stu-del': {
+      const name = M.getStudentsByYear(state.year).find(s => s.studentNo === no)?.name || '';
+      confirmDelete({
+        title: `${no} ${name} 삭제`,
+        bodyHtml: `${state.year}학년도 학생 관리와 모든 강의실에서 이 학생을 지웁니다.`
+          + `<ul><li>강의실에서만 빼려면 수강 과목의 체크를 푸시면 됩니다</li></ul>`,
+      }).then(ok => { if (!ok) return;
+        M.removeStudentEverywhere(state.year, no);
+        if (state.studentDetailNo === no) state.studentDetailNo = null;
+        toast('삭제했습니다.'); render(); });
+      break;
+    }
 
     case 'lesson-add': {
       const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }

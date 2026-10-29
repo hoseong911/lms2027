@@ -245,6 +245,7 @@
 | `school_years` | 학년도(`2027`) | `{ year }` 반이 없어도 학년도가 있게 |
 | `courses` | 자동 id | 강의실 `{ year, subject, grade, classNo, status }`. 과목이 다르면 다른 강의실 |
 | `course_students` | `강의실id_학번` | 명단 `{ name }` |
+| `course_roster` | `학년도_학번` | 학년도 학생 명부 `{ year, studentNo, name }`. **학생 관리의 기준.** 강의실 명단에서 다 빠져도(수강 해제, 강의실 삭제) 학생은 여기 남는다. 지우는 것은 학생 관리의 삭제 단추뿐(2026-10-29) |
 | `course_auth` | `학년도_학번` | 비밀번호 해시. create 한 번만. 한 학생이 여러 강의실에 들어도 비번은 하나 |
 | `course_consent` | `학년도_학번` | 개인정보 동의. 학년도에 한 번 |
 | `course_lessons` | 자동 id | 강의실에 꽂힌 강의 `{ courseId, lessonId, order, isOpen }` |

@@ -32,6 +32,8 @@ export const COLLECTIONS = {
   schoolYears:        'school_years',   // { year, status }  문서 id = '2027'
   courses:            'courses',        // 강의실 { year, subject, grade, classNo, status }
   courseStudents:     'course_students',// 명단 { courseId, studentNo, name }  id = 강의실id_학번
+  courseRoster:       'course_roster',  // 학년도 학생 명부 { year, studentNo, name }  id = 학년도_학번
+                                        //   강의실 명단(course_students)에서 다 빠져도 학생은 여기 남는다(2026-10-29)
   courseAuth:         'course_auth',    // 비밀번호 해시 { hash }  id = 학년도_학번 (로그인 때만 읽음)
   courseLessons:      'course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
   lessons:            'lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
@@ -201,6 +203,7 @@ const DEMO = {
   years:        [],   // school_years   { id:'2027', year:2027, status:'active' }
   courses:      [],   // courses        { id, year, subject, grade, classNo, status }
   students:     [],   // course_students{ id:'강의실id_학번', courseId, studentNo, name }
+  roster:       [],   // course_roster  { id:'학년도_학번', year, studentNo, name }
   lessons:      [],   // lessons        { id, title, parts:{concept,mission,question,formative}, order:[] }
   courseLessons:[],   // course_lessons { id, courseId, lessonId, order, isOpen, date:'M/D' }
   submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
@@ -239,10 +242,11 @@ function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('d
 
 export async function loadCore(){
   const C = COLLECTIONS;
-  const [ys, cs, ss, cls, ls, subs, grs, mas, gen, grc] = await Promise.all([
+  const [ys, cs, ss, rs, cls, ls, subs, grs, mas, gen, grc] = await Promise.all([
     getDocs(collection(db, C.schoolYears)),
     getDocs(collection(db, C.courses)),
     getDocs(collection(db, C.courseStudents)),
+    getDocs(collection(db, C.courseRoster)),
     getDocs(collection(db, C.courseLessons)),
     getDocs(collection(db, C.lessons)),
     getDocs(collection(db, C.courseSubmissions)),
@@ -255,6 +259,7 @@ export async function loadCore(){
   DEMO.years       = rows(ys).sort((a,b) => b.year - a.year);
   DEMO.courses     = rows(cs);
   DEMO.students    = rows(ss);
+  DEMO.roster      = rows(rs);
   DEMO.courseLessons = rows(cls);
   DEMO.lessons     = rows(ls);
   DEMO.submissions = rows(subs);
@@ -272,9 +277,23 @@ export function getYears(){ return [...DEMO.years]; }
 export function getCourses(year){ return DEMO.courses.filter(c => !year || c.year === +year); }
 export function getCourse(id){ return DEMO.courses.find(c => c.id === id) || null; }
 export function getStudentsByCourse(courseId){ return DEMO.students.filter(s => s.courseId === courseId); }
+/* 한 학년도의 학생 전부 { studentNo, name }. 학년도 명부(course_roster)가 기준이고, 명부가 생기기 전에
+   강의실 명단에만 들어간 학생도 같이 센다. 강의실에서 다 빠져도 명부에 남으므로 학생 관리에서 사라지지 않는다
+   (선생님 지시 2026-10-29). */
 export function getStudentsByYear(year){
+  const out = new Map();
+  DEMO.roster.filter(r => r.year === +year).forEach(r => out.set(r.studentNo, { studentNo:r.studentNo, name:r.name }));
   const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
-  return DEMO.students.filter(s => ids.has(s.courseId));
+  DEMO.students.filter(s => ids.has(s.courseId) && !out.has(s.studentNo))
+    .forEach(s => out.set(s.studentNo, { studentNo:s.studentNo, name:s.name }));
+  return [...out.values()];
+}
+// 학년도 명부에 없으면 넣는다. 학생을 추가하거나 강의실에 넣고 뺄 때 부른다.
+function ensureRoster(year, studentNo, name){
+  const id = `${year}_${studentNo}`;
+  if (DEMO.roster.some(r => r.id === id)) return;
+  const r = { id, year:+year, studentNo, name: name || '' };
+  DEMO.roster.push(r); put(COLLECTIONS.courseRoster, r);
 }
 // 한 학년도에서 한 학번이 든 강의실들
 export function getCoursesOfStudent(year, studentNo){
@@ -374,7 +393,8 @@ export function updateCourse(id, { subject, grade, classNo }){
 export function deleteCourse(id){
   const c = getCourse(id); if (!c) return null;
   // 같이 없어지는 것(course_ 접두). 지울 id를 먼저 모아 Firestore에서도 지운다.
-  DEMO.students.filter(s => s.courseId === id).forEach(s => del(COLLECTIONS.courseStudents, s.id));
+  // 강의실이 없어져도 학생은 학년도 명부에 남긴다.
+  DEMO.students.filter(s => s.courseId === id).forEach(s => { ensureRoster(c.year, s.studentNo, s.name); del(COLLECTIONS.courseStudents, s.id); });
   DEMO.courseLessons.filter(cl => cl.courseId === id).forEach(cl => del(COLLECTIONS.courseLessons, cl.id));
   DEMO.courses = DEMO.courses.filter(x => x.id !== id);
   DEMO.students = DEMO.students.filter(s => s.courseId !== id);
@@ -398,9 +418,13 @@ export function addStudent({ year, grade, classNo, studentNo, name }){
     const s = { id, courseId:c.id, studentNo, name };
     DEMO.students.push(s); added.push(s); put(COLLECTIONS.courseStudents, s);
   });
+  if (rooms.length) ensureRoster(year, studentNo, name);
   return { rooms, added };
 }
+// 학생 삭제: 그 학년도 강의실 명단과 학년도 명부에서 다 지운다(성적, 제출물, 비밀번호는 남는다).
 export function removeStudentEverywhere(year, studentNo){
+  const rid = `${year}_${studentNo}`;
+  if (DEMO.roster.some(r => r.id === rid)){ DEMO.roster = DEMO.roster.filter(r => r.id !== rid); del(COLLECTIONS.courseRoster, rid); }
   const ids = new Set(DEMO.courses.filter(c => c.year === +year).map(c => c.id));
   DEMO.students.filter(s => ids.has(s.courseId) && s.studentNo === studentNo)
     .forEach(s => del(COLLECTIONS.courseStudents, s.id));
@@ -412,10 +436,15 @@ export function enrollStudent(courseId, studentNo, name){
   const id = `${courseId}_${studentNo}`;
   if (DEMO.students.some(s => s.id === id)) return null;
   const s = { id, courseId, studentNo, name: name || '' };
-  DEMO.students.push(s); put(COLLECTIONS.courseStudents, s); return s;
+  DEMO.students.push(s); put(COLLECTIONS.courseStudents, s);
+  ensureRoster(c.year, studentNo, name);
+  return s;
 }
+// 강의실에서만 뺀다. 빼기 전에 학년도 명부에 올려 두어 학생 자체는 남는다.
 export function unenrollStudent(courseId, studentNo){
   const id = `${courseId}_${studentNo}`;
+  const c = getCourse(courseId), cur = DEMO.students.find(s => s.id === id);
+  if (c && cur) ensureRoster(c.year, studentNo, cur.name);
   const before = DEMO.students.length;
   DEMO.students = DEMO.students.filter(s => s.id !== id);
   if (DEMO.students.length < before){ del(COLLECTIONS.courseStudents, id); return true; }
