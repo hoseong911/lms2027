@@ -1186,13 +1186,29 @@ function missionForm(app){
     + line('어드민 주소', inp('ma-au', app?.adminUrl))
     + line('연결할 강의', `<select class="sel grow" id="ma-lesson" aria-label="연결할 강의">
         <option value="">연결 없음</option>
-        ${lessons.map(l => `<option value="${l.id}" ${l.id===app?.lessonId?'selected':''}>${esc(l.title)}</option>`).join('')}
+        ${numberedLessons(lessons).map(x => `<option value="${x.l.id}" ${x.l.id===app?.lessonId?'selected':''}>${esc(x.label)}</option>`).join('')}
       </select>`)
     + line('팝업으로 열기', `<input type="checkbox" class="gcb" id="ma-modal" ${app?.modal?'checked':''} aria-label="팝업으로 열기">`)
     + `<div class="sectionlabel">아카이브</div>`
     + line('수업 주제', inp('ma-topic', arch.topic))
     + line('활동 의도', `<textarea class="f grow ta" id="ma-intent" rows="3">${esc(arch.intent || '')}</textarea>`, true)
     + line('아카이브 내용', `<textarea class="f grow ta" id="ma-content" rows="5">${esc(arch.content || '')}</textarea>`, true);
+}
+/* 강의에 차수를 붙인다("3강 제목", 선생님 지시 2026-10-29). 차수는 진도 관리와 같이 그 과목 강의실들에
+   꽂힌 차례(placedLessons)에서 나온다. 과목이 둘 이상이면 앞에 과목을 붙이고, 어디에도 안 꽂힌 강의는 제목만 뒤에 둔다. */
+function numberedLessons(lessons){
+  const all = M.getCourses(state.year);
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  const out = [], seen = new Set();
+  subjects.forEach(s => {
+    const rooms = all.filter(c => c.subject === s);
+    placedLessons(rooms).lessons.forEach((l, i) => {
+      if (seen.has(l.id)) return; seen.add(l.id);
+      out.push({ l, label:`${subjects.length > 1 ? s + ' ' : ''}${i + 1}강 ${l.title}` });
+    });
+  });
+  lessons.filter(l => !seen.has(l.id)).forEach(l => out.push({ l, label:l.title }));
+  return out;
 }
 // 저장 단추: 오른쪽 칸(좁으면 펼친 칸)의 값을 읽어 추가하거나 고친다.
 function saveMission(id){
@@ -1248,8 +1264,9 @@ function questionManage(lessons){
     const q = l.parts?.question, on = !!q;
     const editing = on && state.questionEditId === l.id;
     const open = on && state.questionOpenId === l.id;
-    const sw = `<button class="sw ${on?'on':''}" role="switch" aria-checked="${on}" data-act="q-enable" data-id="${l.id}"
-      title="${on?'오늘의 질문 끄기':'오늘의 질문 켜기'}" aria-label="오늘의 질문 켜고 끄기"><i></i></button>`;
+    // 켜고 끄기는 강의실 관리의 공개 단추와 같은 눈 모양(선생님 지시 2026-10-29). 켜져 있으면 레드.
+    const sw = `<button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="q-enable" data-id="${l.id}"
+      title="${on?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="오늘의 질문 공개 전환">${icon('eye',14)}</button>`;
     const tools = `<div class="tools">
       ${on && !editing ? `<button class="ib ib-sm" data-act="q-edit-open" data-id="${l.id}" title="편집" aria-label="편집">${icon('pencil',14)}</button>` : ''}
       ${sw}</div>`;
