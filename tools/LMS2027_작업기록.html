@@ -55,6 +55,16 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li><strong>진도 관리 [강의 추가]</strong>: 따로 있던 툴바 줄을 없애고 과목 탭 줄 오른쪽 끝으로 옮겼다</li>
 </ol>
 <p><strong>덧(같은 날)</strong>: 템플릿 고르개에서 <code>템플릿</code> 글자를 빼고 화살표만 있는 정사각 드롭다운 단추로. 강의 고르는 드롭다운(성적 입력, 오늘의 질문 답변)을 <code>.sel-lesson</code>으로 넓혔다(최대 460px).</p>
+<p><strong>덧(같은 날, 어드민 디자인 손질)</strong>: 시안(<code>tools/시안_목록.html</code>, 확인 뒤 지움)을 PC, 패드, 폰으로 띄워 보여 드리고 정했다.</p>
+<ul>
+<li>강의실 관리는 PC에서 3단(메뉴, 목록, 상세), 학생 관리는 시안 A(목록, 상세 두 칸). 1100px 미만은 펼침 그대로</li>
+<li>높이 통일: <code>--h-ctl</code> 32px, <code>--h-row</code> 46px(폰 폭 40, 54). 강의 진도 줄(57px)과 학생 명단 줄(42px)이 어긋나던 것을 잡았다. <code>.ib-sm</code>이 CSS 순서 탓에 안 먹던 것도 정리</li>
+<li>표: 세로, 바깥 테두리와 칸 배경색을 걷고 가로 구분선만</li>
+<li>흰 카드 배경을 전부 걷음(모달, 로그인 창만 남김). 고른 것은 레드 테두리 네 변</li>
+<li>강조색을 레드로(<code>--accent</code>), 글자와 선은 네이비</li>
+<li>학생 화면(<code>index.css</code>)은 아직 손대지 않았다</li>
+<li>서피스프로의 <code>localhost:5500</code>은 이 레포가 아니라 예전 사본을 띄우고 있었다. 이 컴퓨터에서 5510으로 띄워 <code>192.168.1.21:5510</code>으로 확인했다</li>
+</ul>
 <hr>
 <h2 id="다음에-할-것-2026-10-28-세션-끝-컴퓨터-옮김">다음에 할 것 (2026-10-28 세션 끝, 컴퓨터 옮김)</h2>
 <p><strong>워킹트리 깨끗, 원격과 같다. 다른 컴퓨터에서는 <code>git pull</code>부터.</strong></p>

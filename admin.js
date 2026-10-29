@@ -63,6 +63,11 @@ const val = id => (document.getElementById(id)?.value || '').trim();
 // 수업일자('M/D')의 과거/오늘/미래 판정은 model.js로 옮겼다(성적 기한 판정과 같은 함수를 쓴다).
 const MAX_LESSONS = 30;            // 강의 진도에 한 번에 보여 줄 강의 수(요구사항 1)
 
+// 넓은 화면(PC)에서는 강의실 관리, 학생 관리가 왼쪽 목록 + 오른쪽 상세 두 칸이 된다(선생님 지시 2026-10-29).
+// 좁으면(패드, 폰) 목록 줄 아래로 펼친다. 폭이 바뀌어 넘나들면 다시 그린다.
+const WIDE = matchMedia('(min-width:1100px)');
+WIDE.addEventListener('change', () => { if (!document.getElementById('shell').hidden) render(); });
+
 function boot(){
   const ok = getComputedStyle(document.documentElement).getPropertyValue('--lms-css-ok').trim() === '1';
   if (!ok){ document.getElementById('boot').textContent = '화면을 불러오지 못했습니다. 새로고침해 주세요.'; return; }
@@ -245,27 +250,44 @@ function pageRooms(){
     return open ? row + roomDetailPanel(c) : row;
   };
 
-  let rowsHtml;
-  if (!list.length){
-    rowsHtml = `<div class="empty">강의실이 없습니다.</div>`;
-  } else {
-    const keyOf = c => byClass ? M.roomNo(c) : c.subject;
+  if (!list.length) return `${head}${filterLine}<div class="empty">강의실이 없습니다.</div>`;
+
+  const keyOf = c => byClass ? M.roomNo(c) : c.subject;
+  const grouped = rowOf => {
     const out = []; let last = null, first = true;
     list.forEach(c => {
       const key = keyOf(c);
       if (key !== last){ if (!first) out.push(`<div class="group-sep"></div>`); last = key; first = false; }
-      out.push(c.id === state.editRoomId ? roomEditRow(c) : showRow(c));
+      out.push(rowOf(c));
     });
-    rowsHtml = out.join('');
-  }
+    return out.join('');
+  };
 
-  return `${head}${filterLine}${rowsHtml}`;
+  if (!WIDE.matches)
+    return `${head}${filterLine}${grouped(c => c.id === state.editRoomId ? roomEditRow(c) : showRow(c))}`;
+
+  // 넓은 화면: 왼쪽 목록에서 고르면 오른쪽 상세가 바뀐다. 수정, 삭제는 상세 머리에.
+  if (!list.some(c => c.id === state.roomDetailId)) state.roomDetailId = list[0].id;
+  const left = grouped(c => `<div class="row ${c.id===state.roomDetailId?'on':''}">
+      <div class="grow rowlink" data-act="room-open" data-id="${c.id}"><div class="t">${esc(M.roomName(c))}</div></div></div>`);
+  const c = M.getCourse(state.roomDetailId);
+  const paneHead = c.id === state.editRoomId ? roomEditRow(c)
+    : `<div class="pane-head"><h3>${esc(M.roomName(c))}</h3><div class="tools">
+        <button class="ib" data-act="room-edit" data-id="${c.id}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
+        <button class="ib ib-danger" data-act="room-del" data-id="${c.id}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
+      </div></div>`;
+  return `${head}${filterLine}<div class="split"><div class="split-list">${left}</div>
+    <div class="pane">${paneHead}<div class="two">${roomDetailCols(c)}</div></div></div>`;
 }
 
 /* 강의실 상세(요구사항 6): 줄 아래로 두 칸으로 펼쳐진다(요구사항 1).
    왼쪽: 강의 진도(강의차수, 제목, 수업일자, 최대 30강, 넘으면 더보기, 요구사항 1, 2).
    오른쪽: 학생 전원. 이름을 누르면 그 학생의 레벨, 경험치, 포트폴리오 성적이 펼쳐진다(요구사항 3). */
 function roomDetailPanel(c){
+  return `<div class="detail two">${roomDetailCols(c)}</div>`;
+}
+// 상세의 두 칸(강의 진도, 학생 명단). 좁은 화면의 펼침과 넓은 화면의 오른쪽 상세가 같이 쓴다.
+function roomDetailCols(c){
   const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
   const lessons = M.getCourseLessons(c.id);          // order 순, 수업일자(date) 포함
 
@@ -319,7 +341,7 @@ function roomDetailPanel(c){
 
   const right = `<div class="dcol">${stuHead}${stuRows}</div>`;
 
-  return `<div class="detail two">${left}${right}</div>`;
+  return left + right;
 }
 
 // 한 학생 카드: 레벨, 경험치, 포인트 + 포트폴리오 성적(펼침 안쪽, 요구사항 3).
@@ -818,25 +840,38 @@ function pageStudents(){
       value="${esc(state.studentQuery)}" aria-label="학번 검색"></label></span>`;
   const filterLine = catline(roomNos.map(r => ({ v:r, label:r })), state.studentClass, 'set-sclass', '전체', search);
 
-  const list = snos.length ? snos.map(sno => {
-    const name = all.find(s => s.studentNo === sno)?.name || '';
-    const open = state.studentDetailNo === sno;
-    const row = `<div class="row ${open?'on':''}">
-      <div class="grow rowlink" data-act="stu-open" data-no="${sno}">
-        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span><span class="mono">${esc(sno)}</span> &nbsp;${esc(name)}</div></div>
-      <div class="tools">
+  if (!snos.length) return `${head}${filterLine}<div class="empty">학생이 없습니다.</div>`;
+  const nameOf = sno => all.find(s => s.studentNo === sno)?.name || '';
+  const stuTools = sno => `<div class="tools">
         <button class="ib" data-act="stu-reset" data-no="${sno}" title="비밀번호 초기화" aria-label="비밀번호 초기화">${icon('rotate-ccw',16)}</button>
         <button class="ib ib-danger" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-      </div></div>`;
-    return open ? row + studentDetailPanel(sno, name) : row;
-  }).join('') : `<div class="empty">학생이 없습니다.</div>`;
+      </div>`;
 
-  return `${head}${filterLine}${list}`;
+  if (!WIDE.matches){
+    const list = snos.map(sno => {
+      const open = state.studentDetailNo === sno;
+      const row = `<div class="row ${open?'on':''}">
+        <div class="grow rowlink" data-act="stu-open" data-no="${sno}">
+          <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span><span class="mono">${esc(sno)}</span> &nbsp;${esc(nameOf(sno))}</div></div>
+        ${stuTools(sno)}</div>`;
+      return open ? row + `<div class="detail two">${studentDetailCols(sno)}</div>` : row;
+    }).join('');
+    return `${head}${filterLine}${list}`;
+  }
+
+  // 넓은 화면: 왼쪽 학생 목록, 오른쪽 상세(선생님 지시 2026-10-29, 시안 A).
+  if (!snos.includes(state.studentDetailNo)) state.studentDetailNo = snos[0];
+  const sel = state.studentDetailNo;
+  const left = snos.map(sno => `<div class="row ${sno===sel?'on':''}">
+      <div class="grow rowlink" data-act="stu-open" data-no="${sno}"><div class="t"><span class="mono">${esc(sno)}</span> &nbsp;${esc(nameOf(sno))}</div></div></div>`).join('');
+  return `${head}${filterLine}<div class="split"><div class="split-list">${left}</div>
+    <div class="pane"><div class="pane-head"><h3><span class="mono">${esc(sel)}</span> ${esc(nameOf(sel))}</h3>${stuTools(sel)}</div>
+      <div class="two">${studentDetailCols(sel)}</div></div></div>`;
 }
 
 /* 학생 상세(요구사항 2): 줄 아래로 두 칸. 왼쪽: 수강 과목(강의실) 체크로 켜고 끄기 + 비밀번호.
    오른쪽: 과목(강의실)별 레벨, 경험치, 포트폴리오 성적. 한 학번이 여러 과목에 들 수 있어서 과목별로 본다. */
-function studentDetailPanel(sno, name){
+function studentDetailCols(sno){
   const grade = +sno.slice(0,1), classNo = +sno.slice(1,3);
   const classCourses = M.getCourses(state.year)
     .filter(c => c.grade === grade && c.classNo === classNo)
@@ -865,7 +900,7 @@ function studentDetailPanel(sno, name){
     <div class="sectionlabel">과목별 성적</div>
     ${scoreRows}</div>`;
 
-  return `<div class="detail two">${left}${right}</div>`;
+  return left + right;
 }
 
 /* 학생 추가 팝업(요구사항 1): 개별 추가 / 엑셀 명단. 개별은 학년, 반, 번호, 이름만 받는다.
@@ -1447,7 +1482,8 @@ document.getElementById('shell').addEventListener('click', e => {
 
     // 강의실 상세(요구사항 6): 줄 아래로 펼침/접음. 같은 줄을 다시 누르면 닫는다.
     case 'room-open':
-      state.roomDetailId = state.roomDetailId === id ? null : id;
+      // 넓은 화면에서는 고르기만 한다(오른쪽 상세가 늘 하나 떠 있다).
+      state.roomDetailId = (!WIDE.matches && state.roomDetailId === id) ? null : id;
       state.openScore = null; state.editRoomId = null; state.roomLessonsMore = false;
       state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
     case 'room-lessons-more': state.roomLessonsMore = true; render(); break;
@@ -1510,7 +1546,7 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'stu-add-open': openStudentModal(); break;
     case 'stu-open':
-      state.studentDetailNo = state.studentDetailNo === no ? null : no; render(); break;
+      state.studentDetailNo = (!WIDE.matches && state.studentDetailNo === no) ? null : no; render(); break;
     case 'stu-reset': toast('비밀번호 초기화는 다음 단계에서 만듭니다.'); break;
     case 'stu-del':
       M.removeStudentEverywhere(state.year, no);
