@@ -1,3 +1,4 @@
+@import url("theme.css?v=20261029f");
 /* 미션 앱 공통 틀: 학생 화면과 어드민이 같이 쓴다.
  *
  * 왜 이 파일이 생겼나 (2026-10-26)
@@ -20,29 +21,31 @@
  */
 
 :root{
-  /* LMS 학생 화면(index.css)과 같은 값이다. 앱이 LMS 안에서 튀지 않게. */
-  --app-canvas:#FAFAF9;
-  --app-surface:#FFFFFF;
-  --app-sunk:#F4F3EE;
-  --app-line:#E5E4DF;
-  --app-line-soft:#ECEAE4;
-  --app-ink:#2C3333;
-  --app-sub:#5A616B;
-  --app-faint:#9A9A9A;
-  --app-primary:#FF6B3D;
-  --app-primary-deep:#E24E1B;
-  --app-primary-soft:rgba(255,107,61,0.10);
-  --app-navy:#27384F;
-  --app-navy-soft:rgba(39,56,79,0.09);
-  --app-ok:#15803D;
-  --app-ok-soft:rgba(21,128,61,0.10);
-  --app-bad:#DC2626;
-  --app-bad-soft:rgba(220,38,38,0.08);
-  --app-shadow:rgba(20,22,26,0.10) 0 4px 14px 0;
-  --app-font:'Pretendard','Apple SD Gothic Neo',sans-serif;
+  /* 색은 LMS와 똑같이 쓴다. 값은 shared/theme.css 한 곳에만 있고 여기서는 이름만 바꿔 받는다.
+     2026-10-30에 2026 색(오렌지 #FF6B3D, 따뜻한 회색)을 걷어냈다. 2026 앱에서 파일을 그대로
+     들고 오면서 색까지 같이 따라와, 주석은 "LMS와 같은 값"이라 해 놓고 실제로는 2026 색이었다.
+     앞으로도 여기에 #색상값을 직접 적지 않는다. 색을 바꿀 일이 있으면 theme.css를 바꾼다. */
+  --app-canvas:var(--bg);
+  --app-surface:transparent;      /* 흰 카드 배경을 쓰지 않는다(화면 규칙). 선으로만 나눈다 */
+  --app-sunk:var(--hover);
+  --app-line:var(--line);
+  --app-line-soft:var(--line);
+  --app-ink:var(--ink);
+  --app-sub:var(--sub);
+  --app-faint:var(--sub);
+  --app-primary:var(--accent);
+  --app-primary-deep:var(--red-dark);
+  --app-primary-soft:var(--accent-fade);
+  --app-navy:var(--navy);
+  --app-navy-soft:var(--navy-100);
+  --app-ok:var(--pass);
+  --app-ok-soft:var(--hover);     /* 초록 반투명 값은 theme.css에 없다. 옅은 회색 바탕에 초록 글자로 */
+  --app-bad:var(--fail);
+  --app-bad-soft:var(--accent-fade);
+  --app-font:var(--font);
   --app-mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
-  --app-radius:8px;
-  --app-radius-card:12px;
+  --app-radius:var(--r-btn);      /* 액션 버튼 8px */
+  --app-radius-card:var(--r);     /* 카드와 줄 4px */
   /* 앱이 제대로 이 파일을 받았는지 확인하는 표시. 지우지 말 것
      (LMS의 --lms-css-ok와 같은 장치다. 통신이 불안정하면 HTML만 오는 일이 있다) */
   --app-css-ok:1;
@@ -196,8 +199,9 @@ body.app input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;m
   position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:900;
   max-width:88vw;padding:11px 18px;border-radius:var(--app-radius);
   background:var(--app-navy);color:#fff;font-size:14px;font-weight:600;
-  box-shadow:var(--app-shadow);
 }
+/* 그림자를 쓰지 않는다(플랫 기조). 2026에서 가져온 --app-shadow는 2026-10-30에 걷어냈다.
+   LMS 어드민 토스트(admin.css #toast)도 네이비 바탕에 그림자 없이 뜬다. */
 .app-toast[hidden]{display:none}
 .app-toast.err{background:var(--app-bad)}
 

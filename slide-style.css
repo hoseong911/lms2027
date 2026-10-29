@@ -41,21 +41,21 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
   --text:       #1E293B;
   --text-sub:   #6b675e;   /* 보조 설명 */
 
-  --label:      #27384F;   /* 라벨, 구조(연표선/점/화살표/비교헤더/VS): 네이비슬레이트 */
-  --navy:       #27384F;   /* (하위호환) = 라벨색 */
+  --label:      #041E42;   /* 라벨, 구조(연표선/점/화살표/비교헤더/VS): 네이비슬레이트 */
+  --navy:       #041E42;   /* (하위호환) = 라벨색 */
   --navy-pale:  #dce3ef;
 
-  --accent:     #FF6B3D;   /* 강조: 빈칸, 글머리, 연도, 배지, 강조어 (오렌지) */
-  --red:        #FF6B3D;   /* (하위호환) = 강조색 */
+  --accent:     #D00F31;   /* 강조: 빈칸, 글머리, 연도, 배지, 강조어 (오렌지) */
+  --red:        #D00F31;   /* (하위호환) = 강조색 */
   --red-pale:   #fceaea;
 
-  --blank-bg:   #27384F;   /* 빈칸 숨김 색 */
+  --blank-bg:   #041E42;   /* 빈칸 숨김 색 */
   --border:     #e2ddd2;   /* 테두리 */
 
   /* ── 다크 인트로 톤 ── */
   --dk-bg:      #12151C;
   --dk-fg:      #F4F1E8;
-  --dk-accent:  #FF6B3D;
+  --dk-accent:  #D00F31;
   --dk-script:  #F4F1E8;
 
   --fs-slide-title:   29px;
@@ -110,7 +110,7 @@ html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{margin:0}
 /* 표지, 인트로를 부드럽게 쓸고 지나가는 빛 */
 .intro-sweep {
   position:absolute; inset:-25% -45%; z-index:1; pointer-events:none; mix-blend-mode:screen; opacity:.5;
-  background: radial-gradient(closest-side, rgba(255,107,61,0.42) 0%, transparent 72%);
+  background: radial-gradient(closest-side, rgba(208,15,49,0.42) 0%, transparent 72%);
   animation: introSweep 8s ease-in-out infinite;
 }
 @keyframes introSweep {
@@ -669,7 +669,7 @@ body[data-mode="typing"] .blank-input {
   padding: 0 2px; box-sizing: border-box; border: none; border-bottom: 3px solid var(--blank-bg);
   border-radius: 4px 4px 0 0; background: rgba(0,0,0,0.045); outline: none;
 }
-body[data-mode="typing"] .blank-input:focus { background: rgba(39,56,79,0.09); }
+body[data-mode="typing"] .blank-input:focus { background: rgba(4,30,66,0.09); }
 body[data-mode="typing"] .blank-input.correct { color: #1a7f37; border-bottom-color: #1a7f37; background: rgba(26,127,55,0.09); }
 body[data-mode="typing"] .blank-input.wrong { color: #d64545; border-bottom-color: #d64545; background: rgba(214,69,69,0.09); }
 

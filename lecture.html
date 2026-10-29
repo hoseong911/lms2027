@@ -6,7 +6,7 @@
   <title>강의</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Great+Vibes&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="slide-style.css?v=20261026a">
+  <link rel="stylesheet" href="slide-style.css?v=20261030a">
   <style>
     /* ════ 리셋 ════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -137,7 +137,7 @@
     .typing-reward .tr-main b { font-weight: 800; }
     .typing-reward .tr-sub { margin-top: 4px; font-size: 0.9rem; font-weight: 700; color: #d6f5df; }
     /* 아직 90% 미달이라 XP를 못 받았을 때는 초록(성공) 대신 차분한 톤으로 구분 */
-    .typing-reward.retry { background: #27384F; }
+    .typing-reward.retry { background: #041E42; }
     .typing-reward.retry .tr-sub { color: #cbd5e1; }
 
     /* 타이핑 복습 완료 버튼: 마지막 슬라이드에서만 노출(JS가 토글) */
@@ -316,7 +316,7 @@
         justify-content: center;
         gap: 20px;
         background: var(--bg, #efeadf);
-        color: var(--navy, #27384F);
+        color: var(--navy, #041E42);
         text-align: center;
         padding: 32px;
       }
@@ -400,8 +400,8 @@ const SETTING_DEFAULTS = {
   letterSpacing: -15,
   textWidth: 95,
   fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif",
-  navy:    '#27384F',
-  red:     '#FF6B3D',
+  navy:    '#041E42',
+  red:     '#D00F31',
   bg:      '#F0F0EF',
   slideBg: '#F0F0EF',
   rowBg:   '#FFFFFF',
@@ -424,7 +424,7 @@ function applySettings(raw) {
   root.style.setProperty('--accent',          s.red);
   root.style.setProperty('--ink',             s.text);
   root.style.setProperty('--think-guide-color', s.thinkGuideColor || '#7a6f5e');
-  root.style.setProperty('--badge-color',       s.badgeColor      || '#27384F');
+  root.style.setProperty('--badge-color',       s.badgeColor      || '#041E42');
   // 글꼴 크기는 slide-render.js의 FONT_SPEC 한 표에서 전부 걸어 준다(어드민 미리보기와 같은 코드).
   // 예전 설정(label/body/bodyMission만 있던 시절)은 normalizeFonts가 형식별 값으로 펴 주므로
   // 저장을 다시 안 해도 화면이 그대로 나온다.

@@ -12,8 +12,8 @@
   --canvas:#FFFFFF; --surface:#FAFAFA;
   --border:#E6E6E6; --hairline-soft:#EFEFEF;
   --text:#323232; --sub:#5A5A5A; --faint:#9A9A9A;
-  --primary:#FF6B3D; --primary-deep:#E24E1B; --primary-l:rgba(255,107,61,0.10);
-  --point:#27384F; --point-l:rgba(39,56,79,0.12);
+  --primary:#D00F31; --primary-deep:#A60B27; --primary-l:rgba(208,15,49,0.10);
+  --point:#041E42; --point-l:rgba(4,30,66,0.12);
   --ok:#15803D; --ok-l:rgba(21,128,61,.10);
   --critical:#DC2626; --critical-l:rgba(220,38,38,.08);
   --shadow:rgba(20,22,26,0.10) 0px 4px 14px 0px;
@@ -125,7 +125,7 @@ body:not([data-mode="fill"]) .pl-count{display:none}
 
 /* 채우기 모드 */
 body[data-mode="fill"] .pl-blank{
-  background:rgba(39,56,79,.05);
+  background:rgba(4,30,66,.05);
   box-shadow:inset 0 0 0 1.5px var(--point-l);
   color:var(--point);
 }

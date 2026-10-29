@@ -60,10 +60,10 @@ const CE_SD = {
   letterSpacing: -15, // -20~10 슬라이더 값, 100분의 1em 단위 (-15 = -0.15em)
   textWidth: 95,      // % (장평, scaleX = 값/100)
   fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif",
-  navy: '#27384F', red: '#FF6B3D',
+  navy: '#041E42', red: '#D00F31',
   bg: '#F0F0EF', slideBg: '#F0F0EF', rowBg: '#FFFFFF', text: '#1E293B',
   thinkGuideColor: '#6b675e',
-  badgeColor: '#27384F'
+  badgeColor: '#041E42'
 };
 // 2026에는 23강 기본 내용이 박혀 있었다. 2027은 강의를 새로 만들므로 비워 둔다.
 const CE_LESSON_DEFAULTS = {};
