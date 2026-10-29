@@ -5,24 +5,32 @@
    화면 규칙: 태그/카테고리는 구분선으로, 액션은 아이콘 버튼(.ib), 숫자 칸은 스피너 없음. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-/* 세로 스크롤바 자리를 늘 비워 둔다. 긴 메뉴와 짧은 메뉴를 오갈 때 본문 폭과 가운데가 흔들리지 않게 */
-html{scrollbar-gutter:stable}
+/* 넓은 화면에서는 창 자체가 움직이지 않는다. 사이드바는 늘 제자리에 있고 본문(.main)만 스크롤한다
+   (선생님 지시 2026-10-29). 세로 스크롤바 자리를 비워 두는 일(긴 메뉴와 짧은 메뉴를 오갈 때 글 폭이
+   흔들리지 않게)은 이제 .main이 맡는다. html에 걸어 두면 창 오른쪽 끝에 빈 띠가 남아 스크롤바가
+   맨 끝에 붙지 않는다. 좁은 화면에서는 아래 미디어 쿼리가 이것을 도로 푼다 */
+body{overflow:hidden}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:var(--fs-body);
   line-height:1.5;-webkit-font-smoothing:antialiased}
 .boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--sub)}
 html.lms-ready .boot{display:none}
 html:not(.lms-ready) #shell{display:none}
 
-#shell{display:flex;min-height:100vh}
-.side{width:220px;flex:0 0 auto;background:transparent;border-right:1px solid var(--line);padding:16px 10px}
+#shell{display:flex;height:100%}
+.side{width:220px;flex:0 0 auto;background:transparent;border-right:1px solid var(--line);padding:16px 10px;
+  overflow-y:auto}   /* 메뉴가 길어지면 사이드바 안에서만 내려간다 */
 .side .brand{font-weight:900;font-size:var(--fs-title);padding:6px 12px 18px;letter-spacing:1px;color:var(--navy)}
 .side .mi{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid transparent;border-radius:var(--r);color:var(--sub);
   font-size:var(--fs-body);cursor:pointer;margin-bottom:2px}
 .side .mi:hover{background:var(--hover);color:var(--ink)}
 .side .mi.on{background:none;color:var(--accent);font-weight:700;border-color:var(--accent)}
-/* 본문은 사이드바 바로 오른쪽에 붙는다. 가로 여백은 해상도를 따라간다(좁으면 40px, 넓으면 64px까지):
-   창이 1500px보다 좁으면 본문이 화면 끝까지 차서 이 여백이 그대로 스크롤바와의 거리가 된다 */
-.main{flex:1;min-width:0;padding:28px clamp(40px,3.5vw,64px) 80px;max-width:1280px;margin:0 auto 0 0}
+/* 본문만 스크롤하는 칸이다. 창 끝까지 넓게 두어야 스크롤바가 창 맨 오른쪽에 선다(선생님 지시 2026-10-29).
+   글이 그만큼 넓어지면 안 되므로 1280px 제한은 바로 아래 자식 줄로 옮겼다.
+   가로 여백은 해상도를 따라간다(좁으면 40px, 넓으면 64px까지) */
+.main{flex:1;min-width:0;padding:28px clamp(40px,3.5vw,64px) 80px;
+  overflow-y:auto;scrollbar-gutter:stable}
+/* 글은 사이드바 바로 오른쪽에 붙어 1280px까지만 (#main의 자식은 전부 한 덩이씩 쌓이는 블록이다) */
+.main > *{max-width:1280px}
 
 /* 로그아웃은 메뉴 맨 아래에 조금 띄워 둔다 */
 .side .mi.side-logout{margin-top:14px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
@@ -447,7 +455,14 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 /* ══════ 좁은 화면 ══════
    선생님은 PC와 모바일 둘 다로 들어온다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
 @media (max-width:760px){
-  #shell{display:block;min-height:100dvh}
+  /* 좁은 화면은 왼쪽 메뉴가 위쪽 가로 줄이 되므로, 넓은 화면의 "본문만 스크롤"을 도로 푼다.
+     페이지째 내려가고 스크롤바도 창의 것 하나뿐이다 */
+  html{scrollbar-gutter:stable}   /* 여기서는 창이 스크롤하므로 자리를 비워 둔다 */
+  body{overflow:visible}
+  #shell{display:block;min-height:100dvh;height:auto}
+  .main{overflow-y:visible;scrollbar-gutter:auto}
+  .main > *{max-width:none}
+  .side{overflow-y:visible}
   .side{width:auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;
     border-right:0;border-bottom:1px solid var(--line);padding:0 8px;
     position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch}
