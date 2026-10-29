@@ -44,6 +44,7 @@ const state = {
   questionAiBusy: false,           // AI 채점이 도는 중인가
   questionAiStatus: '',            // AI 채점 진행 문구
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
+  missionSel: null,                // 미션 활동에서 고른 앱 키, 새로 만드는 중이면 'new'
 
   progAdding: false,               // 진도표에서 강의 추가 줄을 열었는가
   progMemoId: null,                // 진도표에서 메모를 적고 있는 강의(lessons id)
@@ -1128,105 +1129,89 @@ function conceptEditor(l){
    선생님 지시 2026-10-28: 미션 활동도 hoistory 기본 틀로.
    hoistory 카드가 들고 있던 것을 그대로 옮겼다: 제목, 웹앱 주소, 어드민 주소, 아이콘,
    연결할 강의, 팝업으로 열기, 그리고 아카이브 세 칸(수업 주제, 활동 의도, 아카이브 내용).
-   아카이브 칸은 접어 두고 아이콘 단추로 펼친다(hoistory의 아카이브 아코디언과 같다).
+   두 단(선생님 지시 2026-10-29): 왼쪽은 미션 이름 목록, 오른쪽은 고른 미션의 세부 내용을 고치는 칸.
+   강의실 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다. 추가와 수정 팝업은 이 칸으로 대신했다.
+   새로 추가한 앱이 늘 맨 위에 서고, 목록의 위, 아래 단추로 순서를 바꾼다(M.moveMissionApp).
    앱 어드민은 브라우저 새 탭으로 연다(선생님 지시 2026-10-29: 학생 활동을 보면서 성적을 매기려면
-   어드민이 따로 떠 있어야 한다). 같은 창 안의 탭(요구사항 67)은 이 지시로 걷어냈다.
-   목록은 두 단이고 새로 추가한 앱이 늘 맨 위에 선다. 위, 아래 단추로 순서를 바꾼다(M.moveMissionApp). */
+   어드민이 따로 떠 있어야 한다). 같은 창 안의 탭(요구사항 67)은 이 지시로 걷어냈다. */
 function pageMission(){
   const head = `<div class="pagehead"><h2>${esc(M.menuName('mission'))}</h2>
     <button class="btn-add" data-act="mission-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
 
   const apps = M.getMissionApps();
-  const list = apps.length ? apps.map((a, i) => {
-    const lesson = a.lessonId ? M.getLesson(a.lessonId) : null;
-    const arch = a.archive || {};
-    const bits = [lesson ? `연결 강의 ${lesson.title}` : '연결한 강의 없음',
-                  a.modal ? '팝업으로 열기' : ''].filter(Boolean).join(', ');
-    return `<div class="row">
-      <div class="grow"><div class="t">${esc(a.name)}</div>
-        <div class="s mono">${esc(a.id)}</div>
-        <div class="s">${esc(bits)}</div>
-        ${arch.topic ? `<div class="s">아카이브 ${esc(arch.topic)}</div>` : ''}</div>
-      <div class="tools">
-        <button class="ib" data-act="mission-up" data-v="${esc(a.id)}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',16)}</button>
-        <button class="ib" data-act="mission-down" data-v="${esc(a.id)}" ${i===apps.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',16)}</button>
-        <button class="ib" data-act="mission-admin" data-v="${esc(a.id)}" ${a.adminUrl?'':'disabled'}
-          title="${a.adminUrl ? '앱 어드민 (새 탭)' : '어드민 주소가 없습니다.'}" aria-label="앱 어드민">${icon('wrench',16)}</button>
-        <button class="ib" data-act="mission-edit" data-v="${esc(a.id)}" title="수정" aria-label="수정">${icon('pencil',16)}</button>
-        <button class="ib ib-danger" data-act="mission-del" data-v="${esc(a.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
-      </div></div>`;
-  }).join('') : '';
+  const isNew = state.missionSel === 'new';
+  if (!apps.length && !isNew) return `${head}<div class="empty">연결한 앱이 없습니다.</div>`;
+  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 앱을 고른다.
+  if (!isNew && !apps.some(a => a.id === state.missionSel)) state.missionSel = WIDE.matches ? apps[0].id : null;
 
-  return `${head}<div class="sectionlabel">현재 연결된 미션</div>`
-    + (apps.length ? `<div class="mission-cols">${list}</div>` : `<div class="empty">연결한 앱이 없습니다.</div>`);
+  const row = (a, i) => `<div class="row ${a.id===state.missionSel?'on':''}">
+      <div class="grow rowlink" data-act="mission-sel" data-v="${esc(a.id)}"><div class="t">${esc(a.name)}</div></div>
+      <div class="tools">
+        <button class="ib ib-sm" data-act="mission-up" data-v="${esc(a.id)}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
+        <button class="ib ib-sm" data-act="mission-down" data-v="${esc(a.id)}" ${i===apps.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
+      </div></div>`;
+  const app = isNew ? null : M.getMissionApp(state.missionSel);
+  const newRow = isNew ? `<div class="row on"><div class="grow"><div class="t">새 미션</div></div></div>` : '';
+
+  if (!WIDE.matches){
+    const list = apps.map((a, i) => a.id === state.missionSel
+      ? row(a, i) + `<div class="detail">${missionTools(app)}${missionForm(app)}</div>` : row(a, i)).join('');
+    return head + (isNew ? newRow + `<div class="detail">${missionTools(null)}${missionForm(null)}</div>` : '') + list;
+  }
+  return `${head}<div class="split split-mission">
+      <div class="split-list">${newRow}${apps.map(row).join('')}</div>
+      <div class="pane"><div class="pane-head"><h3>${esc(app ? app.name : '새 미션')}</h3>${missionTools(app)}</div>
+        <div class="dscroll">${missionForm(app)}</div></div></div>`;
 }
-// 앱 어드민을 브라우저 새 탭으로 연다(미션 목록의 렌치 단추, 강의실 상세의 미션 활동 바로가기 공용).
+// 고른 미션의 단추: 앱 어드민(새 탭), 저장, 삭제. 새 미션이면 저장과 취소.
+function missionTools(app){
+  if (!app) return `<div class="tools">
+      <button class="ib ib-primary" data-act="mission-save" title="추가" aria-label="추가">${icon('check',16)}</button>
+      <button class="ib" data-act="mission-new-cancel" title="취소" aria-label="취소">${icon('x',16)}</button></div>`;
+  return `<div class="tools">
+      <button class="ib" data-act="mission-admin" data-v="${esc(app.id)}" ${app.adminUrl?'':'disabled'}
+        title="${app.adminUrl ? '앱 어드민 (새 탭)' : '어드민 주소가 없습니다.'}" aria-label="앱 어드민">${icon('wrench',16)}</button>
+      <button class="ib ib-primary" data-act="mission-save" data-v="${esc(app.id)}" title="저장" aria-label="저장">${icon('check',16)}</button>
+      <button class="ib ib-danger" data-act="mission-del" data-v="${esc(app.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button></div>`;
+}
+// 세부 내용 칸. 이름표 + 입력 칸 한 줄씩(일반 설정과 같은 모양). 앱 키는 만들 때만 적는다.
+function missionForm(app){
+  const arch = app?.archive || {};
+  const line = (label, ctl, top) => `<div class="row ${top?'row-top':''}"><div class="t gen-label">${label}</div>${ctl}</div>`;
+  const inp = (id, v, extra = '') => `<input class="f grow" id="${id}" value="${esc(v || '')}" ${extra}>`;
+  const lessons = M.getLessons();
+  return line('제목', inp('ma-name', app?.name))
+    + line('앱 키', inp('ma-key', app?.id, app ? 'disabled' : ''))
+    + line('웹앱 주소', inp('ma-su', app?.studentUrl))
+    + line('어드민 주소', inp('ma-au', app?.adminUrl))
+    + line('연결할 강의', `<select class="sel grow" id="ma-lesson" aria-label="연결할 강의">
+        <option value="">연결 없음</option>
+        ${lessons.map(l => `<option value="${l.id}" ${l.id===app?.lessonId?'selected':''}>${esc(l.title)}</option>`).join('')}
+      </select>`)
+    + line('팝업으로 열기', `<input type="checkbox" class="gcb" id="ma-modal" ${app?.modal?'checked':''} aria-label="팝업으로 열기">`)
+    + `<div class="sectionlabel">아카이브</div>`
+    + line('수업 주제', inp('ma-topic', arch.topic))
+    + line('활동 의도', `<textarea class="f grow ta" id="ma-intent" rows="3">${esc(arch.intent || '')}</textarea>`, true)
+    + line('아카이브 내용', `<textarea class="f grow ta" id="ma-content" rows="5">${esc(arch.content || '')}</textarea>`, true);
+}
+// 저장 단추: 오른쪽 칸(좁으면 펼친 칸)의 값을 읽어 추가하거나 고친다.
+function saveMission(id){
+  const g = k => document.getElementById(k);
+  const payload = {
+    name: g('ma-name').value, studentUrl: g('ma-su').value, adminUrl: g('ma-au').value,
+    lessonId: g('ma-lesson').value, modal: g('ma-modal').checked,
+    archive: { topic:g('ma-topic').value.trim(), intent:g('ma-intent').value.trim(), content:g('ma-content').value.trim() },
+  };
+  try {
+    if (id){ M.updateMissionApp(id, payload); toast('앱을 저장했습니다.'); }
+    else { const a = M.addMissionApp({ ...payload, key:g('ma-key').value }); state.missionSel = a.id; toast('앱을 추가했습니다.'); }
+    render();
+  } catch(e){ toast(e.message); }
+}
+// 앱 어드민을 브라우저 새 탭으로 연다(미션 활동의 렌치 단추, 강의실 상세의 미션 활동 바로가기 공용).
 function openMissionAdmin(app){
   if (!app?.adminUrl){ toast('어드민 주소가 없습니다.'); return; }
   window.open(new URL(app.adminUrl, location.href).href, '_blank', 'noopener');
-}
-
-/* 미션 앱 등록, 수정 팝업. hoistory 카드 추가 폼의 칸을 그대로 옮겼다. */
-function openMissionModal(app){
-  const back = document.createElement('div');
-  back.className = 'modal-back';
-  const dis = app ? 'disabled' : '';
-  const lessons = M.getLessons();
-  const arch = app?.archive || {};
-  let archOpen = !!(arch.topic || arch.intent || arch.content);
-
-  back.innerHTML = `<div class="modal modal-wide" role="dialog" aria-modal="true" aria-label="미션 앱">
-    <h3>${app ? '앱 수정' : '앱 추가'}</h3>
-    <div class="m-form">
-      <label class="m-label">제목</label><input class="f" id="ma-name" value="${esc(app?.name || '')}">
-      <label class="m-label">앱 키</label><input class="f" id="ma-key" value="${esc(app?.id || '')}" ${dis}>
-      <label class="m-label">웹앱 주소</label><input class="f" id="ma-su" value="${esc(app?.studentUrl || '')}">
-      <label class="m-label">어드민 주소</label><input class="f" id="ma-au" value="${esc(app?.adminUrl || '')}">
-      <label class="m-label">연결할 강의</label>
-      <select class="sel sel-full" id="ma-lesson">
-        <option value="">연결 없음</option>
-        ${lessons.map(l => `<option value="${l.id}" ${l.id===app?.lessonId?'selected':''}>${esc(l.title)}</option>`).join('')}
-      </select>
-      <label class="m-check"><input type="checkbox" id="ma-modal" ${app?.modal?'checked':''}><span>팝업으로 열기</span></label>
-      <button class="btn-chip" id="ma-arch-btn">${icon('archive',13)}아카이브 정보</button>
-      <div class="m-form" id="ma-arch" ${archOpen?'':'hidden'}>
-        <label class="m-label">수업 주제</label><input class="f" id="ma-topic" value="${esc(arch.topic || '')}">
-        <label class="m-label">활동 의도</label><textarea class="f ta" id="ma-intent">${esc(arch.intent || '')}</textarea>
-        <label class="m-label">아카이브 내용</label><textarea class="f ta" id="ma-content">${esc(arch.content || '')}</textarea>
-      </div>
-    </div>
-    <div class="m-err" id="ma-err"></div>
-    <div class="m-acts">
-      <button class="btn-ghost" data-m="cancel">닫기</button>
-      <button class="btn-text" data-m="ok">${app ? '저장' : '추가'}</button>
-    </div></div>`;
-  document.body.appendChild(back);
-  const modal = back.querySelector('.modal');
-  const close = () => { document.removeEventListener('keydown', onKey); back.remove(); };
-  const err = m => { modal.querySelector('#ma-err').textContent = m; };
-  const g = id => modal.querySelector(id);
-  const submit = () => {
-    const payload = {
-      name: g('#ma-name').value, studentUrl: g('#ma-su').value, adminUrl: g('#ma-au').value,
-      lessonId: g('#ma-lesson').value, modal: g('#ma-modal').checked,
-      archive: { topic:g('#ma-topic').value.trim(), intent:g('#ma-intent').value.trim(), content:g('#ma-content').value.trim() },
-    };
-    try {
-      if (app) M.updateMissionApp(app.id, payload);
-      else M.addMissionApp({ ...payload, key:g('#ma-key').value });
-      toast(app ? '앱을 저장했습니다.' : '앱을 추가했습니다.'); close(); render();
-    } catch(e){ err(e.message); }
-  };
-  g('#ma-arch-btn').addEventListener('click', () => {
-    archOpen = !archOpen; g('#ma-arch').hidden = !archOpen;
-  });
-  const onKey = e => { if (e.key==='Escape') close(); };
-  back.addEventListener('click', e => {
-    if (e.target === back){ close(); return; }
-    const m = e.target.closest('[data-m]'); if (!m) return;
-    if (m.dataset.m === 'ok') submit(); else close();
-  });
-  document.addEventListener('keydown', onKey);
 }
 
 /* ── 오늘의 질문 (hoistory/lms "생각 Check" 틀 이식) ─────────────────────────
@@ -1683,8 +1668,11 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'mission-admin': openMissionAdmin(M.getMissionApp(v)); break;
     case 'mission-up': M.moveMissionApp(v, -1); render(); break;
     case 'mission-down': M.moveMissionApp(v, 1); render(); break;
-    case 'mission-add-open': openMissionModal(); break;
-    case 'mission-edit': openMissionModal(M.getMissionApp(v)); break;
+    // 고르기: 좁은 화면에서는 같은 줄을 다시 누르면 접는다(넓은 화면은 오른쪽 칸이 늘 떠 있다)
+    case 'mission-sel': state.missionSel = (!WIDE.matches && state.missionSel === v) ? null : v; render(); break;
+    case 'mission-add-open': state.missionSel = 'new'; render(); document.getElementById('ma-name')?.focus(); break;
+    case 'mission-new-cancel': state.missionSel = null; render(); break;
+    case 'mission-save': saveMission(v); break;
     case 'mission-del': {
       const a = M.getMissionApp(v); if (!a) break;
       confirmDelete({ title:`${a.name} 삭제`, bodyHtml:`연결을 지웁니다. 되돌릴 수 없습니다.`, needText:a.name })

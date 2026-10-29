@@ -40,11 +40,12 @@ html:not(.lms-ready) #shell{display:none}
 .gen-cols .sectionlabel{margin-top:4px}
 .gen-label{flex:0 0 150px}
 @media (max-width:1000px){ .gen-cols{grid-template-columns:minmax(0,1fr)} .gen-col + .gen-col{margin-top:18px} }
-/* 미션 활동 목록 두 단(선생님 지시 2026-10-29). 왼쪽 단을 위에서 아래로 다 채우고 오른쪽 단으로 이어지므로
-   위, 아래 단추가 눈에 보이는 위, 아래와 같다. 맞닿는 줄 합치기(.row + .row)가 단 경계에서 끊기므로 아래 선만 쓴다 */
-.mission-cols{columns:2;column-gap:48px;border-top:1px solid var(--line)}
-.mission-cols > .row{break-inside:avoid;border-top:0;border-bottom:1px solid var(--line)}
-@media (max-width:1000px){ .mission-cols{columns:1} }
+/* 미션 활동 두 단(선생님 지시 2026-10-29): 왼쪽 미션 이름 목록(.split-list), 오른쪽 세부 내용 칸(.pane).
+   세부 칸 첫 줄은 머리줄 밑선과 겹치지 않게 윗선을 뺀다. 글 칸(textarea) 줄은 이름표를 위에 맞춘다 */
+.split-mission .pane .dscroll > .row:first-child{border-top:0}
+.row.row-top{align-items:flex-start;padding-block:8px}
+.row.row-top .gen-label{padding-top:8px}
+.detail > .tools{display:flex;justify-content:flex-end;gap:6px;margin:10px 0}
 /* 일반 설정의 어드민 메뉴 줄: 아이콘, 이름 칸, 위아래 단추. 구분선 줄은 선 하나로 보여 준다 */
 .menu-ico{display:inline-grid;place-items:center;color:var(--sub)}
 .menu-sep-line{border-top:1px solid var(--line-strong);margin:0 2px}
