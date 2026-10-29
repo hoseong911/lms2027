@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261028k';
+import * as M from './model.js?v=20261029a';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -28,6 +28,7 @@ const state = {
   progSubject: null,               // 진도 관리에서 보고 있는 과목(탭)
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
+  studentQuery: '',                // 학생 관리 학번 검색어
   lessonId: null, lessonTab: 'edit',
 
   // 칸별 메뉴 넷 (2026-10-27)
@@ -393,17 +394,15 @@ function pageProgress(){
   // 과목 탭에서 그 과목의 반 탭으로 좁힌다. 둘 다 있는 것만(요구사항 3).
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
   if (!subjects.includes(state.progSubject)) state.progSubject = subjects[0];
-  const tabs = catline(subjects.map(s => ({ v:s, label:s })), state.progSubject, 'prog-subject');
+  // hoistory의 [+ 강의 추가]는 과목 탭 줄 오른쪽 끝에 둔다(선생님 지시 2026-10-29).
+  // 누르면 줄 아래에 제목 입력 줄이 열린다(요구사항 66 인라인).
+  const addBtn = `<span class="line-end"><button class="btn-chip" data-act="prog-add-open">${icon('plus',13)}강의 추가</button></span>`;
+  const tabs = catline(subjects.map(s => ({ v:s, label:s })), state.progSubject, 'prog-subject', '', addBtn);
 
   const rooms = all.filter(c => c.subject === state.progSubject)
     .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
 
   const { placed, lessons } = placedLessons(rooms);
-
-  // 툴바: hoistory의 [+ 강의 추가]. 누르면 그 자리에 제목 입력 줄이 열린다(요구사항 66 인라인).
-  const toolbar = `<div class="pl-toolbar">
-    <button class="btn-chip" data-act="prog-add-open">${icon('plus',13)}강의 추가</button>
-  </div>`;
   const addRow = state.progAdding ? `<div class="row">
     <input class="f grow" id="prog-new-title" autocomplete="off" aria-label="강의 제목">
     <span class="unit">${esc(state.progSubject)} 강의실 ${rooms.length}개에 같이 꽂습니다</span>
@@ -413,7 +412,7 @@ function pageProgress(){
     </div></div>` : '';
 
   if (!lessons.length)
-    return `${head}${tabs}${toolbar}${addRow}${addRow ? '' : `<div class="empty">개설된 강의가 없습니다.</div>`}`;
+    return `${head}${tabs}${addRow}${addRow ? '' : `<div class="empty">개설된 강의가 없습니다.</div>`}`;
 
   // 머리줄 두 줄: 반 번호 / 그 반의 수업 요일
   const thead = `<tr>
@@ -445,7 +444,7 @@ function pageProgress(){
     </tr>`;
   }).join('');
 
-  return `${head}${tabs}${toolbar}${addRow}
+  return `${head}${tabs}${addRow}
     <div class="prog-wrap"><table class="prog pltable">
       <thead>${thead}</thead><tbody>${body}</tbody>
     </table></div>`;
@@ -468,32 +467,37 @@ function pageScores(){
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
-  const tabs = catline(M.ADMIN_SUBMENUS.scores, state.scTab, 'sc-tab');
-  const head = `<div class="pagehead"><h2>성적</h2>${years.length?yearSel:''}</div>${tabs}`;
-  if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
+  // 세 줄이던 고르개를 한 줄로 모았다(선생님 지시 2026-10-29).
+  // 과목은 머리줄의 학년도 옆 드롭다운, 반은 카테고리 줄, 입력/설정/조회는 그 줄 오른쪽 끝 토글.
+  const subSeg = `<span class="line-end"><span class="seg seg-inline">
+    ${M.ADMIN_SUBMENUS.scores.map(t => `<button class="seg-b ${state.scTab===t.v?'on':''}" data-act="sc-tab" data-v="${t.v}">${esc(t.label)}</button>`).join('')}
+  </span></span>`;
+  if (!years.length) return `<div class="pagehead"><h2>성적</h2></div><div class="empty">학년도가 없습니다.</div>`;
 
   const all = M.getCourses(state.year);
-  if (!all.length) return `${head}<div class="empty">강의실이 없습니다.</div>`;
+  if (!all.length) return `<div class="pagehead"><h2>성적</h2>${yearSel}</div><div class="empty">강의실이 없습니다.</div>`;
 
-  // 과목 탭은 세 화면 공통이다(선생님 지시 2026-10-28: 성적 설정도 과목별로 뜨게).
+  // 과목은 세 화면 공통이다(선생님 지시 2026-10-28: 성적 설정도 과목별로 뜨게).
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
   if (!subjects.includes(state.scSubject)) state.scSubject = subjects[0];
-  const subTabs = catline(subjects.map(s => ({ v:s, label:s })), state.scSubject, 'sc-subject');
+  const subjectSel = `<select class="sel" data-act="sc-subject-pick" aria-label="과목">
+    ${subjects.map(s => `<option value="${esc(s)}" ${s===state.scSubject?'selected':''}>${esc(s)}</option>`).join('')}
+  </select>`;
+  const head = `<div class="pagehead"><h2>성적</h2>${yearSel}${subjectSel}</div>`;
 
   const rooms = all.filter(c => c.subject === state.scSubject)
     .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
 
-  // 성적 설정은 반을 고르지 않는다: 반영 강의와 급간 표는 과목 단위다.
-  if (state.scTab === 'setting') return head + subTabs + scoreSettingPanel(rooms);
+  // 성적 설정은 반을 고르지 않는다: 반영 강의와 급간 표는 과목 단위다. 줄에는 토글만 남는다.
+  if (state.scTab === 'setting') return head + catline([], null, 'sc-room', '', subSeg) + scoreSettingPanel(rooms);
 
   if (!rooms.some(c => c.id === state.scCourseId)) state.scCourseId = rooms[0]?.id || null;
-  const roomTabs = catline(rooms.map(c => ({ v:c.id, label:M.roomNo(c) })), state.scCourseId, 'sc-room');
+  const roomTabs = catline(rooms.map(c => ({ v:c.id, label:M.roomNo(c) })), state.scCourseId, 'sc-room', '', subSeg);
 
   const c = M.getCourse(state.scCourseId);
-  if (!c) return `${head}${subTabs}<div class="empty">강의실이 없습니다.</div>`;
+  if (!c) return `${head}${roomTabs}<div class="empty">강의실이 없습니다.</div>`;
 
-  const pick = `${subTabs}${roomTabs}`;
-  return head + pick + (state.scTab === 'input' ? scoreInputPanel(c) : scoreViewPanel(c));
+  return head + roomTabs + (state.scTab === 'input' ? scoreInputPanel(c) : scoreViewPanel(c));
 }
 
 /* 성적 입력: 강의 고르개 줄(hoistory의 grade-config-card) + 통계 칩 + 학생 표.
@@ -578,10 +582,12 @@ function scoreInputPanel(c){
       return `<span class="gnote ${manual?'muted':''}" title="${manual?'손으로 정한 칸이라 자동 감지가 덮지 않습니다':'자동 감지 결과'}">${esc(v.note)}</span>`;
     }).filter(Boolean).join('');
     // 피드백 칸 옆 고르개: 템플릿을 고르면 그 글이 칸에 들어간다(선생님 지시 2026-10-28).
-    const fbPick = templates.length ? `<select class="sel sel-sm fbpick" data-act="sc-fb-pick"
-        data-id="${cl.id}" data-no="${s.studentNo}" aria-label="피드백 템플릿">
-        <option value=""></option>
-        ${templates.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select>` : '';
+    // 템플릿이 없어도 고르개는 늘 보인다(선생님 지시 2026-10-29). 없으면 눌리지 않는다.
+    const fbPick = `<select class="sel sel-sm fbpick" data-act="sc-fb-pick"
+        data-id="${cl.id}" data-no="${s.studentNo}" aria-label="피드백 템플릿" ${templates.length?'':'disabled'}
+        title="${templates.length?'피드백 템플릿':'성적 설정에서 피드백 템플릿을 적으면 고를 수 있습니다.'}">
+        <option value="">템플릿</option>
+        ${templates.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select>`;
     return `<tr class="${g.absent?'absent':''}">
       <td class="lname">
         <input type="checkbox" class="gcb" data-act="sc-row-all" data-id="${cl.id}" data-no="${s.studentNo}"
@@ -601,7 +607,7 @@ function scoreInputPanel(c){
   return bar + `<div class="gstats">${statChips}</div>
     <div class="prog-wrap"><table class="prog gradetable">
       <thead>
-        <tr><th class="lname" rowspan="2">학생</th>${head1}<th rowspan="2">자동 감지</th><th rowspan="2">피드백</th></tr>
+        <tr><th class="lname" rowspan="2">학생</th>${head1}<th rowspan="2">자동 감지</th><th class="gfb" rowspan="2">피드백</th></tr>
         <tr>${head2}</tr>
       </thead><tbody>${body}</tbody></table></div>`;
 }
@@ -799,12 +805,18 @@ function pageStudents(){
 
   let snos = state.studentClass !== 'all' ? [...(byRoom[state.studentClass] || [])] : roomNos.flatMap(r => [...byRoom[r]]);
   snos = [...new Set(snos)].sort();
+  // 학번 검색: 반 줄 오른쪽 끝 칸에 치는 대로 바로 거른다(선생님 지시 2026-10-29). 고른 반 안에서 거른다.
+  const q = state.studentQuery.replace(/\D/g, '');
+  if (q) snos = snos.filter(sno => sno.includes(q));
 
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
   const head = `<div class="pagehead"><h2>학생 관리</h2>${yearSel}${addBtn}</div>`;
-  const filterLine = catline(roomNos.map(r => ({ v:r, label:r })), state.studentClass, 'set-sclass', '전체');
+  const search = `<span class="line-end"><label class="searchbox">${icon('search',15)}
+    <input class="f" id="stu-search" data-act="stu-search" inputmode="numeric" autocomplete="off"
+      value="${esc(state.studentQuery)}" aria-label="학번 검색"></label></span>`;
+  const filterLine = catline(roomNos.map(r => ({ v:r, label:r })), state.studentClass, 'set-sclass', '전체', search);
 
   const list = snos.length ? snos.map(sno => {
     const name = all.find(s => s.studentNo === sno)?.name || '';
@@ -1592,8 +1604,6 @@ document.getElementById('shell').addEventListener('click', e => {
 
     // 성적
     case 'sc-tab': state.scTab = v; state.scOpenNo = null; render(); break;
-    case 'sc-subject':
-      state.scSubject = v; state.scCourseId = null; state.scClId = null; state.scOpenNo = null; render(); break;
     case 'sc-room': state.scCourseId = v; state.scClId = null; state.scOpenNo = null; render(); break;
     case 'sc-open': state.scOpenNo = state.scOpenNo === no ? null : no; render(); break;
     // 이름을 누르면 결석(전부 미달성 고정). hoistory와 같다.
@@ -1696,6 +1706,8 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setCourseSchedule(el.dataset.id, el.value);
   } else if (el.dataset.act === 'prog-topic'){   // 진도표의 주제 = 강의 제목
     run(() => M.setLessonTitle(el.dataset.lid, el.value));
+  } else if (el.dataset.act === 'sc-subject-pick'){   // 성적: 머리줄의 과목 드롭다운
+    state.scSubject = el.value; state.scCourseId = null; state.scClId = null; state.scOpenNo = null; render();
   } else if (el.dataset.act === 'sc-lesson'){   // 성적 입력: 채점할 강의
     state.scClId = el.value; render();
   } else if (el.dataset.act === 'sc-cell'){   // 달성, 기한 칸 하나
@@ -1741,6 +1753,16 @@ document.getElementById('shell').addEventListener('change', e => {
     }
     render();
   }
+});
+
+/* 학번 검색: 치는 대로 목록을 다시 그린다. 다시 그리면 칸이 새로 생기므로 커서를 되살린다. */
+document.getElementById('shell').addEventListener('input', e => {
+  if (e.target.dataset.act !== 'stu-search') return;
+  state.studentQuery = e.target.value;
+  const pos = e.target.selectionStart;
+  render();
+  const box = document.getElementById('stu-search');
+  if (box){ box.focus(); box.setSelectionRange(pos, pos); }
 });
 
 /* 인라인 폼에서 엔터를 치면 그 줄의 주 버튼을 누른 것으로 본다.

@@ -228,7 +228,8 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li class="sub">자동: 미션 활동과 오늘의 질문은 <code>course_submissions</code>에서 달성과 기한을 계산한다(<code>autoDetect</code>). <strong>기한은 진도 관리에서 넣은 수업일자(<code>course_lessons.date</code>)와 제출 시각을 견준다.</strong> 진도 관리와 성적이 여기서 맞물린다. 오늘의 질문 판정은 hoistory <code>thinkVerdict</code>를 옮긴 것(50자 미만은 미달성, 지연 제출은 기한만 깎임)</li>
 <li class="sub">손: 교사가 누른 칸은 <code>manual</code>로 표시돼 <strong>다시 끌어와도 덮이지 않는다.</strong> 개념 노트는 LMS 밖 활동지라 늘 손으로만 넣는다</li>
 <li class="sub">이름을 누르면 <strong>결석</strong>(전부 미달성 고정)</li>
-<li>어드민 <strong>성적</strong> 메뉴는 hoistory와 같이 서브 메뉴 셋이다: <strong>성적 입력 / 성적 설정 / 성적 조회</strong>. 셋 다 <strong>과목 탭</strong> 아래에서 움직인다(성적 설정의 반영 강의 목록도 과목별이다, 선생님 지시 2026-10-28).</li>
+<li>어드민 <strong>성적</strong> 메뉴는 hoistory와 같이 서브 메뉴 셋이다: <strong>입력 / 설정 / 조회</strong>. 셋 다 <strong>과목</strong> 아래에서 움직인다(성적 설정의 반영 강의 목록도 과목별이다, 선생님 지시 2026-10-28).</li>
+<li class="sub"><strong>고르개는 한 줄이다</strong>(선생님 지시 2026-10-29): 과목은 머리줄 학년도 옆 드롭다운, 반은 카테고리 줄, 입력/설정/조회는 그 줄 오른쪽 끝 토글. 줄을 다시 셋으로 쌓지 않는다.</li>
 <li>기록은 <code>course_grades</code>(문서 id <code>꽂힌강의id_학번</code>). 집계 컬렉션 <code>course_scores</code>는 쓰지 않는다.</li>
 </ul>
 <h2 id="컬렉션-이름-규칙">컬렉션 이름 규칙</h2>

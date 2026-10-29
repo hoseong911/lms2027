@@ -5,6 +5,8 @@
    화면 규칙: 태그/카테고리는 구분선으로, 액션은 아이콘 버튼(.ib), 숫자 칸은 스피너 없음. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
+/* 세로 스크롤바 자리를 늘 비워 둔다. 긴 메뉴와 짧은 메뉴를 오갈 때 본문 폭과 가운데가 흔들리지 않게 */
+html{scrollbar-gutter:stable}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:var(--fs-body);
   line-height:1.5;-webkit-font-smoothing:antialiased}
 .boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--sub)}
@@ -89,7 +91,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 
 /* 진도 관리 표: 강의 x 강의실, 칸은 수업일자 */
 .prog-wrap{overflow-x:auto}
-.prog{border-collapse:collapse;font-size:var(--fs-body)}
+/* 표도 다른 메뉴의 줄, 카드와 같은 폭으로 꽉 채운다(선생님 지시 2026-10-29: 메뉴마다 너비를 맞춘다).
+   남는 폭은 표마다 한 열이 받는다: 진도표는 주제, 성적 입력은 피드백 */
+.prog{border-collapse:collapse;font-size:var(--fs-body);width:100%}
 .prog th,.prog td{border:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap}
 .prog thead th{background:var(--hover);color:var(--sub);font-weight:700;padding:8px 10px}
 .prog td.lname,.prog th.lname{text-align:left;position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink);min-width:170px}
@@ -101,9 +105,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .prog td.ds-past .dateinput{color:var(--sub)}
 
 /* 진도 관리 표 (hoistory 진도 계획 틀): 머리줄 둘, 왼쪽 두 열, 오른쪽 관리 열 */
-.pl-toolbar{display:flex;gap:8px;margin:0 0 12px}
 .pltable td.pl-num,.pltable th.pl-num{min-width:52px;font-weight:700;color:var(--navy)}
-.pltable td.lname,.pltable th.lname{min-width:210px}
+.pltable td.lname,.pltable th.lname{min-width:210px;width:100%}
 .pltable td.lname .f{width:100%;border-color:transparent;background:transparent;font-weight:600}
 .pltable td.lname .f:focus{border-color:var(--navy);background:var(--card)}
 .pltable th.pl-sch{padding:3px 4px}
@@ -129,7 +132,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .gradetable .gname:hover{text-decoration:underline}
 .gradetable tr.absent td{background:var(--hover);color:var(--sub)}
 .gradetable td.gauto{min-width:110px;text-align:left}
-.gradetable td.gfb{min-width:210px}
+/* 피드백 칸은 표의 남는 폭을 다 받는다(선생님 지시 2026-10-29: 너무 좁다) */
+.gradetable td.gfb,.gradetable th.gfb{min-width:360px;width:100%}
 .gradetable td.gfb .f{width:100%}
 .gcb{width:16px;height:16px;accent-color:var(--navy)}
 /* 영역 머리줄: 제목 옆에 활성화, 비활성화 스위치(선생님 지시 2026-10-28) */
@@ -142,7 +146,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 피드백 칸: 글 칸 옆에 템플릿 고르개 */
 .fbcell{display:flex;align-items:center;gap:4px}
 .fbcell .f{flex:1;min-width:0}
-.fbpick{flex:none;width:34px;padding:4px 0 4px 4px}
+.fbpick{flex:none;width:auto;max-width:120px;padding:6px 26px 6px 10px;background-position:right 8px center}
+.fbpick:disabled{opacity:.45;cursor:default}
 .fbtmpl{display:block;width:100%;resize:vertical;font:inherit;line-height:1.6}
 .gnote{display:inline-block;font-size:var(--fs-meta);color:var(--navy);margin-left:6px}
 .gnote.bad{color:var(--red)}
@@ -362,6 +367,10 @@ input[type=number]{-moz-appearance:textfield}
 .m-two>div{flex:1;display:flex;flex-direction:column;gap:6px}
 
 .catline .line-end{margin-left:auto;display:flex;align-items:center;gap:6px;padding-bottom:0}
+/* 학생 관리의 학번 검색 칸: 반 줄 오른쪽 끝. 무슨 칸인지는 돋보기로 알린다 */
+.searchbox{position:relative;display:flex;align-items:center;color:var(--sub)}
+.searchbox svg{position:absolute;left:9px;pointer-events:none}
+.searchbox .f{width:150px;padding:6px 10px 6px 30px}
 
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--navy);color:#fff;
   padding:11px 16px;border-radius:var(--r);font-size:var(--fs-body);z-index:50;display:none;max-width:90vw;text-align:center}
@@ -391,6 +400,9 @@ input[type=number]{-moz-appearance:textfield}
   .ib{width:40px;height:40px}
   .catline{gap:14px}
   .catline .line-end{width:100%;margin-left:0;padding-top:8px}
+  .searchbox{flex:1}
+  .searchbox .f{width:100%}
+  .gradetable td.gfb,.gradetable th.gfb{min-width:260px}
   .editor{flex-direction:column}
   .palette{flex:1 1 auto;width:100%}
   .row{flex-wrap:wrap}

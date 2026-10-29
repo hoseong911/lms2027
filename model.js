@@ -100,7 +100,7 @@ export const ADMIN_SUBMENUS = {
   concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
   question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변' }, { v:'pick', label:'PICK' } ],
   // 성적은 hoistory/lms의 성적 Check 세 화면(입력, 설정, 조회)을 그대로 옮긴 것이다.
-  scores:   [ { v:'input',   label:'성적 입력' }, { v:'setting', label:'성적 설정' }, { v:'view',  label:'성적 조회' } ],
+  scores:   [ { v:'input',   label:'입력' }, { v:'setting', label:'설정' }, { v:'view',  label:'조회' } ],
 };
 
 /* ── 화면 문구 (선생님 지시 2026-10-28) ──────────────────────────────────

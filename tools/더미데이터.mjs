@@ -309,6 +309,7 @@ M.getCourses(2027).forEach(c => {
   });
 });
 M.getLessons().filter(l => /0[1-6]$/.test(l.id)).forEach(l => M.toggleGradeLesson(l.id, true));
+M.setFeedbackTemplates(FEED);   // 성적 입력의 피드백 템플릿 고르개가 비지 않게
 await M.saveGradeConfig(M.DEFAULT_BANDS);
 
 // ── 새로 만든 문서에만 더미 표시를 달고 쓴다 ──
