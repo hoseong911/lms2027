@@ -97,6 +97,16 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 안에서 내려가는 칸들의 스크롤바는 보이지 않게 */
 .split-list,.pane .dscroll{scrollbar-width:none}
 .split-list::-webkit-scrollbar,.pane .dscroll::-webkit-scrollbar{display:none}
+/* 대신 더 있다는 것을 끝의 흐림으로 알린다(선생님 지시 2026-10-29).
+   admin.js의 markFade가 스크롤 자리에 따라 .fade-top, .fade-bot을 붙였다 뗀다.
+   바탕을 덧칠하지 않고 mask로 글 자체를 흐리게 하므로 어떤 바탕 위에서도 맞다. */
+.fade-top,.fade-bot{--fade:26px}
+.fade-bot:not(.fade-top){-webkit-mask-image:linear-gradient(#000 calc(100% - var(--fade)),transparent);
+  mask-image:linear-gradient(#000 calc(100% - var(--fade)),transparent)}
+.fade-top:not(.fade-bot){-webkit-mask-image:linear-gradient(transparent,#000 var(--fade));
+  mask-image:linear-gradient(transparent,#000 var(--fade))}
+.fade-top.fade-bot{-webkit-mask-image:linear-gradient(transparent,#000 var(--fade),#000 calc(100% - var(--fade)),transparent);
+  mask-image:linear-gradient(transparent,#000 var(--fade),#000 calc(100% - var(--fade)),transparent)}
 .split-list .row .t{font-weight:500}
 /* 강의실 관리는 목록이 '역사 301' 정도로 짧아 좁게 두고 상세 두 칸을 넓힌다(선생님 지시 2026-10-29) */
 .split.split-room{grid-template-columns:var(--w-list-room) minmax(0,1fr)}

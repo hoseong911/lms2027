@@ -1480,6 +1480,25 @@ function pageGeneral(){
     ${groups}`;
 }
 
+/* 안에서 내려가는 목록(.dscroll, .split-list)은 스크롤바를 감췄으므로, 더 있다는 것을 끝의 흐림으로
+   알린다(선생님 지시 2026-10-29). 끝에 닿으면 그쪽 흐림은 걷히고, 내려갈 것이 없으면 아예 안 생긴다.
+   좁은 화면의 펼침(.detail) 안 .dscroll은 스크롤 칸이 아니라 scrollHeight가 같아 그냥 지나간다. */
+const FADE_SEL = '.dscroll, .split-list';
+function markFade(el){
+  const more = el.scrollHeight - el.clientHeight;
+  el.classList.toggle('fade-top', more > 1 && el.scrollTop > 1);
+  el.classList.toggle('fade-bot', more > 1 && el.scrollTop < more - 1);
+}
+function wireFades(){
+  $main.querySelectorAll(FADE_SEL).forEach(el => {
+    markFade(el);
+    el.addEventListener('scroll', () => markFade(el), { passive:true });
+  });
+  // 글꼴이 늦게 와서 줄 높이가 바뀌는 일이 있어 한 번 더 본다
+  requestAnimationFrame(() => $main.querySelectorAll(FADE_SEL).forEach(el => markFade(el)));
+}
+addEventListener('resize', () => $main.querySelectorAll(FADE_SEL).forEach(el => markFade(el)), { passive:true });
+
 // ── 렌더 ──
 function render(){
   renderSide();
@@ -1487,6 +1506,7 @@ function render(){
               concept:pageConcept, mission:pageMission, question:pageQuestion, formative:pageFormative,
               scores:pageScores, general:pageGeneral }[state.page];
   $main.innerHTML = p ? p() : '';
+  wireFades();
 }
 
 // ── 이벤트 위임 ──
