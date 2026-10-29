@@ -71,12 +71,12 @@ function topbar(title, backAct){
    순서: 제목 → 부제목 → 안내문구 → 학번 → 이름 → 비밀번호 → 입장하기 → (틀렸을 때) 빨간 문구
          → 오픈카톡 / 홈 화면에 추가.
    로그인 화면 문구와 오류 문구는 코드에 바로 적는다(선생님 지시 2026-10-29: 일반 설정에서 바꿀 일이 없다).
-   일반 설정에 남은 것은 탭 제목과 링크뿐이라 그것만 M.getText로 읽는다. */
+   일반 설정에 남은 것(탭 제목, 사이트 이름, 링크)만 M.getText로 읽는다. 부제목이 사이트 이름이다(2026-10-29). */
 function viewLogin(){
   if (state.loginStep === 'setup') return viewLoginSetup();
   return `<div class="login">
     <h1>HO TEACHER LMS</h1>
-    <p class="lead">호성T 수업 : 학습 관리 시스템</p>
+    <p class="lead">${esc(M.getText('siteName'))}</p>
     <p class="guide">호성쌤 수업에 대한 학습 관리 시스템에 오신 것을 환영합니다.</p>
     <input class="field" id="f-sno" inputmode="numeric" value="${esc(state.formSno)}">
     <input class="field" id="f-name" value="${esc(state.formName)}">
@@ -91,7 +91,7 @@ function viewLogin(){
 function viewLoginSetup(){
   return `<div class="login">
     <h1>HO TEACHER LMS</h1>
-    <p class="lead">호성T 수업 : 학습 관리 시스템</p>
+    <p class="lead">${esc(M.getText('siteName'))}</p>
     <p class="guide">LMS에 처음 접속하셨습니다. 사용하실 비밀번호를 생성하시길 바랍니다.</p>
     <div class="fieldlabel">새 비밀번호</div>
     <input class="field" id="f-pw1" type="password">
@@ -123,7 +123,8 @@ function viewRooms(){
         <div class="body"><div class="t">${esc(roomLabel(c))}</div></div>
         <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`
     : `<div class="empty">든 강의실이 없습니다.</div>`;
-  return topbar('강의실 고르기') + body;
+  // 맨 위 제목은 일반 설정의 사이트 이름(선생님 지시 2026-10-29)
+  return topbar(M.getText('siteName')) + body;
 }
 
 // ── 강의실 안 ── 배치 둘(강의별 / 메뉴별)

@@ -192,6 +192,10 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pltable th.pl-sch .dateinput:focus{border-color:var(--accent)}
 .pltable td.pl-manage,.pltable th.pl-manage{min-width:52px}
 .pltable .pl-tools{display:inline-flex;gap:6px}
+/* 메모가 있는 강의는 제목 오른쪽에 레드 메모 표시(선생님 지시 2026-10-29). 올리면 메모 버블이 뜬다 */
+.pltable .lname-in{display:flex;align-items:center;gap:6px}
+.pltable .lname-in .f{flex:1;min-width:0}
+.memo-mark{display:inline-grid;place-items:center;flex:0 0 auto;color:var(--accent);cursor:default}
 /* 강의 메모: 메모 버튼을 누르면 그 줄 아래에 열린다. 표가 가로로 길어도 왼쪽에 붙어 있게 sticky */
 .pltable tr.pl-memo-row td{text-align:left;padding:8px 0 10px}
 .pl-memo{position:sticky;left:0;display:flex;align-items:flex-start;gap:8px;max-width:720px}

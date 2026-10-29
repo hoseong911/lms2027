@@ -478,7 +478,9 @@ function pageProgress(){
     // 메모가 있으면 주제 칸에 마우스를 올릴 때 버블로 뜬다(data-memo, 아래 memo 버블).
     const row = `<tr>
       <td class="pl-num">${li + 1}강</td>
-      <td class="lname" ${l.memo ? `data-memo="${esc(l.memo)}"` : ''}><input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제"></td>
+      <td class="lname" ${l.memo ? `data-memo="${esc(l.memo)}"` : ''}><span class="lname-in">
+        <input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제">
+        ${l.memo ? `<span class="memo-mark" aria-label="메모 있음">${icon('file-text',14)}</span>` : ''}</span></td>
       ${cells}
       <td class="pl-manage"><span class="pl-tools">
         <button class="ib ib-sm" data-act="prog-memo" data-lid="${l.id}" title="메모" aria-label="메모">${icon('file-text',14)}</button>
