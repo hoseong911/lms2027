@@ -877,7 +877,7 @@ function pageStudents(){
   const sel = state.studentDetailNo;
   const left = snos.map(sno => `<div class="row ${sno===sel?'on':''}">
       <div class="grow rowlink" data-act="stu-open" data-no="${sno}"><div class="t"><span class="mono">${esc(sno)}</span> &nbsp;${esc(nameOf(sno))}</div></div></div>`).join('');
-  return `${head}${filterLine}<div class="split"><div class="split-list">${left}</div>
+  return `${head}${filterLine}<div class="split split-stu"><div class="split-list">${left}</div>
     <div class="pane"><div class="pane-head"><h3><span class="mono">${esc(sel)}</span> ${esc(nameOf(sel))}</h3>${stuTools(sel)}</div>
       <div class="two">${studentDetailCols(sel)}</div></div></div>`;
 }
@@ -902,13 +902,11 @@ function studentDetailCols(sno){
   const left = `<div class="dcol">
     <div class="sectionlabel">수강 과목</div>${checks}</div>`;
 
-  const scoreRows = mine.length ? mine.map(c => {
-    const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sc = M.studentGrade(c.id, sno);
-    const bits = [lvl!=null?`Lv.${lvl}`:'레벨 없음', `경험치 ${xp?xp.xp:0}`,
-      sc.has ? `포트폴리오 ${sc.total}/${sc.maxScore}점` : '포트폴리오 기록 없음'];
-    return `<div class="row compact"><div class="grow"><div class="t">${esc(M.roomName(c))}</div>
-      <div class="s">${bits.join(', ')}</div></div></div>`;
-  }).join('') : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
+  // 과목마다 강의실 관리 상세의 학생 카드와 같은 모양(선생님 지시 2026-10-29):
+  // 강의실 이름 줄 아래에 레벨, 경험치, 포인트 칸과 영역별 포트폴리오 성적, 총점.
+  const scoreRows = mine.length ? mine.map(c => `<div class="row compact">
+      <div class="grow"><div class="t">${esc(M.roomName(c))}</div></div></div>${studentCard(c.id, sno)}`).join('')
+    : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
   const right = `<div class="dcol">
     <div class="sectionlabel">과목별 성적</div>
     ${scoreRows}</div>`;
