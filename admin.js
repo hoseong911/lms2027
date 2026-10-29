@@ -916,7 +916,7 @@ function pageStudents(){
   if (!snos.length) return `${head}${filterLine}<div class="empty">학생이 없습니다.</div>`;
   const nameOf = sno => all.find(s => s.studentNo === sno)?.name || '';
   const stuTools = sno => `<div class="tools">
-        <button class="ib" data-act="stu-reset" data-no="${sno}" title="비밀번호 초기화" aria-label="비밀번호 초기화">${icon('rotate-ccw',16)}</button>
+        <button class="ib" data-act="stu-reset" data-no="${sno}" data-name="${esc(nameOf(sno))}" title="비밀번호 초기화" aria-label="비밀번호 초기화">${icon('rotate-ccw',16)}</button>
         <button class="ib ib-danger" data-act="stu-del" data-no="${sno}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button>
       </div>`;
 
@@ -1835,21 +1835,6 @@ document.getElementById('shell').addEventListener('click', e => {
       const key = `${id}_${no}`;
       state.openScore = state.openScore === key ? null : key; render(); break;
     }
-    // 비밀번호 초기화(2026-10-29): 지우면 학생이 다음 로그인 때 새로 만든다.
-    case 'stu-pw-reset': {
-      const nm = el.dataset.name || '';
-      confirmDelete({
-        title: '비밀번호 초기화',
-        bodyHtml: `<p><b>${esc(no)} ${esc(nm)}</b> 학생의 비밀번호를 초기화합니다.<br>학생은 다음 로그인 때 비밀번호를 새로 만듭니다.</p>`,
-        okText: '초기화',
-      }).then(ok => {
-        if (!ok) return;
-        M.resetPassword(state.year, no)
-          .then(() => toast('비밀번호를 초기화했습니다.'))
-          .catch(err => { console.error('resetPassword', err); toast('초기화에 실패했습니다. 콘솔에서 직접 삭제해야 할 수 있습니다.'); });
-      });
-      break;
-    }
     // 강의실 상세에서 건너올 때는 그 강의실의 과목 탭이 열려 있게 한다.
     case 'go-progress':
       state.page = 'progress'; state.progSubject = M.getCourse(id)?.subject ?? null;
@@ -1896,7 +1881,21 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'stu-add-open': openStudentModal(); break;
     case 'stu-open':
       state.studentDetailNo = (!WIDE.matches && state.studentDetailNo === no) ? null : no; render(); break;
-    case 'stu-reset': toast('비밀번호 초기화는 다음 단계에서 만듭니다.'); break;
+    case 'stu-reset':   // 학생 관리 페이지의 초기화 버튼 (강의실 상세의 stu-pw-reset과 같은 길)
+    case 'stu-pw-reset': {
+      const nm = el.dataset.name || '';
+      confirmDelete({
+        title: '비밀번호 초기화',
+        bodyHtml: `<p><b>${esc(no)} ${esc(nm)}</b> 학생의 비밀번호를 초기화합니다.<br>학생은 다음 로그인 때 비밀번호를 새로 만듭니다.</p>`,
+        okText: '초기화',
+      }).then(ok => {
+        if (!ok) return;
+        M.resetPassword(state.year, no)
+          .then(() => toast('비밀번호를 초기화했습니다.'))
+          .catch(err => { console.error('resetPassword', err); toast('초기화에 실패했습니다. 콘솔에서 직접 삭제해야 할 수 있습니다.'); });
+      });
+      break;
+    }
     // 학생 삭제: 학년도 명부와 모든 강의실에서 지운다. 확인 창을 거친다(2026-10-29, 모르고 눌러 학생이 사라졌다).
     case 'stu-del': {
       const name = M.getStudentsByYear(state.year).find(s => s.studentNo === no)?.name || '';
