@@ -35,7 +35,55 @@ const state = {
 
   // 형성평가: 한 문제씩 푼다. { lessonId, idx, result:{given,correct}|null }
   fm: null,
+
+  // 자동 로그인 (선생님 지시 2026-10-30)
+  saved: null,            // 이 기기에 저장된 학생 { sno, name } (없으면 null)
+  formAuto: true,         // 로그인 폼의 자동 로그인 체크 상태(오류로 다시 그려도 남긴다)
 };
+
+/* ── 로그인 기억하기 (선생님 지시 2026-10-30) ──
+   "기존 lms는 로그인이 자동 저장되어 나중에 기존 정보로 로그인할 수 있었다. 그 시스템을 만들어 달라."
+   2026 hoistory/lms/index.js의 틀을 그대로 옮겼다. 두 겹이다.
+
+   세션(sessionStorage): 이 탭에서 로그인한 학생. 새로고침하면 다시 묻지 않고 그대로 들어간다.
+   기기(localStorage): 자동 로그인을 켜 두면 다음에 와서 [저장된 정보로 입장하기] 한 번으로 들어간다.
+     2026과 같이 이때 비밀번호를 다시 묻지 않는다. 학생 본인 기기에 켠 것이기 때문이다.
+     로그아웃은 세션만 지우고 기기에 저장한 것은 남긴다(그래서 로그아웃하면 저장 카드가 보인다).
+     [다른 학생으로 로그인]을 누르면 기기에서 지운다.
+
+   키 이름은 shared/lms-session.js의 규약과 똑같아야 한다. 미션 앱이 이 키들로 학생을 알아내므로
+   한쪽을 고치면 다른 쪽도 고친다. 강의실(lms_cid)은 세션에만 둔다(규약 그대로). */
+const SS = { sid:'lms_sid', sname:'lms_sname', cid:'lms_cid', year:'lms_year' };
+const LS = { sid:'lms_autosave_sid', sname:'lms_autosave_sname', year:'lms_autosave_year' };
+
+// 사생활 보호 모드나 저장 공간이 꽉 찬 기기에서는 읽기만 해도 예외가 난다.
+function stGet(store, key){ try { return store.getItem(key) || ''; } catch (e) { return ''; } }
+function stSet(store, key, val){ try { store.setItem(key, val); } catch (e) {} }
+function stDel(store, key){ try { store.removeItem(key); } catch (e) {} }
+
+// 이 기기에 저장된 학생. 둘 다 있어야 쓴다.
+function readSaved(){
+  const sno = stGet(localStorage, LS.sid).trim();
+  const name = stGet(localStorage, LS.sname).trim();
+  return (sno && name) ? { sno, name } : null;
+}
+function writeSaved(sno, name){
+  stSet(localStorage, LS.sid, sno); stSet(localStorage, LS.sname, name);
+  stSet(localStorage, LS.year, String(YEAR));
+}
+function forgetSaved(){ for (const k of Object.values(LS)) stDel(localStorage, k); }
+
+// 로그인을 통과한 뒤 들어가는 단 하나의 문. 세션에 남기고 강의실 고르기로 보낸다.
+// remember가 true면 기기에도 저장하고, false면 기기에서 지운다(체크를 풀고 로그인한 경우).
+function enterStudent(sno, name, remember){
+  state.sno = sno; state.name = name; state.courseId = null;
+  stSet(sessionStorage, SS.sid, sno); stSet(sessionStorage, SS.sname, name);
+  stSet(sessionStorage, SS.year, String(YEAR)); stDel(sessionStorage, SS.cid);
+  if (remember) writeSaved(sno, name); else if (remember === false) forgetSaved();
+  state.saved = readSaved();
+  state.formSno = ''; state.formName = ''; state.loginErr = ''; state.loginStep = 'check';
+  state.view = 'rooms'; render();
+}
 
 // ── 부트 가드 ──
 // Firestore를 먼저 읽고 화면을 연다. 이게 없으면 메모리가 빈 채로 로그인을 판정해
@@ -53,7 +101,25 @@ async function boot(){
   document.title = M.getText('browserTitle');
   document.documentElement.classList.add('lms-ready');
   $app.hidden = false;
+  restoreLogin();
   render();
+}
+
+/* 들어올 때 로그인을 되살린다. 명단은 loadCore 뒤에야 메모리에 있으므로 여기서 본다.
+   1) 이 탭에 로그인이 남아 있으면(새로고침) 바로 강의실 고르기로 들어간다
+   2) 아니면 기기에 저장된 학생이 있는지만 봐 둔다(로그인 화면이 저장 카드를 그린다) */
+function restoreLogin(){
+  const sno = stGet(sessionStorage, SS.sid).trim();
+  const name = stGet(sessionStorage, SS.sname).trim();
+  if (sno && name && M.getCoursesOfStudent(YEAR, sno).length){
+    state.sno = sno; state.name = name;
+    state.saved = readSaved();
+    state.view = 'rooms';
+    return;
+  }
+  // 명단에서 빠진 학번이 세션에 남아 있으면 지운다(다음 새로고침에서 또 되살리지 않게)
+  if (sno || name) for (const k of Object.values(SS)) stDel(sessionStorage, k);
+  state.saved = readSaved();
 }
 
 // ── 공통 조각 ──
@@ -77,6 +143,7 @@ function topbar(title, backAct){
    일반 설정에 남은 것(탭 제목, 사이트 이름, 링크)만 M.getText로 읽는다. 부제목이 사이트 이름이다(2026-10-29). */
 function viewLogin(){
   if (state.loginStep === 'setup') return viewLoginSetup();
+  if (state.saved) return viewLoginSaved();
   return `<div class="login">
     <h1>HOCLASS</h1>
     <p class="lead">${esc(M.getText('siteName'))}</p>
@@ -84,7 +151,26 @@ function viewLogin(){
     <input class="field" id="f-sno" inputmode="numeric" value="${esc(state.formSno)}">
     <input class="field" id="f-name" value="${esc(state.formName)}">
     <input class="field" id="f-pw" type="password">
+    <label class="autoline"><input type="checkbox" id="f-auto" ${state.formAuto ? 'checked' : ''}>
+      <span>이 기기에서 자동 로그인</span></label>
     <button class="primary" data-act="login" ${state.loginBusy ? 'disabled' : ''}>로그인</button>
+    ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
+    ${loginExtras()}
+  </div>`;
+}
+
+// 이 기기에 저장된 학생이 있을 때(자동 로그인을 켜 두고 간 경우). 비밀번호를 다시 묻지 않는다.
+function viewLoginSaved(){
+  const s = state.saved;
+  return `<div class="login">
+    <h1>HOCLASS</h1>
+    <p class="lead">${esc(M.getText('siteName'))}</p>
+    <div class="savedcard">
+      <span class="ava">${esc(s.name.charAt(0))}</span>
+      <div class="body"><div class="t">${esc(s.name)}</div><div class="s">${esc(s.sno)}</div></div>
+    </div>
+    <button class="primary" data-act="saved-enter">저장된 정보로 입장하기</button>
+    <button class="plainbtn" data-act="saved-other">다른 학생으로 로그인</button>
     ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
     ${loginExtras()}
   </div>`;
@@ -400,6 +486,8 @@ $app.addEventListener('click', e => {
       const name = (document.getElementById('f-name').value || '').trim();
       const pw = (document.getElementById('f-pw').value || '').trim();
       state.formSno = sno; state.formName = name;   // 오류로 다시 그려도 학번, 이름은 남긴다
+      // 체크 상태는 지금 읽어 둔다. 다시 그리면 DOM이 사라지고, 비밀번호 생성 화면에도 이 칸이 없다
+      state.formAuto = document.getElementById('f-auto')?.checked !== false;
       const rooms = M.getCoursesOfStudent(YEAR, sno);
       if (!rooms.length){ state.loginErr = '학번에 해당하는 강의실이 개설되지 않았습니다.'; render(); return; }
       if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = '이름이 학생 명단과 일치하지 않습니다.'; render(); return; }
@@ -415,8 +503,7 @@ $app.addEventListener('click', e => {
           const ok = await M.verifyPassword(YEAR, sno, pw);
           state.loginBusy = false;
           if (!ok){ state.loginErr = '비밀번호가 일치하지 않습니다.'; render(); return; }
-          state.sno = sno; state.name = name; state.formSno = ''; state.formName = '';
-          state.view = 'rooms'; render();
+          enterStudent(sno, name, state.formAuto);
         } catch (e) {
           console.error('login', e);
           state.loginBusy = false; state.loginErr = '연결이 원활하지 않습니다.'; render();
@@ -434,10 +521,9 @@ $app.addEventListener('click', e => {
       (async () => {
         try {
           await M.createPassword(YEAR, state.pending.sno, pw1, state.pending.courseId);
-          state.sno = state.pending.sno; state.name = state.pending.name;
-          state.pending = null; state.loginStep = 'check'; state.loginBusy = false;
-          state.formSno = ''; state.formName = '';
-          state.view = 'rooms'; render();
+          const { sno, name } = state.pending;
+          state.pending = null; state.loginBusy = false;
+          enterStudent(sno, name, state.formAuto);
         } catch (e) {
           console.error('setup-pw', e);
           state.loginBusy = false; state.loginErr = '연결이 원활하지 않습니다.'; render();
@@ -445,15 +531,39 @@ $app.addEventListener('click', e => {
       })();
       break;
     }
+    // 저장된 정보로 입장. 명단이 바뀌어 더는 맞지 않으면 저장한 것을 지우고 폼으로 돌아간다
+    case 'saved-enter': {
+      const { sno, name } = state.saved || {};
+      if (!sno) return;
+      if (!M.getCoursesOfStudent(YEAR, sno).length || !M.matchesRosterName(YEAR, sno, name)){
+        forgetSaved(); state.saved = null; state.formAuto = true;
+        state.loginErr = '저장된 정보로 입장할 수 없습니다. 다시 로그인하시길 바랍니다.';
+        render(); return;
+      }
+      enterStudent(sno, name, true);
+      break;
+    }
+    case 'saved-other':
+      forgetSaved();
+      state.saved = null; state.loginErr = ''; state.formAuto = true;
+      render(); break;
+
     case 'go-kakao': openExternal(M.getText('kakaoUrl')); break;
     case 'go-install': openExternal(M.getText('installUrl')); break;
 
+    // 로그아웃은 이 탭의 세션만 지운다. 기기에 저장한 것은 남기므로 저장 카드가 다시 보인다
     case 'logout':
+      for (const k of Object.values(SS)) stDel(sessionStorage, k);
       Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
-        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fm:null });
+        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fm:null,
+        saved: readSaved() });
       render(); break;
 
-    case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;
+    // 고른 강의실을 세션에 남긴다. 미션 앱이 shared/lms-session.js로 이 값을 읽는다
+    case 'open-room':
+      state.courseId = el.dataset.id;
+      stSet(sessionStorage, SS.cid, state.courseId);
+      state.view = 'home'; render(); break;
     case 'back-rooms': state.view = 'rooms'; render(); break;
     case 'back-home': state.view = 'home'; render(); break;
     case 'back-menu': state.view = 'menu'; render(); break;

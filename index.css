@@ -81,6 +81,25 @@ html:not(.lms-ready) #app{display:none}
 .primary.wide{width:100%;margin-top:12px}
 .login .primary{width:100%;margin-top:4px}
 
+/* 자동 로그인 (선생님 지시 2026-10-30)
+   체크 줄은 버튼 바로 위에, 저장 카드는 안내문 자리에 온다.
+   저장 카드의 머리글자 칸은 강의실 카드의 아이콘 칸(.card .ic)과 같은 40px 네모다(동그라미를 쓰지 않는다). */
+.autoline{display:flex;align-items:center;gap:8px;margin:2px 0 12px;
+  font-size:var(--fs-body);color:var(--sub);cursor:pointer}
+.autoline input{width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer}
+
+.savedcard{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:13px 14px;
+  border:1px solid var(--line);border-radius:var(--r)}
+.savedcard .ava{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--navy);color:#fff;font-size:var(--fs-head);font-weight:700}
+.savedcard .body{flex:1;min-width:0}
+.savedcard .t{font-weight:700;font-size:var(--fs-head)}
+.savedcard .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px}
+/* 저장 카드 아래 둘째 버튼: 테두리 없이 글자만(액션 버튼이 아니다) */
+.plainbtn{width:100%;margin-top:10px;border:0;background:none;color:var(--sub);
+  font-size:var(--fs-body);font-family:inherit;cursor:pointer;min-height:44px}
+.plainbtn:hover{color:var(--accent)}
+
 /* 입장하기 아래: 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28) */
 .login-extra{display:flex;gap:10px;margin-top:18px}
 .extrabtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
