@@ -50,7 +50,7 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li><strong>강의실 관리 상세의 강의 진도 줄</strong>: 공개 단추 옆에 바로가기 둘(<code>lessonJumpBtns</code>).</li>
 </ol>
 <ul>
-<li class="sub">미션 활동(<code>layout-grid</code>): 이 강의에 연결한 앱(<code>mission_apps.lessonId</code>)이 있으면 미션 활동 메뉴에서 그 앱 어드민 탭을 연다. 없으면 이 강의를 미리 고른 채로 앱 추가 팝업을 연다(<code>openMissionModal(null, { lessonId })</code>)</li>
+<li class="sub">미션 활동(<code>layout-grid</code>): 이 강의에 연결한 앱(<code>mission_apps.lessonId</code>)의 어드민 탭을 미션 활동 메뉴에서 연다. 연결한 앱이 없으면 흐리게 눌리지 않는다(처음엔 앱 추가 팝업을 열게 했다가 같은 날 선생님 지시로 바꿈)</li>
 <li class="sub">오늘의 질문(<code>message-square</code>): 이 강의, 이 반의 답변 화면으로 간다. 그 강의에 오늘의 질문 칸이 없으면 흐리게 눌리지 않는다</li>
 <li class="sub">단추가 넷이 되어 제목이 길면 한 줄로 자른다(마우스를 올리면 전체 제목)</li>
 </ul>
@@ -58,7 +58,7 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li><strong>상세와 스크롤바 사이 여백</strong>: <code>.pane</code> 오른쪽 안쪽 여백 16px</li>
 <li><strong>학생 관리 수강 과목</strong>: 체크한 줄의 레드 반투명 바탕을 걷고 체크표시만으로 알린다</li>
 </ol>
-<p>캐시: <code>admin.css?v=20261029h</code>, <code>admin.js?v=20261029e</code>.</p>
+<p>캐시: <code>admin.css?v=20261029h</code>, <code>admin.js?v=20261029f</code>.</p>
 <hr>
 <h2 id="2026-10-29-연한-네이비-바탕-걷어냄-상세는-세로-구분선-스크롤바-연하게">2026-10-29: 연한 네이비 바탕 걷어냄, 상세는 세로 구분선, 스크롤바 연하게</h2>
 <p>선생님 지시: "연한 네이비 배경 진짜 별로다 그냥 없애고 명단이랑 상세내용 사이에 구분선을 둬버려", "스크롤 너무 밤티야. 연하고 잘 안 보이게. 위아래 화살표도 싫어. 규칙에 박아놔".</p>

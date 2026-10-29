@@ -284,13 +284,13 @@ function pageRooms(){
    왼쪽: 강의 진도(강의차수, 제목, 수업일자, 최대 30강, 넘으면 더보기, 요구사항 1, 2).
    오른쪽: 학생 전원. 이름을 누르면 그 학생의 레벨, 경험치, 포트폴리오 성적이 펼쳐진다(요구사항 3). */
 /* 강의 진도 줄 끝의 바로가기 둘(선생님 지시 2026-10-29).
-   미션 활동: 이 강의에 연결한 앱이 있으면 그 앱 어드민 탭을 열고, 없으면 이 강의를 고른 채로 앱 추가 팝업을 연다.
+   미션 활동: 이 강의에 연결한 앱의 어드민 탭을 연다. 연결한 앱이 없으면 눌리지 않는다(선생님 지시 2026-10-29).
    오늘의 질문: 이 강의, 이 반의 답변 화면으로 간다. 이 강의에 오늘의 질문이 없으면 눌리지 않는다. */
 function lessonJumpBtns(c, cl){
   const app = M.getMissionApps().find(a => a.lessonId === cl.lessonId);
   const hasQ = !!M.getLesson(cl.lessonId)?.parts?.question;
-  return `<button class="ib ib-sm" data-act="cl-mission" data-lid="${cl.lessonId}"
-      title="${app ? `미션 활동 열기: ${esc(app.name)}` : '미션 활동 연결'}" aria-label="미션 활동">${icon('layout-grid',14)}</button>
+  return `<button class="ib ib-sm" data-act="cl-mission" data-lid="${cl.lessonId}" ${app?'':'disabled'}
+      title="${app ? `미션 활동 열기: ${esc(app.name)}` : '이 강의에 연결한 미션 활동이 없습니다.'}" aria-label="미션 활동">${icon('layout-grid',14)}</button>
     <button class="ib ib-sm" data-act="cl-question" data-id="${c.id}" data-lid="${cl.lessonId}" ${hasQ?'':'disabled'}
       title="${hasQ ? '오늘의 질문 답변 보기' : '이 강의에는 오늘의 질문이 없습니다.'}" aria-label="오늘의 질문 답변">${icon('message-square',14)}</button>`;
 }
@@ -1142,7 +1142,7 @@ function pageMission(){
 }
 
 /* 미션 앱 등록, 수정 팝업. hoistory 카드 추가 폼의 칸을 그대로 옮겼다. */
-function openMissionModal(app, preset = {}){   // preset.lessonId: 새 앱의 연결할 강의를 미리 골라 둔다
+function openMissionModal(app){
   const back = document.createElement('div');
   back.className = 'modal-back';
   const dis = app ? 'disabled' : '';
@@ -1160,7 +1160,7 @@ function openMissionModal(app, preset = {}){   // preset.lessonId: 새 앱의 �
       <label class="m-label">연결할 강의</label>
       <select class="sel sel-full" id="ma-lesson">
         <option value="">연결 없음</option>
-        ${lessons.map(l => `<option value="${l.id}" ${l.id===(app ? app.lessonId : preset.lessonId)?'selected':''}>${esc(l.title)}</option>`).join('')}
+        ${lessons.map(l => `<option value="${l.id}" ${l.id===app?.lessonId?'selected':''}>${esc(l.title)}</option>`).join('')}
       </select>
       <label class="m-check"><input type="checkbox" id="ma-modal" ${app?.modal?'checked':''}><span>팝업으로 열기</span></label>
       <button class="btn-chip" id="ma-arch-btn">${icon('archive',13)}아카이브 정보</button>
@@ -1510,11 +1510,10 @@ document.getElementById('shell').addEventListener('click', e => {
       toast(`${nos.length}명을 ${M.roomName(c)}에서 제외했습니다.`); render(); break;
     }
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
-    // 강의 진도 줄의 바로가기: 미션 활동(연결한 앱 열기, 없으면 연결 팝업), 오늘의 질문 답변
+    // 강의 진도 줄의 바로가기: 미션 활동(연결한 앱 열기), 오늘의 질문 답변
     case 'cl-mission': {
-      const lid = el.dataset.lid;
-      const app = M.getMissionApps().find(a => a.lessonId === lid);
-      if (!app){ openMissionModal(null, { lessonId:lid }); break; }
+      const app = M.getMissionApps().find(a => a.lessonId === el.dataset.lid);
+      if (!app) break;
       if (!state.missionOpen.includes(app.id)) state.missionOpen.push(app.id);
       Object.assign(state, { page:'mission', missionTab:app.id, roomDetailId:null });
       render(); break;
