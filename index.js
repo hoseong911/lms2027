@@ -32,6 +32,9 @@ const state = {
   loginBusy: false,       // Firestore 확인 중: 중복 제출 막기
   pending: null,          // setup으로 넘어갈 때 쥐고 있는 { sno, name, courseId }
   formSno: '', formName: '',  // 오류로 다시 그릴 때도 학번, 이름은 남겨 둔다(비밀번호만 새로 친다)
+
+  // 형성평가: 제출하면 그 자리에서 채점해 보여 준다(성적 무관). { lessonId, given:[], correct, total }
+  fmResult: null,
 };
 
 // ── 부트 가드 ──
@@ -273,9 +276,85 @@ function partView(l, k){
       + `<button class="primary wide" data-act="submit-demo">제출</button>`;
 
   if (k === 'formative')
-    return head + `<div class="placeholder">형성평가 퀴즈가 여기 열립니다. 성적에는 들어가지 않습니다. (뼈대)</div>`;
+    return head + formativeQuiz(l, p);
 
   return head;
+}
+
+/* ── 형성평가 퀴즈(학생) ── 어드민 문제 관리와 같은 다섯 유형을 그대로 받아 그린다.
+   진위형 OX 라디오 / 초성형, 단답형 한 줄 입력 / 선택형, 합답형 라디오(제시문, 보기 포함).
+   제출하면 그 자리에서 채점해 맞고 틀림과 정답을 보여 준다. 성적에는 안 들어간다(요구사항 70). */
+const FM_LETTERS = ['①','②','③','④','⑤','⑥','⑦','⑧'];
+const fmNorm = v => String(v ?? '').replace(/\s+/g, '').toLowerCase();
+function fmIsCorrect(it, g){
+  if (g == null || g === '') return false;
+  return (it.type === 'choice' || it.type === 'combo') ? +g === +it.a : fmNorm(g) === fmNorm(it.a);
+}
+
+function formativeQuiz(l, p){
+  const items = p.items || [];
+  if (!items.length) return `<div class="placeholder">아직 출제된 문항이 없습니다.</div>`;
+  const done = state.fmResult && state.fmResult.lessonId === l.id ? state.fmResult : null;
+
+  const body = items.map((it, i) => fmItemView(it, i, done)).join('');
+  const foot = done
+    ? `<div class="fm-score"><b>${done.correct} / ${done.total}</b> 문제를 맞혔습니다.</div>
+       <p class="fm-note">형성평가는 성적에 들어가지 않습니다.</p>
+       <button class="primary wide" data-act="fm-retry" data-lid="${l.id}">다시 풀기</button>`
+    : `<p class="fm-note">형성평가는 성적에 들어가지 않습니다.</p>
+       <button class="primary wide" data-act="fm-submit" data-lid="${l.id}">제출</button>`;
+  return `<div class="fmquiz">${body}${foot}</div>`;
+}
+
+function fmItemView(it, i, done){
+  const g = done ? done.given[i] : null;
+  const ok = done ? fmIsCorrect(it, g) : null;
+  const dis = done ? 'disabled' : '';
+  const typeName = M.formativeTypeDef(it.type)?.name || '';
+
+  let field = '';
+  if (it.type === 'ox'){
+    field = `<div class="fm-ox">${['O','X'].map(v =>
+      `<label class="fm-oxb ${done && v===g?'sel':''}"><input type="radio" name="fmq${i}" value="${v}" ${done && v===g?'checked':''} ${dis}>${v}</label>`).join('')}</div>`;
+  } else if (it.type === 'choice' || it.type === 'combo'){
+    const passage = it.passage ? `<div class="fm-passage">${esc(it.passage)}</div>` : '';
+    const options = it.type === 'combo' && it.options ? `<div class="fm-options">${esc(it.options)}</div>` : '';
+    const choices = (it.choices || []).map((c, ci) => {
+      const sel = done && String(ci) === String(g);
+      const isAns = done && ci === it.a;
+      return `<label class="fm-choice ${sel?'sel':''} ${isAns?'ans':''}">
+        <input type="radio" name="fmq${i}" value="${ci}" ${sel?'checked':''} ${dis}>
+        <span class="fm-letter">${FM_LETTERS[ci] || ci + 1}</span><span class="fm-ctext">${esc(c)}</span></label>`;
+    }).join('');
+    field = `${passage}${options}<div class="fm-choices">${choices}</div>`;
+  } else {
+    field = `<input class="fm-input" id="fmq${i}" value="${esc(done ? (g || '') : '')}" ${dis}
+      placeholder="정답 입력" autocomplete="off">`;
+  }
+
+  const mark = done
+    ? `<span class="fm-mark ${ok?'ok':'no'}">${ok ? '정답' : '오답'}</span>` : '';
+  const reveal = done && !ok
+    ? `<div class="fm-reveal">정답: ${esc(it.type === 'choice' || it.type === 'combo'
+        ? ((it.choices || [])[it.a] ?? '') : (it.a ?? ''))}</div>` : '';
+
+  return `<div class="fm-item ${done ? (ok?'correct':'wrong') : ''}">
+    <div class="fm-q"><span class="fm-qnum">${i + 1}</span>
+      <span class="fm-qtext">${esc(it.q || '')}</span>
+      <span class="fm-type">${esc(typeName)}</span>${mark}</div>
+    ${field}${reveal}</div>`;
+}
+
+// 형성평가 답 모으기: 유형마다 입력이 다르다. 선택형, 합답형은 고른 번호(문자열)다.
+function fmCollect(items){
+  return items.map((it, i) => {
+    if (it.type === 'ox' || it.type === 'choice' || it.type === 'combo'){
+      const picked = document.querySelector(`input[name="fmq${i}"]:checked`);
+      return picked ? picked.value : '';
+    }
+    const el = document.getElementById(`fmq${i}`);
+    return el ? el.value.trim() : '';
+  });
 }
 
 // ── 렌더 ──
@@ -346,7 +425,7 @@ $app.addEventListener('click', e => {
 
     case 'logout':
       Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
-        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'' });
+        loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fmResult:null });
       render(); break;
 
     case 'open-room': state.courseId = el.dataset.id; state.view = 'home'; render(); break;
@@ -370,6 +449,18 @@ $app.addEventListener('click', e => {
       break;
 
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
+
+    case 'fm-submit': {
+      const l = M.getLesson(el.dataset.lid);
+      const items = l?.parts?.formative?.items || [];
+      const given = fmCollect(items);
+      if (given.some(a => a === '' || a == null)){ alertBox('모든 문항에 답해 주세요.'); break; }
+      const correct = items.reduce((n, it, i) => n + (fmIsCorrect(it, given[i]) ? 1 : 0), 0);
+      state.fmResult = { lessonId: el.dataset.lid, given, correct, total: items.length };
+      render(); break;
+    }
+    case 'fm-retry': state.fmResult = null; render(); break;
+
     case 'noop': break;
   }
 });
