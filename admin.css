@@ -20,7 +20,7 @@ html:not(.lms-ready) #shell{display:none}
   font-size:var(--fs-body);cursor:pointer;margin-bottom:2px}
 .side .mi:hover{background:var(--hover);color:var(--ink)}
 .side .mi.on{background:none;color:var(--accent);font-weight:700;border-color:var(--accent)}
-.main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto}
+.main{flex:1;min-width:0;padding:28px 40px 80px;max-width:1280px;margin:0 auto 0 0}
 
 /* 로그아웃은 메뉴 맨 아래에 조금 띄워 둔다 */
 .side .mi.side-logout{margin-top:14px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
