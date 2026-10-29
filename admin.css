@@ -77,7 +77,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .split-list .row .t{font-weight:500}
 /* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
 .pane{border:0;border-left:1px solid var(--line);border-radius:0;
-  background:transparent;padding:0 0 20px 20px;
+  background:transparent;padding:0 16px 20px 20px;   /* 오른쪽 16px: 상세 글과 스크롤바 사이 여백 */
   position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
 .pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line)}
 .pane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
@@ -86,7 +86,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pane .dcol{flex:1;min-width:0}
 
 /* 강의 진도 줄: 차수, 제목, 수업일자, 공개토글 */
-.plrow{gap:10px}
+.plrow{gap:6px}
+/* 단추가 넷이라 제목 칸이 좁다. 길면 한 줄로 자르고 마우스를 올려도 줄이 늘지 않게 */
+.plrow .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plnum{flex:0 0 auto;font-size:var(--fs-meta);font-weight:700;color:var(--navy);min-width:34px}
 .dateinput{width:64px;padding:0 8px;text-align:center;font-size:var(--fs-body)}
 .dateinput.ds-past{color:var(--sub)}
@@ -375,8 +377,7 @@ input[type=number]{-moz-appearance:textfield}
   min-height:var(--h-row);padding:0 12px;margin-bottom:0;background:transparent;cursor:pointer;font-size:var(--fs-body)}
 .checkline + .checkline{border-top:0}
 .checkline:hover{background:var(--hover)}
-.checkline:has(input:checked){background:var(--accent-fade)}
-.checkline:has(input:checked):hover{background:var(--accent-fade-hover)}
+/* 체크한 줄에 바탕색을 깔지 않는다. 체크표시만으로 알린다(선생님 지시 2026-10-29) */
 .checkline input{width:17px;height:17px;accent-color:var(--accent)}
 .placeholder{color:var(--sub);font-size:var(--fs-body);border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
 
