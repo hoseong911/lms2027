@@ -40,10 +40,10 @@
 
   /* 반투명 바탕 (선생님 지시 2026-10-29: 섹션 배경색을 다 뺐더니 밋밋하다).
      고른 목록 줄은 레드 반투명 바탕으로 알린다(테두리로 두르지 않는다).
-     상세 패널은 아주 연한 네이비 바탕을 깐다. 아래 글이 비쳐야 하므로 불투명색을 쓰지 않는다. */
+     상세 패널의 연한 네이비 바탕(--navy-fade)은 선생님이 "진짜 별로"라고 해서 같은 날 걷어냈다.
+     상세는 바탕 없이 구분선으로만 나눈다. 연한 네이비 바탕을 다시 만들지 않는다. */
   --accent-fade:rgba(208,15,49,.10);
   --accent-fade-hover:rgba(208,15,49,.16);
-  --navy-fade:rgba(4,30,66,.045);
   --scrim:rgba(4,30,66,.45);   /* 모달 덮개 */
 
   /* ── 강의 안 네 칸과 복습 ──
@@ -74,4 +74,17 @@
   --fs-head:18px;       /* 소제목, 모달 제목, 강조 수치 */
   --fs-body:15px;       /* 본문: 줄, 입력칸, 버튼, 메뉴, 탭 */
   --fs-meta:12px;       /* 보조: 이름표, 단위, 배지 (가장 작음, 9pt) */
+}
+
+/* ── 스크롤바: 가늘고 연하게, 위아래 화살표 없이 (선생님 지시 2026-10-29) ──
+   진한 스크롤바와 화살표 단추를 싫어한다. 모든 화면이 이 파일을 불러 쓰므로 여기 한 곳에 둔다.
+   크롬, 엣지, 사파리는 ::-webkit-scrollbar로 그린다(화살표 단추를 0으로). 파이어폭스만 표준 속성을 쓴다:
+   크롬에서 표준 속성을 같이 주면 ::-webkit-scrollbar가 무시되고 화살표가 되살아나기 때문이다. */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-thumb{background:#E4E8ED;border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:#D3D9E0}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:#E4E8ED transparent}
 }

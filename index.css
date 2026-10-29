@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261029d");
+@import url("shared/theme.css?v=20261029e");
 /* 2027 LMS 학생 화면: 제로베이스 뼈대 (2026-10-26, 색 2026-10-27, 큰 틀 2026-10-27)
    색은 shared/theme.css 한 곳에서. 기조는 플랫 + 미니멀(그림자, 그라데이션, 알약 없음).
 
@@ -90,7 +90,7 @@ html:not(.lms-ready) #app{display:none}
 
 /* ── 성적 ── */
 /* 상세 패널 성격이라 양옆 테두리 없이 아주 연한 네이비 바탕(선생님 지시 2026-10-29) */
-.score{background:var(--navy-fade);border:0;border-top:1px solid var(--line);
+.score{background:transparent;border:0;border-top:1px solid var(--line);
   border-bottom:1px solid var(--line);border-radius:0;padding:14px 16px}
 .score .h{font-weight:700;font-size:var(--fs-head);margin-bottom:10px}
 .score .row{display:flex;justify-content:space-between;font-size:var(--fs-body);margin:8px 0}
@@ -107,7 +107,7 @@ html:not(.lms-ready) #app{display:none}
 .lessontab:hover{color:var(--ink)}
 .lessontab.on{color:var(--accent);-webkit-text-stroke:.5px var(--accent);border-bottom-color:var(--accent)}
 
-.partview{background:var(--navy-fade);border:0;border-top:1px solid var(--line);
+.partview{background:transparent;border:0;border-top:1px solid var(--line);
   border-bottom:1px solid var(--line);border-radius:0;padding:18px;min-height:240px}
 @media (min-width:700px){ .partview{padding:22px} }
 .partview .pt{font-size:var(--fs-meta);color:var(--sub);display:flex;align-items:center;gap:6px}

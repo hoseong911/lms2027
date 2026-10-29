@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261029d");
+@import url("shared/theme.css?v=20261029e");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -66,7 +66,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
    양옆 테두리를 두지 않고 아주 연한 네이비 바탕을 깐다(선생님 지시 2026-10-29).
    고른 줄이 레드 반투명 바탕으로 이미 표시되므로 패널을 강조색으로 두르지 않는다 */
 .detail{border:0;border-bottom:1px solid var(--line);border-radius:0;
-  background:var(--navy-fade);margin:0 0 10px;padding:4px 14px 14px}
+  background:transparent;margin:0 0 10px;padding:4px 14px 14px}
 .detail.two{display:flex;gap:22px;align-items:flex-start}
 .detail.two .dcol{flex:1;min-width:0}
 .detail .sectionlabel:first-child{margin-top:12px}
@@ -75,8 +75,9 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
    상세는 목록을 내려도 따라 내려온다. 좁은 화면에서는 admin.js가 이 틀을 쓰지 않는다 */
 .split{display:grid;grid-template-columns:var(--w-list) minmax(0,1fr);gap:20px;align-items:start}
 .split-list .row .t{font-weight:500}
-.pane{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
-  background:var(--navy-fade);padding:14px 20px 20px;
+/* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
+.pane{border:0;border-left:1px solid var(--line);border-radius:0;
+  background:transparent;padding:0 0 20px 20px;
   position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
 .pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line)}
 .pane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
@@ -94,7 +95,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 
 /* 학생 카드 펼침: 레벨, 경험치, 포인트, 포트폴리오 */
 .score-detail{border:0;border-bottom:1px solid var(--line);border-radius:0;
-  background:var(--navy-fade);margin:-6px 0 6px;padding:10px 14px}
+  background:transparent;margin:-6px 0 6px;padding:10px 14px}
 .sc-stats{display:flex;gap:8px;margin-bottom:10px}
 .sc-stat{flex:1;border:1px solid var(--line);border-radius:var(--r);background:transparent;padding:7px 4px;text-align:center}
 .sc-k{font-size:var(--fs-meta);color:var(--sub);font-weight:700}
@@ -141,7 +142,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 성적 입력 (hoistory 성적 Check 틀): 고르개 줄, 통계 칩, 체크 표 */
 /* 고르개 묶음 바도 상세 패널과 같이 양옆 테두리 없이 연한 네이비 바탕(선생님 지시 2026-10-29) */
 .gradebar{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
-  background:var(--navy-fade);padding:12px 14px;margin-bottom:14px}
+  background:transparent;padding:12px 14px;margin-bottom:14px}
 .gradebar-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .gradebar-line + .gradebar-line{margin-top:10px}
 .sel-sm{padding:4px 6px;font-size:var(--fs-meta)}
@@ -323,7 +324,7 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .tools{display:flex;gap:6px;flex:0 0 auto}
 
 /* 인라인 폼 줄 */
-.formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--navy-fade);
+.formrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:transparent;
   border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
   padding:12px;margin-bottom:14px}
 .f{border:1px solid var(--line);border-radius:var(--r);padding:0 10px;font-size:var(--fs-body);background:transparent;
