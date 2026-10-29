@@ -36,8 +36,7 @@ const state = {
   conceptLessonId: null,           // 콘텐츠에서 펼친 강의
   questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers' | 'pick'
   questionSubject: null,           // 오늘의 질문 과목 탭(서브 메뉴 셋 공통)
-  questionOpenId: null,            // 질문 관리에서 설명문을 펼친 강의
-  questionEditId: null,            // 질문 관리에서 편집 중인 강의
+  questionSel: null,               // 질문 관리에서 고른 강의(오른쪽 편집 칸)
   questionLessonId: null,          // 답변, 채점에서 고른 강의(lessons id)
   questionRoom: 'all',             // 답변, 채점에서 고른 반: 'all' 또는 강의실 id
   questionGradeTab: 'grade',       // 답변, 채점의 탭 'grade' | 'pass' | 'fail' (hoistory 채점 모달)
@@ -1257,38 +1256,47 @@ function pageQuestion(){
   return head + subTabs + questionAnswers(rooms, placed, lessons);
 }
 
-// 질문 관리: 강의별 카드
+/* 질문 관리: 두 단(선생님 지시 2026-10-29). 왼쪽은 강의 줄(차수, 제목, 켜고 끄는 눈 단추),
+   오른쪽은 고른 강의의 질문과 설명문을 고치는 칸. 미션 활동과 같은 .split 틀이고 좁으면 고른 줄 아래로 펼친다.
+   편집 단추를 따로 누르지 않고 오른쪽 칸에서 바로 고쳐 저장한다. */
 function questionManage(lessons){
   if (!lessons.length) return `<div class="empty">깔린 강의가 없습니다.</div>`;
-  const cards = lessons.map((l, i) => {
-    const q = l.parts?.question, on = !!q;
-    const editing = on && state.questionEditId === l.id;
-    const open = on && state.questionOpenId === l.id;
+  if (!lessons.some(l => l.id === state.questionSel)) state.questionSel = WIDE.matches ? lessons[0].id : null;
+
+  const row = (l, i) => {
+    const on = !!l.parts?.question;
     // 켜고 끄기는 강의실 관리의 공개 단추와 같은 눈 모양(선생님 지시 2026-10-29). 켜져 있으면 레드.
-    const sw = `<button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="q-enable" data-id="${l.id}"
-      title="${on?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="오늘의 질문 공개 전환">${icon('eye',14)}</button>`;
-    const tools = `<div class="tools">
-      ${on && !editing ? `<button class="ib ib-sm" data-act="q-edit-open" data-id="${l.id}" title="편집" aria-label="편집">${icon('pencil',14)}</button>` : ''}
-      ${sw}</div>`;
-    if (editing) return `<div class="qcard on">
-      <div class="qcard-top"><div class="grow"><div class="t">${i + 1}강 ${esc(l.title)}</div></div>
-        <div class="tools">
-          <button class="ib ib-sm ib-primary" data-act="q-edit-save" data-id="${l.id}" title="저장" aria-label="저장">${icon('check',14)}</button>
-          <button class="ib ib-sm" data-act="q-edit-cancel" title="취소" aria-label="취소">${icon('x',14)}</button>
-        </div></div>
-      <textarea class="f" id="q-ed-prompt" rows="2" aria-label="질문">${esc(q.prompt || '')}</textarea>
-      <textarea class="f" id="q-ed-guide" rows="4" aria-label="설명문">${esc(q.guide || '')}</textarea>
+    return `<div class="row compact ${l.id===state.questionSel?'on':''}">
+      <div class="grow rowlink" data-act="q-sel" data-id="${l.id}"><div class="t">${i + 1}강 ${esc(l.title)}</div></div>
+      <div class="tools"><button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="q-enable" data-id="${l.id}"
+        title="${on?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="오늘의 질문 공개 전환">${icon('eye',14)}</button></div></div>`;
+  };
+  const i = lessons.findIndex(l => l.id === state.questionSel);
+  const sel = lessons[i];
+
+  if (!WIDE.matches)
+    return lessons.map((l, n) => l.id === state.questionSel
+      ? row(l, n) + `<div class="detail">${questionTools(sel)}${questionForm(sel)}</div>` : row(l, n)).join('');
+  return `<div class="split split-question">
+      <div class="split-list">${lessons.map(row).join('')}</div>
+      <div class="pane"><div class="pane-head"><h3>${i + 1}강 ${esc(sel.title)}</h3>${questionTools(sel)}</div>
+        <div class="dscroll">${questionForm(sel)}</div></div></div>`;
+}
+function questionTools(l){
+  if (!l.parts?.question) return '';
+  return `<div class="tools"><button class="ib ib-primary" data-act="q-save" data-id="${l.id}" title="저장" aria-label="저장">${icon('check',16)}</button></div>`;
+}
+// 질문과 설명문 칸. 글 칸에는 테두리를 꼭 둔다(선생님 지시 2026-10-29, CSS .qform).
+function questionForm(l){
+  const q = l.parts?.question;
+  if (!q) return `<div class="empty">오늘의 질문이 꺼져 있습니다.</div>`;
+  // 미션 활동 세부 칸과 같은 모양: 이름표 + 글 칸 한 줄씩
+  return `<div class="qform">
+      <div class="row row-top"><div class="t gen-label">질문</div>
+        <textarea class="f grow" id="q-ed-prompt" rows="3" aria-label="질문">${esc(q.prompt || '')}</textarea></div>
+      <div class="row row-top"><div class="t gen-label">설명문</div>
+        <textarea class="f grow" id="q-ed-guide" rows="10" aria-label="설명문">${esc(q.guide || '')}</textarea></div>
     </div>`;
-    return `<div class="qcard ${on?'':'off'} ${open?'open':''}">
-      <div class="qcard-top">
-        <div class="grow ${on?'rowlink':''}" ${on ? `data-act="q-open" data-id="${l.id}"` : ''}>
-          <div class="t">${i + 1}강 ${esc(l.title)}</div>
-          ${on && q.prompt ? `<div class="q">${esc(q.prompt)}</div>` : ''}
-        </div>${tools}</div>
-      ${open && q.guide ? `<div class="qcard-guide">${esc(q.guide)}</div>` : ''}
-    </div>`;
-  }).join('');
-  return `<div class="qcards">${cards}</div>`;
 }
 
 /* 답변과 PICK의 고르개: 강의 드롭다운(오늘의 질문이 켜진 강의만) + 전체, 반 버튼.
@@ -1586,7 +1594,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'cl-question': {
       const c = M.getCourse(id); if (!c) break;
       Object.assign(state, { page:'question', questionTab:'answers', questionSubject:c.subject,
-        questionLessonId:el.dataset.lid, questionRoom:c.id, questionOpenId:null, questionEditId:null, roomDetailId:null });
+        questionLessonId:el.dataset.lid, questionRoom:c.id, roomDetailId:null });
       render(); break;
     }
     case 'stu-score': {
@@ -1703,20 +1711,18 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'question-tab': state.questionTab = v; render(); break;
     case 'q-subject':
       state.questionSubject = v; state.questionLessonId = null; state.questionRoom = 'all';
-      state.questionOpenId = null; state.questionEditId = null; render(); break;
+      state.questionSel = null; render(); break;
     case 'q-room': state.questionRoom = v; render(); break;
     case 'q-gtab': state.questionGradeTab = v; render(); break;
-    case 'q-open': state.questionOpenId = state.questionOpenId === id ? null : id; render(); break;
+    // 질문 관리에서 강의 고르기: 좁은 화면에서는 같은 줄을 다시 누르면 접는다
+    case 'q-sel': state.questionSel = (!WIDE.matches && state.questionSel === id) ? null : id; render(); break;
     case 'q-enable': {   // 오늘의 질문 켜고 끄기(끄면 그 강의에서 그 칸이 빠진다)
       const on = !M.getLesson(id)?.parts?.question;
       M.setQuestionEnabled(id, on);
-      if (!on && state.questionEditId === id) state.questionEditId = null;
       render(); break;
     }
-    case 'q-edit-open': state.questionEditId = id; render(); break;
-    case 'q-edit-cancel': state.questionEditId = null; render(); break;
-    case 'q-edit-save':
-      run(() => { M.setQuestion(id, { prompt:val('q-ed-prompt'), guide:val('q-ed-guide') }); state.questionEditId = null; }, '저장했습니다.');
+    case 'q-save':
+      run(() => M.setQuestion(id, { prompt:val('q-ed-prompt'), guide:val('q-ed-guide') }), '저장했습니다.');
       break;
     case 'q-ai-run': runQuestionAI(false); break;
     case 'q-ai-regrade': runQuestionAI(true); break;
