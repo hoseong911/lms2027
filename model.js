@@ -137,16 +137,12 @@ export const ADMIN_SUBMENUS = {
   scores:   [ { v:'input',   label:'입력' }, { v:'setting', label:'설정' }, { v:'view',  label:'조회' } ],
 };
 
-/* ── 화면 문구 (선생님 지시 2026-10-28) ──────────────────────────────────
-   "모든 건 하드코딩이 우선이 아니라 관리자가 모든 문구를 직접 심고 바꿀 수 있게."
-   화면에 보이는 글자(제목, 안내문, 버튼, 오류 메시지, 외부 링크 등)는 코드에 직접 적지 않고
-   여기 TEXT_FIELDS에 "키 + 기본값"으로만 등록한다. 화면은 항상 getText(key)로 읽는다.
-   어드민의 "일반 설정"은 이 표를 그대로 돌며 입력 칸을 그리므로, 새 문구를 추가할 때
-   이 표에 한 줄만 더하면 어드민 쪽은 따로 안 고쳐도 된다.
-   관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다.
-
-   기본값은 선생님이 일반 설정에서 직접 입력한 문구를 그대로 옮긴 것이다(2026-10-28).
-   경어(~습니다체)로 쓴다. "~다체로" 했던 지시는 같은 날 바로 정정됐다(CLAUDE.md 참고). */
+/* ── 일반 설정에서 바꾸는 글 (2026-10-28, 2026-10-29 줄임) ──────────────────
+   처음(2026-10-28)엔 화면 문구를 전부 여기서 바꾸게 했는데, 2026-10-29에 선생님이
+   "오류문구는 그냥 하드코딩 해도 될거 같고, 다른 문구들도 하드코딩 해"라고 해서
+   **일반 묶음(탭 제목, 사이트 이름, 어드민 이름, 링크 둘)만** 남겼다. 메뉴 이름과 순서는 위 menuName, getMenuOrder.
+   어드민의 "일반 설정"은 이 표를 돌며 입력 칸을 그린다. 화면은 getText(key)로 읽는다.
+   관리자가 고친 값은 settings/general 문서(texts 맵)에 저장된다. 안 고치면 기본값을 쓴다. */
 export const TEXT_FIELDS = [
   { group:'일반', items:[
     { key:'browserTitle', label:'브라우저 탭 제목',   def:'HO TEACHER LMS' },
@@ -155,25 +151,8 @@ export const TEXT_FIELDS = [
     { key:'kakaoUrl',     label:'오픈카톡 링크',       def:'' },
     { key:'installUrl',   label:'홈 화면에 추가 안내 링크', def:'' },
   ]},
-  { group:'학생 로그인 화면', items:[
-    { key:'loginTitle',     label:'제목',                     def:'HO TEACHER LMS' },
-    { key:'loginSubtitle',  label:'부제목',                   def:'호성T 수업 : 학습 관리 시스템' },
-    { key:'loginGuide',     label:'안내문구',                 def:'호성쌤 수업에 대한 학습 관리 시스템에 오신 것을 환영합니다.' },
-    { key:'loginBtn',       label:'로그인 버튼 글자',         def:'로그인' },
-    { key:'kakaoCaption',   label:'오픈카톡 버튼 문구',       def:'호성T와 연락하기' },
-    { key:'installCaption', label:'홈 화면에 추가 버튼 문구', def:'홈 화면에 추가' },
-    { key:'setupGuide',     label:'첫 접속 안내문구',        def:'LMS에 처음 접속하셨습니다. 사용하실 비밀번호를 생성하시길 바랍니다.' },
-    { key:'setupBtn',       label:'첫 접속 버튼 글자',       def:'비밀번호 생성' },
-  ]},
-  { group:'오류와 안내 문구', items:[
-    { key:'errNoRoom',       label:'그 학번으로 든 강의실이 없을 때', def:'학번에 해당하는 강의실이 개설되지 않았습니다.' },
-    { key:'errNameMismatch', label:'이름이 명단과 다를 때',           def:'이름이 학생 명단과 일치하지 않습니다.' },
-    { key:'errPwEmpty',      label:'비밀번호를 안 쳤을 때',           def:'비밀번호를 입력하시길 바랍니다.' },
-    { key:'errPwWrong',      label:'비밀번호가 틀렸을 때',            def:'비밀번호가 일치하지 않습니다.' },
-    { key:'errPwShort',      label:'새 비밀번호가 너무 짧을 때',      def:'비밀번호는 4자 이상이어야 합니다.' },
-    { key:'errPwMismatch',   label:'비밀번호 확인이 다를 때',         def:'비밀번호가 일치하지 않습니다.' },
-    { key:'errNetwork',      label:'저장과 연결에 문제가 있을 때',     def:'연결이 원활하지 않습니다.' },
-  ]},
+  // 학생 로그인 화면 문구와 오류 문구 묶음은 뺐다(선생님 지시 2026-10-29: 하드코딩해도 된다).
+  // 그 글은 index.js에 바로 적혀 있다.
 ];
 let siteTexts = {};   // 관리자가 고친 값만. loadCore가 settings/general에서 채운다.
 export function getText(key){

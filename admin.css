@@ -34,6 +34,12 @@ html:not(.lms-ready) #shell{display:none}
 
 /* 메뉴 사이 구분선. 자리는 일반 설정의 메뉴 순서에서 정한다(선생님 지시 2026-10-29) */
 .side .side-sep{height:0;border-top:1px solid var(--line);margin:8px 6px}
+/* 일반 설정은 묶음마다 한 단씩 나란히 선다(선생님 지시 2026-10-29: 한 줄로 길게 두니 휑하다).
+   왼쪽 일반, 오른쪽 어드민 메뉴. 좁으면 한 단으로 쌓인다 */
+.gen-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 48px;align-items:start}
+.gen-cols .sectionlabel{margin-top:4px}
+.gen-label{flex:0 0 150px}
+@media (max-width:1000px){ .gen-cols{grid-template-columns:minmax(0,1fr)} .gen-col + .gen-col{margin-top:18px} }
 /* 일반 설정의 어드민 메뉴 줄: 아이콘, 이름 칸, 위아래 단추. 구분선 줄은 선 하나로 보여 준다 */
 .menu-ico{display:inline-grid;place-items:center;color:var(--sub)}
 .menu-sep-line{border-top:1px solid var(--line-strong);margin:0 2px}

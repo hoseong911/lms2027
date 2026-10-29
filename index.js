@@ -11,7 +11,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261029c';
+import * as M from './model.js?v=20261029d';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
@@ -70,18 +70,18 @@ function topbar(title, backAct){
 /* ── 로그인 (선생님 지시 2026-10-28) ──
    순서: 제목 → 부제목 → 안내문구 → 학번 → 이름 → 비밀번호 → 입장하기 → (틀렸을 때) 빨간 문구
          → 오픈카톡 / 홈 화면에 추가.
-   화면 문구는 전부 M.getText(key)로 읽는다(하드코딩 금지: CLAUDE.md). */
+   로그인 화면 문구와 오류 문구는 코드에 바로 적는다(선생님 지시 2026-10-29: 일반 설정에서 바꿀 일이 없다).
+   일반 설정에 남은 것은 탭 제목과 링크뿐이라 그것만 M.getText로 읽는다. */
 function viewLogin(){
   if (state.loginStep === 'setup') return viewLoginSetup();
-  const guide = M.getText('loginGuide');
   return `<div class="login">
-    <h1>${esc(M.getText('loginTitle'))}</h1>
-    <p class="lead">${esc(M.getText('loginSubtitle'))}</p>
-    ${guide ? `<p class="guide">${esc(guide)}</p>` : ''}
+    <h1>HO TEACHER LMS</h1>
+    <p class="lead">호성T 수업 : 학습 관리 시스템</p>
+    <p class="guide">호성쌤 수업에 대한 학습 관리 시스템에 오신 것을 환영합니다.</p>
     <input class="field" id="f-sno" inputmode="numeric" value="${esc(state.formSno)}">
     <input class="field" id="f-name" value="${esc(state.formName)}">
     <input class="field" id="f-pw" type="password">
-    <button class="primary" data-act="login" ${state.loginBusy ? 'disabled' : ''}>${esc(M.getText('loginBtn'))}</button>
+    <button class="primary" data-act="login" ${state.loginBusy ? 'disabled' : ''}>로그인</button>
     ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
     ${loginExtras()}
   </div>`;
@@ -90,14 +90,14 @@ function viewLogin(){
 // 처음 접속(비밀번호 문서가 없음): 학번, 이름은 이미 맞혀 둔 채 비밀번호만 새로 만든다.
 function viewLoginSetup(){
   return `<div class="login">
-    <h1>${esc(M.getText('loginTitle'))}</h1>
-    <p class="lead">${esc(M.getText('loginSubtitle'))}</p>
-    <p class="guide">${esc(M.getText('setupGuide'))}</p>
+    <h1>HO TEACHER LMS</h1>
+    <p class="lead">호성T 수업 : 학습 관리 시스템</p>
+    <p class="guide">LMS에 처음 접속하셨습니다. 사용하실 비밀번호를 생성하시길 바랍니다.</p>
     <div class="fieldlabel">새 비밀번호</div>
     <input class="field" id="f-pw1" type="password">
     <div class="fieldlabel">비밀번호 확인</div>
     <input class="field" id="f-pw2" type="password">
-    <button class="primary" data-act="setup-pw" ${state.loginBusy ? 'disabled' : ''}>${esc(M.getText('setupBtn'))}</button>
+    <button class="primary" data-act="setup-pw" ${state.loginBusy ? 'disabled' : ''}>비밀번호 생성</button>
     ${state.loginErr ? `<p class="err">${esc(state.loginErr)}</p>` : ''}
   </div>`;
 }
@@ -105,8 +105,8 @@ function viewLoginSetup(){
 // 입장하기 아래: 오픈카톡 / 홈 화면에 추가 (선생님 지시 2026-10-28). 링크는 일반 설정에서.
 function loginExtras(){
   return `<div class="login-extra">
-    <button class="extrabtn" data-act="go-kakao">${icon('message-circle',20)}<span>${esc(M.getText('kakaoCaption'))}</span></button>
-    <button class="extrabtn" data-act="go-install">${icon('home',20)}<span>${esc(M.getText('installCaption'))}</span></button>
+    <button class="extrabtn" data-act="go-kakao">${icon('message-circle',20)}<span>호성T와 연락하기</span></button>
+    <button class="extrabtn" data-act="go-install">${icon('home',20)}<span>홈 화면에 추가</span></button>
   </div>`;
 }
 function openExternal(url){
@@ -296,8 +296,8 @@ $app.addEventListener('click', e => {
       const pw = (document.getElementById('f-pw').value || '').trim();
       state.formSno = sno; state.formName = name;   // 오류로 다시 그려도 학번, 이름은 남긴다
       const rooms = M.getCoursesOfStudent(YEAR, sno);
-      if (!rooms.length){ state.loginErr = M.getText('errNoRoom'); render(); return; }
-      if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = M.getText('errNameMismatch'); render(); return; }
+      if (!rooms.length){ state.loginErr = '학번에 해당하는 강의실이 개설되지 않았습니다.'; render(); return; }
+      if (!M.matchesRosterName(YEAR, sno, name)){ state.loginErr = '이름이 학생 명단과 일치하지 않습니다.'; render(); return; }
       state.loginBusy = true; state.loginErr = ''; render();
       (async () => {
         try {
@@ -306,15 +306,15 @@ $app.addEventListener('click', e => {
             state.loginBusy = false; state.pending = { sno, name, courseId: rooms[0].id };
             state.loginStep = 'setup'; render(); return;
           }
-          if (!pw){ state.loginBusy = false; state.loginErr = M.getText('errPwEmpty'); render(); return; }
+          if (!pw){ state.loginBusy = false; state.loginErr = '비밀번호를 입력하시길 바랍니다.'; render(); return; }
           const ok = await M.verifyPassword(YEAR, sno, pw);
           state.loginBusy = false;
-          if (!ok){ state.loginErr = M.getText('errPwWrong'); render(); return; }
+          if (!ok){ state.loginErr = '비밀번호가 일치하지 않습니다.'; render(); return; }
           state.sno = sno; state.name = name; state.formSno = ''; state.formName = '';
           state.view = 'rooms'; render();
         } catch (e) {
           console.error('login', e);
-          state.loginBusy = false; state.loginErr = M.getText('errNetwork'); render();
+          state.loginBusy = false; state.loginErr = '연결이 원활하지 않습니다.'; render();
         }
       })();
       break;
@@ -323,8 +323,8 @@ $app.addEventListener('click', e => {
       if (state.loginBusy) return;
       const pw1 = (document.getElementById('f-pw1').value || '').trim();
       const pw2 = (document.getElementById('f-pw2').value || '').trim();
-      if (pw1.length < 4){ state.loginErr = M.getText('errPwShort'); render(); return; }
-      if (pw1 !== pw2){ state.loginErr = M.getText('errPwMismatch'); render(); return; }
+      if (pw1.length < 4){ state.loginErr = '비밀번호는 4자 이상이어야 합니다.'; render(); return; }
+      if (pw1 !== pw2){ state.loginErr = '비밀번호가 일치하지 않습니다.'; render(); return; }
       state.loginBusy = true; state.loginErr = ''; render();
       (async () => {
         try {
@@ -335,7 +335,7 @@ $app.addEventListener('click', e => {
           state.view = 'rooms'; render();
         } catch (e) {
           console.error('setup-pw', e);
-          state.loginBusy = false; state.loginErr = M.getText('errNetwork'); render();
+          state.loginBusy = false; state.loginErr = '연결이 원활하지 않습니다.'; render();
         }
       })();
       break;

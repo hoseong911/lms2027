@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029c';
+import * as M from './model.js?v=20261029d';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1483,12 +1483,12 @@ function pageFormative(){
 function pageGeneral(){
   const draft = state.genDraft || {};
   const textVal = key => draft[key] ?? M.getText(key);
-  const groups = M.TEXT_FIELDS.map(g => `
+  const groups = M.TEXT_FIELDS.map(g => `<div class="gen-col">
     <div class="sectionlabel">${esc(g.group)}</div>
     ${g.items.map(f => `<div class="row">
-      <div class="grow"><div class="t">${esc(f.label)}</div></div>
-      <input class="f w-lg" data-text-key="${f.key}" value="${esc(textVal(f.key))}">
-    </div>`).join('')}`).join('');
+      <div class="t gen-label">${esc(f.label)}</div>
+      <input class="f grow" data-text-key="${f.key}" value="${esc(textVal(f.key))}" aria-label="${esc(f.label)}">
+    </div>`).join('')}</div>`).join('');
 
   // 어드민 메뉴: 이름을 고치고 위아래로 옮긴다. 구분선도 한 줄로 서서 같이 옮긴다(선생님 지시 2026-10-29).
   // 옮긴 순서와 고친 이름은 저장 버튼을 눌러야 왼쪽 메뉴에 들어간다.
@@ -1509,8 +1509,8 @@ function pageGeneral(){
 
   return `<div class="pagehead"><h2>${esc(M.menuName('general'))}</h2>
       <button class="btn-add" data-act="general-save" title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button></div>
-    ${groups}
-    <div class="sectionlabel">어드민 메뉴</div>${menuRows}`;
+    <div class="gen-cols">${groups}
+      <div class="gen-col"><div class="sectionlabel">어드민 메뉴</div>${menuRows}</div></div>`;
 }
 // 다시 그리기 전에 일반 설정 칸에 적던 글을 붙잡아 둔다(메뉴를 옮기면 화면을 다시 그리므로).
 function keepGeneralDraft(){
