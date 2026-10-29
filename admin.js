@@ -884,10 +884,10 @@ function studentDetailCols(sno){
     <span>${esc(M.roomName(c))}</span></label>`).join('')
     : `<div class="empty">${grade}${String(classNo).padStart(2,'0')} 반으로 만든 강의실이 없습니다.</div>`;
 
+  // 비밀번호 초기화는 줄(좁은 화면)과 상세 머리줄(넓은 화면)의 아이콘 단추 하나로 끝낸다.
+  // 여기 또 두면 같은 단추가 둘이라 낭비다(선생님 지시 2026-10-29).
   const left = `<div class="dcol">
-    <div class="sectionlabel">수강 과목</div>${checks}
-    <div class="sectionlabel">비밀번호</div>
-    <button class="btn-link" data-act="stu-reset" data-no="${sno}">비밀번호 초기화</button></div>`;
+    <div class="sectionlabel">수강 과목</div>${checks}</div>`;
 
   const scoreRows = mine.length ? mine.map(c => {
     const xp = M.getXp(c.id, sno), lvl = xp ? M.levelFromXp(xp.xp) : null, sc = M.studentGrade(c.id, sno);

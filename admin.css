@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261029b");
+@import url("shared/theme.css?v=20261029c");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -62,26 +62,27 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .row.compact{padding-block:6px}
 .row.compact .t{font-weight:500}
 
-/* 펼쳐지는 상세 패널: 줄 바로 아래, 두 칸 */
-.detail{border:2px solid var(--accent);border-top:0;border-radius:0 0 var(--r) var(--r);
-  background:transparent;margin:0 0 10px;padding:4px 14px 14px}
+/* 펼쳐지는 상세 패널: 줄 바로 아래, 두 칸.
+   양옆 테두리를 두지 않고 아주 연한 네이비 바탕을 깐다(선생님 지시 2026-10-29).
+   고른 줄이 레드 반투명 바탕으로 이미 표시되므로 패널을 강조색으로 두르지 않는다 */
+.detail{border:0;border-bottom:1px solid var(--line);border-radius:0;
+  background:var(--navy-fade);margin:0 0 10px;padding:4px 14px 14px}
 .detail.two{display:flex;gap:22px;align-items:flex-start}
 .detail.two .dcol{flex:1;min-width:0}
 .detail .sectionlabel:first-child{margin-top:12px}
-.detail .row{background:var(--bg)}
 
 /* 넓은 화면의 두 칸(강의실 관리, 학생 관리): 왼쪽 목록 --w-list, 오른쪽 상세(선생님 지시 2026-10-29).
    상세는 목록을 내려도 따라 내려온다. 좁은 화면에서는 admin.js가 이 틀을 쓰지 않는다 */
 .split{display:grid;grid-template-columns:var(--w-list) minmax(0,1fr);gap:20px;align-items:start}
 .split-list .row .t{font-weight:500}
-.pane{border:1px solid var(--line);border-radius:var(--r);background:transparent;padding:14px 20px 20px;
+.pane{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
+  background:var(--navy-fade);padding:14px 20px 20px;
   position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}
 .pane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);padding-bottom:10px;border-bottom:1px solid var(--line)}
 .pane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
 .pane > .row{margin-bottom:10px}
 .pane .two{display:flex;gap:24px;align-items:flex-start}
 .pane .dcol{flex:1;min-width:0}
-.pane .row{background:var(--bg)}
 
 /* 강의 진도 줄: 차수, 제목, 수업일자, 공개토글 */
 .plrow{gap:10px}
@@ -92,8 +93,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .morebtn{display:inline-block;margin:8px 2px 2px}
 
 /* 학생 카드 펼침: 레벨, 경험치, 포인트, 포트폴리오 */
-.score-detail{border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r) var(--r);
-  background:var(--bg);margin:-6px 0 6px;padding:10px 14px}
+.score-detail{border:0;border-bottom:1px solid var(--line);border-radius:0;
+  background:var(--navy-fade);margin:-6px 0 6px;padding:10px 14px}
 .sc-stats{display:flex;gap:8px;margin-bottom:10px}
 .sc-stat{flex:1;border:1px solid var(--line);border-radius:var(--r);background:transparent;padding:7px 4px;text-align:center}
 .sc-k{font-size:var(--fs-meta);color:var(--sub);font-weight:700}
@@ -240,7 +241,8 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .selall input{width:16px;height:16px;accent-color:var(--accent)}
 .selrow{cursor:pointer;gap:10px}
 .selrow input{width:16px;height:16px;accent-color:var(--accent);flex:0 0 auto}
-.selrow.on{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:1}
+.selrow.on{background:var(--accent-fade)}
+.selrow.on:hover{background:var(--accent-fade-hover)}
 .btn-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:transparent;
   color:var(--ink);border-radius:var(--r-btn);height:var(--h-ctl);padding:0 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
 .btn-chip:hover:not(:disabled){border-color:var(--line-strong)}
@@ -283,22 +285,24 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
    맞닿는 테두리를 하나로 합치고, 묶음의 첫 줄과 끝 줄에만 모서리를 둥글린다.
    묶음은 사이에 소제목(.sectionlabel)이나 구분선(.group-sep)이 끼면 거기서 끊긴다. */
 /* 줄 높이는 안에 무엇이 들었든 --h-row 하나(2026-10-29). 두 줄짜리(.s 보조 글씨)만 그보다 커진다 */
-.row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:0;
+/* 테두리는 위아래만 두고 좌우는 두지 않는다(선생님 지시 2026-10-29). 표와 같은 가로 구분선 모양이다.
+   좌우 선이 없으니 모서리를 둥글릴 자리도 없어 radius를 주지 않는다 */
+.row{display:flex;align-items:center;gap:12px;border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;
   background:transparent;min-height:var(--h-row);padding:6px 13px;margin-bottom:0}
 .row + .row{border-top:0}
-.row:first-child,:not(.row) + .row{border-radius:var(--r) var(--r) 0 0}
-.row:last-child,.row:has(+ :not(.row)){border-bottom-left-radius:var(--r);border-bottom-right-radius:var(--r)}
-.row:first-child:last-child,:not(.row) + .row:last-child,:not(.row) + .row:has(+ :not(.row)){border-radius:var(--r)}
 .row:hover{background:var(--hover)}
-/* 켜진 줄은 제 색 테두리를 위에도 되살린다(윗줄의 아래 테두리를 1px 덮는다) */
-/* 고른 줄: 배경색 없이 강조색 테두리를 네 변에 다 친다(선생님 지시 2026-10-29).
-   줄끼리 맞닿은 테두리를 합쳐 두었으므로 border 대신 안쪽 outline으로 그어 이웃 줄을 밀지 않는다 */
-.row.on{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:1}
+/* 고른 줄: 레드 반투명 바탕으로 알린다(선생님 지시 2026-10-29).
+   테두리로 두르지 않는다. 처음엔 네 변에 강조색 테두리였는데 같은 날 선생님이 정정했다 */
+.row.on{background:var(--accent-fade)}
+.row.on:hover{background:var(--accent-fade-hover)}
 .row .grow{flex:1;min-width:0}
 .row .t{font-weight:600;font-size:var(--fs-body)}
 .row .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px}
 .badge{font-size:var(--fs-meta);background:var(--navy-100);border-radius:3px;padding:2px 8px;color:var(--navy-600)}
-.mono{font-family:ui-monospace,Consolas,monospace}
+/* 학번처럼 자리를 맞춰야 하는 숫자. 글꼴은 Pretendard 그대로 두고 숫자 폭만 고정한다
+   (선생님 지시 2026-10-29: 학번 글꼴이 본문과 달라 보인다). 고정폭 글꼴로 바꾸지 말 것 */
+.mono{font-family:var(--font);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
 /* 액션 아이콘 버튼: 테두리는 진짜 액션 버튼에만, 모서리 8px, 알약 금지 */
 .ib{display:inline-grid;place-items:center;width:var(--h-ctl);height:var(--h-ctl);border:1px solid var(--line);
@@ -337,11 +341,11 @@ input[type=number]{-moz-appearance:textfield}
 /* 강의 편집기 */
 .editor{display:flex;gap:18px;flex-wrap:wrap}
 .deck{flex:1;min-width:280px}
-.partrow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:0;
+/* 목록 줄과 같이 테두리는 위아래만(선생님 지시 2026-10-29) */
+.partrow{display:flex;align-items:center;gap:10px;border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;
   background:transparent;padding:11px 13px;margin-bottom:0}
 .partrow + .partrow{border-top:0}
-.partrow:first-child,:not(.partrow) + .partrow{border-radius:var(--r) var(--r) 0 0}
-.partrow:last-child,.partrow:has(+ :not(.partrow)){border-bottom-left-radius:var(--r);border-bottom-right-radius:var(--r)}
 .partrow .dot{width:10px;height:10px;flex:0 0 auto}
 .partrow .grow{flex:1}
 .partrow.off{opacity:.45}
@@ -352,13 +356,20 @@ input[type=number]{-moz-appearance:textfield}
 .pchip:hover{border-color:var(--line-strong)}
 .pchip .dot{width:10px;height:10px}
 .pchip.has{border-color:var(--accent);color:var(--accent);outline:1px solid var(--accent);outline-offset:-2px}
-.checkline{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:var(--r);
-  min-height:var(--h-row);padding:0 12px;margin-bottom:6px;background:transparent;cursor:pointer;font-size:var(--fs-body)}
+/* 체크로 켜고 끄는 목록 줄: 목록 줄과 같이 테두리는 위아래만, 줄마다 카드를 나누지 않는다
+   (선생님 지시 2026-10-29) */
+.checkline{display:flex;align-items:center;gap:9px;border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;
+  min-height:var(--h-row);padding:0 12px;margin-bottom:0;background:transparent;cursor:pointer;font-size:var(--fs-body)}
+.checkline + .checkline{border-top:0}
+.checkline:hover{background:var(--hover)}
+.checkline:has(input:checked){background:var(--accent-fade)}
+.checkline:has(input:checked):hover{background:var(--accent-fade-hover)}
 .checkline input{width:17px;height:17px;accent-color:var(--accent)}
 .placeholder{color:var(--sub);font-size:var(--fs-body);border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
 
 /* 확인 창: 브라우저 기본 confirm 대신 쓴다(코드 규칙). */
-.modal-back{position:fixed;inset:0;background:rgba(4,30,66,.45);display:grid;place-items:center;z-index:60}
+.modal-back{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:60}
 .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);width:min(440px,92vw);padding:20px}
 .modal h3{margin:0 0 10px;font-size:var(--fs-head)}
 .modal .m-body{font-size:var(--fs-body);line-height:1.7}
