@@ -77,6 +77,10 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .split-list .row .t{font-weight:500}
 /* 강의실 관리는 목록이 '역사 301' 정도로 짧아 좁게 두고 상세 두 칸을 넓힌다(선생님 지시 2026-10-29) */
 .split.split-room{grid-template-columns:var(--w-list-room) minmax(0,1fr)}
+/* 상세 두 칸: 학생 명단은 목록을 좁히기 전 폭(약 410px)으로 두고 남는 폭은 강의 진도가 받는다(선생님 지시 2026-10-29).
+   화면이 좁으면 강의 진도는 360px까지만 줄고 그 밑으로는 학생 명단이 줄어든다 */
+.split-room .pane .dcol:first-child{flex:1 1 0;min-width:360px}
+.split-room .pane .dcol:last-child{flex:0 1 410px}
 /* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
 .pane{border:0;border-left:1px solid var(--line);border-radius:0;
   background:transparent;padding:0 16px 20px 20px;   /* 오른쪽 16px: 상세 글과 스크롤바 사이 여백 */
