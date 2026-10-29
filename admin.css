@@ -139,6 +139,22 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 /* 학생 관리 상세: 수강 과목은 강의실 이름 몇 줄뿐이라 좁게, 남는 폭은 과목별 성적이 받는다(선생님 지시 2026-10-29) */
 .split-stu .pane .dcol:first-child{flex:0 1 220px}
 .split-stu .pane .dcol:last-child{flex:1 1 0;min-width:320px}
+/* 형성평가 두 단(선생님 지시 2026-10-29): 왼쪽 강의 목록, 오른쪽 문항 편집기.
+   편집기 안의 팔레트는 오른쪽 칸이 좁으면 문항 아래로 내려간다 */
+.split-formative .pane .palette{flex:0 1 190px}
+.split-formative .pane .deck{min-width:240px}
+/* 성적 조회 두 단(선생님 지시 2026-10-29): 왼쪽이 표라 다른 화면과 거꾸로 왼쪽이 넓다.
+   오른쪽은 강의 차수와 OX뿐이라 --w-sc-detail로 좁게 둔다 */
+.split.split-scview{grid-template-columns:minmax(0,1fr) var(--w-sc-detail)}
+/* 스크롤은 왼쪽 칸 하나만 받는다: .prog-wrap이 또 스크롤 상자가 되면 머리줄이 붙어 있지 못한다 */
+.split-scview .split-list{overflow:auto}
+.split-scview .prog-wrap{overflow:visible}
+.split-scview .scoretable thead th{position:sticky;top:0;z-index:2;background:var(--bg)}
+.split-scview .scoretable thead th.lname{z-index:3}
+/* 오른쪽 내역: 강의 차수 왼쪽, 영역 셋의 OX를 한 줄에 하나씩 세로로 */
+.scvrow{align-items:flex-start;padding-block:8px}
+.scvbits{display:flex;flex-direction:column;gap:2px}
+.scvrow .gnote{margin-left:0}
 /* 상세는 바탕색도 상자도 없이, 목록과의 사이에 세로 구분선 하나만 둔다(선생님 지시 2026-10-29) */
 /* 상세 안에서 따로 스크롤하지 않는다: 그러면 스크롤바가 글 바로 옆(화면 한가운데)에 생긴다.
    페이지째 내려가게 두어 스크롤바가 늘 창 맨 오른쪽에 붙게 한다(선생님 지시 2026-10-29) */
@@ -206,10 +222,16 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pltable .lname-in{display:flex;align-items:center;gap:6px}
 .pltable .lname-in .f{flex:1;min-width:0}
 .memo-mark{display:inline-grid;place-items:center;flex:0 0 auto;color:var(--accent);cursor:default}
-/* 강의 메모: 메모 버튼을 누르면 그 줄 아래에 열린다. 표가 가로로 길어도 왼쪽에 붙어 있게 sticky */
+/* 강의 메모: 메모 버튼을 누르면 그 줄 아래에 열린다.
+   글 칸은 줄 전체 너비, 저장과 취소 단추는 그 오른쪽에 세로로 쌓는다(선생님 지시 2026-10-29).
+   포커스를 받아도 레드 테두리를 두르지 않는다(같은 지시: "굳이 빨간색일 이유가 없다").
+   표 칸 안이라 .prog td .f:focus와 .f:focus의 레드를 둘 다 되돌려 준다. */
 .pltable tr.pl-memo-row td{text-align:left;padding:8px 0 10px}
-.pl-memo{position:sticky;left:0;display:flex;align-items:flex-start;gap:8px;max-width:720px}
-.pl-memo textarea.f{flex:1;resize:vertical;font:inherit;line-height:1.5;white-space:pre-wrap;border-color:var(--line)}
+.pl-memo{display:flex;align-items:stretch;gap:8px;width:100%}
+.pl-memo textarea.f{flex:1;min-width:0;resize:vertical;font:inherit;line-height:1.5;white-space:pre-wrap;border-color:var(--line)}
+.pl-memo textarea.f:hover{border-color:var(--line-strong)}
+.pl-memo textarea.f:focus{border-color:var(--line-strong);box-shadow:none}
+.pl-memo .tools{flex-direction:column;gap:6px}
 /* 메모 버블: 메모가 있는 주제 칸에 마우스를 올리면 뜬다. 떠 있는 상자라 토스트처럼 네이비 바탕 */
 .memo-bubble{position:fixed;z-index:50;max-width:320px;background:var(--navy);color:#fff;
   padding:8px 12px;border-radius:var(--r);font-size:var(--fs-body);line-height:1.5;white-space:pre-wrap;pointer-events:none}
@@ -255,9 +277,28 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .fbpick:disabled{opacity:.45;cursor:default}
 .fbtmpl{display:block;width:100%;resize:vertical;font:inherit;line-height:1.6}
 .gnote{display:inline-block;font-size:var(--fs-meta);color:var(--navy);margin-left:6px}
-.gnote.bad{color:var(--red)}
+.gnote.bad{color:var(--fail)}
 .gnote.muted{color:var(--sub)}
 .gsub{display:inline-block;font-size:var(--fs-meta);color:var(--sub);margin-left:5px}
+/* 글 칸 오른쪽 아래의 글자수(오늘의 질문 설명문, 선생님 지시 2026-10-29: 희미하게).
+   글 칸 안에 겹쳐 띄우되 누름은 글 칸이 받는다(pointer-events 없음) */
+.tacount-wrap{position:relative;display:flex}
+.tacount-wrap textarea.f{flex:1;min-width:0}
+.tacount{position:absolute;right:17px;bottom:6px;font-size:var(--fs-meta);color:var(--sub);opacity:.55;pointer-events:none}
+
+/* 판정 두 색: 통과는 초록, 미흡은 빨강 (선생님 지시 2026-10-29, 모든 규칙에서 적용).
+   색값은 shared/theme.css의 --pass, --fail 한 곳에서 온다 */
+.gnote.good{color:var(--pass)}
+.sectionlabel.bad{color:var(--fail)}
+.btn-chip.chip-pass.on{border-color:var(--pass);color:var(--pass)}
+.btn-chip.chip-fail.on{border-color:var(--fail);color:var(--fail)}
+.cat.cat-pass.on{color:var(--pass);border-bottom-color:var(--pass)}
+.cat.cat-fail.on{color:var(--fail);border-bottom-color:var(--fail)}
+/* 성적 조회 내역의 달성, 기한 표시 */
+.ox{display:inline-block;min-width:13px;text-align:center;font-weight:700}
+.ox.good{color:var(--pass)}
+.ox.bad{color:var(--fail)}
+.ox.half{color:var(--sub)}
 
 /* 오늘의 질문: 질문 관리의 강의별 카드(선생님 지시로 강의마다 따로 뗀 카드)와 채점 탭의 학생 칩 */
 /* 강의별 질문 카드도 목록 줄과 같이 한 묶음으로 합친다: 위아래 테두리만, 줄 사이 틈 없음
@@ -306,15 +347,21 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .ta{min-height:64px;resize:vertical;font-family:inherit}
 
 /* 성적 표: 학생 x 포트폴리오 세 항목. 진도 관리 표와 뼈대를 같이 쓴다 */
+/* 성적 조회 표: 내용을 전부 가운데로 맞춘다(선생님 지시 2026-10-29).
+   .prog이 가운데 정렬인데 학생 열(.lname)만 왼쪽이었다. 그 하나를 가운데로 되돌린다 */
 .scoretable{width:100%}
-.scoretable td.lname{min-width:150px}
-.scoretable td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
-.scoretable th.num{text-align:right}
+.scoretable td.lname,.scoretable th.lname{min-width:150px;text-align:center}
+.scoretable td.num{text-align:center;font-variant-numeric:tabular-nums;color:var(--ink)}
+.scoretable th.num{text-align:center}
 .scoretable td.tot{font-weight:800;color:var(--navy)}
 .scoretable tr.scrow{cursor:pointer}
 .scoretable tr.scrow:hover td{color:var(--navy-600)}
-.scoretable tr.on td{color:var(--accent);border-bottom-color:transparent}
-.scoretable tr.sc-lines td{padding:0 0 8px;white-space:normal}
+/* 고른 학생은 레드 반투명 바탕(목록 줄과 같은 규칙). 학생 열은 sticky라 바탕이 따로 있어
+   반투명을 겹쳐 깔아 준다(안 그러면 그 칸만 highlight가 안 보인다) */
+.scoretable tr.on td{background:var(--accent-fade)}
+.scoretable tr.on td.lname{background:linear-gradient(var(--accent-fade),var(--accent-fade)),var(--bg)}
+.scoretable tr.on:has(+ tr.sc-lines) td{border-bottom-color:transparent}
+.scoretable tr.sc-lines td{padding:0 0 8px;white-space:normal;text-align:left}
 .sc-mark{font-size:var(--fs-meta);font-weight:700;color:var(--sub)}
 .sc-mark.on{color:var(--accent)}
 /* .ib-sm은 이제 .ib와 같은 크기다(높이 통일, 2026-10-29). 클래스만 남겨 둔다 */
@@ -380,6 +427,10 @@ div.selrow{cursor:default}
 .row .grow{flex:1;min-width:0}
 .row .t{font-weight:600;font-size:var(--fs-body)}
 .row .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px}
+/* 학생이 쓴 답변은 읽는 글이라 본문 크기로 키운다(선생님 지시 2026-10-29). 오늘의 질문의 답변, PICK */
+.row .s.ans{font-size:var(--fs-body);line-height:1.6;margin-top:4px}
+/* 제목과 설명을 함께 담는 줄 링크: 가로로 눕지 않게 */
+.rowlink.stack{display:block}
 .badge{font-size:var(--fs-meta);background:var(--navy-100);border-radius:3px;padding:2px 8px;color:var(--navy-600)}
 /* 학번처럼 자리를 맞춰야 하는 숫자. 글꼴은 Pretendard 그대로 두고 숫자 폭만 고정한다
    (선생님 지시 2026-10-29: 학번 글꼴이 본문과 달라 보인다). 고정폭 글꼴로 바꾸지 말 것 */

@@ -184,7 +184,8 @@ function renderSide(){
 function catline(items, active, act, allLabel, extra = '', cls = ''){
   // data-label: 켜진 탭은 굵은 글씨다. 굵어져도 폭이 안 늘게 CSS가 이 글자로 굵은 폭을 미리 잡아 둔다.
   const all = allLabel ? `<button class="cat ${active==null||active==='all'?'on':''}" data-act="${act}" data-v="all" data-label="${esc(allLabel)}">${esc(allLabel)}</button>` : '';
-  const rest = items.map(it => `<button class="cat ${String(active)===String(it.v)?'on':''}" data-act="${act}" data-v="${esc(it.v)}" data-label="${esc(it.label)}">${esc(it.label)}</button>`).join('');
+  // it.cls: 그 탭에만 붙는 색 이름(통과 cat-pass, 미흡 cat-fail). 선생님 지시 2026-10-29.
+  const rest = items.map(it => `<button class="cat ${it.cls || ''} ${String(active)===String(it.v)?'on':''}" data-act="${act}" data-v="${esc(it.v)}" data-label="${esc(it.label)}">${esc(it.label)}</button>`).join('');
   return `<div class="catline ${cls}">${all}${rest}${extra}</div>`;
 }
 
@@ -512,7 +513,7 @@ function pageProgress(){
                  영역 셋은 그 강의에 칸이 없어도 늘 선다: 제목 옆 스위치로 켜고 끈다
                  (선생님 지시 2026-10-28). 머리줄의 달성, 기한 체크표시는 그 열 전체를 켠다
      성적 설정 : 과목별로 성적에 반영할 강의 목록 + 포트폴리오 점수 급간 표 + 피드백 템플릿
-     성적 조회 : 반별로 학생의 영역 점수, 달성률, 총점. 이름을 누르면 강의별 내역
+     성적 조회 : 반별로 학생의 영역 점수, 달성률, 총점. 두 단이고 학생을 누르면 오른쪽에 강의별 내역
    계산은 model.js의 studentGrade 한 곳에서 한다(머리 주석 참고). */
 function pageScores(){
   const years = M.getYears();
@@ -705,13 +706,19 @@ function scoreSettingPanel(rooms){
     </table></div>` + tmpl;
 }
 
-/* 성적 조회: 반별로 학생의 영역 점수와 총점. 이름을 누르면 강의별 내역이 펼쳐진다. */
+/* 성적 조회: 반별로 학생의 영역 점수와 총점. 학생을 누르면 강의별 내역이 뜬다.
+   두 단(선생님 지시 2026-10-29): 왼쪽은 표, 오른쪽은 고른 학생의 강의별 OX를 세로로 길게.
+   표 내용은 전부 가운데 정렬이고, 오른쪽 칸은 강의 차수만 적어(제목은 빼고) 좁게 둔다.
+   좁은 화면에서는 전처럼 그 줄 아래로 펼친다. */
 function scoreViewPanel(c){
   const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
   if (!students.length) return `<div class="empty">학생이 없습니다.</div>`;
   const picked = M.getGradeLessons();
   if (!picked.length)
     return `<div class="empty">성적 설정에서 반영할 강의를 먼저 고르시길 바랍니다.</div>`;
+  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 학생이 없으면 맨 위 학생을 고른다.
+  if (!students.some(s => s.studentNo === state.scOpenNo))
+    state.scOpenNo = WIDE.matches ? students[0].studentNo : null;
 
   const th = M.GRADE_AREAS.map(a => `<th class="num">${esc(a.name)}</th>`).join('');
   const body = students.map(s => {
@@ -722,32 +729,46 @@ function scoreViewPanel(c){
       return `<td class="num">${it.total ? `${it.score}<span class="gsub">${it.achieved}/${it.total} ${it.pct}%</span>` : '<span class="gsub">미실시</span>'}</td>`;
     }).join('');
     const row = `<tr class="scrow ${open?'on':''}" data-act="sc-open" data-no="${s.studentNo}">
-      <td class="lname"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>
+      <td class="lname">${WIDE.matches ? '' : `<span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span>`}
         <span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</td>
       ${cells}<td class="num tot">${g.total}<span class="gsub">/ ${g.maxScore}</span></td></tr>`;
-    return open ? row + scoreRowDetail(g, M.GRADE_AREAS.length + 2) : row;
+    // 좁은 화면만 줄 아래로 펼친다(넓은 화면은 오른쪽 칸이 받는다)
+    return (open && !WIDE.matches) ? row + `<tr class="sc-lines"><td colspan="${M.GRADE_AREAS.length + 2}">
+      <div class="detail">${scoreLines(g)}</div></td></tr>` : row;
   }).join('');
 
-  return `<div class="sectionlabel">${esc(M.roomName(c))} 포트폴리오 성적</div>
-    <div class="prog-wrap"><table class="prog scoretable">
+  const label = `<div class="sectionlabel">${esc(M.roomName(c))} 포트폴리오 성적</div>`;
+  const table = `<div class="prog-wrap"><table class="prog scoretable">
       <thead><tr><th class="lname">학생</th>${th}<th class="num">총점</th></tr></thead>
       <tbody>${body}</tbody></table></div>`;
+  if (!WIDE.matches) return label + table;
+
+  const sel = students.find(s => s.studentNo === state.scOpenNo);
+  const g = M.studentGrade(c.id, sel.studentNo);
+  return label + `<div class="split split-scview">
+      <div class="split-list">${table}</div>
+      <div class="pane"><div class="pane-head"><h3>${esc(sel.name)}</h3></div>
+        <div class="dscroll">${scoreLines(g)}</div></div></div>`;
 }
 
-// 강의별 내역: 어디서 깎였는지 그대로 보인다(hoistory 2026-09-03과 같은 뜻).
-function scoreRowDetail(g, span){
-  const body = g.rows.length ? g.rows.map(r => {
+/* 강의별 내역: 어디서 깎였는지 그대로 보인다(hoistory 2026-09-03과 같은 뜻).
+   강의 차수만 적고 제목은 빼므로(선생님 지시 2026-10-29) 좁은 칸에도 들어간다.
+   영역 셋의 달성, 기한 OX는 한 줄에 하나씩 세로로 쌓는다. O는 초록, X는 빨강(판정 두 색과 같다). */
+function scoreLines(g){
+  if (!g.rows.length) return `<div class="empty">반영된 강의가 없습니다.</div>`;
+  return g.rows.map(r => {
     const bits = M.GRADE_AREAS.map(a => {
       const v = r.areas[a.key]; if (!v) return '';
-      const mark = (n, w) => n >= w ? 'O' : (n > 0 ? '△' : 'X');
-      return `<span class="gnote">${esc(a.name)} ${mark(v.achievedN, v.weight)} ${mark(v.onTimeN, v.weight)}</span>`;
+      const mark = (n, w) => n >= w
+        ? '<span class="ox good">O</span>'
+        : (n > 0 ? '<span class="ox half">△</span>' : '<span class="ox bad">X</span>');
+      return `<span class="gnote">${esc(a.name)} ${mark(v.achievedN, v.weight)}${mark(v.onTimeN, v.weight)}</span>`;
     }).filter(Boolean).join('');
-    return `<div class="row compact">
+    return `<div class="row compact scvrow">
       <div class="plnum">${r.no}강</div>
-      <div class="grow"><div class="t">${esc(r.title)}</div>${r.feedback ? `<div class="s">${esc(r.feedback)}</div>` : ''}</div>
-      ${r.absent ? `<span class="gnote">결석</span>` : ''}${bits}</div>`;
-  }).join('') : `<div class="empty">반영된 강의가 없습니다.</div>`;
-  return `<tr class="sc-lines"><td colspan="${span}"><div class="detail">${body}</div></td></tr>`;
+      <div class="grow"><div class="scvbits">${bits}</div>${r.feedback ? `<div class="s">${esc(r.feedback)}</div>` : ''}</div>
+      ${r.absent ? `<span class="gnote bad">결석</span>` : ''}</div>`;
+  }).join('');
 }
 
 /* 추가 팝업: 학년도 생성 / 강의실 생성을 한곳에 모았다(요구사항 5).
@@ -1193,7 +1214,7 @@ function missionForm(app){
     + line('활동 의도', `<textarea class="f grow ta" id="ma-intent" rows="3">${esc(arch.intent || '')}</textarea>`, true)
     + line('아카이브 내용', `<textarea class="f grow ta" id="ma-content" rows="5">${esc(arch.content || '')}</textarea>`, true);
 }
-/* 강의에 차수를 붙인다("3강 제목", 선생님 지시 2026-10-29). 차수는 진도 관리와 같이 그 과목 강의실들에
+/* 강의에 차수를 붙인다("3강. 제목", 선생님 지시 2026-10-29. 차수 뒤에 마침표를 찍는다). 차수는 진도 관리와 같이 그 과목 강의실들에
    꽂힌 차례(placedLessons)에서 나온다. 과목이 둘 이상이면 앞에 과목을 붙이고, 어디에도 안 꽂힌 강의는 제목만 뒤에 둔다. */
 function numberedLessons(lessons){
   const all = M.getCourses(state.year);
@@ -1203,7 +1224,7 @@ function numberedLessons(lessons){
     const rooms = all.filter(c => c.subject === s);
     placedLessons(rooms).lessons.forEach((l, i) => {
       if (seen.has(l.id)) return; seen.add(l.id);
-      out.push({ l, label:`${subjects.length > 1 ? s + ' ' : ''}${i + 1}강 ${l.title}` });
+      out.push({ l, label:`${subjects.length > 1 ? s + ' ' : ''}${i + 1}강. ${l.title}` });
     });
   });
   lessons.filter(l => !seen.has(l.id)).forEach(l => out.push({ l, label:l.title }));
@@ -1286,7 +1307,9 @@ function questionTools(l){
   if (!l.parts?.question) return '';
   return `<div class="tools"><button class="ib ib-primary" data-act="q-save" data-id="${l.id}" title="저장" aria-label="저장">${icon('check',16)}</button></div>`;
 }
-// 질문과 설명문 칸. 글 칸에는 테두리를 꼭 둔다(선생님 지시 2026-10-29, CSS .qform).
+/* 질문과 설명문 칸. 글 칸에는 테두리를 꼭 둔다(선생님 지시 2026-10-29, CSS .qform).
+   설명문 글 칸 오른쪽 아래에 글자수가 희미하게 뜬다(선생님 지시 2026-10-29).
+   치는 대로 바뀌어야 하는데 다시 그리면 커서가 날아가므로, 아래 input 핸들러가 이 칸만 글로 고쳐 쓴다. */
 function questionForm(l){
   const q = l.parts?.question;
   if (!q) return `<div class="empty">오늘의 질문이 꺼져 있습니다.</div>`;
@@ -1295,7 +1318,10 @@ function questionForm(l){
       <div class="row row-top"><div class="t gen-label">질문</div>
         <textarea class="f grow" id="q-ed-prompt" rows="3" aria-label="질문">${esc(q.prompt || '')}</textarea></div>
       <div class="row row-top"><div class="t gen-label">설명문</div>
-        <textarea class="f grow" id="q-ed-guide" rows="10" aria-label="설명문">${esc(q.guide || '')}</textarea></div>
+        <div class="grow tacount-wrap">
+          <textarea class="f" id="q-ed-guide" rows="10" aria-label="설명문">${esc(q.guide || '')}</textarea>
+          <span class="tacount" id="q-ed-guide-n">${(q.guide || '').length}자</span>
+        </div></div>
     </div>`;
 }
 
@@ -1336,7 +1362,7 @@ function questionAnswers(rooms, placed, lessons){
     const picked = subs.filter(s => s.shared).sort(byNo);
     const body = picked.length ? picked.map(s => `<div class="row">
       <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div>
-        <div class="s">${esc(s.answer)}</div></div>
+        <div class="s ans">${esc(s.answer)}</div></div>
       <div class="tools">
         <button class="ib ib-sm ib-primary" data-act="q-share" data-id="${s.id}" title="PICK에서 내리기" aria-label="PICK에서 내리기">${icon('star',14)}</button>
       </div></div>`).join('') : `<div class="empty">공유로 켜 둔 답변이 없습니다.</div>`;
@@ -1355,23 +1381,31 @@ function questionAnswers(rooms, placed, lessons){
    보이던 것을 선생님 지시로 고쳤다(2026-10-28). 미제출 학생만 답변 없이 이름 줄로 선다. */
 function answerRow(s, v){
   const res = s.graded
-    ? `<span class="gnote ${v.achieved ? '' : 'bad'}">${esc(s.aiVerdict || '')} / ${s.aiPt ?? 0}pt</span>`
+    ? `<span class="gnote ${verdictCls(s.aiVerdict)}">${esc(s.aiVerdict || '')} / ${s.aiPt ?? 0}pt</span>`
     : `<span class="gnote muted">미채점</span>`;
   return `<div class="row">
     <div class="grow"><div class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}${res}
         <span class="gsub">${v.length}자</span></div>
-      <div class="s">${esc(s.answer)}</div></div>
+      <div class="s ans">${esc(s.answer)}</div></div>
     <div class="tools">
-      <button class="btn-chip ${v.achieved?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
-      <button class="btn-chip ${v.achieved?'':'on'}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
+      <button class="btn-chip chip-pass ${v.achieved?'on':''}" data-act="q-verdict" data-id="${s.id}" data-v="pass">통과</button>
+      <button class="btn-chip chip-fail ${v.achieved?'':'on'}" data-act="q-verdict" data-id="${s.id}" data-v="fail">미흡</button>
       <button class="ib ib-sm ${s.shared?'ib-primary':''}" data-act="q-share" data-id="${s.id}" title="${s.shared?'PICK에 올림 (누르면 내림)':'PICK에 올리기'}" aria-label="PICK 전환">${icon('star',14)}</button>
     </div></div>`;
 }
-// 미제출 학생 줄: 답변이 없어 통과, 미흡 버튼도 달지 않는다.
+/* 판정 문구의 색 (선생님 지시 2026-10-29: "통과는 초록, 미흡은 빨강. 모든 규칙에서 적용").
+   문구로 가린다: 미흡 사유가 늘어도(50자 미만, 조금 미흡, 지연 제출, 교사) 여기를 고칠 일이 없다. */
+function verdictCls(text){
+  const t = String(text || '');
+  if (t.includes('미흡')) return 'bad';
+  if (t.includes('통과')) return 'good';
+  return '';
+}
+// 미제출 학생 줄: 답변이 없어 통과, 미흡 버튼도 달지 않는다. 미제출도 미흡 사유라 빨강이다.
 function absentRow(st){
   return `<div class="row">
     <div class="grow"><div class="t"><span class="mono">${esc(st.studentNo)}</span> &nbsp;${esc(st.name)}
-      <span class="gnote muted">미제출</span></div></div></div>`;
+      <span class="gnote bad">미제출</span></div></div></div>`;
 }
 function questionGrade(targets, subs, one){
   const byNo = (a, b) => String(a.studentNo).localeCompare(String(b.studentNo), undefined, { numeric:true });
@@ -1394,8 +1428,8 @@ function questionGrade(targets, subs, one){
     </span>`;
   const gtabs = catline([
     { v:'grade', label:'채점' },
-    { v:'pass',  label:`통과 (${passing.length})` },
-    { v:'fail',  label:`미흡 (${absent.length + failing.length})` },
+    { v:'pass',  label:`통과 (${passing.length})`, cls:'cat-pass' },
+    { v:'fail',  label:`미흡 (${absent.length + failing.length})`, cls:'cat-fail' },
   ], state.questionGradeTab, 'q-gtab', null, actions, 'gtabs');
 
   let body;
@@ -1412,7 +1446,7 @@ function questionGrade(targets, subs, one){
       ['선생님 미흡', failing.filter(x => x.v.verdict === '미흡(교사)').map(({ s, v }) => answerRow(s, v))],
     ].filter(g => g[1].length);
     body = groups.length
-      ? groups.map(([label, rows]) => `<div class="sectionlabel">${label} (${rows.length})</div>${rows.join('')}`).join('')
+      ? groups.map(([label, rows]) => `<div class="sectionlabel bad">${label} (${rows.length})</div>${rows.join('')}`).join('')
       : `<div class="empty">미흡 학생이 없습니다.</div>`;
   } else {
     body = judged.length
@@ -1449,24 +1483,34 @@ async function runQuestionAI(regrade){
 }
 
 /* ── 형성평가 ──
-   성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27). */
+   성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27).
+   두 단(선생님 지시 2026-10-29): 왼쪽은 형성평가가 있는 강의 목록, 오른쪽은 고른 강의의 문항 편집기.
+   미션 활동, 오늘의 질문 질문 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다.
+   목록으로 돌아가는 단추(fm-close)는 오른쪽 칸이 늘 떠 있게 되어 없앴다. */
 function pageFormative(){
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>`;
   const lessons = M.getLessonsWithPart('formative');
+  if (!lessons.length) return head + `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
+  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 강의를 고른다.
+  if (!lessons.some(l => l.id === state.formativeLessonId))
+    state.formativeLessonId = WIDE.matches ? lessons[0].id : null;
 
-  if (!state.formativeLessonId){
-    const list = lessons.length ? lessons.map(l => `<div class="row rowlink" data-act="fm-open" data-id="${l.id}">
-      <div class="grow"><div class="t">${esc(l.title)}</div>
-        <div class="s">${esc(l.parts.formative.title || '')}</div></div>
-      <div class="tools"><span class="chev">${icon('chevron-right',16)}</span></div>
-    </div>`).join('') : `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
-    return `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>${list}`;
-  }
+  const row = l => `<div class="row ${l.id===state.formativeLessonId?'on':''}">
+      <div class="grow rowlink stack" data-act="fm-open" data-id="${l.id}"><div class="t">${esc(l.title)}</div>
+        ${l.parts.formative.title ? `<div class="s">${esc(l.parts.formative.title)}</div>` : ''}</div></div>`;
+  const sel = lessons.find(l => l.id === state.formativeLessonId);
 
-  const l = M.getLesson(state.formativeLessonId);
-  const f = l?.parts?.formative;
-  if (!f){ state.formativeLessonId = null; return pageFormative(); }
-
-  const items = f.items || [];
+  if (!WIDE.matches)
+    return head + lessons.map(l => l.id === state.formativeLessonId
+      ? row(l) + `<div class="detail">${formativeEditor(l)}</div>` : row(l)).join('');
+  return head + `<div class="split split-formative">
+      <div class="split-list">${lessons.map(row).join('')}</div>
+      <div class="pane"><div class="pane-head"><h3>${esc(sel.title)}</h3></div>
+        <div class="dscroll">${formativeEditor(sel)}</div></div></div>`;
+}
+// 문항 편집기: 왼쪽 문항 목록(deck)과 오른쪽 문제 유형 팔레트.
+function formativeEditor(l){
+  const items = l.parts?.formative?.items || [];
   const deck = items.length ? items.map((it, i) => `<div class="partrow">
       <span class="plnum">${i + 1}</span>
       <div class="grow"><div class="t">${esc(it.q || '')}</div>
@@ -1479,10 +1523,7 @@ function pageFormative(){
   const palette = M.FORMATIVE_TYPES.map(t =>
     `<div class="pchip" data-act="fm-add" data-k="${t.key}"><span class="grow">${esc(t.name)}</span>${icon('plus',15)}</div>`).join('');
 
-  return `<div class="pagehead">
-      <button class="ib" data-act="fm-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
-      <h2>${esc(l.title)}</h2></div>
-    <div class="editor">
+  return `<div class="editor">
       <div class="deck"><div class="sectionlabel">문항</div>${deck}</div>
       <div class="palette"><div class="sectionlabel">문제 유형</div>${palette}</div>
     </div>`;
@@ -1738,14 +1779,16 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'q-verdict': M.setSubVerdict(id, v); render(); break;
 
     // 형성평가
-    case 'fm-open': state.formativeLessonId = id; render(); break;
-    case 'fm-close': state.formativeLessonId = null; render(); break;
+    case 'fm-open':
+      state.formativeLessonId = (!WIDE.matches && state.formativeLessonId === id) ? null : id;
+      render(); break;
     case 'fm-add': toast(`${M.formativeTypeDef(k)?.name || ''} 문항 만들기는 다음 단계.`); break;
 
     // 성적
     case 'sc-tab': state.scTab = v; state.scOpenNo = null; render(); break;
     case 'sc-room': state.scCourseId = v; state.scClId = null; state.scOpenNo = null; render(); break;
-    case 'sc-open': state.scOpenNo = state.scOpenNo === no ? null : no; render(); break;
+    case 'sc-open':
+      state.scOpenNo = (!WIDE.matches && state.scOpenNo === no) ? null : no; render(); break;
     // 이름을 누르면 결석(전부 미달성 고정). hoistory와 같다.
     case 'sc-absent': run(() => M.toggleGradeAbsent(id, no)); break;
     // 제출물에서 달성과 기한을 끌어온다. 손으로 정한 칸과 결석 학생은 건드리지 않는다.
@@ -1918,8 +1961,14 @@ document.getElementById('shell').addEventListener('change', e => {
   }
 });
 
-/* 학번 검색: 치는 대로 목록을 다시 그린다. 다시 그리면 칸이 새로 생기므로 커서를 되살린다. */
 document.getElementById('shell').addEventListener('input', e => {
+  // 설명문 글자수: 다시 그리지 않고 숫자만 고쳐 쓴다(커서 유지)
+  if (e.target.id === 'q-ed-guide'){
+    const n = document.getElementById('q-ed-guide-n');
+    if (n) n.textContent = `${e.target.value.length}자`;
+    return;
+  }
+  /* 학번 검색: 치는 대로 목록을 다시 그린다. 다시 그리면 칸이 새로 생기므로 커서를 되살린다. */
   if (e.target.dataset.act !== 'stu-search') return;
   state.studentQuery = e.target.value;
   const pos = e.target.selectionStart;
