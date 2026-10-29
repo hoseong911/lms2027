@@ -95,6 +95,38 @@ export const ADMIN_MENUS = [
   { key:'general',   name:'일반 설정',       icon:'settings' },
 ];
 
+/* 어드민 메뉴 이름과 순서는 일반 설정에서 바꾼다(선생님 지시 2026-10-29).
+   위 ADMIN_MENUS의 이름은 "아직 안 바꿨을 때 보일 기본값"이다. 바꾼 이름은 settings/general의
+   texts 맵에 `menu_키`로, 순서는 menuOrder 배열로 들어간다.
+   순서 안의 MENU_SEP는 구분선이다. 메뉴처럼 위아래로 옮길 수 있다. */
+export const MENU_SEP = '|';
+export const DEFAULT_MENU_ORDER = ['rooms','students','progress', MENU_SEP,
+  'concept','mission','question','formative','scores', MENU_SEP, 'general'];
+let menuOrder = null;   // 관리자가 정한 순서. loadCore가 settings/general에서 채운다.
+export function menuName(key){
+  const v = siteTexts['menu_' + key];
+  if (v != null && v !== '') return v;
+  return ADMIN_MENUS.find(m => m.key === key)?.name || '';
+}
+// 저장된 순서를 지금 있는 메뉴에 맞춘다: 없어진 메뉴는 빼고, 새로 생긴 메뉴는 끝에 붙인다.
+export function getMenuOrder(){
+  const keys = ADMIN_MENUS.map(m => m.key);
+  const src = Array.isArray(menuOrder) ? menuOrder : DEFAULT_MENU_ORDER;
+  const out = [];
+  src.forEach(k => { if (k === MENU_SEP || (keys.includes(k) && !out.includes(k))) out.push(k); });
+  keys.forEach(k => { if (!out.includes(k)) out.push(k); });
+  return out;
+}
+// 왼쪽 메뉴에 그릴 차례: { sep:true } 또는 { key, name, icon }
+export function adminMenus(){
+  return getMenuOrder().map(k => k === MENU_SEP ? { sep:true }
+    : { ...ADMIN_MENUS.find(m => m.key === k), name:menuName(k) });
+}
+export async function setMenuOrder(order){
+  menuOrder = [...order];
+  await setDoc(doc(db, 'settings', 'general'), { menuOrder }, { merge:true });
+}
+
 /* 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
    강의 라이브러리는 개념 노트의 서브 메뉴로 둔다(선생님 지시 2026-10-28) :
    강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
@@ -119,6 +151,7 @@ export const TEXT_FIELDS = [
   { group:'일반', items:[
     { key:'browserTitle', label:'브라우저 탭 제목',   def:'HO TEACHER LMS' },
     { key:'siteName',     label:'사이트 이름',         def:'호성T 수업 : 학습 관리 시스템' },
+    { key:'adminName',    label:'어드민 이름',         def:'2027' },
     { key:'kakaoUrl',     label:'오픈카톡 링크',       def:'' },
     { key:'installUrl',   label:'홈 화면에 추가 안내 링크', def:'' },
   ]},
@@ -266,6 +299,7 @@ export async function loadCore(){
   DEMO.grades      = rows(grs);
   DEMO.missionApps = rows(mas);
   siteTexts        = gen.exists() ? (gen.data().texts || {}) : {};
+  menuOrder        = gen.exists() ? (gen.data().menuOrder || null) : null;
   DEMO.gradeConf   = grc.exists()
     ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [],
         feedbackTemplates: grc.data().feedbackTemplates || [] }
@@ -463,6 +497,11 @@ export function setLessonTitle(lessonId, title){
   const t = String(title ?? '').trim();
   if (!t) throw new Error('강의 제목을 적어 주세요.');
   l.title = t; saveLesson(lessonId); return l;
+}
+// 진도 관리의 강의 메모(진도가 바뀐 것 같은 것을 적어 둔다, 선생님 지시 2026-10-29). 강의마다 하나.
+export function setLessonMemo(lessonId, memo){
+  const l = getLesson(lessonId); if (!l) return null;
+  l.memo = String(memo ?? '').trim(); saveLesson(lessonId); return l;
 }
 export function setLessonPart(lessonId, key, on){
   const l = getLesson(lessonId); if (!l) return;

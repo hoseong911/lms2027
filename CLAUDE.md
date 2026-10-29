@@ -203,6 +203,9 @@
 - 어드민 **일반 설정**(`admin.js` `pageGeneral`)이 `TEXT_FIELDS`를 그대로 돌며 입력 칸을 그린다.
   **새 문구가 필요하면 `TEXT_FIELDS`에 한 줄만 더한다**: 어드민 쪽 화면은 따로 안 고쳐도 자동으로
   입력 칸이 생긴다.
+- **어드민 메뉴 이름과 순서, 구분선 자리도 일반 설정에서 정한다 (2026-10-29).** 메뉴 이름은 `M.menuName(key)`로
+  읽고(화면 제목 `<h2>`도 같다), 왼쪽 메뉴는 `M.adminMenus()`로 그린다. `ADMIN_MENUS`를 직접 돌며 그리지 않는다.
+  구분선은 순서 배열(`settings/general`의 `menuOrder`) 안의 `MENU_SEP` 한 칸이다. 왼쪽 메뉴 맨 위 글자는 `adminName`.
 
 ### 아이콘은 SVG만, 액션 버튼은 아이콘으로 (2026-10-25)
 - 유니코드 이모지를 쓰지 않는다. 아이콘은 전부 `shared/icons.js`의 `icon()` SVG로.

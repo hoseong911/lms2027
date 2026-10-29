@@ -32,6 +32,12 @@ html:not(.lms-ready) #shell{display:none}
 /* 글은 사이드바 바로 오른쪽에 붙어 1280px까지만 (#main의 자식은 전부 한 덩이씩 쌓이는 블록이다) */
 .main > *{max-width:1280px}
 
+/* 메뉴 사이 구분선. 자리는 일반 설정의 메뉴 순서에서 정한다(선생님 지시 2026-10-29) */
+.side .side-sep{height:0;border-top:1px solid var(--line);margin:8px 6px}
+/* 일반 설정의 어드민 메뉴 줄: 아이콘, 이름 칸, 위아래 단추. 구분선 줄은 선 하나로 보여 준다 */
+.menu-ico{display:inline-grid;place-items:center;color:var(--sub)}
+.menu-sep-line{border-top:1px solid var(--line-strong);margin:0 2px}
+
 /* 로그아웃은 메뉴 맨 아래에 조금 띄워 둔다 */
 .side .mi.side-logout{margin-top:14px;border-top:1px solid var(--line);border-radius:0;padding-top:14px}
 
@@ -140,13 +146,10 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .dateinput.ds-today{border-color:var(--accent);color:var(--accent);font-weight:700}
 .morebtn{display:inline-block;margin:8px 2px 2px}
 
-/* 학생 카드 펼침: 레벨, 경험치, 포인트, 포트폴리오 */
+/* 학생 카드 펼침: 포트폴리오 (레벨, 경험치, 포인트 칸은 2026-10-29에 뺐다) */
 .score-detail{border:0;border-bottom:1px solid var(--line);border-radius:0;
   background:transparent;margin:-6px 0 6px;padding:10px 14px}
-.sc-stats{display:flex;gap:8px;margin-bottom:10px}
-.sc-stat{flex:1;border:1px solid var(--line);border-radius:var(--r);background:transparent;padding:7px 4px;text-align:center}
 .sc-k{font-size:var(--fs-meta);color:var(--sub);font-weight:700}
-.sc-v{font-size:var(--fs-head);font-weight:800;color:var(--navy);margin-top:2px}
 .sc-port .sc-k{margin-bottom:4px}
 .score-line{display:flex;justify-content:space-between;font-size:var(--fs-body);padding:4px 0;border-bottom:1px dashed var(--line)}
 .score-line:last-child{border-bottom:0}
@@ -182,6 +185,14 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .pltable th.pl-sch .dateinput:hover{border-color:var(--line)}
 .pltable th.pl-sch .dateinput:focus{border-color:var(--accent)}
 .pltable td.pl-manage,.pltable th.pl-manage{min-width:52px}
+.pltable .pl-tools{display:inline-flex;gap:6px}
+/* 강의 메모: 메모 버튼을 누르면 그 줄 아래에 열린다. 표가 가로로 길어도 왼쪽에 붙어 있게 sticky */
+.pltable tr.pl-memo-row td{text-align:left;padding:8px 0 10px}
+.pl-memo{position:sticky;left:0;display:flex;align-items:flex-start;gap:8px;max-width:720px}
+.pl-memo textarea.f{flex:1;resize:vertical;font:inherit;line-height:1.5;white-space:pre-wrap;border-color:var(--line)}
+/* 메모 버블: 메모가 있는 주제 칸에 마우스를 올리면 뜬다. 떠 있는 상자라 토스트처럼 네이비 바탕 */
+.memo-bubble{position:fixed;z-index:50;max-width:320px;background:var(--navy);color:#fff;
+  padding:8px 12px;border-radius:var(--r);font-size:var(--fs-body);line-height:1.5;white-space:pre-wrap;pointer-events:none}
 .pl-plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
   border:1px dashed var(--line);border-radius:var(--r-btn);background:transparent;color:var(--sub);cursor:pointer}
 .pl-plus:hover{border-color:var(--accent);color:var(--accent);border-style:solid}
@@ -499,6 +510,7 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
   .side{background:var(--bg)}     /* 위에 붙는 줄이라 아래 글이 비치지 않게 바탕을 깐다 */
   .side .mi{border:0;border-bottom:2px solid transparent}
   .side .mi.on{background:none;border-bottom-color:var(--accent)}
+  .side .side-sep{flex:0 0 auto;border-top:0;border-left:1px solid var(--line);margin:14px 4px}   /* 가로 줄에서는 세로 선 */
   .main{padding:16px 14px 64px;max-width:none}
   .main{padding-left:max(14px, env(safe-area-inset-left));padding-right:max(14px, env(safe-area-inset-right))}
 

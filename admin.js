@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261029b';
+import * as M from './model.js?v=20261029c';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -48,6 +48,11 @@ const state = {
   formativeLessonId: null,         // 문항을 편집 중인 형성평가(강의)
 
   progAdding: false,               // 진도표에서 강의 추가 줄을 열었는가
+  progMemoId: null,                // 진도표에서 메모를 적고 있는 강의(lessons id)
+
+  // 일반 설정: 저장 버튼을 누르기 전까지 고친 것(메뉴를 옮겨 다시 그려도 적던 글이 남게)
+  genDraft: null,                  // { 문구 키: 값 }
+  menuDraft: null,                 // 메뉴 순서(구분선 포함)
 
   // 성적 (hoistory 성적 Check 틀 이식, 2026-10-28)
   scTab: 'input',                  // 서브 메뉴 'input' | 'setting' | 'view'
@@ -167,9 +172,11 @@ function run(fn, okMsg){
 }
 
 // ── 사이드 ──
+// 메뉴 이름, 순서, 구분선 자리는 일반 설정에서 정한다(M.adminMenus).
 function renderSide(){
-  $side.innerHTML = `<div class="brand">2027</div>` + M.ADMIN_MENUS.map(m =>
-    `<div class="mi ${m.key === state.page ? 'on':''}" data-act="page" data-k="${m.key}">
+  $side.innerHTML = `<div class="brand">${esc(M.getText('adminName'))}</div>` + M.adminMenus().map(m =>
+    m.sep ? `<div class="side-sep"></div>`
+    : `<div class="mi ${m.key === state.page ? 'on':''}" data-act="page" data-k="${m.key}">
       ${icon(m.icon,18)}<span>${esc(m.name)}</span></div>`).join('') +
     `<div class="mi side-logout" data-act="logout">${icon('log-out',18)}<span>로그아웃</span></div>`;
 }
@@ -204,7 +211,7 @@ function pageRooms(){
   const addBtn = `<button class="btn-add" data-act="add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button>`;
 
   if (!years.length)
-    return `<div class="pagehead"><h2>강의실 관리</h2>${addBtn}</div>
+    return `<div class="pagehead"><h2>${esc(M.menuName('rooms'))}</h2>${addBtn}</div>
       <div class="empty">학년도가 없습니다.</div>`;
 
   const courses = M.getCourses(state.year);
@@ -213,7 +220,7 @@ function pageRooms(){
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
-  const head = `<div class="pagehead"><h2>강의실 관리</h2>${yearSel}${addBtn}</div>`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('rooms'))}</h2>${yearSel}${addBtn}</div>`;
 
   // 묶음 축 토글(과목별/반별): 필터 줄 오른쪽 끝에.
   const groupToggle = `<span class="line-end"><span class="seg seg-inline">
@@ -362,17 +369,10 @@ function roomDetailCols(c){
   return left + right;
 }
 
-// 한 학생 카드: 레벨, 경험치, 포인트 + 포트폴리오 성적(펼침 안쪽, 요구사항 3).
+// 한 학생 카드: 포트폴리오 성적(펼침 안쪽, 요구사항 3).
+// 레벨, 경험치, 포인트 칸은 선생님 지시로 뺐다(2026-10-29).
 function studentCard(courseId, studentNo){
-  const xp = M.getXp(courseId, studentNo);
-  const lvl = xp ? M.levelFromXp(xp.xp) : null;
   const sc = M.studentGrade(courseId, studentNo);
-
-  const stats = `<div class="sc-stats">
-    <div class="sc-stat"><div class="sc-k">레벨</div><div class="sc-v">${lvl!=null?`Lv.${lvl}`:'없음'}</div></div>
-    <div class="sc-stat"><div class="sc-k">경험치</div><div class="sc-v">${xp?xp.xp:0}</div></div>
-    <div class="sc-stat"><div class="sc-k">포인트</div><div class="sc-v">${xp?xp.point:0}</div></div>
-  </div>`;
 
   let port;
   if (!sc.has){ port = `<div class="score-empty">반영된 강의가 없습니다.</div>`; }
@@ -385,7 +385,7 @@ function studentCard(courseId, studentNo){
     const tot = `<div class="score-line tot"><span>총점</span><span class="mono">${sc.total} / ${sc.maxScore}점</span></div>`;
     port = lines + tot;
   }
-  return `<div class="score-detail">${stats}<div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
+  return `<div class="score-detail"><div class="sc-port"><div class="sc-k">포트폴리오 성적</div>${port}</div></div>`;
 }
 
 /* ── 진도 관리 (hoistory/lms "설정 - SCHEDULE 반별 수업 스케줄" 틀 이식) ─────
@@ -425,7 +425,7 @@ function pageProgress(){
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
-  const head = `<div class="pagehead"><h2>진도 관리</h2>${years.length?yearSel:''}</div>`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('progress'))}</h2>${years.length?yearSel:''}</div>`;
   if (!years.length) return `${head}<div class="empty">학년도가 없습니다.</div>`;
 
   const all = M.getCourses(state.year);
@@ -475,13 +475,24 @@ function pageProgress(){
       return `<td class="ds-${st}"><input class="f dateinput" data-act="cl-date" data-id="${cl.id}"
         value="${esc(cl.date || '')}" inputmode="numeric" aria-label="${esc(M.roomName(c))} 수업일자"></td>`;
     }).join('');
-    return `<tr>
+    // 메모가 있으면 주제 칸에 마우스를 올릴 때 버블로 뜬다(data-memo, 아래 memo 버블).
+    const row = `<tr>
       <td class="pl-num">${li + 1}강</td>
-      <td class="lname"><input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제"></td>
+      <td class="lname" ${l.memo ? `data-memo="${esc(l.memo)}"` : ''}><input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제"></td>
       ${cells}
-      <td class="pl-manage"><button class="ib ib-sm ib-danger" data-act="prog-del" data-lid="${l.id}"
-        title="이 줄을 과목 전체에서 빼기" aria-label="빼기">${icon('trash-2',14)}</button></td>
+      <td class="pl-manage"><span class="pl-tools">
+        <button class="ib ib-sm" data-act="prog-memo" data-lid="${l.id}" title="메모" aria-label="메모">${icon('file-text',14)}</button>
+        <button class="ib ib-sm ib-danger" data-act="prog-del" data-lid="${l.id}"
+          title="이 줄을 과목 전체에서 빼기" aria-label="빼기">${icon('trash-2',14)}</button></span></td>
     </tr>`;
+    // 메모 버튼을 누르면 그 줄 바로 아래에 메모 칸이 열린다(인라인, 요구사항 66).
+    if (state.progMemoId !== l.id) return row;
+    return row + `<tr class="pl-memo-row"><td colspan="${rooms.length + 3}"><div class="pl-memo">
+      <textarea class="f" id="prog-memo-text" rows="3" aria-label="메모">${esc(l.memo || '')}</textarea>
+      <div class="tools">
+        <button class="ib ib-primary" data-act="prog-memo-save" data-lid="${l.id}" title="저장" aria-label="저장">${icon('check',16)}</button>
+        <button class="ib" data-act="prog-memo-cancel" title="취소" aria-label="취소">${icon('x',16)}</button>
+      </div></div></td></tr>`;
   }).join('');
 
   return `${head}${tabs}${addRow}
@@ -512,10 +523,10 @@ function pageScores(){
   const subSeg = `<span class="line-end"><span class="seg seg-inline">
     ${M.ADMIN_SUBMENUS.scores.map(t => `<button class="seg-b ${state.scTab===t.v?'on':''}" data-act="sc-tab" data-v="${t.v}">${esc(t.label)}</button>`).join('')}
   </span></span>`;
-  if (!years.length) return `<div class="pagehead"><h2>성적</h2></div><div class="empty">학년도가 없습니다.</div>`;
+  if (!years.length) return `<div class="pagehead"><h2>${esc(M.menuName('scores'))}</h2></div><div class="empty">학년도가 없습니다.</div>`;
 
   const all = M.getCourses(state.year);
-  if (!all.length) return `<div class="pagehead"><h2>성적</h2>${yearSel}</div><div class="empty">강의실이 없습니다.</div>`;
+  if (!all.length) return `<div class="pagehead"><h2>${esc(M.menuName('scores'))}</h2>${yearSel}</div><div class="empty">강의실이 없습니다.</div>`;
 
   // 과목은 세 화면 공통이다(선생님 지시 2026-10-28: 성적 설정도 과목별로 뜨게).
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
@@ -523,7 +534,7 @@ function pageScores(){
   const subjectSel = `<select class="sel" data-act="sc-subject-pick" aria-label="과목">
     ${subjects.map(s => `<option value="${esc(s)}" ${s===state.scSubject?'selected':''}>${esc(s)}</option>`).join('')}
   </select>`;
-  const head = `<div class="pagehead"><h2>성적</h2>${yearSel}${subjectSel}</div>`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('scores'))}</h2>${yearSel}${subjectSel}</div>`;
 
   const rooms = all.filter(c => c.subject === state.scSubject)
     .slice().sort((a,b) => a.grade - b.grade || a.classNo - b.classNo);
@@ -835,7 +846,7 @@ function pageStudents(){
   const years = M.getYears();
   const addBtn = `<button class="btn-add" data-act="stu-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button>`;
   if (!years.length)
-    return `<div class="pagehead"><h2>학생 관리</h2>${addBtn}</div><div class="empty">학년도가 없습니다.</div>`;
+    return `<div class="pagehead"><h2>${esc(M.menuName('students'))}</h2>${addBtn}</div><div class="empty">학년도가 없습니다.</div>`;
 
   const all = M.getStudentsByYear(state.year);
   const byRoom = {};
@@ -852,7 +863,7 @@ function pageStudents(){
   const yearSel = `<select class="sel" id="year-sel" data-act="year-pick" aria-label="학년도">
     ${years.map(y => `<option value="${y.year}" ${y.year===state.year?'selected':''}>${y.year}학년도</option>`).join('')}
   </select>`;
-  const head = `<div class="pagehead"><h2>학생 관리</h2>${yearSel}${addBtn}</div>`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('students'))}</h2>${yearSel}${addBtn}</div>`;
   const search = `<span class="line-end"><label class="searchbox">${icon('search',15)}
     <input class="f" id="stu-search" data-act="stu-search" inputmode="numeric" autocomplete="off"
       value="${esc(state.studentQuery)}" aria-label="학번 검색"></label></span>`;
@@ -1071,7 +1082,7 @@ function lessonPlacer(l){
    (요구사항 46, 47). 그래서 서브 메뉴도 콘텐츠와 디자인 둘뿐이다. */
 function pageConcept(){
   const tabs = catline(M.ADMIN_SUBMENUS.concept, state.conceptTab, 'concept-tab');
-  const head = `<div class="pagehead"><h2>개념 노트</h2></div>${tabs}`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('concept'))}</h2></div>${tabs}`;
 
   if (state.conceptTab === 'library')
     return head + pageLessons();
@@ -1119,7 +1130,7 @@ function conceptEditor(l){
    아카이브 칸은 접어 두고 아이콘 단추로 펼친다(hoistory의 아카이브 아코디언과 같다).
    앱 어드민은 오버레이로 화면을 덮지 않고 같은 창 안의 탭으로 연다(요구사항 67). */
 function pageMission(){
-  const head = `<div class="pagehead"><h2>미션 활동</h2>
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('mission'))}</h2>
     <button class="btn-add" data-act="mission-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
 
   const openTabs = state.missionOpen.map(key => M.getMissionApp(key)).filter(Boolean);
@@ -1230,7 +1241,7 @@ function openMissionModal(app){
      PICK      : 같은 고르개로 공유로 켜 둔 답변만 모아 본다(수업 중 띄우는 자리, 요구사항 73) */
 function pageQuestion(){
   const tabs = catline(M.ADMIN_SUBMENUS.question, state.questionTab, 'question-tab');
-  const head = `<div class="pagehead"><h2>오늘의 질문</h2></div>${tabs}`;
+  const head = `<div class="pagehead"><h2>${esc(M.menuName('question'))}</h2></div>${tabs}`;
 
   const all = M.getCourses(state.year);
   if (!all.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
@@ -1292,8 +1303,9 @@ function questionAnswers(rooms, placed, lessons){
   const targets = state.questionRoom === 'all' ? withCl : withCl.filter(x => x.c.id === state.questionRoom);
 
   const one = targets.length === 1 && state.questionRoom !== 'all' ? targets[0].cl : null;
-  const openBtn = one ? `<button class="btn-chip ${one.isOpen?'on':''}" data-act="cl-open" data-id="${one.id}">
-      ${icon(one.isOpen?'eye':'eye-off',13)}${one.isOpen?'공개 중':'숨김'}</button>` : '';
+  // 강의실 관리의 강의 진도 줄과 같은 눈 모양 단추(선생님 지시 2026-10-29: 글자 단추가 너무 컸다).
+  const openBtn = one ? `<button class="ib ib-sm ${one.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${one.id}"
+      title="${one.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>` : '';
   // 첫 줄: 강의 드롭다운 옆에 반 태그(선생님 지시 2026-10-28). 공개 토글은 줄 끝.
   const pickers = `<div class="qbar">
     <select class="sel sel-lesson" data-act="q-lesson" aria-label="강의">
@@ -1436,7 +1448,7 @@ function pageFormative(){
         <div class="s">${esc(l.parts.formative.title || '')}</div></div>
       <div class="tools"><span class="chev">${icon('chevron-right',16)}</span></div>
     </div>`).join('') : `<div class="empty">형성평가가 있는 강의가 없습니다.</div>`;
-    return `<div class="pagehead"><h2>형성평가</h2></div>${list}`;
+    return `<div class="pagehead"><h2>${esc(M.menuName('formative'))}</h2></div>${list}`;
   }
 
   const l = M.getLesson(state.formativeLessonId);
@@ -1469,15 +1481,42 @@ function pageFormative(){
    화면 문구를 코드에 박지 않고 여기서 직접 심고 바꾼다(model.js의 TEXT_FIELDS 규칙 참고).
    비워 두면 기본값이 그대로 쓰인다. 칸마다 따로 저장하지 않고 저장 버튼 하나로 한 번에 쓴다. */
 function pageGeneral(){
+  const draft = state.genDraft || {};
+  const textVal = key => draft[key] ?? M.getText(key);
   const groups = M.TEXT_FIELDS.map(g => `
     <div class="sectionlabel">${esc(g.group)}</div>
     ${g.items.map(f => `<div class="row">
       <div class="grow"><div class="t">${esc(f.label)}</div></div>
-      <input class="f w-lg" data-text-key="${f.key}" value="${esc(M.getText(f.key))}">
+      <input class="f w-lg" data-text-key="${f.key}" value="${esc(textVal(f.key))}">
     </div>`).join('')}`).join('');
-  return `<div class="pagehead"><h2>일반 설정</h2>
+
+  // 어드민 메뉴: 이름을 고치고 위아래로 옮긴다. 구분선도 한 줄로 서서 같이 옮긴다(선생님 지시 2026-10-29).
+  // 옮긴 순서와 고친 이름은 저장 버튼을 눌러야 왼쪽 메뉴에 들어간다.
+  const order = state.menuDraft || M.getMenuOrder();
+  const last = order.length - 1;
+  const moveBtns = i => `<div class="tools">
+      <button class="ib ib-sm" data-act="menu-move" data-i="${i}" data-v="-1" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
+      <button class="ib ib-sm" data-act="menu-move" data-i="${i}" data-v="1" ${i===last?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
+    </div>`;
+  const menuRows = order.map((k, i) => {
+    if (k === M.MENU_SEP) return `<div class="row menu-sep-row"><div class="grow"><div class="menu-sep-line"></div></div>${moveBtns(i)}</div>`;
+    const m = M.ADMIN_MENUS.find(x => x.key === k);
+    return `<div class="row">
+      <span class="menu-ico">${icon(m.icon,16)}</span>
+      <input class="f grow" data-text-key="menu_${k}" value="${esc(draft['menu_' + k] ?? M.menuName(k))}" aria-label="${esc(m.name)} 메뉴 이름">
+      ${moveBtns(i)}</div>`;
+  }).join('');
+
+  return `<div class="pagehead"><h2>${esc(M.menuName('general'))}</h2>
       <button class="btn-add" data-act="general-save" title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button></div>
-    ${groups}`;
+    ${groups}
+    <div class="sectionlabel">어드민 메뉴</div>${menuRows}`;
+}
+// 다시 그리기 전에 일반 설정 칸에 적던 글을 붙잡아 둔다(메뉴를 옮기면 화면을 다시 그리므로).
+function keepGeneralDraft(){
+  const d = state.genDraft || {};
+  document.querySelectorAll('[data-text-key]').forEach(inp => { d[inp.dataset.textKey] = inp.value; });
+  state.genDraft = d;
 }
 
 /* 안에서 내려가는 목록(.dscroll, .split-list)은 스크롤바를 감췄으므로, 더 있다는 것을 끝의 흐림으로
@@ -1517,7 +1556,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'page':
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
       state.studentDetailNo = null; state.roomStudentEdit = false;
-      state.conceptLessonId = null; state.formativeLessonId = null; render(); break;
+      state.conceptLessonId = null; state.formativeLessonId = null;
+      state.progMemoId = null; state.genDraft = null; state.menuDraft = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
     case 'set-class': state.fClass = v === 'all' ? null : v; render(); break;
@@ -1763,6 +1803,13 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'prog-place': {   // 그 반에만 빠져 있던 강의를 꽂는다
       M.placeLesson(id, el.dataset.lid); render(); break;
     }
+    case 'prog-memo':   // 같은 강의의 메모 버튼을 다시 누르면 닫는다
+      state.progMemoId = state.progMemoId === el.dataset.lid ? null : el.dataset.lid; render();
+      document.getElementById('prog-memo-text')?.focus(); break;
+    case 'prog-memo-cancel': state.progMemoId = null; render(); break;
+    case 'prog-memo-save':
+      M.setLessonMemo(el.dataset.lid, val('prog-memo-text'));
+      state.progMemoId = null; toast('메모를 저장했습니다.'); render(); break;
     case 'prog-del': {
       const l = M.getLesson(el.dataset.lid); if (!l) break;
       confirmDelete({
@@ -1780,10 +1827,19 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'general-save': {
       const patch = {};
       document.querySelectorAll('[data-text-key]').forEach(inp => { patch[inp.dataset.textKey] = inp.value; });
-      M.setTexts(patch)
-        .then(() => toast('저장했습니다.'))
+      const order = state.menuDraft || M.getMenuOrder();
+      Promise.all([M.setTexts(patch), M.setMenuOrder(order)])
+        .then(() => { state.genDraft = null; state.menuDraft = null; toast('저장했습니다.'); render(); })
         .catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
       break;
+    }
+    // 어드민 메뉴 순서: 한 칸 위나 아래와 자리를 바꾼다. 저장 전까지는 menuDraft에만 둔다.
+    case 'menu-move': {
+      const order = (state.menuDraft || M.getMenuOrder()).slice();
+      const i = +el.dataset.i, j = i + (+v);
+      if (j < 0 || j >= order.length) break;
+      [order[i], order[j]] = [order[j], order[i]];
+      keepGeneralDraft(); state.menuDraft = order; render(); break;
     }
 
     case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
@@ -1871,6 +1927,24 @@ document.getElementById('shell').addEventListener('input', e => {
   const box = document.getElementById('stu-search');
   if (box){ box.focus(); box.setSelectionRange(pos, pos); }
 });
+
+/* 진도 관리의 강의 메모 버블: 메모가 있는 주제 칸(data-memo)에 마우스를 올리면 그 아래에 뜬다.
+   진도표 칸(.prog-wrap)이 가로 스크롤 상자라 CSS ::after로 띄우면 잘리므로 body에 떠 있는 상자를 쓴다. */
+const $bubble = document.createElement('div');
+$bubble.className = 'memo-bubble'; $bubble.hidden = true;
+document.body.appendChild($bubble);
+document.getElementById('shell').addEventListener('mouseover', e => {
+  const cell = e.target.closest('[data-memo]');
+  if (!cell){ $bubble.hidden = true; return; }
+  $bubble.textContent = cell.dataset.memo;
+  $bubble.hidden = false;
+  const r = cell.getBoundingClientRect();
+  const top = r.bottom + 6 + $bubble.offsetHeight > innerHeight ? r.top - 6 - $bubble.offsetHeight : r.bottom + 6;
+  $bubble.style.left = `${Math.max(8, Math.min(r.left, innerWidth - $bubble.offsetWidth - 8))}px`;
+  $bubble.style.top = `${Math.max(8, top)}px`;
+});
+document.getElementById('shell').addEventListener('mouseleave', () => { $bubble.hidden = true; });
+document.getElementById('main').addEventListener('scroll', () => { $bubble.hidden = true; }, { passive:true });
 
 /* 인라인 폼에서 엔터를 치면 그 줄의 주 버튼을 누른 것으로 본다.
    줄마다 핸들러를 달지 않도록 같은 묶음 안의 .btn-text 또는 .ib-primary를 찾는다. */
