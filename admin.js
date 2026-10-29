@@ -23,12 +23,12 @@ const state = {
   roomLessonsMore: false,          // 강의 진도 30강 넘겨 더 보기
   openScore: null,                 // 상세를 펼친 학생 키(`강의실id_학번`)
   roomStudentEdit: false,          // 강의실 상세 명단 편집(체크 선택) 모드
-  roomStuSel: new Set(),           // 그 모드에서 고른 학번들(일괄 제외용)
   editRoomId: null,                // 그 자리에서 고치는 중인 강의실
   progSubject: null,               // 진도 관리에서 보고 있는 과목(탭)
   studentClass: 'all',             // 학생 관리 반 필터(roomNo)
   studentDetailNo: null,           // 아래로 펼친 학생(학번)
   studentQuery: '',                // 학생 관리 학번 검색어
+  stuScoreCourseId: null,          // 학생 관리 상세에서 성적을 보는 과목(강의실 id)
   lessonId: null, lessonTab: 'edit',
 
   // 칸별 메뉴 넷 (2026-10-27)
@@ -321,34 +321,38 @@ function roomDetailCols(c){
     <div class="sectionlabel between">강의 진도<button class="btn-link" data-act="go-progress" data-id="${c.id}">진도 관리</button></div>
     ${lessonRows}${moreBtn}</div>`;
 
-  // ── 오른쪽: 학생 명단 (편집을 누르면 체크 선택 모드로 이 강의실에서 일괄 제외) ──
+  // ── 오른쪽: 학생 명단 ──
+  // 편집을 누르면 그 반(학번 앞 세 자리) 학생이 전부 뜨고, 체크가 곧 이 강의실 등록 여부다(선생님 지시 2026-10-29).
+  // 등록 안 된 학생은 흐린 이름으로 같이 떠서 체크 한 번으로 다시 등록한다. 체크는 체크박스를 눌러야만 바뀌고
+  // (줄이나 이름을 눌러도 안 바뀐다), 해제할 때는 확인 창을 한 번 더 띄운다(change 이벤트의 enroll 처리).
   const editing = state.roomStudentEdit;
-  const sel = state.roomStuSel;
-  const allSel = students.length > 0 && students.every(s => sel.has(s.studentNo));
+  if (editing){
+    const enrolled = new Set(students.map(s => s.studentNo));
+    const roster = new Map(students.map(s => [s.studentNo, s.name]));
+    M.getStudentsByYear(state.year).forEach(s => {
+      if (s.studentNo.slice(0,3) === M.roomNo(c) && !roster.has(s.studentNo)) roster.set(s.studentNo, s.name);
+    });
+    const rows = [...roster].sort((a,b) => a[0].localeCompare(b[0])).map(([no, name]) => {
+      const on = enrolled.has(no);
+      return `<div class="row compact selrow ${on?'':'off'}">
+        <input type="checkbox" data-act="enroll" data-id="${c.id}" data-no="${no}" ${on?'checked':''}
+          aria-label="${esc(name)} ${on?'등록됨':'등록 안 됨'}">
+        <span class="grow"><span class="t"><span class="mono">${esc(no)}</span> &nbsp;${esc(name)}</span></span></div>`;
+    }).join('') || `<div class="empty">학생이 없습니다.</div>`;
+    return left + `<div class="dcol"><div class="sectionlabel between">학생 명단
+      <button class="btn-link" data-act="stu-edit-done">완료</button></div>${rows}</div>`;
+  }
 
   const stuRows = students.length ? students.map(s => {
-    if (editing){
-      const checked = sel.has(s.studentNo);
-      return `<label class="row compact selrow ${checked?'on':''}">
-        <input type="checkbox" data-act="stu-sel" data-no="${s.studentNo}" ${checked?'checked':''}>
-        <span class="grow"><span class="t"><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</span></span></label>`;
-    }
     const open = state.openScore === `${c.id}_${s.studentNo}`;
     const row = `<div class="row compact rowlink" data-act="stu-score" data-no="${s.studentNo}" data-id="${c.id}">
       <div class="grow"><div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',14)}</span><span class="mono">${esc(s.studentNo)}</span> &nbsp;${esc(s.name)}</div></div></div>`;
     return open ? row + studentCard(c.id, s.studentNo) : row;
   }).join('') : `<div class="empty">학생이 없습니다.</div>`;
 
-  const stuHead = editing
-    ? `<div class="sectionlabel between">학생 명단
-         <button class="btn-link" data-act="stu-edit-done">완료</button></div>
-       <div class="selbar">
-         <label class="selall"><input type="checkbox" data-act="stu-sel-all" ${allSel?'checked':''}><span>전체</span></label>
-         <button class="btn-chip danger" data-act="stu-exclude" data-id="${c.id}" ${sel.size?'':'disabled'}>선택 제외 (${sel.size})</button>
-       </div>`
-    : `<div class="sectionlabel between">학생 명단
+  const stuHead = `<div class="sectionlabel between">학생 명단
          <span class="sec-acts">
-           ${students.length ? `<button class="btn-link" data-act="stu-edit-mode">편집</button>` : ''}
+           <button class="btn-link" data-act="stu-edit-mode">편집</button>
            <button class="btn-link" data-act="go-students" data-id="${c.id}">학생 관리</button>
          </span></div>`;
 
@@ -892,9 +896,18 @@ function studentDetailCols(sno){
   const mine = M.getCoursesOfStudent(state.year, sno).sort((a,b) => a.subject.localeCompare(b.subject,'ko'));
   const enrolled = new Set(mine.map(c => c.id));
 
-  const checks = classCourses.length ? classCourses.map(c => `<label class="checkline">
-    <input type="checkbox" data-act="stu-enroll" data-id="${c.id}" data-no="${sno}" ${enrolled.has(c.id)?'checked':''}>
-    <span>${esc(M.roomName(c))}</span></label>`).join('')
+  // 성적을 볼 과목: 과목명 단추로 고른다(선생님 지시 2026-10-29). 고른 것이 없거나 빠졌으면 첫 수강 과목.
+  if (!mine.some(c => c.id === state.stuScoreCourseId)) state.stuScoreCourseId = mine[0]?.id ?? null;
+
+  // 체크는 체크박스를 눌러야만 바뀐다(줄을 label로 감싸지 않는다). 해제할 때는 확인 창을 띄운다.
+  // 과목명은 단추: 누르면 오른쪽에 그 과목 성적이 뜬다. 수강하지 않는 과목은 성적이 없어 눌리지 않는다.
+  const checks = classCourses.length ? classCourses.map(c => {
+    const on = enrolled.has(c.id), picked = c.id === state.stuScoreCourseId;
+    return `<div class="checkline ${on?'':'off'}">
+    <input type="checkbox" data-act="enroll" data-id="${c.id}" data-no="${sno}" ${on?'checked':''} aria-label="${esc(M.roomName(c))} 수강">
+    <button class="cl-name ${picked?'on':''}" data-act="stu-score-course" data-id="${c.id}" ${on?'':'disabled'}
+      title="${on?'이 과목 성적 보기':'수강하지 않는 과목입니다.'}">${esc(M.roomName(c))}</button></div>`;
+  }).join('')
     : `<div class="empty">${grade}${String(classNo).padStart(2,'0')} 반으로 만든 강의실이 없습니다.</div>`;
 
   // 비밀번호 초기화는 줄(좁은 화면)과 상세 머리줄(넓은 화면)의 아이콘 단추 하나로 끝낸다.
@@ -902,10 +915,11 @@ function studentDetailCols(sno){
   const left = `<div class="dcol">
     <div class="sectionlabel">수강 과목</div>${checks}</div>`;
 
-  // 과목마다 강의실 관리 상세의 학생 카드와 같은 모양(선생님 지시 2026-10-29):
+  // 고른 과목 하나만, 강의실 관리 상세의 학생 카드와 같은 모양으로(선생님 지시 2026-10-29):
   // 강의실 이름 줄 아래에 레벨, 경험치, 포인트 칸과 영역별 포트폴리오 성적, 총점.
-  const scoreRows = mine.length ? mine.map(c => `<div class="row compact">
-      <div class="grow"><div class="t">${esc(M.roomName(c))}</div></div></div>${studentCard(c.id, sno)}`).join('')
+  const sc = mine.find(c => c.id === state.stuScoreCourseId);
+  const scoreRows = sc ? `<div class="row compact">
+      <div class="grow"><div class="t">${esc(M.roomName(sc))}</div></div></div>${studentCard(sc.id, sno)}`
     : `<div class="empty">수강 중인 과목이 없습니다.</div>`;
   const right = `<div class="dcol">
     <div class="sectionlabel">과목별 성적</div>
@@ -1480,7 +1494,7 @@ document.getElementById('shell').addEventListener('click', e => {
   switch (act){
     case 'page':
       state.page = k; state.lessonId = null; state.editRoomId = null; state.roomDetailId = null;
-      state.studentDetailNo = null; state.roomStudentEdit = false; state.roomStuSel = new Set();
+      state.studentDetailNo = null; state.roomStudentEdit = false;
       state.conceptLessonId = null; state.formativeLessonId = null; render(); break;
     case 'set-year': state.year = +v; state.editRoomId = null; render(); break;
     case 'set-subject': state.fSubject = v; render(); break;
@@ -1496,17 +1510,11 @@ document.getElementById('shell').addEventListener('click', e => {
       // 넓은 화면에서는 고르기만 한다(오른쪽 상세가 늘 하나 떠 있다).
       state.roomDetailId = (!WIDE.matches && state.roomDetailId === id) ? null : id;
       state.openScore = null; state.editRoomId = null; state.roomLessonsMore = false;
-      state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
+      state.roomStudentEdit = false; render(); break;
     case 'room-lessons-more': state.roomLessonsMore = true; render(); break;
-    case 'stu-edit-mode': state.roomStudentEdit = true; state.roomStuSel = new Set(); state.openScore = null; render(); break;
-    case 'stu-edit-done': state.roomStudentEdit = false; state.roomStuSel = new Set(); render(); break;
-    case 'stu-exclude': {
-      const c = M.getCourse(id); if (!c) break;
-      const nos = [...state.roomStuSel]; if (!nos.length) break;
-      nos.forEach(sno => M.unenrollStudent(id, sno));
-      state.roomStuSel = new Set();
-      toast(`${nos.length}명을 ${M.roomName(c)}에서 제외했습니다.`); render(); break;
-    }
+    case 'stu-edit-mode': state.roomStudentEdit = true; state.openScore = null; render(); break;
+    case 'stu-edit-done': state.roomStudentEdit = false; render(); break;
+    case 'stu-score-course': state.stuScoreCourseId = id; render(); break;   // 학생 관리 상세: 성적을 볼 과목
     case 'cl-open': M.toggleCourseLessonOpen(id); render(); break;   // 공개 토글(진도 관리와 같이 맞물림)
     // 강의 진도 줄의 바로가기: 미션 활동(연결한 앱 열기), 오늘의 질문 답변
     case 'cl-mission': {
@@ -1760,7 +1768,7 @@ document.getElementById('shell').addEventListener('change', e => {
     state.year = +el.value; state.fSubject = null; state.editRoomId = null;
     state.roomDetailId = null; state.studentDetailNo = null;
     state.scCourseId = null; state.scOpenNo = null;
-    state.roomStudentEdit = false; state.roomStuSel = new Set(); render();
+    state.roomStudentEdit = false; render();
   } else if (el.dataset.act === 'cl-date'){   // 수업일자 저장(진도 관리와 강의 진도가 같이 맞물림)
     M.setCourseLessonDate(el.dataset.id, el.value); render();
   } else if (el.dataset.act === 'prog-sch'){   // 반별 수업 요일(진도표 머리줄)
@@ -1790,29 +1798,36 @@ document.getElementById('shell').addEventListener('change', e => {
     M.toggleGradeLesson(el.dataset.lid, el.checked);
     M.saveGradeConfig().catch(() => toast('저장하지 못했습니다. 다시 시도해 주세요.'));
     render();
-  } else if (el.dataset.act === 'stu-sel'){   // 명단 편집 모드에서 한 명 고르고 풀기
-    if (el.checked) state.roomStuSel.add(el.dataset.no); else state.roomStuSel.delete(el.dataset.no);
-    render();
-  } else if (el.dataset.act === 'stu-sel-all'){
-    const c = M.getCourse(state.roomDetailId);
-    const nos = c ? M.getStudentsByCourse(c.id).map(s => s.studentNo) : [];
-    state.roomStuSel = el.checked ? new Set(nos) : new Set();
-    render();
   } else if (el.dataset.act === 'q-lesson'){   // 오늘의 질문: 답변을 모아 볼 강의
     state.questionLessonId = el.value; render();
   } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
-  } else if (el.dataset.act === 'stu-enroll'){   // 수강 과목(강의실) 체크로 넣고 빼기
+  } else if (el.dataset.act === 'enroll'){
+    /* 강의실 등록 체크(학생 관리의 수강 과목, 강의실 관리의 명단 편집 공용).
+       체크하면 바로 등록한다. 해제는 확인 창을 거친다(선생님 지시 2026-10-29: 모르고 눌러 학생이 빠졌다).
+       확인 전까지는 체크를 되돌려 둔다. 빼도 course_grades, course_submissions는 지우지 않으므로
+       다시 등록하면 성적과 제출 기록이 그대로 돌아온다. */
     const courseId = el.dataset.id, sno = el.dataset.no;
+    const name = M.getStudentsByYear(state.year).find(s => s.studentNo === sno)?.name || '';
     if (el.checked){
-      const name = M.getStudentsByYear(state.year).find(s => s.studentNo === sno)?.name || '';
       M.enrollStudent(courseId, sno, name);
-    } else {
-      M.unenrollStudent(courseId, sno);
+      toast(`${name} 학생을 ${M.roomName(M.getCourse(courseId))}에 등록했습니다.`);
+      render(); return;
     }
-    render();
+    el.checked = true;
+    const room = M.roomName(M.getCourse(courseId));
+    confirmDelete({
+      title: `${room} 수강 해제`,
+      bodyHtml: `<b>${esc(sno)} ${esc(name)}</b> 학생을 ${esc(room)}에서 뺍니다.`
+        + `<ul><li>성적과 제출 기록은 남아 있어 다시 등록하면 그대로 돌아옵니다</li></ul>`,
+      okText: '빼기',
+    }).then(ok => {
+      if (!ok) return;
+      M.unenrollStudent(courseId, sno);
+      toast(`${name} 학생을 ${room}에서 뺐습니다.`); render();
+    });
   }
 });
 

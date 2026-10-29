@@ -252,13 +252,13 @@ h2{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.2px}
 .sc-mark.on{color:var(--accent)}
 /* .ib-sm은 이제 .ib와 같은 크기다(높이 통일, 2026-10-29). 클래스만 남겨 둔다 */
 
-/* 명단 편집(체크 선택) 모드: 평소엔 없고 '편집'을 눌러야 나온다 */
+/* 명단 편집 모드: 평소엔 없고 '편집'을 눌러야 나온다. 체크가 곧 등록 여부 */
 .sec-acts{display:flex;gap:12px;align-items:center}
-.selbar{display:flex;align-items:center;gap:12px;margin:0 2px 8px}
-.selall{display:flex;align-items:center;gap:6px;font-size:var(--fs-meta);color:var(--sub);cursor:pointer}
-.selall input{width:16px;height:16px;accent-color:var(--accent)}
 .selrow{cursor:pointer;gap:10px}
-.selrow input{width:16px;height:16px;accent-color:var(--accent);flex:0 0 auto}
+.selrow input{width:16px;height:16px;accent-color:var(--accent);flex:0 0 auto;cursor:pointer}
+/* 줄로 된 명단 편집은 체크박스만 눌린다(줄을 눌러도 안 바뀐다). 등록 안 된 학생은 흐린 이름 */
+div.selrow{cursor:default}
+.selrow.off .t{color:var(--sub);font-weight:400}
 .selrow.on{background:var(--accent-fade)}
 .selrow.on:hover{background:var(--accent-fade-hover)}
 .btn-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:transparent;
@@ -383,11 +383,16 @@ input[type=number]{-moz-appearance:textfield}
    (선생님 지시 2026-10-29) */
 .checkline{display:flex;align-items:center;gap:9px;border:0;border-top:1px solid var(--line);
   border-bottom:1px solid var(--line);border-radius:0;
-  min-height:var(--h-row);padding:0 12px;margin-bottom:0;background:transparent;cursor:pointer;font-size:var(--fs-body)}
+  min-height:var(--h-row);padding:0 12px;margin-bottom:0;background:transparent;font-size:var(--fs-body)}
 .checkline + .checkline{border-top:0}
-.checkline:hover{background:var(--hover)}
+label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리기 줄은 줄 전체가 체크 */
 /* 체크한 줄에 바탕색을 깔지 않는다. 체크표시만으로 알린다(선생님 지시 2026-10-29) */
-.checkline input{width:17px;height:17px;accent-color:var(--accent)}
+.checkline input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex:none}
+/* 학생 관리 수강 과목: 체크박스만 체크를 바꾸고, 과목명은 그 과목 성적을 여는 단추다 */
+.cl-name{border:0;background:none;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.cl-name:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}
+.cl-name.on{color:var(--accent);-webkit-text-stroke:.4px var(--accent)}
+.cl-name:disabled{color:var(--sub);cursor:default}
 .placeholder{color:var(--sub);font-size:var(--fs-body);border:1px dashed var(--line);border-radius:var(--r);padding:24px;text-align:center}
 
 /* 확인 창: 브라우저 기본 confirm 대신 쓴다(코드 규칙). */
