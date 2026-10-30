@@ -260,13 +260,17 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   ${cards}
 </div>
 <script>
-// 가린 빈칸과 전시학습확인 답을 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작)
+// 가린 빈칸은 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작).
+// 이 문서는 쪽을 넘기지 않으므로, 전시학습확인 쪽은 쪽을 누를 때마다 답이 하나씩 나온다
+// (slide.html에서는 넘기기 단추와 PageDown이 하는 일. slide-deck.js의 stepForward).
+// 답이 다 나온 쪽을 다시 누르면 처음처럼 다 들어간다.
 document.addEventListener('click', e => {
-  const ox = e.target.closest('.qa-ox');
-  if (ox){ const on = ox.querySelector('.qa-oxb.open');
-    ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on)); return; }
-  const t = e.target.closest('.blank, .qa-a');
-  if (t) t.classList.toggle('open');
+  const t = e.target.closest('.blank');
+  if (t){ t.classList.toggle('open'); return; }
+  const page = e.target.closest('.deckpage'); if (!page) return;
+  const next = page.querySelector('[data-step]:not(.shown)');
+  if (next) next.classList.add('shown');
+  else page.querySelectorAll('[data-step]').forEach(el => el.classList.remove('shown'));
 });
 </script>
 </body></html>`;

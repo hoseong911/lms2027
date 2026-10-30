@@ -11,7 +11,7 @@
      쪽을 만들고 그리는 것은 slide-deck.js 하나다(축은 shared/slide-axis.js).
      어드민 미리보기가 같은 파일을 불러써서 두 화면이 어긋나지 않는다.
      주소: slide.html?lesson=강의id&no=강번호  (no는 그 강의실에서 몇 번째로 꽂혔는가) -->
-<link rel="stylesheet" href="slide-deck.css?v=20261030l">
+<link rel="stylesheet" href="slide-deck.css?v=20261030m">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff;font-family:var(--font)}
@@ -65,7 +65,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 <script type="module">
 import * as M from './model.js?v=20261030j';
 import { SLIDE_AXIS } from './shared/slide-axis.js?v=20261030j';
-import { buildSlides, renderSlide, wireReveal } from './slide-deck.js?v=20261030l';
+import { buildSlides, renderSlide, wireReveal, stepForward, stepBack, stepsLeft, showAllSteps } from './slide-deck.js?v=20261030m';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -81,22 +81,34 @@ if (!lesson){
   const stepName = k => (SLIDE_AXIS.find(a => a.key === k) || {}).name || '';
   let i = 0;
 
+  // 좌우 단추: 첫 쪽이라도 꺼낸 답이 있으면 되돌릴 수 있고, 끝 쪽이라도 남은 답이 있으면 넘길 수 있다
+  const syncNav = () => {
+    $('prev').hidden = i === 0 && !$('page').querySelector('[data-step].shown');
+    $('next').hidden = i === pages.length - 1 && !stepsLeft($('page'));
+  };
   const draw = () => {
     $('page').innerHTML = renderSlide(pages[i]);
     $('bar-step').textContent = stepName(pages[i]?.step);
     $('bar-no').textContent = `${i + 1} / ${pages.length}`;
     $('dots').innerHTML = pages.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('');
-    $('prev').hidden = i === 0;
-    $('next').hidden = i === pages.length - 1;
   };
-  const go = d => { const n = i + d; if (n >= 0 && n < pages.length){ i = n; draw(); } };
+  /* 넘기기(선생님 지시 2026-10-30: 전시학습확인 답은 "화살표 버튼으로 조작하거나 페이지 업다운으로
+     조작할때 나오게 해줘. 슬라이드 애니메이션처럼"). 쪽 안에 아직 안 나온 답이 있으면 쪽을 넘기지 않고
+     답을 하나 꺼낸다. 되돌리기는 꺼낸 답을 하나씩 도로 넣고, 다 넣은 뒤에 앞 쪽으로 간다.
+     앞 쪽으로 돌아갈 때는 그 쪽의 답이 다 나온 모양으로 선다(발표 프로그램과 같다). */
+  const go = d => {
+    if (d > 0 ? stepForward($('page')) : stepBack($('page'))){ syncNav(); return; }
+    const n = i + d;
+    if (n >= 0 && n < pages.length){ i = n; draw(); if (d < 0) showAllSteps($('page')); }
+    syncNav();
+  };
 
   $('guard').hidden = true;
   $('stage').hidden = false;
   $('dots').hidden = false;
   $('bar-title').textContent = no ? `${no}강. ${lesson.title}` : lesson.title;
-  wireReveal($('page'));   // 가린 빈칸과 전시학습확인 답을 눌러서 연다
-  draw();
+  wireReveal($('page'));   // 가린 빈칸을 눌러서 연다(전시학습확인 답은 넘기기로 나온다)
+  draw(); syncNav();
 
   /* 전체화면: 브라우저는 사용자가 누른 뒤에만 들어가게 해 준다(자동 진입 불가).
      그래서 이 탭이 열리면 위쪽 막대를 한 번 보여 주고, 버튼을 누르면 들어간다.

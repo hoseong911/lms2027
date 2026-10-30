@@ -205,8 +205,11 @@ export function renderSlide(s){
 
   /* 전시학습확인: 문항 유형 셋(단답형, OX, 초성형. 선생님 지시 2026-10-30).
      유형이 가르는 것은 "학생이 어떻게 답하는가"라서 답 칸의 모양만 다르다.
-       OX     : O와 X 두 칸이 서고 정답인 쪽이 눌러서 열린다
-       그 밖  : 가린 답 한 칸이 눌러서 열린다
+       OX     : O와 X 두 칸이 처음부터 서 있고(답하는 꼴이라서), 정답인 쪽이 나중에 켜진다
+       그 밖  : 답 칸이 처음에는 아예 보이지 않다가 나중에 나타난다
+     답은 슬라이드 애니메이션처럼 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘. 답은 내가
+     화살표 버튼으로 조작하거나 페이지 업다운으로 조작할때 나오게"). 답 하나가 한 단계(data-step)이고
+     넘기기를 누를 때마다 위에서부터 하나씩 나온다. 다루는 것은 아래 stepForward, stepBack.
      글배치: 묻는 줄은 번호와 유형 이름표를 머리에 두고, 답은 묻는 줄 밑으로 들여 쓴다.
      번호 칸 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가 가지런하다. */
   if (s.type === 'qa')
@@ -215,10 +218,10 @@ export function renderSlide(s){
       let answer = '';
       if (it.type === 'ox'){
         const on = ans.toUpperCase();
-        answer = `<div class="qa-ox">${['O','X'].map(v =>
-          `<button class="qa-oxb ${on === v ? 'is' : ''}" data-act="reveal">${v}</button>`).join('')}</div>`;
+        answer = `<div class="qa-ox" ${on === 'O' || on === 'X' ? 'data-step' : ''}>${['O','X'].map(v =>
+          `<span class="qa-oxb ${on === v ? 'is' : ''}">${v}</span>`).join('')}</div>`;
       } else if (ans){
-        answer = `<button class="qa-a" data-act="reveal">${inlineText(ans)}</button>`;
+        answer = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
       }
       return `<div class="qa">
         <div class="qa-q"><span class="qa-n">${i + 1}</span>
@@ -264,20 +267,39 @@ export function renderSlide(s){
   return mark;
 }
 
-/* 가린 빈칸과 전시학습확인 답을 눌러서 여는 것. 쪽을 그린 뒤 한 번 걸어 준다.
+/* 가린 빈칸을 눌러서 여는 것. 쪽을 그린 뒤 한 번 걸어 준다.
+   (전시학습확인 답은 누르는 것이 아니라 넘기기로 나온다. 아래 stepForward)
    쪽을 다시 그려도 위임이라 다시 걸 필요가 없다(컨테이너에 한 번만). */
 export function wireReveal(root){
   if (!root || root.dataset.revealWired) return;
   root.dataset.revealWired = '1';
   root.addEventListener('click', e => {
-    // OX는 어느 쪽을 눌러도 두 칸이 같이 열린다: 어느 쪽이 답인지 보여 주는 것이 목적이다
-    const ox = e.target.closest('.qa-ox');
-    if (ox){
-      const on = ox.querySelector('.qa-oxb.open');
-      ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on));
-      return;
-    }
-    const t = e.target.closest('.blank, .qa-a');
+    const t = e.target.closest('.blank');
     if (t) t.classList.toggle('open');
   });
+}
+
+/* ── 쪽 안의 단계(슬라이드 애니메이션) ──
+   전시학습확인의 답처럼 나중에 나올 것에 data-step을 달아 둔다. 넘기기(오른쪽 화살표, PageDown,
+   다음 단추)를 누르면 쪽을 넘기기 전에 아직 안 나온 것을 위에서부터 하나 꺼낸다(stepForward).
+   되돌리기(왼쪽 화살표, PageUp, 이전 단추)는 마지막에 꺼낸 것부터 하나씩 도로 넣는다(stepBack).
+   둘 다 할 일이 없으면 false를 돌려주고, 그때 부르는 쪽이 쪽을 넘긴다.
+   뒤로 넘겨 이 쪽에 다시 들어오면 다 나온 모양으로 선다(showAllSteps). 발표 프로그램과 같은 순서다. */
+export function stepForward(root){
+  const el = root?.querySelector('[data-step]:not(.shown)');
+  if (!el) return false;
+  el.classList.remove('instant'); el.classList.add('shown');
+  return true;
+}
+export function stepBack(root){
+  const shown = root?.querySelectorAll('[data-step].shown') || [];
+  if (!shown.length) return false;
+  const el = shown[shown.length - 1];
+  el.classList.remove('instant'); el.classList.remove('shown');
+  return true;
+}
+export function stepsLeft(root){ return !!root?.querySelector('[data-step]:not(.shown)'); }
+// 움직임 없이 한꺼번에(instant): 뒤로 들어왔을 때 답이 하나씩 날아드는 것을 다시 보이지 않게
+export function showAllSteps(root){
+  root?.querySelectorAll('[data-step]').forEach(el => el.classList.add('shown', 'instant'));
 }

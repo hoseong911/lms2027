@@ -240,18 +240,28 @@
   border:1px solid var(--line-strong);border-radius:2px;
   padding:calc(var(--px) * 4) 0;text-align:center;letter-spacing:.02em}
 .deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
-.deckpage .qa-a{display:block;margin:calc(var(--px) * 14) 0 0 var(--qa-in);
-  border:0;border-radius:var(--r);background:var(--navy);color:transparent;
-  padding:calc(var(--px) * 10) calc(var(--px) * 26);font-family:inherit;cursor:pointer;
-  font-size:var(--sfs);line-height:1.4;text-align:left}
-.deckpage .qa-a.open{background:var(--navy-100);color:var(--navy);font-weight:700}
-/* OX: 두 칸이 나란히 선다. 정답인 쪽만 눌렀을 때 레드로 켜진다(.is) */
+/* 답은 슬라이드 애니메이션처럼 나중에 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘").
+   넘기기를 누를 때마다 하나씩 .shown이 붙는다(slide-deck.js의 stepForward).
+   나오기 전에도 자리는 차지하고 있어서(투명할 뿐) 답이 나올 때 아래 문항이 밀려 내려가지 않는다.
+   열린 답은 열린 빈칸과 같은 모양이다(레드 글씨, 연한 레드 바탕. "빈칸은 레드"). */
+.deckpage .qa-a{display:block;width:fit-content;max-width:calc(100% - var(--qa-in));
+  margin:calc(var(--px) * 14) 0 0 var(--qa-in);border-radius:var(--r);
+  background:var(--red-100);color:var(--red);font-weight:800;
+  padding:calc(var(--px) * 8) calc(var(--px) * 26);font-size:var(--sfs);line-height:1.4}
+.deckpage .qa-a[data-step]{opacity:0;transform:translateY(calc(var(--px) * 18));
+  transition:opacity .35s ease, transform .35s ease}
+.deckpage .qa-a[data-step].shown{opacity:1;transform:none}
+/* OX: O와 X 두 칸은 처음부터 서 있다(학생이 고르는 꼴). 답이 나올 차례가 되면 정답인 쪽(.is)이
+   레드로 켜지고 아닌 쪽은 흐려진다 */
 .deckpage .qa-ox{display:flex;gap:calc(var(--px) * 18);margin:calc(var(--px) * 14) 0 0 var(--qa-in)}
-.deckpage .qa-oxb{width:calc(var(--px) * 130);border:2px solid var(--line-strong);border-radius:var(--r);
-  background:transparent;color:var(--line-strong);font-family:inherit;cursor:pointer;
-  font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) 0;line-height:1.2}
-.deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
-.deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
+.deckpage .qa-oxb{display:block;width:calc(var(--px) * 130);border:2px solid var(--navy);border-radius:var(--r);
+  background:transparent;color:var(--navy);text-align:center;
+  font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) 0;line-height:1.2;
+  transition:color .35s ease, border-color .35s ease, background-color .35s ease, opacity .35s ease}
+.deckpage .qa-ox.shown .qa-oxb{opacity:.3}
+.deckpage .qa-ox.shown .qa-oxb.is{opacity:1;border-color:var(--red);color:var(--red);background:var(--red-100)}
+/* 뒤로 넘겨 들어왔을 때는 움직임 없이 다 나온 모양으로 선다 */
+.deckpage .instant, .deckpage .instant .qa-oxb{transition:none}
 
 /* ── 가린 빈칸 {정답}과 강조 **굵게** ── (선생님 지시 2026-10-30: "빈칸은 레드, 강조할 건 네이비")
    빈칸은 가려 둔 동안 레드 칸, 누르면 열려서 레드 글씨가 된다. 열고 닫는 것은 slide-deck.js의 wireReveal.
@@ -333,15 +343,15 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
         <div class="qa-q"><span class="qa-n">1</span>
           <span class="qa-t">단답형</span>
           <span class="qa-txt">조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?</span></div>
-        <button class="qa-a" data-act="reveal">사화</button></div><div class="qa">
+        <div class="qa-a" data-step>사화</div></div><div class="qa">
         <div class="qa-q"><span class="qa-n">2</span>
           <span class="qa-t">OX</span>
           <span class="qa-txt">조광조의 개혁은 중종의 지지가 끝까지 이어져 성공하였다.</span></div>
-        <div class="qa-ox"><button class="qa-oxb " data-act="reveal">O</button><button class="qa-oxb is" data-act="reveal">X</button></div></div><div class="qa">
+        <div class="qa-ox" data-step><span class="qa-oxb ">O</span><span class="qa-oxb is">X</span></div></div><div class="qa">
         <div class="qa-q"><span class="qa-n">3</span>
           <span class="qa-t">초성형</span>
           <span class="qa-txt">사화를 겪은 사림이 향촌에서 힘을 다시 모은 곳은? (ㅅㅇ)</span></div>
-        <button class="qa-a" data-act="reveal">서원</button></div></div></div></div>
+        <div class="qa-a" data-step>서원</div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">3</span>
@@ -413,13 +423,17 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   </section>
 </div>
 <script>
-// 가린 빈칸과 전시학습확인 답을 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작)
+// 가린 빈칸은 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작).
+// 이 문서는 쪽을 넘기지 않으므로, 전시학습확인 쪽은 쪽을 누를 때마다 답이 하나씩 나온다
+// (slide.html에서는 넘기기 단추와 PageDown이 하는 일. slide-deck.js의 stepForward).
+// 답이 다 나온 쪽을 다시 누르면 처음처럼 다 들어간다.
 document.addEventListener('click', e => {
-  const ox = e.target.closest('.qa-ox');
-  if (ox){ const on = ox.querySelector('.qa-oxb.open');
-    ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on)); return; }
-  const t = e.target.closest('.blank, .qa-a');
-  if (t) t.classList.toggle('open');
+  const t = e.target.closest('.blank');
+  if (t){ t.classList.toggle('open'); return; }
+  const page = e.target.closest('.deckpage'); if (!page) return;
+  const next = page.querySelector('[data-step]:not(.shown)');
+  if (next) next.classList.add('shown');
+  else page.querySelectorAll('[data-step]').forEach(el => el.classList.remove('shown'));
 });
 </script>
 </body></html>
