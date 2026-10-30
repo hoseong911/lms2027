@@ -685,7 +685,8 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
    글 칸은 적은 만큼 늘어난다(field-sizing). 못 읽는 브라우저는 rows로 어림한 높이에 손잡이로 늘린다. */
 /* 페이지 번호는 "1페이지"가 아니라 숫자만(선생님 지시 2026-10-30: "1 2 이런식으로 간결하게").
    모양은 콘텐츠 탭 공용 번호 칸(.axnum) 하나다.
-   머리줄은 번호, 제목 칸, 단추 다섯(위, 아래, 묶음 추가, 비교 묶음 추가, 삭제) 순이다. 제목 칸은 늘어나지 않는다
+   머리줄은 번호, 제목 칸, 단추 여섯(위, 아래, 묶음 추가, 위 페이지와 합치기, 묶음마다 나누기,
+   삭제) 순이다(요구사항 139에서 비교 묶음 추가를 빼고 합치기와 나누기를 더했다). 제목 칸은 늘어나지 않는다
    (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을") */
 .pgblock{border-top:1px solid var(--line);padding:14px 0 16px}
 .pgblock:first-child{border-top:0;padding-top:6px}
@@ -703,6 +704,15 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
 /* 내용 칸: 단계 들여쓰기를 빈칸으로 보여 주므로(indentText) 빈칸 폭이 고른 편이 단계가 가지런하다 */
 .pgtext{white-space:pre-wrap;tab-size:4;width:100%}
 .pgrow .tools{padding-top:3px}
+/* 묶음 유형 고르개(요구사항 139)는 묶음 머리줄 오른쪽, 단추들 앞에 선다. 라벨 칸 왼쪽에 두지
+   않는 까닭: 라벨과 내용은 페이지 번호와 같은 선에서 시작해야 한다(선생님 지시 2026-10-30).
+   모양은 전시학습확인 문항 유형 고르개(.axtype)와 같은 것 하나다. 좁은 화면에서는 머리줄이
+   두 줄로 접히고(flex-wrap) 고르개와 단추가 오른쪽으로 붙는다. */
+.pgrow .tools .axtype{width:112px}
+@media (max-width:760px){
+  .pgrow-top{flex-wrap:wrap}
+  .pgrow-top .tools{margin-left:auto}
+}
 /* 좌우 비교 묶음(요구사항 137): 보통 묶음(라벨 위, 내용 아래)이 두 칸으로 나란히 서고, 삭제 단추는
    오른쪽 끝 위에 선다(보통 묶음과 같이 길어지는 내용 칸에 매달지 않는다). 좁은 화면에서는 위아래로 쌓는다 */
 .pgcmp{flex-direction:row;align-items:flex-start;gap:8px}

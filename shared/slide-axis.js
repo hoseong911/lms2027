@@ -112,6 +112,15 @@ export function normalizeDeck(lesson){
  *                                    "기존 lms에서 좌우 비교하는 내용이 있거든? 그거를 참고해봐").
  *                                    2026의 compare처럼 왼쪽과 오른쪽이 각각 라벨과 내용을 든다.
  *                                    서인과 동인을 견주는 두 칸 표가 그 예다.
+ *
+ *   { type:'source', label, text }   사료 인용 묶음(선생님 지시 2026-10-30, 요구사항 139).
+ *                                    라벨이 사료 제목, 내용이 원문이다. 칸은 보통 묶음과 같고
+ *                                    그리는 모양만 사료 쪽을 따른다(ROW_TYPES 주석).
+ *
+ * **원칙: 묶음 하나가 페이지 하나다**(선생님 지시 2026-10-30, 요구사항 139:
+ * "원칙은 1행라벨 당 1페이지"). 활동지에서 가져올 때 그렇게 나눈다(worksheet.js의 newRow).
+ * 내용이 적어 한 쪽에 같이 두고 싶으면 편집기에서 합치고(pg-merge-up), 많으면 나눈다
+ * (pg-split-rows, pg-row-cut). 그래서 저장 모양은 한 페이지에 묶음 여럿을 그대로 담는다.
  * 개념 노트는 parts.concept.content, 미션 활동은 deck.mission.content 에 든다.
  *
  * 페이지로 펴면 비교 묶음은 { kind:'compare', label:'', text:'', left, right }다.
@@ -124,6 +133,51 @@ export function normalizeDeck(lesson){
  */
 const side = s => ({ label: String(s?.label ?? ''), text: String(s?.text ?? '') });
 export const blankCompare = () => ({ kind:'compare', label:'', text:'', left: side(), right: side() });
+
+/* ── 묶음의 유형 (선생님 지시 2026-10-30, 요구사항 139) ──
+ * "여러가지 유형의 페이지가 있을 수 있으니 그 유형을 고르는 기능도 각 행마다
+ *  (페이지 내에서 다른 걸 적용 해야 하기도 함) 만들어줘"
+ *
+ * 유형은 페이지가 아니라 묶음마다 고른다. 한 페이지 안에서 묶음마다 다를 수 있다.
+ *   rows     행 나열     라벨 + 내용 줄 (지금까지의 보통 묶음)
+ *   compare  좌우 비교   왼쪽과 오른쪽이 각각 라벨과 내용 (서인과 동인)
+ *   source   사료 인용   라벨이 사료 제목, 내용이 원문. 세리프체 양쪽 정렬에 큰따옴표
+ * 저장 모양에서 유형은 type('row' / 'compare' / 'source')이고, 페이지로 펴면 kind다.
+ * 2026 lms에는 연표와 플로우도 있었지만 가져오지 않았다(선생님이 고른 것은 이 셋이다).
+ *
+ * 사료 쪽(SOURCE_RE: 제목이 "사료 : "로 시작하는 페이지)은 그대로 둔다. 그쪽은 쪽 하나가
+ * 통째로 사료인 것이고, 이 유형은 쪽 안의 묶음 하나가 사료인 것이다. 활동지 변환은 여전히
+ * 제목으로 사료 쪽을 가린다(쪽 하나를 통째로 떼는 편이 활동지 모양에 맞다). */
+export const ROW_TYPES = [
+  { key:'rows',    name:'행 나열' },
+  { key:'compare', name:'좌우 비교' },
+  { key:'source',  name:'사료 인용' },
+];
+// 옛 묶음은 kind 칸이 아예 없다(한 줄이 한 묶음이던 때의 것). 그런 묶음은 행 나열이다
+export const rowKind = r => (r && ROW_TYPES.some(t => t.key === r.kind) ? r.kind : 'rows');
+
+/* 묶음의 유형을 바꾼다. **적은 글을 잃지 않는 것이 규칙이다**(편집기에서 잘못 골라도
+   되돌리면 글이 돌아와야 한다).
+   행 나열 ↔ 사료 인용은 칸이 같아서(라벨, 내용) 그대로 옮긴다.
+   행 나열, 사료 → 좌우 비교는 적은 것을 왼쪽 칸에 넣는다(오른쪽은 빈 칸).
+   좌우 비교 → 둘은 왼쪽 라벨만 라벨로 남고, 나머지 셋은 내용 줄로 이어 붙인다. */
+export function convertRow(row, kind){
+  const to = ROW_TYPES.some(t => t.key === kind) ? kind : 'rows';
+  const from = rowKind(row);
+  if (from === to) return row;
+  if (to === 'compare'){
+    const c = blankCompare();
+    c.left = side({ label: row?.label, text: row?.text });
+    return c;
+  }
+  const keep = (label, text) => to === 'source' ? { kind:'source', label, text } : { label, text };
+  if (from === 'compare'){
+    const parts = [row.left?.text, row.right?.label, row.right?.text]
+      .map(t => String(t ?? '').trim()).filter(Boolean);
+    return keep(String(row.left?.label ?? ''), parts.join('\n'));
+  }
+  return keep(String(row?.label ?? ''), String(row?.text ?? ''));
+}
 
 export function toPages(content){
   const pages = [];
@@ -138,6 +192,10 @@ export function toPages(content){
       cur.rows.push({ ...blankCompare(), left: side(ln.left), right: side(ln.right) });
       lastLegacy = false; return;
     }
+    if (ln.type === 'source'){
+      cur.rows.push({ kind:'source', label: String(ln.label ?? ''), text: String(ln.text ?? '') });
+      lastLegacy = false; return;
+    }
     const legacy = !('label' in ln);
     const text = String(ln.text ?? '');
     if (legacy && lastLegacy) cur.rows[cur.rows.length - 1].text += '\n' + text;
@@ -150,9 +208,10 @@ export function fromPages(pages){
   const out = [];
   (pages || []).forEach(p => {
     out.push({ type:'divider', title: String(p.title ?? '') });
-    (p.rows || []).forEach(r => out.push(r.kind === 'compare'
+    (p.rows || []).forEach(r => out.push(rowKind(r) === 'compare'
       ? { type:'compare', left: side(r.left), right: side(r.right) }
-      : { type:'row', label: String(r.label ?? ''), text: String(r.text ?? '') }));
+      : { type: rowKind(r) === 'source' ? 'source' : 'row',
+          label: String(r.label ?? ''), text: String(r.text ?? '') }));
   });
   return out;
 }

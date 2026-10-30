@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled } from './shared/slide-axis.js?v=20261030v';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind } from './shared/slide-axis.js?v=20261030w';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -139,11 +139,12 @@ function pageSlides(content, fallback){
       title: src ? t.slice(src[0].length).trim() : t,
       // 비교 묶음은 왼쪽과 오른쪽이 각각 라벨과 내용 줄을 든다. 빈 묶음을 떨어뜨리는 기준은 rowFilled다
       // (model.js의 deckStepFilled와 같은 기준: 한쪽만 고치면 "채웠다는데 쪽이 없다"가 된다)
-      rows: p.rows.filter(rowFilled).map(r => r.kind === 'compare'
+      // 묶음 유형(rowKind)은 그대로 들고 간다: 사료 인용 묶음은 그릴 때 모양이 다르다(요구사항 139)
+      rows: p.rows.filter(rowFilled).map(r => rowKind(r) === 'compare'
         ? { kind: 'compare',
             left:  { label: r.left.label.trim(),  lines: splitLines(r.left.text) },
             right: { label: r.right.label.trim(), lines: splitLines(r.right.text) } }
-        : { label: String(r.label || '').trim(), lines: splitLines(r.text) }),
+        : { kind: rowKind(r), label: String(r.label || '').trim(), lines: splitLines(r.text) }),
     };
   }).filter(p => p.rows.length || p.title);
 }
@@ -309,14 +310,21 @@ export function renderSlide(s){
       구분선 길이는 행라벨 글씨까지만"). 라벨이 없는 묶음은 내용 줄만 선다.
      사료 쪽(kind 'source')은 모양이 다르다: 배지만 맨 위에 두고, 제목은 가운데 위, 본문은 세리프체에
      양쪽 정렬, 왼쪽 위와 오른쪽 아래에 연한 큰따옴표, 출전은 오른쪽 아래(pageSlides 위 주석). */
+  /* 사료 본문: 큰따옴표를 깐 글 상자와 오른쪽 아래 출전. 사료 쪽(쪽 하나가 통째로 사료)과
+     사료 인용 묶음(쪽 안의 묶음 하나. 요구사항 139)이 같이 쓴다. 두 군데서 모양이 어긋나지 않게
+     한 곳에 둔다(출전을 떼는 규칙도 하나다). */
+  const srcBody = lines => {
+    const ls = lines.slice();
+    const cite = ls.length > 1 && CITE_RE.test(ls[ls.length - 1]) ? ls.pop() : '';
+    return `<div class="src-quote">${ls.map(t => `<p>${inlineText(t)}</p>`).join('')}</div>`
+      + (cite ? `<div class="src-cite">${inlineText(cite)}</div>` : '');
+  };
   if (s.type === 'page' && s.kind === 'source'){
     // 사료 쪽에 비교 묶음을 손으로 넣었으면 왼쪽, 오른쪽 차례로 본문에 편다(사료는 한 덩어리 글이다)
     const lines = s.rows.flatMap(r => r.kind === 'compare' ? [...r.left.lines, ...r.right.lines] : r.lines);
-    const cite = lines.length > 1 && CITE_RE.test(lines[lines.length - 1]) ? lines.pop() : '';
     return `${top('')}<div class="s-body s-src">
       ${s.title ? `<h2 class="src-title">${inlineText(s.title)}</h2>` : ''}
-      <div class="src-quote">${lines.map(t => `<p>${inlineText(t)}</p>`).join('')}</div>
-      ${cite ? `<div class="src-cite">${inlineText(cite)}</div>` : ''}</div>`;
+      ${srcBody(lines)}</div>`;
   }
   /* 좌우 비교 묶음(선생님 지시 2026-10-30, 요구사항 137: "기존 lms에서 좌우 비교하는 내용이 있거든?
      그거를 참고해봐"). 2026 슬라이드의 compareBodyHTML을 보고 따랐다: 두 칸이 나란히 서고
@@ -330,11 +338,17 @@ export function renderSlide(s){
       <div class="plines">${linesHTML(c.lines, dropNum)}</div></div>`;
     return `<div class="prow pcmp">${col(r.left)}<div class="pcmp-vs"><span>VS</span></div>${col(r.right)}</div>`;
   };
+  /* 사료 인용 묶음(요구사항 139): 쪽 하나가 통째로 사료인 사료 쪽과 달리 쪽 안의 묶음 하나다.
+     제목은 묶음 라벨 자리에 그대로 서고(.plabel, 레드 밑줄) 본문만 사료 모양이다. 그래서
+     같은 쪽에 보통 묶음과 나란히 서도 줄이 맞는다. */
   if (s.type === 'page')
-    return `${top(s.title)}<div class="s-body s-page">${s.rows.map(r => r.kind === 'compare'
-      ? compareHTML(r, s.step === 'concept')
-      : `<div class="prow">${r.label ? `<div class="plabel">${inlineText(r.label)}</div>` : ''}
-        <div class="plines">${linesHTML(r.lines, s.step === 'concept')}</div></div>`).join('')}</div>`;
+    return `${top(s.title)}<div class="s-body s-page">${s.rows.map(r => {
+      if (r.kind === 'compare') return compareHTML(r, s.step === 'concept');
+      const label = r.label ? `<div class="plabel">${inlineText(r.label)}</div>` : '';
+      if (r.kind === 'source') return `<div class="prow psrc">${label}${srcBody(r.lines)}</div>`;
+      return `<div class="prow">${label}
+        <div class="plines">${linesHTML(r.lines, s.step === 'concept')}</div></div>`;
+    }).join('')}</div>`;
 
   if (s.type === 'question')
     return `${mark}<div class="s-body s-q">

@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030v';
-import { icon } from './shared/icons.js?v=20261028h';
+import * as M from './model.js?v=20261030w';
+import { icon } from './shared/icons.js?v=20261030w';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -35,6 +35,7 @@ const state = {
   conceptTab: 'content',           // 개념 노트 서브 메뉴 'content' | 'design'
   conceptLessonId: null,           // 콘텐츠(축 편집기)에서 고른 강의
   axisStep: 'cover',               // 축 편집기에서 펼친 단계(shared/slide-axis.js의 key)
+  pgCut: null,                     // 페이지 내용 칸에서 커서를 둔 자리 { id, k, p, r, line }(가위 단추가 쓴다)
   questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers' | 'pick'
   questionSubject: null,           // 오늘의 질문 과목 탭(서브 메뉴 셋 공통)
   questionSel: null,               // 질문 관리에서 고른 강의(오른쪽 편집 칸)
@@ -1348,6 +1349,15 @@ function pageEditor(l, k){
     `<button class="ib ib-sm ${danger ? 'ib-danger' : ''}" ${at(act, p, r)} ${off ? 'disabled' : ''}
       title="${title}" aria-label="${title}">${icon(ic, 14)}</button>`;
 
+  /* 묶음 유형 고르개 (선생님 지시 2026-10-30, 요구사항 139: "여러가지 유형의 페이지가 있을 수
+     있으니 그 유형을 고르는 기능도 각 행마다 만들어줘"). 유형은 페이지가 아니라 묶음마다다
+     (같은 지시: "페이지 내에서 다른 걸 적용 해야 하기도 함").
+     모양은 전시학습확인의 문항 유형 고르개와 같은 것(.axtype) 하나다. 유형 목록은
+     shared/slide-axis.js의 ROW_TYPES에 있다. 고르면 적은 글을 들고 모양만 바뀐다(M.convertRow). */
+  const typeSel = (r, p, ri) => `<select class="f axtype" ${at('pg-row-type', p, ri)} aria-label="묶음 유형">
+    ${M.ROW_TYPES.map(t => `<option value="${t.key}" ${M.rowKind(r) === t.key ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
+  </select>`;
+
   const body = pages.map((pg, p) => {
     /* 묶음은 라벨이 위, 내용이 아래로 세로로 쌓인다(선생님 지시 2026-10-30:
        "행라벨과 내용은 가로로 쌓지 말고 세로로 쌓아줘"). 왼쪽 라벨 칸 격자로 되돌리지 않는다.
@@ -1367,21 +1377,37 @@ function pageEditor(l, k){
             data-f="${s}.text" placeholder="${nm} 내용" aria-label="${nm} 내용">${esc(M.indentText(r[s].text))}</textarea></div>`;
       return `<div class="pgrow pgcmp">
         <div class="pgcmp-cols">${side('left', '왼쪽')}${side('right', '오른쪽')}</div>
-        <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '비교 묶음 삭제', { danger:true })}</div></div>`;
+        <div class="tools">${typeSel(r, p, ri)}
+          ${btn('pg-row-del', p, ri, 'trash-2', '비교 묶음 삭제', { danger:true })}</div></div>`;
     };
-    const rows = pg.rows.map((r, ri) => r.kind === 'compare' ? cmpRow(r, ri) : `<div class="pgrow">
+    /* 행 나열과 사료 인용은 칸이 같다(라벨 + 내용). 플레이스홀더만 유형에 맞춘다:
+       사료 인용에서는 라벨이 사료 제목, 내용이 원문이다. */
+    const plainRow = (r, ri) => {
+      const src = M.rowKind(r) === 'source';
+      return `<div class="pgrow">
         <div class="pgrow-top">
           <textarea class="f grow pglabel" rows="1" ${at('pg-set', p, ri)} data-f="label"
-            placeholder="라벨" aria-label="라벨">${esc(r.label)}</textarea>
-          <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '묶음 삭제', { danger:true })}</div>
+            placeholder="${src ? '사료 제목' : '라벨'}" aria-label="라벨">${esc(r.label)}</textarea>
+          <div class="tools">${typeSel(r, p, ri)}
+            ${btn('pg-row-cut', p, ri, 'scissors', '커서를 둔 줄부터 새 페이지로')}
+            ${btn('pg-row-del', p, ri, 'trash-2', '묶음 삭제', { danger:true })}</div>
         </div>
         <textarea class="f pgtext" rows="${Math.max(2, r.text.split('\n').length)}" ${at('pg-set', p, ri)}
-          data-f="text" placeholder="내용" aria-label="내용">${esc(M.indentText(r.text))}</textarea></div>`).join('');
+          data-f="text" placeholder="${src ? '사료 원문' : '내용'}" aria-label="내용">${esc(M.indentText(r.text))}</textarea></div>`;
+    };
+    const rows = pg.rows.map((r, ri) => M.rowKind(r) === 'compare' ? cmpRow(r, ri) : plainRow(r, ri)).join('');
     /* 머리줄: 번호, 제목 칸, 그 다음 단추. 묶음 추가는 순서 바꾸기 다음 자리다
        (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을 위치시켜줘").
        제목 칸은 그래서 늘어나지 않고 폭이 정해져 있다(.pgtitle).
        묶음 추가를 묶음 목록 아래로 되돌리지 않는다.
-       비교 묶음 추가(layout-grid)는 묶음 추가 바로 옆이다(요구사항 137). */
+       비교 묶음 추가(layout-grid)는 걷었다: 유형 고르개가 그 일을 한다(요구사항 139).
+
+       합치기와 나누기(요구사항 139): 원칙은 묶음 하나가 페이지 하나지만 내용이 적으면 같이 두고
+       싶고 많으면 쪼개고 싶다(선생님 지시 2026-10-30). 그래서 셋을 둔다.
+         위 페이지와 합치기(fold-vertical)   이 페이지의 묶음을 윗 페이지로 옮긴다. 첫 페이지는 끌 수 없다
+         묶음마다 페이지 나누기(unfold-...)  묶음이 둘 이상인 페이지를 묶음마다 한 쪽으로 가른다
+         커서 줄부터 나누기(가위, 묶음 머리) 묶음 하나가 너무 길 때 그 줄부터 새 페이지로
+       나누기 단추는 묶음이 하나뿐이면 꺼 둔다. 그것이 "이 페이지는 원칙에 맞다"는 표시도 된다. */
     return `<section class="pgblock">
       <div class="pghead"><span class="axnum">${p + 1}</span>
         <input class="f pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
@@ -1389,7 +1415,8 @@ function pageEditor(l, k){
           ${btn('pg-up', p, null, 'arrow-up', '페이지 위로', { off: p === 0 })}
           ${btn('pg-down', p, null, 'arrow-down', '페이지 아래로', { off: p === pages.length - 1 })}
           ${btn('pg-row-add', p, null, 'plus', '묶음 추가')}
-          ${btn('pg-row-add-cmp', p, null, 'layout-grid', '좌우 비교 묶음 추가')}
+          ${btn('pg-merge-up', p, null, 'fold-vertical', '위 페이지와 합치기', { off: p === 0 })}
+          ${btn('pg-split-rows', p, null, 'unfold-vertical', '묶음마다 페이지 나누기', { off: pg.rows.length < 2 })}
           ${btn('pg-del', p, null, 'trash-2', '페이지 삭제', { danger:true })}</div></div>
       ${rows}
     </section>`;
@@ -1428,7 +1455,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030v');
+      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030w');
       got = await worksheetFromFile(file);
     } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
@@ -2345,8 +2372,45 @@ document.getElementById('shell').addEventListener('click', e => {
       [pages[p], pages[j]] = [pages[j], pages[p]];
     }); render(); break;
     case 'pg-row-add': editPages(el, (pages, p) => { pages[p]?.rows.push({ label:'', text:'' }); }); render(); break;
-    case 'pg-row-add-cmp': editPages(el, (pages, p) => { pages[p]?.rows.push(M.blankCompare()); }); render(); break;
     case 'pg-row-del': editPages(el, (pages, p, r) => { pages[p]?.rows.splice(r, 1); }); render(); break;
+
+    /* 페이지 합치기와 나누기 (선생님 지시 2026-10-30, 요구사항 139).
+       원칙은 묶음 하나가 페이지 하나지만(활동지 변환이 그렇게 나눈다. shared/worksheet.js)
+       "내용이 적어서 2개의 행을 1페이지로 합치고 싶을 수도" 있고 너무 많으면 나누고 싶다.
+       셋 다 하는 일은 같다: 페이지 배열에서 묶음을 옮긴다. 제목은 나눌 때 그대로 되쓴다. */
+    case 'pg-merge-up': editPages(el, (pages, p) => {
+      const up = pages[p - 1], pg = pages[p];
+      if (!up || !pg) return false;
+      // 윗 페이지에 제목이 없으면 이 페이지의 제목을 가져간다(둘 다 있으면 윗 제목이 남는다)
+      if (!up.title.trim()) up.title = pg.title;
+      up.rows.push(...pg.rows);
+      pages.splice(p, 1);
+    }); render(); break;
+    case 'pg-split-rows': editPages(el, (pages, p) => {
+      const pg = pages[p];
+      if (!pg || pg.rows.length < 2) return false;
+      pages.splice(p, 1, ...pg.rows.map(r => ({ title: pg.title, rows: [r] })));
+    }); render(); break;
+    /* 묶음 하나가 너무 길 때 커서를 둔 줄부터 새 페이지로(선생님 지시: "1행을 2페이지로 나누는 기능").
+       자리는 내용 칸에서 움직일 때마다 적어 둔 것을 쓴다(state.pgCut. 단추를 누르는 순간에는
+       칸에서 포커스가 빠져 있어 커서를 읽을 수 없다). 그 아래 묶음들도 새 페이지로 같이 넘어간다. */
+    case 'pg-row-cut': {
+      const c = state.pgCut;
+      const mine = c && c.id === id && c.k === k && c.p === +el.dataset.p && c.r === +el.dataset.r;
+      let done = false;
+      if (mine) editPages(el, (pages, p, r) => {
+        const pg = pages[p], row = pg?.rows[r];
+        if (!row || M.rowKind(row) === 'compare') return false;
+        const lines = String(row.text || '').split('\n');
+        if (c.line < 1 || c.line >= lines.length) return false;
+        row.text = lines.slice(0, c.line).join('\n');
+        const rest = { ...row, text: lines.slice(c.line).join('\n') };
+        pages.splice(p + 1, 0, { title: pg.title, rows: [rest, ...pg.rows.splice(r + 1)] });
+        done = true;
+      });
+      if (!done){ toast('내용 칸에서 나눌 줄을 먼저 눌러 주세요.'); break; }
+      state.pgCut = null; render(); break;
+    }
     case 'pg-del': {
       // 내용이 든 페이지는 지우기 전에 묻는다(빈 페이지는 바로 지운다)
       const pg = M.getPages(id, k)[+el.dataset.p]; if (!pg) break;
@@ -2624,6 +2688,14 @@ document.getElementById('shell').addEventListener('change', e => {
     state.formativeResultId = el.value; render();
   } else if (el.dataset.act === 'pg-title'){   // 페이지 제목: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     editPages(el, (pages, p) => { if (pages[p]) pages[p].title = el.value.trim(); });
+  } else if (el.dataset.act === 'pg-row-type'){
+    /* 묶음 유형(요구사항 139). 적은 글은 들고 모양만 바뀐다(M.convertRow).
+       다시 그린다: 유형에 따라 칸이 둘(라벨, 내용)과 넷(왼쪽, 오른쪽)으로 갈린다. */
+    editPages(el, (pages, p, r) => {
+      const pg = pages[p]; if (!pg?.rows[r]) return false;
+      pg.rows[r] = M.convertRow(pg.rows[r], el.value);
+    });
+    render();
   } else if (el.dataset.act === 'pg-set'){
     /* 묶음의 라벨과 내용. 다시 그리지 않는다(다른 칸을 눌러 포커스가 옮겨 가는 중이라 그리면 커서가 날아간다).
        내용은 들여쓰기 빈칸을 걷어 저장하고, 그 칸만 단계에 맞춰 다시 들여 써 보여 준다. */
@@ -2689,6 +2761,19 @@ document.getElementById('shell').addEventListener('input', e => {
   const box = document.getElementById('stu-search');
   if (box){ box.focus(); box.setSelectionRange(pos, pos); }
 });
+
+/* 묶음을 "커서를 둔 줄부터" 나누려면(pg-row-cut) 그 자리를 알아야 한다. 가위 단추를 누르는
+   순간에는 칸에서 포커스가 이미 빠져 있어서(그 blur가 저장을 띄운다) 커서를 읽을 수 없다.
+   그래서 내용 칸 안에서 움직일 때마다 "몇째 줄인가"를 적어 둔다.
+   글자 수가 아니라 줄 번호를 적는 까닭: 칸에 보이는 글에는 단계만큼 빈칸이 들어가 있어
+   (M.indentText) 저장된 글과 글자 수가 다르다. 줄 수는 같다. */
+const pgCaret = e => {
+  const el = e.target.closest?.('textarea.pgtext[data-act="pg-set"][data-f="text"]');
+  if (!el) return;
+  state.pgCut = { id: el.dataset.id, k: el.dataset.k, p: +el.dataset.p, r: +el.dataset.r,
+    line: el.value.slice(0, el.selectionStart ?? 0).split('\n').length - 1 };
+};
+['keyup', 'click'].forEach(t => document.getElementById('shell').addEventListener(t, pgCaret));
 
 /* 진도 관리의 강의 메모 버블: 메모가 있는 주제 칸(data-memo)에 마우스를 올리면 그 아래에 뜬다.
    진도표 칸(.prog-wrap)이 가로 스크롤 상자라 CSS ::after로 띄우면 잘리므로 body에 떠 있는 상자를 쓴다. */

@@ -108,6 +108,16 @@
 /* VS 글자 뒤만 쪽 바탕색으로 덮어 선이 글자를 지나가지 않게 한다 */
 .deckpage .pcmp-vs span{position:relative;background:#fff;padding-block:calc(var(--px) * 12)}
 
+/* 사료 인용 묶음(요구사항 139). 사료 쪽(.s-src)과 같은 모양을 쪽 안의 묶음 하나로 줄인 것이다:
+   세리프체, 양쪽 정렬, 큰따옴표, 오른쪽 아래 출전. 제목은 묶음 라벨(.plabel) 그대로라
+   보통 묶음과 같은 자리에 선다. 쪽 전체가 아니라 묶음이므로 여백과 큰따옴표를 줄인다
+   (사료 쪽의 ::after는 글 상자 밖 아래로 90 내려가 있어 묶음에서는 다음 묶음을 밟는다). */
+.deckpage .psrc{font-family:var(--serif);font-size:var(--srcfs)}
+.deckpage .psrc .src-quote{padding:calc(var(--px) * 24) calc(var(--px) * 76)}
+.deckpage .psrc .src-quote::before, .deckpage .psrc .src-quote::after{font-size:calc(var(--px) * 140)}
+.deckpage .psrc .src-quote::after{bottom:0}
+.deckpage .psrc .src-cite{margin-top:0;padding-top:calc(var(--px) * 16)}
+
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
    "수준이 떨어질 수록 들여쓰기". 들여쓰기는 나무 모양이 맡는다(slide-deck.js의 lineTree):
    한 수준 낮은 항목과 기호 없이 이어지는 줄(.pc)은 위 항목의 내용 칸(.pv) 안에 서서 위 항목의

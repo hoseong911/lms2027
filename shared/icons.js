@@ -93,6 +93,16 @@ Object.assign(PATHS, {
   "share-2":'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>'
 });
 
+/* 페이지 합치기, 나누기용(2026-10-30, 요구사항 139. Lucide, inner만).
+   fold-vertical(가운데로 모이는 화살표)이 합치기, unfold-vertical(바깥으로 벌어지는 화살표)이
+   나누기다. 둘이 서로 반대 모양이라 나란히 서면 무엇이 무엇인지 한눈에 보인다.
+   가위(scissors)는 묶음을 커서 줄에서 자르는 것이다. */
+Object.assign(PATHS, {
+  "fold-vertical":'<path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/>',
+  "unfold-vertical":'<path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3 3-3-3"/><path d="m15 5-3-3-3 3"/>',
+  "scissors":'<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+});
+
 export function icon(name, size = 22, cls = "") {
   let inner = PATHS[name] || PATHS["circle-help"];
   // 처음 옮겨 온 값 42개가 </svg> 없이 끝난다. 그대로 감싸면 바깥 <svg>가 닫히지 않아
