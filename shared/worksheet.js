@@ -136,10 +136,26 @@ export function makeCollector(){
       if (!inSource && page.rows.some(rowHasText)) contPage();
       row = { label:'', text:'' }; page.rows.push(row); return row;
     },
-    // 라벨은 여러 조각으로 쪼개져 올 수 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다
+    // 라벨은 여러 조각으로 쪼개져 올 수 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다.
+    // 비교나 사료 묶음 뒤에 라벨이 오면 새 묶음이 시작된 것이다(그 라벨을 사료 제목에 잘못 붙이지 않게)
     addLabel(t){
-      if (!row || row.kind === 'compare') api.newRow();
+      if (!row || row.kind === 'compare' || row.kind === 'source') api.newRow();
       row.label = row.label ? `${row.label} ${t}` : t;
+    },
+
+    /* 사료 인용 묶음 (선생님 지시 2026-10-30). "< 사료 : 이황의 사액 서원 건의 >"처럼 개념 노트 안에
+       든 사료는 쪽을 따로 떼지 않는다: 쪽 제목은 부모(개념 노트 #1: 성리학적 질서의 확산) 제목을
+       그대로 두고, 사료는 그 쪽의 사료 인용 유형(kind:'source') 묶음으로 들어간다. 라벨이 사료
+       제목("이황의 사액 서원 건의")이고 본문은 뒤따르는 줄이다(addText가 이 묶음에 이어 붙인다).
+       한 묶음 한 쪽 원칙이라 제 쪽을 갖되, 제목은 부모 제목이다. */
+    addSource(label){
+      api.ensurePage();
+      if (page.rows.some(rowHasText)) contPage();   // 앞 묶음이 있으면 다음 쪽으로(제목은 그대로)
+      if (parentTitle) page.title = parentTitle;
+      inSource = false;
+      row = { kind:'source', label: String(label || '').trim(), text:'' };
+      page.rows.push(row);
+      return row;
     },
     addText(t, glue = '\n'){
       if (skip || !String(t).trim()) return;

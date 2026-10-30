@@ -30,7 +30,7 @@
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030x';
+import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261030x';
 import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
   UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030x';
 
@@ -187,20 +187,22 @@ export function linesToParts(lines){
 
   clean.forEach(l => {
     const t = titleOf(l);
-    if (t !== null){ col.newPage(t); prevFull = false; return; }
+    if (t !== null){
+      /* "사료 : 이황의 사액 서원 건의"는 쪽을 떼지 않고 부모(개념 노트) 쪽에 사료 인용 묶음으로 넣는다:
+         쪽 제목은 부모 그대로, 사료 제목이 묶음 라벨이다(선생님 지시 2026-10-30). 뒤따르는 줄은
+         아래 일반 경로로 이 사료 묶음에 이어 붙는다(사료 묶음은 kind가 source라 라벨이 오기 전까지 이어진다). */
+      const src = SOURCE_RE.exec(t);
+      if (src && !col.skipping && col.parentTitle){ col.addSource(t.slice(src[0].length).trim()); prevFull = false; return; }
+      col.newPage(t); prevFull = false; return;
+    }
     if (col.skipping) return;
 
     const labels = l.segs.filter(isLabel);
     const text = l.segs.filter(s => !isLabel(s)).map(s => s.text).join(' ');
     const { lv, mark } = lineLevel(text);
 
-    /* "1."로 시작하는 줄에서 새 묶음이 시작된다: 활동지 표는 칸마다 1.부터 다시 센다.
-       그 앞이 사료 쪽이었으면 표로 돌아온 것이므로 본문 쪽을 같은 제목으로 다시 연다
-       (사료는 슬라이드에서 쪽 하나를 따로 차지한다). */
-    if (lv === 1 && mark === '1.'){
-      if (col.inSource) col.newPage(col.parentTitle);
-      newRow();
-    }
+    // "1."로 시작하는 줄에서 새 묶음이 시작된다: 활동지 표는 칸마다 1.부터 다시 센다
+    if (lv === 1 && mark === '1.') newRow();
     // 라벨은 여러 줄로 쪼개져 내용 줄 사이사이에 끼어 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다
     labels.forEach(s => { if (!col.row) newRow(); col.addLabel(s.text); });
     if (text) addLine(text, l.full);

@@ -33,7 +33,7 @@
  * 이 파일은 Firebase도 화면도 모른다. 노드에서는 JSZip을 넘겨 시험한다
  * (hwpxRead로 꺼내고 hwpxToParts로 바꾼다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030x';
+import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261030x';
 import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
   UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030x';
 
@@ -206,14 +206,13 @@ export function blocksToParts(blocks){
 
   const page = title => col.newPage(title);
 
-  /* 내용 줄을 넣는다. "1."로 시작하는 줄은 새 묶음이다.
-     사료 쪽이 끝나고 다시 1. 줄이 오면 표로 돌아온 것이라 본문 쪽을 같은 제목으로 다시 연다. */
-  const addLines = (lines, { fresh = false } = {}) => {
+  /* 내용 줄을 넣는다. "1."로 시작하는 줄은 새 묶음이다. source일 때는(사료 본문) 한 덩어리
+     글이라 "1." 줄이 있어도 묶음을 새로 열지 않고 그대로 사료 묶음에 이어 붙인다. */
+  const addLines = (lines, { fresh = false, source = false } = {}) => {
     lines.forEach((t, i) => {
-      const { lv, mark } = lineLevel(t);
-      if (lv === 1 && mark === '1.' && !(fresh && i === 0)){
-        if (col.inSource) page(col.parentTitle);
-        col.newRow();
+      if (!source){
+        const { lv, mark } = lineLevel(t);
+        if (lv === 1 && mark === '1.' && !(fresh && i === 0)) col.newRow();
       }
       col.addText(t);
     });
@@ -223,7 +222,18 @@ export function blocksToParts(blocks){
   const addLoose = (lines, { dropShort = false } = {}) => {
     if (!lines.length) return;
     const t = unwrapTitle(lines[0]);
-    if (t !== null){ page(t); addLines(lines.slice(1)); return; }
+    if (t !== null){
+      /* "< 사료 : 이황의 사액 서원 건의 >"는 쪽을 떼지 않는다. 부모(개념 노트) 쪽에 사료 인용 묶음으로
+         들어간다: 쪽 제목은 부모 그대로, 사료 제목이 묶음 라벨이다(선생님 지시 2026-10-30). */
+      const src = SOURCE_RE.exec(t);
+      if (src && !col.skipping && col.parentTitle){
+        col.addSource(t.slice(src[0].length).trim());
+        addLines(lines.slice(1), { source: true });
+        col.endRow();
+        return;
+      }
+      page(t); addLines(lines.slice(1)); return;
+    }
     if (dropShort && lines.length === 1 && lines[0].length <= SHORT) return;
     if (col.skipping) return;
     addLines(lines);
