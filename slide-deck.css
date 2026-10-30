@@ -25,6 +25,10 @@
   /* 1080 높이 쪽의 1픽셀. 선생님이 크기를 픽셀로 말씀하시므로(2026 슬라이드가 1920x1080 틀이었다)
      그 값을 그대로 적을 수 있게 둔다. 쪽이 작아지면 같이 작아진다. */
   --px: calc(var(--sz) * 100 / 1080);
+  /* 쪽 본문 글자 크기 55px(선생님 지시 2026-10-30: 개념 노트와 미션 활동에 이어 "나머지 쪽도 55px로").
+     모든 쪽의 본문이 이 값 하나를 쓴다. 이보다 큰 것은 제목 셋뿐이다(쪽 제목과 질문 66, 표지 강의 제목 100).
+     작은 것은 꼬리표 둘(맨 위 배지, 전시학습확인 유형 이름표 34)이다 */
+  --sfs: calc(var(--px) * 55);
   position:relative;width:100%;height:100%;background:#fff;color:var(--navy);
   /* 위에서부터 쌓는다: 맨 위 배지 줄, 그 아래 속. 가운데에 모일 쪽(표지, 학습 목표, 질문,
      맺음말)은 속(.s-body)이 남는 높이를 다 먹고 그 안에서 가운데로 모은다 */
@@ -49,15 +53,16 @@
   font-size:calc(var(--px) * 34);font-weight:800;line-height:1.3;letter-spacing:-.02em;
   padding:calc(var(--px) * 8) calc(var(--px) * 22);white-space:nowrap}
 
-/* ── 표지 ── 가운데로 모은다 */
+/* ── 표지 ── 가운데로 모은다. 강 번호와 단원, 쪽수 줄도 본문 크기(55)이고
+   강의 제목은 그보다 확실히 크게(100) 둔다 */
 .deckpage .s-cover{text-align:center;margin:auto}
-.deckpage .s-no{font-size:calc(var(--sz) * 3.2);font-weight:700;color:var(--red);
-  letter-spacing:.1em;margin-bottom:calc(var(--sz) * 2)}
-.deckpage .s-title{font-size:calc(var(--sz) * 7.6);font-weight:800;margin:0;line-height:1.25;
+.deckpage .s-no{font-size:var(--sfs);font-weight:700;color:var(--red);
+  letter-spacing:.1em;margin-bottom:calc(var(--px) * 24)}
+.deckpage .s-title{font-size:calc(var(--px) * 100);font-weight:800;margin:0;line-height:1.25;
   letter-spacing:-.03em}
-.deckpage .s-meta{display:flex;align-items:center;justify-content:center;gap:calc(var(--sz) * 1.6);
-  margin-top:calc(var(--sz) * 3.2);font-size:calc(var(--sz) * 2.4);color:var(--sub)}
-.deckpage .s-dot{width:calc(var(--sz) * .55);height:calc(var(--sz) * .55);background:var(--line-strong);
+.deckpage .s-meta{display:flex;align-items:center;justify-content:center;gap:calc(var(--px) * 24);
+  margin-top:calc(var(--px) * 40);font-size:var(--sfs);color:var(--sub)}
+.deckpage .s-dot{width:calc(var(--px) * 10);height:calc(var(--px) * 10);background:var(--line-strong);
   display:block;flex:0 0 auto}
 
 /* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다.
@@ -73,7 +78,7 @@
    묶음마다 왼쪽 라벨, 오른쪽 내용 줄. 라벨이 있는 페이지는 두 칸 격자라 라벨 칸 폭이 가장 긴
    라벨에 맞고(max-content) 내용 시작선이 묶음끼리 가지런하다.
    투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
-.deckpage .s-page{--pfs:calc(var(--px) * 55);font-size:var(--pfs);line-height:1.45;
+.deckpage .s-page{font-size:var(--sfs);line-height:1.45;
   display:flex;flex-direction:column;gap:calc(var(--px) * 34)}
 .deckpage .s-page.haslabel{display:grid;grid-template-columns:max-content minmax(0,1fr);
   column-gap:calc(var(--px) * 40);row-gap:calc(var(--px) * 34);align-content:start}
@@ -98,40 +103,42 @@
 .deckpage .pl.lv0.after2{padding-left:calc(var(--pin) + var(--pmw))}
 .deckpage .pl.lv0.after3{padding-left:calc(var(--pin) * 2 + var(--pmw))}
 
-/* ── 번호 목록(학습 목표) ── */
-.deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--sz) * 2.4);justify-content:center}
-.deckpage .nitem{display:flex;align-items:flex-start;gap:calc(var(--sz) * 2)}
+/* ── 번호 목록(학습 목표) ── 본문 55. 번호 네모는 글 첫 줄 높이에 맞춘다 */
+.deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--px) * 36);justify-content:center}
+.deckpage .nitem{display:flex;align-items:flex-start;gap:calc(var(--px) * 28)}
 .deckpage .nn{flex:0 0 auto;display:grid;place-items:center;
-  width:calc(var(--sz) * 5);height:calc(var(--sz) * 5);background:var(--navy);color:#fff;
-  font-size:calc(var(--sz) * 2.8);font-weight:800}
-.deckpage .nt{flex:1;min-width:0;font-size:calc(var(--sz) * 3.4);line-height:1.5;
-  padding-top:calc(var(--sz) * .5)}
+  width:calc(var(--px) * 76);height:calc(var(--px) * 76);background:var(--navy);color:#fff;
+  font-size:calc(var(--px) * 44);font-weight:800}
+.deckpage .nt{flex:1;min-width:0;font-size:var(--sfs);line-height:1.4}
 
-/* ── 전시학습확인 ── 문답 셋(단답형, OX, 초성형). 답은 눌러야 보인다
+/* ── 전시학습확인 ── 문답 셋(단답형, OX, 초성형). 답은 눌러야 보인다. 물음과 답은 본문 55
    글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
-   가지런하다. 답 칸은 그 시작 위치에 맞춰 들여 쓴다(--qa-in 한 값으로 묶어 둔다). */
-.deckpage .s-qa{--qa-in:calc(var(--sz) * 13);
-  display:flex;flex-direction:column;gap:calc(var(--sz) * 2.4);justify-content:center}
-.deckpage .qa-q{display:flex;align-items:baseline;gap:calc(var(--sz) * 1.4);
-  font-size:calc(var(--sz) * 3);line-height:1.5}
-.deckpage .qa-n{flex:0 0 auto;width:calc(var(--sz) * 2.6);text-align:right;
+   가지런하다. 답 칸은 그 시작 위치에 맞춰 들여 쓴다(--qa-in 한 값으로 묶어 둔다).
+   --qa-in = 번호 칸(--qa-nw) + 틈 + 이름표 칸(--qa-tw) + 틈. 칸 폭을 바꾸면 저절로 따라간다. */
+.deckpage .s-qa{--qa-nw:calc(var(--px) * 70);--qa-tw:calc(var(--px) * 150);--qa-gap:calc(var(--px) * 24);
+  --qa-in:calc(var(--qa-nw) + var(--qa-tw) + var(--qa-gap) * 2);
+  display:flex;flex-direction:column;gap:calc(var(--px) * 40);justify-content:center}
+.deckpage .qa-q{display:flex;align-items:baseline;gap:var(--qa-gap);
+  font-size:var(--sfs);line-height:1.45}
+.deckpage .qa-n{flex:0 0 auto;width:var(--qa-nw);text-align:right;
   color:var(--red);font-weight:800}
-/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 폭을 고정해 물음 시작선을 맞춘다 */
-.deckpage .qa-t{flex:0 0 auto;width:calc(var(--sz) * 7.4);
-  font-size:calc(var(--sz) * 1.9);font-weight:700;color:var(--sub);
+/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 맨 위 배지와 같은 크기(34)의 꼬리표다.
+   폭을 고정해 물음 시작선을 맞춘다 */
+.deckpage .qa-t{flex:0 0 auto;width:var(--qa-tw);
+  font-size:calc(var(--px) * 34);font-weight:700;color:var(--sub);
   border:1px solid var(--line-strong);border-radius:2px;
-  padding:calc(var(--sz) * .3) 0;text-align:center;letter-spacing:.02em}
+  padding:calc(var(--px) * 4) 0;text-align:center;letter-spacing:.02em}
 .deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
-.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in);
+.deckpage .qa-a{display:block;margin:calc(var(--px) * 14) 0 0 var(--qa-in);
   border:0;border-radius:var(--r);background:var(--navy);color:transparent;
-  padding:calc(var(--sz) * 1.1) calc(var(--sz) * 2);font-family:inherit;cursor:pointer;
-  font-size:calc(var(--sz) * 2.6);line-height:1.4;text-align:left}
+  padding:calc(var(--px) * 10) calc(var(--px) * 26);font-family:inherit;cursor:pointer;
+  font-size:var(--sfs);line-height:1.4;text-align:left}
 .deckpage .qa-a.open{background:var(--navy-100);color:var(--navy);font-weight:700}
 /* OX: 두 칸이 나란히 선다. 정답인 쪽만 눌렀을 때 레드로 켜진다(.is) */
-.deckpage .qa-ox{display:flex;gap:calc(var(--sz) * 1.4);margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in)}
-.deckpage .qa-oxb{width:calc(var(--sz) * 7);border:2px solid var(--line-strong);border-radius:var(--r);
+.deckpage .qa-ox{display:flex;gap:calc(var(--px) * 18);margin:calc(var(--px) * 14) 0 0 var(--qa-in)}
+.deckpage .qa-oxb{width:calc(var(--px) * 130);border:2px solid var(--line-strong);border-radius:var(--r);
   background:transparent;color:var(--line-strong);font-family:inherit;cursor:pointer;
-  font-size:calc(var(--sz) * 3);font-weight:800;padding:calc(var(--sz) * .7) 0;line-height:1.2}
+  font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) 0;line-height:1.2}
 .deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
 .deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
 
@@ -148,15 +155,15 @@
 /* 영상은 16:9를 지키면서 쪽 안에 들어가게. 높이가 모자라면 높이에 맞춰 폭이 줄어든다 */
 .deckpage .mframe.vid iframe{border:0;display:block;
   width:min(100%, calc(100cqh * 16 / 9));aspect-ratio:16 / 9;max-height:100%}
-.deckpage .mcap{flex:0 0 auto;font-size:calc(var(--sz) * 2.4);color:var(--sub);text-align:center}
+.deckpage .mcap{flex:0 0 auto;font-size:var(--sfs);color:var(--sub);text-align:center}
 
-/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 크게 */
-.deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--sz) * 3)}
-.deckpage .qbig{font-size:calc(var(--sz) * 5);font-weight:800;line-height:1.4;letter-spacing:-.03em}
-.deckpage .qguide{font-size:calc(var(--sz) * 2.6);line-height:1.7;color:var(--sub);
-  border-left:3px solid var(--red);padding-left:calc(var(--sz) * 2)}
+/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 설명문이 본문 55이고 질문은 그보다 크게(쪽 제목과 같은 66) */
+.deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--px) * 40)}
+.deckpage .qbig{font-size:calc(var(--px) * 66);font-weight:800;line-height:1.35;letter-spacing:-.03em}
+.deckpage .qguide{font-size:var(--sfs);line-height:1.55;color:var(--sub);
+  border-left:calc(var(--px) * 6) solid var(--red);padding-left:calc(var(--px) * 28)}
 
-/* ── 맺음말 ── 가운데로 모아 크게 */
+/* ── 맺음말 ── 가운데로 모은다. 본문 55에 굵게 */
 .deckpage .s-close{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:calc(var(--sz) * 2.2);text-align:center}
-.deckpage .cline{font-size:calc(var(--sz) * 4);font-weight:700;line-height:1.5;letter-spacing:-.03em}
+  gap:calc(var(--px) * 30);text-align:center}
+.deckpage .cline{font-size:var(--sfs);font-weight:700;line-height:1.45;letter-spacing:-.03em}
