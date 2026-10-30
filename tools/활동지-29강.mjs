@@ -30,7 +30,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { createRequire } from 'module';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PROJECT = 'ho0911seong-56638';
@@ -249,8 +249,13 @@ document.addEventListener('click', e => {
   slides.forEach((s, i) => console.log(`  ${i + 1}. [${stepName(s.step)}] ${s.title || s.type}`));
 }
 
-const cmd = process.argv[2];
-if (cmd === 'put') await put();
-else if (cmd === 'drop') await drop();
-else if (cmd === 'html') await html();
-else console.log('쓰는 법: node tools/활동지-29강.mjs put | drop | html');
+/* 이 파일은 LESSON을 내보내기도 한다(다른 도구가 활동지 자료만 꺼내 쓸 수 있게).
+   그럴 때 명령 안내문이 끼어들지 않도록, 이 파일을 직접 돌렸을 때만 명령을 받는다. */
+const direct = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (direct){
+  const cmd = process.argv[2];
+  if (cmd === 'put') await put();
+  else if (cmd === 'drop') await drop();
+  else if (cmd === 'html') await html();
+  else console.log('쓰는 법: node tools/활동지-29강.mjs put | drop | html');
+}
