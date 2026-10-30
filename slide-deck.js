@@ -166,45 +166,70 @@ const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
    잘못 가르지 않게 셋을 본다: 쌍점 뒤에 빈칸이 있고, 앞부분이 15자 이하이고,
    앞부분 안에서 빈칸 문법 {}의 괄호가 맞아야 한다("3:1" 같은 비율이나 긴 문장 속 쌍점은 그대로 둔다). */
 const TERM_RE = /^(.{1,15}?)\s*:\s+(.+)$/;
-/* cont는 이 항목에 이어지는 기호 없는 줄들이다. 내용 칸(.pv) 안에 줄로 붙여서
-   소제목 뒤 내용 시작 자리에 맞춰 선다(이어지는 줄도 제 소제목이 있으면 그 안에서 다시 가른다). */
-function itemHTML(body, cont = []){
-  const more = cont.map(c => `<span class="pc">${itemHTML(c)}</span>`).join('');
+const termOf = body => {
   const m = body.match(TERM_RE);
-  if (m && (m[1].match(/\{/g) || []).length === (m[1].match(/\}/g) || []).length)
-    return `<span class="pt"><span class="pk">${inlineText(m[1].trim())}</span><span class="pv">${inlineText(m[2])}${more}</span></span>`;
-  /* 쌍점 없이 짧은 머리만 있고 그 밑에 이어지는 줄이 있으면("1. 서적 편찬" 밑에 책 이름 줄들)
-     머리를 소제목으로, 이어지는 줄들을 내용으로 세운다. "설립 : 내용"과 같은 모양이 된다.
-     개념 노트는 1. 번호를 떼고 그리므로 이렇게 하지 않으면 머리와 그 밑 줄이 같은 자리에 서서 층이 사라진다. */
-  if (cont.length && body.length <= 15)
-    return `<span class="pt"><span class="pk">${inlineText(body)}</span><span class="pv">${
-      cont.map(c => `<span class="pc">${itemHTML(c)}</span>`).join('')}</span></span>`;
-  return `<span class="pt"><span class="pv">${inlineText(body)}${more}</span></span>`;
-}
+  return m && (m[1].match(/\{/g) || []).length === (m[1].match(/\}/g) || []).length
+    ? { term: m[1].trim(), text: m[2] } : null;
+};
 
-/* 내용 줄을 항목으로 묶어 그린다. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
-   단계가 내려갈수록 들여 쓴다(선생님 지시 2026-10-30). 기호와 글을 두 칸으로 나눠서
-   줄이 넘어가도 둘째 줄이 글 시작 자리에 맞춰 내려온다(내어쓰기).
-
-   기호 없는 줄("→ 사림이 동인과 서인으로 나뉨")은 바로 위 항목에 붙는다(itemHTML의 cont).
-   전에는 따로 한 줄로 그려서 위 항목의 "글 시작 자리"(소제목 자리)에 섰다. 그런데 위 항목은
-   소제목 뒤 내용 칸이 따로 서 있고 그 폭은 위 줄만 안다. 그래서 이어지는 줄이 내용 시작선보다
-   왼쪽에 서서 들여쓰기가 안 된 것처럼 보였다(선생님이 붕당의 형성 쪽에서 찾으셨다, 2026-10-30).
-   이제는 위 항목의 내용 칸 안에 들어가므로 내용 시작선에 맞는다.
-
-   dropNum: 1단계 번호(1. 2.)를 떼고 그린다(선생님 지시 2026-10-30: "1. 설립 : 이렇게 있으면
-   1. 이런 말머리는 떼고 보여줘"). 개념 노트만이다. 미션 활동의 1. 2.는 활동 순서라 남긴다. */
-function linesHTML(lines, dropNum = false){
-  const items = [];
+/* 내용 줄을 나무 모양으로 묶는다(선생님 지시 2026-10-30).
+   항목 하나 = { lv, mark, body, cont:[이어지는 줄], kids:[한 수준 낮은 항목] }.
+     기호 있는 줄  바로 위에 저보다 높은 수준(숫자가 작은) 항목이 있으면 그 항목의 kids로 들어간다.
+                   1. 밑의 - 줄, - 밑의 · 줄이 그렇다.
+     기호 없는 줄  가장 최근 항목의 cont로 들어간다. 활동지에서 한글로 일부러 줄을 바꾼 줄이라
+                   ("→ 사림이 동인과 서인으로 나뉨") 위 항목과 한 내용이다. */
+function lineTree(lines){
+  const root = { lv: 0, kids: [] }, stack = [root];
+  let last = null;
   lines.forEach(t => {
     const L = lineLevel(t);
-    if (L.lv || !items.length) items.push({ ...L, cont: [] });
-    else items[items.length - 1].cont.push(L.body);
+    if (!L.lv && last){ last.cont.push(L.body); return; }
+    const it = { ...L, cont: [], kids: [] };
+    if (it.lv) while (stack.length > 1 && stack[stack.length - 1].lv >= it.lv) stack.pop();
+    stack[stack.length - 1].kids.push(it);
+    if (it.lv) stack.push(it);
+    last = it;
   });
-  return items.map(it => {
-    const mark = it.lv && !(dropNum && it.lv === 1);
-    return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}${itemHTML(it.body, it.cont)}</div>`;
-  }).join('');
+  return root.kids;
+}
+
+/* 항목 하나를 그린다. 항목 글 = 소제목(.pk, 굵게) + 내용 칸(.pv).
+   내용 칸 안에 이어지는 줄(.pc)과 한 수준 낮은 항목들이 차례로 들어간다. 그래서 그 줄들은 모두
+   소제목 뒤 내용 시작선에 맞춰 선다(줄이 넘어가도 그 선으로 내려온다. 내어쓰기).
+
+   소제목이 되는 것 둘(선생님 지시 2026-10-30):
+     "1. 설립 : 내용"        쌍점 앞(설립)이 소제목, 뒤가 내용
+     "1. 서적 편찬" + 밑줄   쌍점 뒤 내용이 없고 그 밑에 이어지는 줄이나 한 수준 낮은 항목이 오면
+                             그 글(서적 편찬) 자체가 소제목이고 밑의 줄들이 내용이다
+   dropNum: 1단계 번호(1. 2.)를 떼고 그린다(선생님 지시: "1. 설립 : 이렇게 있으면 1. 이런 말머리는
+   떼고 보여줘"). 개념 노트만이다. 미션 활동의 1. 2.는 활동 순서라 남긴다. */
+function itemHTML(it, dropNum){
+  // 이어지는 줄도 "『소학』: 내용"처럼 제 소제목이 있으면 그 안에서 다시 가른다
+  const contHTML = c => { const t = termOf(c);
+    return t ? `<span class="pt"><span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}</span></span>`
+      : inlineText(c); };
+  const under = it.cont.map(c => `<span class="pc">${contHTML(c)}</span>`).join('')
+    + it.kids.map(k => itemHTML(k, dropNum)).join('');
+  const t = termOf(it.body);
+  const heading = !t && (it.cont.length || it.kids.length) && it.body.length <= 15;
+  const pt = t
+    ? `<span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}${under}</span>`
+    : heading
+      ? `<span class="pk">${inlineText(it.body)}</span><span class="pv">${under}</span>`
+      : `<span class="pv">${inlineText(it.body)}${under}</span>`;
+  const mark = it.lv && !(dropNum && it.lv === 1);
+  return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}<span class="pt">${pt}</span></div>`;
+}
+
+/* 내용 줄을 그린다. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
+   "수준이 떨어질 수록 들여쓰기"는 나무 모양이 맡는다: 낮은 수준 항목이 위 항목의 내용 칸 안에 서므로
+   위 항목 글 시작선만큼 저절로 들어간다.
+
+   기호 없는 줄이 들여쓰기가 안 돼 보이던 까닭(선생님이 붕당의 형성 쪽에서 찾으셨다, 2026-10-30):
+   그 줄을 따로 한 줄로 그려서 위 항목의 소제목 자리에 섰다. 위 항목의 내용 시작선은 소제목 폭에 따라
+   위 줄 안에서만 정해지므로 따로 선 줄은 그 선을 알 수 없었다. 이제 위 항목의 내용 칸 안에 들어간다. */
+function linesHTML(lines, dropNum = false){
+  return lineTree(lines).map(it => itemHTML(it, dropNum)).join('');
 }
 
 /* ── 쪽 하나를 HTML로 ────────────────────────────────────────────────────

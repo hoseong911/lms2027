@@ -205,12 +205,12 @@
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 4);min-width:0}
 
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
-   "수준이 떨어질 수록 들여쓰기". 한 단계마다 --pin 만큼 민다.
+   "수준이 떨어질 수록 들여쓰기". 들여쓰기는 나무 모양이 맡는다(slide-deck.js의 lineTree):
+   한 수준 낮은 항목과 기호 없이 이어지는 줄(.pc)은 위 항목의 내용 칸(.pv) 안에 서서 위 항목의
+   내용 시작선만큼 저절로 들어간다. 그래서 단계마다 여백을 따로 주지 않는다(주면 두 번 들어간다).
    기호 칸(.pm)의 폭을 못박아서 줄이 넘어가도 둘째 줄이 글 시작 자리에 맞춰 내려온다(내어쓰기).
-   개념 노트는 1단계 번호(1. 2.)를 그리지 않는다(slide-deck.js의 linesHTML dropNum). 그때는 기호 칸이
-   아예 없어 글이 묶음 왼쪽 끝에서 시작한다.
-   기호 없는 줄은 위 항목의 내용 칸(.pv) 안에 이어지는 줄(.pc)로 들어가 내용 시작선에 맞는다. */
-.deckpage .s-page{--pin:calc(var(--px) * 60);--pmw:calc(var(--px) * 56)}
+   개념 노트는 1단계 번호(1. 2.)를 그리지 않는다(dropNum). 그때는 기호 칸이 아예 없다. */
+.deckpage .s-page{--pmw:calc(var(--px) * 56)}
 .deckpage .pl{display:flex;align-items:baseline}
 .deckpage .pm{flex:0 0 auto;width:var(--pmw);font-weight:800}
 /* 항목 글(.pt) = 소제목(.pk, 굵게) + 내용(.pv). "1. 설립 : ~"의 쌍점은 지우고 그 자리를 여백으로 둔다.
@@ -219,10 +219,9 @@
 .deckpage .pk{flex:0 0 auto;max-width:40%;font-weight:800;color:var(--navy);word-break:keep-all}
 .deckpage .pv{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
 .deckpage .pl.lv1 .pm{color:var(--red)}
-.deckpage .pl.lv2{padding-left:var(--pin)}
-.deckpage .pl.lv3{padding-left:calc(var(--pin) * 2)}
 .deckpage .pl.lv2 .pm, .deckpage .pl.lv3 .pm{color:var(--sub)}
 .deckpage .pc{display:block}
+.deckpage .pv > .pl, .deckpage .pv > .pc{margin-top:calc(var(--px) * 4)}
 
 /* ── 번호 목록(학습 목표) ── 본문 55. 번호 네모는 글 첫 줄 높이에 맞춘다 */
 .deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--px) * 36);justify-content:center}
@@ -404,7 +403,7 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
     <div class="slotbar"><span class="slotno">6</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">향약</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">향약</div>
-        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">의미</span><span class="pv">향촌의 <span class="blank">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">보급</span><span class="pv">중종 대 <span class="blank">조광조</span>가 중국의 향약 소개하면서 보급 시작<span class="pc"><span class="pt"><span class="pv">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></span></span></span></span></div><div class="pl lv1"><span class="pt"><span class="pk">영향</span><span class="pv">사림의 영향력 강화, 성리학적 사회 질서 확산</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">의미</span><span class="pv">향촌의 <span class="blank">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">보급</span><span class="pv">중종 대 <span class="blank">조광조</span>가 중국의 향약 소개하면서 보급 시작<span class="pc">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></span></span></div><div class="pl lv1"><span class="pt"><span class="pk">영향</span><span class="pv">사림의 영향력 강화, 성리학적 사회 질서 확산</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">7</span>
@@ -416,7 +415,7 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
     <div class="slotbar"><span class="slotno">8</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">붕당의 형성</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">붕당 형성</div>
-        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">사림 집권</span><span class="pv">사화 이후 국정 운영 중심이 왕권에서 <span class="blank">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">붕당 형성</span><span class="pv"><span class="blank">외척</span>의 정치 참여 문제, <span class="blank">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화<span class="pc"><span class="pt"><span class="pv">→ 사림이 <span class="blank">동인</span>과 <span class="blank">서인</span>으로 나뉨</span></span></span></span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">사림 집권</span><span class="pv">사화 이후 국정 운영 중심이 왕권에서 <span class="blank">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">붕당 형성</span><span class="pv"><span class="blank">외척</span>의 정치 참여 문제, <span class="blank">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화<span class="pc">→ 사림이 <span class="blank">동인</span>과 <span class="blank">서인</span>으로 나뉨</span></span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">9</span>

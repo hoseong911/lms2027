@@ -51,7 +51,14 @@ export async function pdfLines(data, pdfjs, opts = {}){
   for (let p = 1; p <= doc.numPages; p++){
     const page = await doc.getPage(p);
     const { items } = await page.getTextContent();
-    out.push(...pageLines(items));
+    const lines = pageLines(items);
+    /* 오른쪽 끝까지 꽉 찬 줄인가(full). 꽉 찬 줄 다음의 기호 없는 줄은 활동지에서 칸이 모자라 저절로
+       넘어간 줄이라 한 줄로 다시 잇는다(linesToParts). 꽉 차지 않았는데 다음 줄로 간 것은 한글에서
+       일부러 줄을 바꾼 것이라 그대로 둔다(선생님 말씀 2026-10-30: "보기 좋으라고 일부러 줄바꿈을 한거").
+       기준은 그 쪽에서 가장 오른쪽까지 간 줄의 끝이다. 글자 두 칸 안쪽이면 꽉 찬 것으로 본다. */
+    const maxRight = Math.max(...lines.map(l => l.right));
+    lines.forEach(l => { l.full = l.right >= maxRight - l.size * 2; });
+    out.push(...lines);
   }
   return out;
 }
@@ -59,7 +66,11 @@ export async function pdfLines(data, pdfjs, opts = {}){
 /* 한 쪽의 글자 조각을 줄로 묶는다.
    PDF 안의 글자는 줄 단위가 아니라 조각 단위로 흩어져 있다. 조각마다 x, y 자리와 크기가 있으니
    y가 거의 같은 조각끼리 한 줄로 모으고 x 순서로 늘어놓는다.
-   조각 사이가 글자 두 칸보다 넓게 벌어지면 다른 칸(segs)으로 본다. */
+   조각 사이가 글자 한 칸보다 넓게 벌어지면 다른 칸(segs)으로 본다. 낱말 사이 빈칸은 글자 4분의 1 칸
+   남짓이고, 표의 칸 사이(라벨 칸 "붕당 형성"과 내용 칸 "1. 사림 집권")는 칸 안쪽 여백 둘이 더해져
+   그보다 넓다. 처음에는 두 칸으로 잡았는데, 라벨이 칸을 거의 채우면 틈이 두 칸이 안 돼 라벨이
+   내용에 붙었다(2026-10-30). 칸으로 갈려도 글은 빈칸으로 다시 이어 붙이므로 너무 잘게 갈려도
+   글이 망가지지는 않는다(갈린 칸은 라벨을 가릴 때만 쓴다). */
 function pageLines(items){
   /* 빈칸만 든 조각은 버린다. 한글에서 만든 PDF는 표의 칸과 칸 사이를 빈칸 조각 하나로 메우는데,
      그 조각을 살려 두면 왼쪽 칸(라벨)과 오른쪽 칸(내용)이 한 덩어리로 붙어 버린다.
@@ -85,7 +96,7 @@ function pageLines(items){
     let cur = null, end = 0;
     r.items.forEach(it => {
       const gap = it.x - end;
-      if (!cur || gap > it.size * 2){ cur = { text: '', x: it.x }; segs.push(cur); }
+      if (!cur || gap > it.size){ cur = { text: '', x: it.x }; segs.push(cur); }
       else if (gap > it.size * 0.2 && !/\s$/.test(cur.text) && !/^\s/.test(it.str)) cur.text += ' ';
       cur.text += it.str;
       end = it.x + it.w;
@@ -96,7 +107,7 @@ function pageLines(items){
     const tally = {};
     r.items.forEach(it => { tally[it.size] = (tally[it.size] || 0) + it.str.length; });
     const size = +Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
-    return { text: kept.map(s => s.text).join(' '), size, segs: kept };
+    return { text: kept.map(s => s.text).join(' '), size, segs: kept, right: end };
   }).filter(l => l.text);
 }
 
@@ -128,11 +139,15 @@ export function linesToParts(lines){
     if (!skip) target.push(page);
   };
   const ensurePage = () => { if (!page) newPage(''); };
-  const newRow = label => { ensurePage(); row = { label, text: '' }; page.rows.push(row); };
-  const addLine = t => {
+  let prevFull = false;   // 바로 앞에 넣은 줄이 오른쪽 끝까지 꽉 찼는가(pdfLines의 full)
+  const newRow = label => { ensurePage(); row = { label, text: '' }; page.rows.push(row); prevFull = false; };
+  const addLine = (t, full) => {
     ensurePage();
     if (!row) newRow('');
-    row.text += (row.text ? '\n' : '') + t;
+    // 꽉 찬 줄 다음의 기호 없는 줄은 저절로 넘어간 줄이라 앞 줄에 잇는다(줄바꿈 대신 빈칸 하나)
+    const wrap = prevFull && row.text && !lineLevel(t).lv;
+    row.text += row.text ? (wrap ? ' ' : '\n') + t : t;
+    prevFull = !!full;
   };
 
   clean.forEach((l, i) => {
@@ -145,14 +160,14 @@ export function linesToParts(lines){
     // 표의 왼쪽 칸: 짧은 낱말 + 멀리 떨어진 "1." 줄
     if (rest.length && first.text.length <= SHORT && !lineLevel(first.text).lv
         && lineLevel(restText).lv === 1){
-      newRow(first.text); addLine(restText); return;
+      newRow(first.text); addLine(restText, l.full); return;
     }
     // 홀로 선 짧은 줄 밑에 "1." 줄이 오면 그 줄이 라벨이다
     if (l.text.length <= SHORT && !lineLevel(l.text).lv && next && !isTitle(next)
         && lineLevel(next.text).lv === 1){
       newRow(l.text); return;
     }
-    addLine(l.text);
+    addLine(l.text, l.full);
   });
 
   // 내용 줄이 없는 페이지(제목만 덩그러니 선 것)는 뺀다

@@ -1370,7 +1370,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030n');
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030o');
       got = await worksheetFromPdf(file);
     } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
