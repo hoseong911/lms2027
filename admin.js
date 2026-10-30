@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030a';
+import * as M from './model.js?v=20261030b';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -50,6 +50,7 @@ const state = {
   formativeResultId: null,         // 성취도 관리에서 고른 것: 강의 id 또는 FM_ALL(전체 누적)
   formativeRoom: 'all',            // 성취도 관리에서 고른 반: 'all' 또는 강의실 id
   missionSel: null,                // 미션 활동에서 고른 앱 키, 새로 만드는 중이면 'new'
+  noticeSubject: null,             // 공지사항 과목 탭(과목마다 따로 쓴다)
   noticeSel: null,                 // 공지사항에서 고른 글 id, 새로 쓰는 중이면 'new'
 
   progAdding: false,               // 진도표에서 강의 추가 줄을 열었는가
@@ -1180,7 +1181,7 @@ function conceptEditor(l){
    연결할 강의, 팝업으로 열기, 그리고 아카이브 세 칸(수업 주제, 활동 의도, 아카이브 내용).
    두 단(선생님 지시 2026-10-29): 왼쪽은 미션 이름 목록, 오른쪽은 고른 미션의 세부 내용을 고치는 칸.
    강의실 관리와 같은 .split 틀이고, 좁은 화면에서는 고른 줄 아래로 펼친다. 추가와 수정 팝업은 이 칸으로 대신했다.
-   새로 추가한 앱이 늘 맨 위에 서고, 목록의 위, 아래 단추로 순서를 바꾼다(M.moveMissionApp).
+   목록은 최신순이다(선생님 지시 2026-10-30, 요구사항 114). 전에 있던 위, 아래 단추는 걷었다.
    앱 어드민은 브라우저 새 탭으로 연다(선생님 지시 2026-10-29: 학생 활동을 보면서 성적을 매기려면
    어드민이 따로 떠 있어야 한다). 같은 창 안의 탭(요구사항 67)은 이 지시로 걷어냈다. */
 function pageMission(){
@@ -1193,18 +1194,14 @@ function pageMission(){
   // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 앱을 고른다.
   if (!isNew && !apps.some(a => a.id === state.missionSel)) state.missionSel = WIDE.matches ? apps[0].id : null;
 
-  const row = (a, i) => `<div class="row ${a.id===state.missionSel?'on':''}">
-      <div class="grow rowlink" data-act="mission-sel" data-v="${esc(a.id)}"><div class="t">${esc(a.name)}</div></div>
-      <div class="tools">
-        <button class="ib ib-sm" data-act="mission-up" data-v="${esc(a.id)}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
-        <button class="ib ib-sm" data-act="mission-down" data-v="${esc(a.id)}" ${i===apps.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
-      </div></div>`;
+  const row = a => `<div class="row ${a.id===state.missionSel?'on':''}">
+      <div class="grow rowlink" data-act="mission-sel" data-v="${esc(a.id)}"><div class="t">${esc(a.name)}</div></div></div>`;
   const app = isNew ? null : M.getMissionApp(state.missionSel);
   const newRow = isNew ? `<div class="row on"><div class="grow"><div class="t">새 미션</div></div></div>` : '';
 
   if (!WIDE.matches){
-    const list = apps.map((a, i) => a.id === state.missionSel
-      ? row(a, i) + `<div class="detail">${missionTools(app)}${missionForm(app)}</div>` : row(a, i)).join('');
+    const list = apps.map(a => a.id === state.missionSel
+      ? row(a) + `<div class="detail">${missionTools(app)}${missionForm(app)}</div>` : row(a)).join('');
     return head + (isNew ? newRow + `<div class="detail">${missionTools(null)}${missionForm(null)}</div>` : '') + list;
   }
   return `${head}<div class="split split-mission">
@@ -1283,14 +1280,22 @@ function openMissionAdmin(app){
 /* ── 공지사항 (선생님 지시 2026-10-30, 요구사항 109) ──────────────────────────
    "공지사항은 일단 메뉴만 만들어 놓고 내용은 어드민 가서 다시 편집할게."
    미션 활동과 같은 두 단 틀: 왼쪽 글 제목 목록(최신순), 오른쪽 고른 글의 제목과 내용 칸.
-   좁은 화면에서는 고른 줄 아래로 펼친다. 쓴 글은 그 학년도 강의실 전부의 맨 위에 뜬다(학생 화면). */
+   좁은 화면에서는 고른 줄 아래로 펼친다.
+   과목마다 따로다(선생님 지시 2026-10-30, 요구사항 115): 오늘의 질문처럼 과목 탭을 두고, 쓴 글은
+   그 과목 강의실(반) 전부의 맨 위에 뜬다(학생 화면). */
 function pageNotice(){
   const head = `<div class="pagehead"><h2>${esc(M.menuName('notice'))}</h2>
     <button class="btn-add" data-act="notice-add-open" title="추가" aria-label="추가">${icon('plus',16)}<span>추가</span></button></div>`;
 
-  const list = M.getNotices(state.year);
+  const all = M.getCourses(state.year);
+  if (!all.length) return head + `<div class="empty">강의실이 없습니다.</div>`;
+  const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
+  if (!subjects.includes(state.noticeSubject)) state.noticeSubject = subjects[0];
+  const tabs = catline(subjects.map(s => ({ v:s, label:s })), state.noticeSubject, 'notice-subject');
+
+  const list = M.getNotices(state.year, state.noticeSubject);
   const isNew = state.noticeSel === 'new';
-  if (!list.length && !isNew) return `${head}<div class="empty">공지사항이 없습니다.</div>`;
+  if (!list.length && !isNew) return `${head}${tabs}<div class="empty">공지사항이 없습니다.</div>`;
   if (!isNew && !list.some(n => n.id === state.noticeSel)) state.noticeSel = WIDE.matches ? list[0].id : null;
 
   const row = n => `<div class="row ${n.id===state.noticeSel?'on':''}">
@@ -1301,9 +1306,9 @@ function pageNotice(){
   if (!WIDE.matches){
     const rows = list.map(x => x.id === state.noticeSel
       ? row(x) + `<div class="detail">${noticeTools(n)}${noticeForm(n)}</div>` : row(x)).join('');
-    return head + (isNew ? newRow + `<div class="detail">${noticeTools(null)}${noticeForm(null)}</div>` : '') + rows;
+    return head + tabs + (isNew ? newRow + `<div class="detail">${noticeTools(null)}${noticeForm(null)}</div>` : '') + rows;
   }
-  return `${head}<div class="split split-notice">
+  return `${head}${tabs}<div class="split split-notice">
       <div class="split-list">${newRow}${list.map(row).join('')}</div>
       <div class="pane"><div class="pane-head"><h3>${esc(n ? n.title : '새 글')}</h3>${noticeTools(n)}</div>
         <div class="dscroll">${noticeForm(n)}</div></div></div>`;
@@ -1327,7 +1332,7 @@ function saveNotice(id){
   const payload = { title: val('nt-title'), body: document.getElementById('nt-body')?.value ?? '' };
   try {
     if (id){ M.updateNotice(id, payload); toast('저장했습니다.'); }
-    else { const n = M.addNotice(state.year, payload); state.noticeSel = n.id; toast('글을 올렸습니다.'); }
+    else { const n = M.addNotice(state.year, state.noticeSubject, payload); state.noticeSel = n.id; toast('글을 올렸습니다.'); }
     render();
   } catch(e){ toast(e.message); }
 }
@@ -1999,10 +2004,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
     case 'ce-del': M.conceptDelLine(id, +k); render(); break;
 
-    // 미션 활동: 앱 어드민은 브라우저 새 탭으로. 순서는 위, 아래 단추로 한 칸씩
+    // 미션 활동: 앱 어드민은 브라우저 새 탭으로. 목록은 최신순이라 순서 단추가 없다
     case 'mission-admin': openMissionAdmin(M.getMissionApp(v)); break;
-    case 'mission-up': M.moveMissionApp(v, -1); render(); break;
-    case 'mission-down': M.moveMissionApp(v, 1); render(); break;
     // 고르기: 좁은 화면에서는 같은 줄을 다시 누르면 접는다(넓은 화면은 오른쪽 칸이 늘 떠 있다)
     case 'mission-sel': state.missionSel = (!WIDE.matches && state.missionSel === v) ? null : v; render(); break;
     case 'mission-add-open': state.missionSel = 'new'; render(); document.getElementById('ma-name')?.focus(); break;
@@ -2018,6 +2021,7 @@ document.getElementById('shell').addEventListener('click', e => {
     }
 
     // 공지사항: 미션 활동과 같은 길(고르기, 새 글, 저장, 삭제)
+    case 'notice-subject': state.noticeSubject = v; state.noticeSel = null; render(); break;
     case 'notice-sel': state.noticeSel = (!WIDE.matches && state.noticeSel === v) ? null : v; render(); break;
     case 'notice-add-open': state.noticeSel = 'new'; render(); document.getElementById('nt-title')?.focus(); break;
     case 'notice-new-cancel': state.noticeSel = null; render(); break;

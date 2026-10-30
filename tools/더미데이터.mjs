@@ -2,6 +2,7 @@
 //
 //   node tools/더미데이터.mjs fill    더미를 채운다
 //   node tools/더미데이터.mjs clear   dummy: true 표시가 있는 문서(제출물, 성적, 미션 앱)를 지운다
+//   node tools/더미데이터.mjs notices / notices-clear   공지사항 더미만 넣고 뺀다(2026-10-30)
 //
 // 바탕(학년도 1, 강의실 6, 명단 150, 꽂힌 강의 60, 강의 L_h01~L_h10)이 Firestore에
 // 있어야 한다. 그 위에 강의 내용, 질문, 미션, 형성평가, 미션 앱, 반 요일, 제출물, AI 채점 결과,
@@ -67,6 +68,46 @@ async function commit(writes){
 const DUMMY_COLLS = ['course_submissions', 'course_grades', 'mission_apps'];
 const cmd = process.argv[2];
 
+/* ── 공지사항 더미 (선생님 지시 2026-10-30) ──
+   node tools/더미데이터.mjs notices        과목마다 공지 글 7개(더보기가 보이게 5개보다 많이)
+   node tools/더미데이터.mjs notices-clear  dummy: true인 공지만 지운다
+   위의 fill은 접두어(hoclass_)를 붙이기 전 이름을 읽으므로 이것은 따로 둔다. 컬렉션 이름은 model.js와 같다.
+   글 모양도 model.js addNotice와 같다: { year, subject, title, body, createdAt }. 위로 갈수록 최신이 되게
+   createdAt을 하루씩 벌린다. */
+const NOTICE_COLL = 'hoclass_notices';
+const NOTICES = [
+  ['2학기 수행평가 일정 안내', '2학기 포트폴리오 수행평가는 개념 노트, 미션 활동, 오늘의 질문 세 영역으로 매깁니다.\n- 개념 노트: 수업 시간 활동지\n- 미션 활동: 강의마다 열리는 활동\n- 오늘의 질문: 수업 날 자정까지 제출'],
+  ['오늘의 질문 제출 기한 안내', '오늘의 질문은 수업이 있는 날 자정까지 제출해야 기한을 지킨 것으로 봅니다.\n기한이 지나도 제출은 할 수 있지만 기한 칸은 체크되지 않습니다.'],
+  ['개념 노트 활동지 챙기기', '수업 시간에 나눠 주는 개념 노트 활동지는 파일에 모아 두세요.\n학기 말에 한꺼번에 확인합니다.'],
+  ['미션 활동 접속 방법', '미션 활동은 강의 보기에서 그 강의를 누르거나, 미션 활동 메뉴에서 바로 열 수 있습니다.\n새 탭으로 열리니 다 하면 그 탭만 닫으면 됩니다.'],
+  ['형성평가는 성적에 들어가지 않습니다', '형성평가는 배운 내용을 스스로 확인하는 문제입니다.\n성적에는 들어가지 않으니 부담 없이 풀어 보세요.'],
+  ['비밀번호를 잊었을 때', '비밀번호를 잊었다면 선생님께 말씀해 주세요. 초기화하면 다음 로그인 때 새로 만들 수 있습니다.'],
+  ['HOCLASS를 시작합니다', '올해 수업은 HOCLASS에서 함께합니다.\n처음 로그인할 때 비밀번호를 만들고, 홈 화면에 추가해 두면 편합니다.'],
+];
+if (cmd === 'notices' || cmd === 'notices-clear'){
+  const have = await listAll(NOTICE_COLL);
+  if (cmd === 'notices-clear'){
+    const dels = have.filter(r => r.dummy === true).map(r => ({ delete:`${P}/${NOTICE_COLL}/${r.id}` }));
+    console.log(`지울 공지 더미 ${dels.length}건`);
+    await commit(dels);
+    process.exit(0);
+  }
+  if (have.some(r => r.dummy === true)){ console.log('공지 더미가 이미 있습니다. notices-clear를 먼저 해 주세요.'); process.exit(1); }
+  const YEAR = 2027;
+  const subjects = [...new Set((await listAll('hoclass_courses')).filter(c => c.year === YEAR).map(c => c.subject))];
+  if (!subjects.length){ console.log(`${YEAR}학년도 강의실이 없습니다.`); process.exit(1); }
+  const DAY = 24 * 3600e3, now = Date.now();
+  const out = subjects.flatMap((s, si) => NOTICES.map(([title, body], i) => {
+    const id = `n_dummy_${si}_${i}`;
+    const fields = toV({ id, year:YEAR, subject:s, title, body, createdAt:now - i * DAY, dummy:true }).mapValue.fields;
+    return { update:{ name:`${P}/${NOTICE_COLL}/${id}`, fields } };
+  }));
+  console.log(`과목 ${subjects.join(', ')}에 공지 ${out.length}건`);
+  await commit(out);
+  console.log('채웠습니다.');
+  process.exit(0);
+}
+
 if (cmd === 'clear'){
   const dels = [];
   for (const c of DUMMY_COLLS) (await listAll(c)).filter(r => r.dummy === true).forEach(r => dels.push({ delete:`${P}/${c}/${r.id}` }));
@@ -74,7 +115,7 @@ if (cmd === 'clear'){
   await commit(dels);
   process.exit(0);
 }
-if (cmd !== 'fill'){ console.log('쓰는 법: node tools/더미데이터.mjs fill | clear'); process.exit(1); }
+if (cmd !== 'fill'){ console.log('쓰는 법: node tools/더미데이터.mjs fill | clear | notices | notices-clear'); process.exit(1); }
 
 // ── 지금 데이터 읽기 ──
 const COLLS = ['school_years', 'courses', 'course_students', 'course_lessons', 'lessons', ...DUMMY_COLLS];

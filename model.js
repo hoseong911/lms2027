@@ -52,8 +52,8 @@ export const COLLECTIONS = {
   courseScores:       'hoclass_course_scores',  // 안 쓴다. 성적은 grades와 제출물에서 집계한다
   courseXp:           'hoclass_course_xp',       // 경험치/포인트            (6단계 게임 요소)
 
-  // 공지사항 (선생님 지시 2026-10-30). 학년도에 매인 글이라 year 필드를 둔다. 강의실마다 따로 쓰지 않는다
-  notices:            'hoclass_notices',        // { year, title, body, createdAt }
+  // 공지사항 (선생님 지시 2026-10-30). 학년도와 과목에 매인 글이다. 강의실(반)마다 따로 쓰지는 않는다
+  notices:            'hoclass_notices',        // { year, subject, title, body, createdAt }  과목마다 따로
 };
 
 // 강의 안 네 칸: 각 강의에 최대 1개, 순서 자유.
@@ -233,7 +233,7 @@ const DEMO = {
   submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
   grades:       [],   // course_grades   { id:'꽂힌강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
   gradeConf:    { bands:null, lessons:[], feedbackTemplates:[] },  // settings/grade  급간 표 + 반영 강의 + 피드백 템플릿
-  notices:      [],   // notices        { id, year, title, body, createdAt }
+  notices:      [],   // notices        { id, year, subject, title, body, createdAt }
 
   // ── 나중 단계에서 채운다(지금은 비움) ──
   quizzes:       [],  // quizzes        { id, title, source, items:[] }
@@ -371,8 +371,13 @@ export function getLessonsWithPart(key){ return getLessonsNewest().filter(l => !
 
 // 미션 앱은 order 오름차순(작을수록 위). 새 앱은 늘 맨 위로 들어간다(addMissionApp).
 // order가 없는 옛 문서는 order 있는 것들 뒤에 불러온 차례대로 선다.
+/* 미션 앱도 최신순이다(선생님 지시 2026-10-30, 요구사항 114). 전에 있던 위, 아래 단추는 걷었다.
+   앱 id는 앱 키(폴더 이름)라 시각이 안 들어 있으므로 createdAt으로만 가른다.
+   createdAt이 없는 옛 앱끼리는 예전 순서(order, 작을수록 위)를 그대로 따른다. 예전에도 새 앱이 맨 위였다. */
 const missionOrder = a => (typeof a.order === 'number' ? a.order : Infinity);
-export function getMissionApps(){ return [...DEMO.missionApps].sort((a, b) => missionOrder(a) - missionOrder(b)); }
+export function getMissionApps(){
+  return [...DEMO.missionApps].sort((a, b) => createdMs(b) - createdMs(a) || missionOrder(a) - missionOrder(b));
+}
 export function getMissionApp(appKey){ return DEMO.missionApps.find(a => a.id === appKey) || null; }
 
 export function getQuizzes(){ return [...DEMO.quizzes]; }
@@ -1178,21 +1183,13 @@ export function addMissionApp({ name, studentUrl, adminUrl, key, icon, lessonId,
   const nm = String(name || '').trim(); if (!nm) throw new Error('앱 이름을 적어 주세요.');
   const id = String(key || '').trim() || nid('app_');
   if (DEMO.missionApps.some(a => a.id === id)) throw new Error('이미 있는 앱 키입니다.');
-  // 새 앱은 무조건 맨 위(선생님 지시 2026-10-29): 지금 가장 작은 order보다 하나 작게.
+  // 새 앱은 무조건 맨 위(선생님 지시 2026-10-29). 지금은 createdAt이 그 일을 한다(getMissionApps).
+  // order는 createdAt이 없는 옛 앱과 섞일 때를 위해 계속 가장 작게 적어 둔다.
   const top = Math.min(0, ...DEMO.missionApps.map(x => x.order).filter(n => typeof n === 'number'));
   const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim(),
               icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal, order:top - 1, createdAt:Date.now(),
               archive:{ topic:'', intent:'', content:'', ...(archive || {}) } };
   DEMO.missionApps.push(a); put(COLLECTIONS.missionApps, a); return a;
-}
-// 미션 앱 순서를 한 칸 위(dir -1)나 아래(+1)로. 지금 보이는 차례대로 0부터 다시 매기고
-// 둘을 맞바꾼 뒤, order가 바뀐 문서만 저장한다(order 없던 옛 문서도 이때 번호를 받는다).
-export function moveMissionApp(id, dir){
-  const list = getMissionApps();
-  const i = list.findIndex(a => a.id === id), j = i + dir;
-  if (i < 0 || j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
-  list.forEach((a, n) => { if (a.order !== n){ a.order = n; put(COLLECTIONS.missionApps, a); } });
 }
 export function updateMissionApp(id, patch){
   const a = getMissionApp(id); if (!a) return null;
@@ -1207,17 +1204,19 @@ export function deleteMissionApp(id){
   del(COLLECTIONS.missionApps, id);
 }
 
-/* ── 공지사항 (선생님 지시 2026-10-30, 요구사항 109, 110) ──
+/* ── 공지사항 (선생님 지시 2026-10-30, 요구사항 109, 110, 115) ──
    어드민 공지사항 메뉴에서 쓰고, 학생 화면은 강의실 안 맨 위에 글 목록으로 띄운다(최대 5개, 더보기).
-   학년도에 매인 글이다. 그 학년도 강의실 전부에 같은 글이 뜬다. 늘 최신순(createdAt 큰 것이 위). */
-export function getNotices(year){
-  return newestFirst(DEMO.notices.filter(n => n.year === +year));
+   **과목마다 따로다**(115): 학년도와 과목에 매인 글이라 그 과목 강의실(반) 전부에 같은 글이 뜬다.
+   강의실마다 따로 쓰지는 않는다. 늘 최신순(createdAt 큰 것이 위). */
+export function getNotices(year, subject){
+  return newestFirst(DEMO.notices.filter(n => n.year === +year && n.subject === subject));
 }
 export function getNotice(id){ return DEMO.notices.find(n => n.id === id) || null; }
-export function addNotice(year, { title, body }){
+export function addNotice(year, subject, { title, body }){
   const t = String(title ?? '').trim();
   if (!t) throw new Error('제목을 입력하시길 바랍니다.');
-  const n = { id:nid('n_'), year:+year, title:t, body:String(body ?? '').trim(), createdAt:Date.now() };
+  if (!subject) throw new Error('과목을 골라 주세요.');
+  const n = { id:nid('n_'), year:+year, subject, title:t, body:String(body ?? '').trim(), createdAt:Date.now() };
   DEMO.notices.push(n); put(COLLECTIONS.notices, n); return n;
 }
 export function updateNotice(id, { title, body }){

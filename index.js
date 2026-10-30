@@ -12,7 +12,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261030a';
+import * as M from './model.js?v=20261030b';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
@@ -246,12 +246,13 @@ function viewRooms(){
 const NOTICE_MAX = 5;
 function viewHome(){
   const c = M.getCourse(state.courseId);
-  return topbar(roomLabel(c), 'back-rooms') + noticeList() + menuGrid('main') + menuGrid('part');
+  return topbar(roomLabel(c), 'back-rooms') + noticeList(c) + menuGrid('main') + menuGrid('part');
 }
 
-// 공지사항 글 목록. 제목만 보이고 누르면 그 글이 열린다. 늘 최신순(M.getNotices).
-function noticeList(){
-  const all = M.getNotices(YEAR);
+// 공지사항 글 목록. 그 강의실 과목의 글만(과목마다 따로, 요구사항 115).
+// 제목만 보이고 누르면 그 글이 열린다. 늘 최신순(M.getNotices).
+function noticeList(c){
+  const all = M.getNotices(YEAR, c?.subject);
   const shown = state.noticeAll ? all : all.slice(0, NOTICE_MAX);
   const rows = shown.map(n => `<div class="nrow" data-act="open-notice" data-id="${esc(n.id)}">
       <span class="t">${esc(n.title)}</span><span class="chev">${icon('chevron-right',16)}</span></div>`).join('')
