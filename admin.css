@@ -596,19 +596,25 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
    다른 두 단 화면(.split)과 섞이지 않게 클래스 이름을 따로 뒀다(.axwrap). */
 /* 강의 드롭다운: 다른 고르개(.sel)와 같은 모양에 여백을 더 준다
    (선생님 지시 2026-10-30: "드롭다운 칸 여백 너무 없음"). 높이는 조작 칸 규칙(--h-ctl) 그대로다 */
-/* ── 머리줄은 스크롤에 붙어 있다 (선생님 지시 2026-10-30, 요구사항 133) ──
-   "개념 노트부분에서 스크롤이 생기면 헤더부분은 고정이 되어야 하는데 안되네."
-   스크롤하는 칸은 .main 하나다(넓은 화면). 그래서 position:sticky의 기준도 .main이고
-   top 값은 .main 안에서 0이다. 고정 띠가 겹치지 않게 높이를 변수로 묶어 둔다:
-     --ax-top  머리줄이 붙는 자리. 넓은 화면은 0, 좁은 화면(760px 밑)은 위쪽 메뉴 띠(48px) 아래
-     --ax-bar  머리줄 띠의 키. 아래 띠(줄자, 단계 이름)가 이만큼 내려가 붙는다
-   --ax-bar는 눈으로 잰 값이 아니라 .axhead의 실제 키다: 여백 10 + 조작 칸 32 + 여백 10 + 밑선 1.
-   .axhead의 여백이나 키를 고치면 이 값도 같이 고친다. 어긋나면 띠 사이로 글이 지나간다.
-   줄을 바꾸지 않는 까닭도 이것이다(flex-wrap 금지): 두 줄이 되면 띠가 높아져 셈이 틀어진다.
-   고정 띠는 바탕(--bg)을 깔아야 아래 글이 비치지 않는다. */
-.main{--ax-top:0px;--ax-bar:53px}
+/* ── 머리줄은 제자리에 있고 편집창만 내려간다 (선생님 지시 2026-10-30, 요구사항 140) ──
+   "콘텐츠 편집 창에서 드롭다운 있는 줄까지는 고정이고 그 아래 내용부분이 스크롤이 생기면
+    스크롤이 되어야 하는데 (왼쪽 선택목록도 스크롤되면 안됨) 제대로 스크롤이 작동 안하더라고"
+
+   처음에는 **페이지째 스크롤하고 머리줄만 붙이는 방식(position:sticky)**이었다(요구사항 133).
+   그것이 제대로 안 되던 까닭 둘을 재서 확인했다(헤드리스 크롬으로 자리를 쟀다):
+     하나, sticky가 붙는 자리는 스크롤 칸의 **여백 안쪽**이다. .main에 위 여백 28px이 있어
+           머리줄이 창 맨 위가 아니라 28px 아래에 섰고, **그 28px 틈으로 편집창 글이 지나갔다.**
+     둘,   페이지 전체가 움직이므로 쪽 제목("개념 노트")과 서브 메뉴 탭까지 위로 사라졌다.
+           선생님이 "드롭다운 있는 줄까지는 고정"이라고 하신 것이 이것이다.
+   그래서 **두 단 화면(.split)이 이미 쓰는 틀로 바꿨다**: .main이 창 높이에 딱 맞는 세로 칸이 되고
+   (overflow:hidden) 머리줄들은 제자리에 있고, **편집창(.axpane-body) 안에서만 내려간다.**
+   왼쪽 줄자는 제자리에 그냥 선다(스크롤 칸이 아니다. 단계 여덟은 어느 창 높이에서나 들어간다).
+   sticky와 --ax-top, --ax-bar는 걷었다. 되돌리지 않는다. */
+.main:has(.axwrap){display:flex;flex-direction:column;
+  overflow:hidden;scrollbar-gutter:auto;padding-bottom:20px}
+.main:has(.axwrap) > *{flex:0 0 auto}
+.main:has(.axwrap) > .axwrap{flex:1 1 auto;min-height:0}
 .axhead{display:flex;align-items:center;gap:10px;margin:0 0 14px;
-  position:sticky;top:var(--ax-top);z-index:6;
   background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
 .axpick{flex:0 1 460px;min-width:0;font-weight:700;padding:0 38px 0 16px;background-position:right 14px center}
 /* 아이콘 단추 넷(저장, 미리보기, 활동지 올리기, 활동지 지우기)은 오른쪽 끝으로 밀어 둔다 */
@@ -621,10 +627,15 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
    선생님 지시 2026-10-30: "번호 삭제, 글씨 굵기 해제, 각 개체끼리 간격 두기".
    그래서 번호 칸을 걷고 보통 굵기로 두었다. 줄끼리 붙어 있지 않고 띄워 두므로(gap) 맞닿는
    구분선도 없다. 고른 단계만 반투명 레드 바탕으로 알린다(화면 규칙) */
-/* 줄자도 머리줄 띠 밑에 붙어 있다(요구사항 133): 오른쪽 편집창을 한참 내려가도 단계를 바꿀 수 있다.
-   격자 칸은 기본으로 늘어나므로(align-items:stretch) align-self:start로 끊어야 sticky가 먹는다 */
-.axrail{display:flex;flex-direction:column;gap:6px;min-width:0;
-  position:sticky;top:calc(var(--ax-top) + var(--ax-bar));align-self:start;z-index:4}
+/* 줄자는 제자리에 그냥 선다(요구사항 140: "왼쪽 선택목록도 스크롤되면 안됨").
+   오른쪽 편집창을 한참 내려가도 단계는 늘 같은 자리에 있다. 격자 칸은 기본으로 늘어나므로
+   (align-items:stretch) align-self:start로 끊어 단계 여덟만큼의 키로 둔다 */
+/* 창이 아주 낮을 때(브라우저를 150% 넘게 키운 화면 같은 것)만 줄자가 제 안에서 내려간다.
+   단계 여덟이 들어가는 보통 높이에서는 스크롤 칸이 아니다(max-height가 걸릴 일이 없다).
+   잘려서 "맺음말"을 못 누르는 것보다는 그때만 내려가는 편이 낫다. 스크롤바는 안 보인다 */
+.axrail{display:flex;flex-direction:column;gap:6px;min-width:0;align-self:start;
+  max-height:100%;overflow-y:auto;scrollbar-width:none}
+.axrail::-webkit-scrollbar{display:none}
 .axrow{display:flex;align-items:center;width:100%;border:0;border-radius:var(--r);
   min-height:var(--h-ctl);padding:5px 12px;cursor:pointer;
   background:transparent;font-family:inherit;font-size:var(--fs-body);color:var(--ink);text-align:left}
@@ -638,12 +649,14 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
 /* 오른쪽 편집 상세. 상세 패널이라 바탕 없이 세로 구분선 하나로만 나눈다(화면 규칙) */
 .axpane{display:flex;flex-direction:column;min-width:0;min-height:0;
   border-left:1px solid var(--line);padding-left:20px}
-/* 단계 이름 줄도 머리줄 띠 밑에 붙어 있다(요구사항 133): 어느 단계를 고치는 중인지 늘 보인다 */
-.axpane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);
-  padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:4px;
-  position:sticky;top:calc(var(--ax-top) + var(--ax-bar));z-index:4;background:var(--bg)}
+/* 단계 이름 줄은 편집창 위에 제자리로 선다(요구사항 140). 어느 단계를 고치는 중인지 늘 보인다 */
+.axpane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);flex:0 0 auto;
+  padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:4px;background:var(--bg)}
 .axpane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
-.axpane-body{flex:1 1 auto;min-height:0}
+/* 여기가 하나뿐인 스크롤 칸이다(요구사항 140). 스크롤바는 다른 안쪽 스크롤 칸들과 같이 숨기고
+   더 있다는 것은 끝의 흐림으로 알린다(.fade-top/.fade-bot. admin.js의 FADE_SEL이 이 칸을 챈다) */
+.axpane-body{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:none}
+.axpane-body::-webkit-scrollbar{display:none}
 .axpane-body .ce-add{margin-top:12px}
 .axpane-body > .row:first-child{border-top:0}
 
@@ -735,9 +748,6 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
   .axnm{white-space:nowrap}
   .axpane{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:4px}
   .axpick{flex:1 1 auto}
-  /* 한 단으로 쌓이면 줄자와 단계 이름 줄이 위아래로 붙어 서로 가린다. 머리줄 띠만 고정한다
-     (요구사항 133). 좁은 화면은 키가 짧아 고정 띠를 여럿 두면 편집창이 남지 않는다 */
-  .axrail,.axpane-head{position:static}
 }
 /* ══════ 좁은 화면 ══════
    선생님은 PC와 모바일 둘 다로 들어온다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
@@ -748,9 +758,10 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
   body{overflow:visible}
   #shell{display:block;min-height:100dvh;height:auto}
   .main{overflow-y:visible;scrollbar-gutter:auto}
-  /* 여기서는 창이 스크롤하고 위쪽 메뉴 띠(.side, 48px)가 이미 top:0에 붙어 있다.
-     축 편집기 머리줄은 그 아래에 붙어야 두 띠가 겹치지 않는다(요구사항 133) */
-  .main{--ax-top:48px}
+  /* 콘텐츠 편집기도 여기서는 페이지째 내려간다(요구사항 140의 틀을 푼다): 좁은 화면은 키가 짧아
+     편집창만 스크롤 칸으로 두면 글 몇 줄밖에 안 보인다. 손가락으로는 페이지째 미는 것이 자연스럽다 */
+  .main:has(.axwrap){display:block;overflow:visible;padding-bottom:64px}
+  .axpane-body{overflow-y:visible}
   .main > *{max-width:none}
   .side{overflow-y:visible}
   .side{width:auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;

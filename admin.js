@@ -2165,7 +2165,7 @@ function keepGeneralDraft(){
 /* 안에서 내려가는 목록(.dscroll, .split-list)은 스크롤바를 감췄으므로, 더 있다는 것을 끝의 흐림으로
    알린다(선생님 지시 2026-10-29). 끝에 닿으면 그쪽 흐림은 걷히고, 내려갈 것이 없으면 아예 안 생긴다.
    좁은 화면의 펼침(.detail) 안 .dscroll은 스크롤 칸이 아니라 scrollHeight가 같아 그냥 지나간다. */
-const FADE_SEL = '.dscroll, .split-list';
+const FADE_SEL = '.dscroll, .split-list, .axpane-body';
 function markFade(el){
   const more = el.scrollHeight - el.clientHeight;
   el.classList.toggle('fade-top', more > 1 && el.scrollTop > 1);
