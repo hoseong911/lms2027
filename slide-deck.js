@@ -130,7 +130,7 @@ export function buildSlides(lesson, no){
 function pageSlides(content, fallback){
   return toPages(content).map(p => ({
     type: 'page',
-    title: String(p.title || '').trim() || fallback,
+    title: pageTitle(p.title) || pageTitle(fallback),
     rows: p.rows.map(r => ({
       label: String(r.label || '').trim(),
       lines: String(r.text || '').split('\n').map(t => t.trim()).filter(Boolean),
@@ -138,8 +138,32 @@ function pageSlides(content, fallback){
   })).filter(p => p.rows.length || String(p.title).trim());
 }
 
+/* 쪽 제목에서 단계 이름 머리를 뗀다(선생님 지시 2026-10-30:
+   "개념 노트 #1 : 성리학의 확산 이라고 적혀 있으면 배지는 개념 노트 그 옆에는 성리학의 확산만 있어야해").
+   배지가 이미 단계 이름을 말하므로 제목에 같은 말이 또 서지 않게 한다.
+   떼는 것은 단계 이름 꼴의 머리뿐이다: 개념 노트, 개념 Check, 미션 활동, 미션 Check(뒤에 #번호가 붙어도).
+   "사료 : 이황의 사액 서원 건의"의 "사료"처럼 단계 이름이 아닌 머리는 내용이라 남긴다.
+   저장된 제목은 그대로 두고 쪽에 그릴 때만 뗀다(활동지에 적힌 글을 고치지 않는다). */
+const STEP_PREFIX_RE = /^(?:개념\s*노트|개념\s*Check|미션\s*활동|미션\s*Check)\s*(?:#\s*\d+)?\s*:\s*/i;
+const pageTitle = t => String(t ?? '').trim().replace(STEP_PREFIX_RE, '').trim();
+
 // 축 단계 이름(쪽 맨 위 배지). 표지에는 달지 않는다
 const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
+
+/* 항목 글 "설립 : 16C 이후 ..." 를 소제목(설립)과 내용으로 가른다(선생님 지시 2026-10-30:
+   "1. 설립 : ~ 이렇게 되어 있으면 굵은 글씨로 설립 하고 그 내용 사이에 여백을 만들어줘.
+    줄바꿈이 되는 경우에는 내어쓰기 해야 해.")
+   쌍점은 지우고 그 자리를 여백으로 둔다(2026 슬라이드도 소제목 뒤 쌍점을 지웠다).
+   내용 칸이 따로 서서 줄이 넘어가면 내용 시작 자리에 맞춰 내려온다(내어쓰기).
+   잘못 가르지 않게 셋을 본다: 쌍점 뒤에 빈칸이 있고, 앞부분이 15자 이하이고,
+   앞부분 안에서 빈칸 문법 {}의 괄호가 맞아야 한다("3:1" 같은 비율이나 긴 문장 속 쌍점은 그대로 둔다). */
+const TERM_RE = /^(.{1,15}?)\s*:\s+(.+)$/;
+function itemHTML(body){
+  const m = body.match(TERM_RE);
+  if (m && (m[1].match(/\{/g) || []).length === (m[1].match(/\}/g) || []).length)
+    return `<span class="pt"><span class="pk">${inlineText(m[1].trim())}</span><span class="pv">${inlineText(m[2])}</span></span>`;
+  return `<span class="pt"><span class="pv">${inlineText(body)}</span></span>`;
+}
 
 /* 내용 줄 하나. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
    단계가 내려갈수록 들여 쓴다(선생님 지시 2026-10-30). 기호와 글을 두 칸으로 나눠서
@@ -149,9 +173,9 @@ function linesHTML(lines){
   let prev = 0;
   return lines.map(t => {
     const { lv, mark, body } = lineLevel(t);
-    if (!lv) return `<div class="pl lv0 after${prev}"><span class="pt">${inlineText(body)}</span></div>`;
+    if (!lv) return `<div class="pl lv0 after${prev}">${itemHTML(body)}</div>`;
     prev = lv;
-    return `<div class="pl lv${lv}"><span class="pm">${esc(mark)}</span><span class="pt">${inlineText(body)}</span></div>`;
+    return `<div class="pl lv${lv}"><span class="pm">${esc(mark)}</span>${itemHTML(body)}</div>`;
   }).join('');
 }
 
@@ -220,15 +244,13 @@ export function renderSlide(s){
       ${s.caption ? `<div class="mcap">${inlineText(s.caption)}</div>` : ''}</div>`;
   }
 
-  /* 개념 노트, 미션 활동의 페이지. 묶음마다 왼쪽에 라벨, 오른쪽에 내용 줄(2026 편집기의 행 모양).
-     라벨이 하나라도 있는 페이지는 두 칸 격자로 세워 라벨 칸 폭을 페이지 안에서 맞춘다
-     (가장 긴 라벨에 맞춰지므로 내용 시작선이 가지런하다). 라벨이 없는 페이지는 내용이 폭을 다 쓴다. */
-  if (s.type === 'page'){
-    const hasLabel = s.rows.some(r => r.label);
-    return `${top(s.title)}<div class="s-body s-page ${hasLabel ? 'haslabel' : ''}">${s.rows.map(r =>
-      `<div class="prow">${hasLabel ? `<div class="plabel">${inlineText(r.label)}</div>` : ''}
+  /* 개념 노트, 미션 활동의 페이지. 묶음마다 라벨이 위에, 내용 줄이 그 아래에 선다
+     (선생님 지시 2026-10-30: "행라벨은 상단 왼쪽 정렬로 위치해주고 그 아래 빨간색 구분선을 넣어줘.
+      구분선 길이는 행라벨 글씨까지만"). 라벨이 없는 묶음은 내용 줄만 선다. */
+  if (s.type === 'page')
+    return `${top(s.title)}<div class="s-body s-page">${s.rows.map(r =>
+      `<div class="prow">${r.label ? `<div class="plabel">${inlineText(r.label)}</div>` : ''}
         <div class="plines">${linesHTML(r.lines)}</div></div>`).join('')}</div>`;
-  }
 
   if (s.type === 'question')
     return `${mark}<div class="s-body s-q">

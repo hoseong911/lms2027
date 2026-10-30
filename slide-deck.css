@@ -75,16 +75,15 @@
 
 /* ── 개념 노트, 미션 활동의 페이지 ──
    글자 크기 55픽셀(선생님 지시 2026-10-30: "학생들이 화면으로 보기 때문에 키워야 함. 55픽셀로").
-   묶음마다 왼쪽 라벨, 오른쪽 내용 줄. 라벨이 있는 페이지는 두 칸 격자라 라벨 칸 폭이 가장 긴
-   라벨에 맞고(max-content) 내용 시작선이 묶음끼리 가지런하다.
-   투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
+   묶음마다 라벨이 위, 내용 줄이 그 아래다(선생님 지시 2026-10-30: "행라벨은 상단 왼쪽 정렬로
+   위치해주고 그 아래 빨간색 구분선을 넣어줘. 구분선 길이는 행라벨 글씨까지만").
+   라벨을 글자 폭만큼만 차지하게(width:fit-content) 두고 밑줄을 테두리로 그으면 선 길이가 글씨에 꼭 맞는다.
+   그 밖에는 투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
 .deckpage .s-page{font-size:var(--sfs);line-height:1.45;
-  display:flex;flex-direction:column;gap:calc(var(--px) * 34)}
-.deckpage .s-page.haslabel{display:grid;grid-template-columns:max-content minmax(0,1fr);
-  column-gap:calc(var(--px) * 40);row-gap:calc(var(--px) * 34);align-content:start}
-.deckpage .s-page.haslabel .prow{display:contents}
-.deckpage .plabel{font-weight:800;color:var(--navy);white-space:nowrap;
-  border-right:calc(var(--px) * 6) solid var(--red);padding-right:calc(var(--px) * 28)}
+  display:flex;flex-direction:column;gap:calc(var(--px) * 44)}
+.deckpage .plabel{width:fit-content;max-width:100%;font-weight:800;color:var(--navy);
+  border-bottom:calc(var(--px) * 5) solid var(--red);padding-bottom:calc(var(--px) * 6);
+  margin-bottom:calc(var(--px) * 18)}
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 10);min-width:0}
 
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
@@ -94,7 +93,11 @@
 .deckpage .s-page{--pin:calc(var(--px) * 60);--pmw:calc(var(--px) * 56)}
 .deckpage .pl{display:flex;align-items:baseline}
 .deckpage .pm{flex:0 0 auto;width:var(--pmw);font-weight:800}
-.deckpage .pt{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+/* 항목 글(.pt) = 소제목(.pk, 굵게) + 내용(.pv). "1. 설립 : ~"의 쌍점은 지우고 그 자리를 여백으로 둔다.
+   내용 칸이 남는 폭을 따로 차지하므로 줄이 넘어가면 내용 시작 자리에 맞춰 내려온다(내어쓰기). */
+.deckpage .pt{flex:1;min-width:0;display:flex;align-items:baseline;gap:calc(var(--px) * 30)}
+.deckpage .pk{flex:0 0 auto;max-width:40%;font-weight:800;color:var(--navy);word-break:keep-all}
+.deckpage .pv{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
 .deckpage .pl.lv1 .pm{color:var(--red)}
 .deckpage .pl.lv2{padding-left:var(--pin)}
 .deckpage .pl.lv3{padding-left:calc(var(--pin) * 2)}
@@ -142,10 +145,13 @@
 .deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
 .deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
 
-/* ── 가린 빈칸 {정답} ── 누르면 열린다. 열고 닫는 것은 slide-deck.js의 wireReveal */
-.deckpage .blank{background:var(--navy);color:transparent;border-radius:2px;
+/* ── 가린 빈칸 {정답}과 강조 **굵게** ── (선생님 지시 2026-10-30: "빈칸은 레드, 강조할 건 네이비")
+   빈칸은 가려 둔 동안 레드 칸, 누르면 열려서 레드 글씨가 된다. 열고 닫는 것은 slide-deck.js의 wireReveal.
+   강조는 네이비 굵은 글씨다. 전에는 가린 빈칸이 네이비 칸이라 둘이 같은 색이었다. */
+.deckpage .blank{background:var(--red);color:transparent;border-radius:2px;
   padding:0 .25em;cursor:pointer;-webkit-user-select:none;user-select:none}
 .deckpage .blank.open{background:var(--red-100);color:var(--red);font-weight:700}
+.deckpage strong{color:var(--navy);font-weight:800}
 
 /* ── 동기 유발(사진, 영상) ── 한 쪽에 하나. 쪽을 거의 다 쓴다 */
 .deckpage .s-media{display:flex;flex-direction:column;align-items:center;justify-content:center;

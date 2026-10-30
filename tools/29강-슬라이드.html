@@ -183,16 +183,15 @@
 
 /* ── 개념 노트, 미션 활동의 페이지 ──
    글자 크기 55픽셀(선생님 지시 2026-10-30: "학생들이 화면으로 보기 때문에 키워야 함. 55픽셀로").
-   묶음마다 왼쪽 라벨, 오른쪽 내용 줄. 라벨이 있는 페이지는 두 칸 격자라 라벨 칸 폭이 가장 긴
-   라벨에 맞고(max-content) 내용 시작선이 묶음끼리 가지런하다.
-   투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
+   묶음마다 라벨이 위, 내용 줄이 그 아래다(선생님 지시 2026-10-30: "행라벨은 상단 왼쪽 정렬로
+   위치해주고 그 아래 빨간색 구분선을 넣어줘. 구분선 길이는 행라벨 글씨까지만").
+   라벨을 글자 폭만큼만 차지하게(width:fit-content) 두고 밑줄을 테두리로 그으면 선 길이가 글씨에 꼭 맞는다.
+   그 밖에는 투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
 .deckpage .s-page{font-size:var(--sfs);line-height:1.45;
-  display:flex;flex-direction:column;gap:calc(var(--px) * 34)}
-.deckpage .s-page.haslabel{display:grid;grid-template-columns:max-content minmax(0,1fr);
-  column-gap:calc(var(--px) * 40);row-gap:calc(var(--px) * 34);align-content:start}
-.deckpage .s-page.haslabel .prow{display:contents}
-.deckpage .plabel{font-weight:800;color:var(--navy);white-space:nowrap;
-  border-right:calc(var(--px) * 6) solid var(--red);padding-right:calc(var(--px) * 28)}
+  display:flex;flex-direction:column;gap:calc(var(--px) * 44)}
+.deckpage .plabel{width:fit-content;max-width:100%;font-weight:800;color:var(--navy);
+  border-bottom:calc(var(--px) * 5) solid var(--red);padding-bottom:calc(var(--px) * 6);
+  margin-bottom:calc(var(--px) * 18)}
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 10);min-width:0}
 
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
@@ -202,7 +201,11 @@
 .deckpage .s-page{--pin:calc(var(--px) * 60);--pmw:calc(var(--px) * 56)}
 .deckpage .pl{display:flex;align-items:baseline}
 .deckpage .pm{flex:0 0 auto;width:var(--pmw);font-weight:800}
-.deckpage .pt{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+/* 항목 글(.pt) = 소제목(.pk, 굵게) + 내용(.pv). "1. 설립 : ~"의 쌍점은 지우고 그 자리를 여백으로 둔다.
+   내용 칸이 남는 폭을 따로 차지하므로 줄이 넘어가면 내용 시작 자리에 맞춰 내려온다(내어쓰기). */
+.deckpage .pt{flex:1;min-width:0;display:flex;align-items:baseline;gap:calc(var(--px) * 30)}
+.deckpage .pk{flex:0 0 auto;max-width:40%;font-weight:800;color:var(--navy);word-break:keep-all}
+.deckpage .pv{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
 .deckpage .pl.lv1 .pm{color:var(--red)}
 .deckpage .pl.lv2{padding-left:var(--pin)}
 .deckpage .pl.lv3{padding-left:calc(var(--pin) * 2)}
@@ -250,10 +253,13 @@
 .deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
 .deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
 
-/* ── 가린 빈칸 {정답} ── 누르면 열린다. 열고 닫는 것은 slide-deck.js의 wireReveal */
-.deckpage .blank{background:var(--navy);color:transparent;border-radius:2px;
+/* ── 가린 빈칸 {정답}과 강조 **굵게** ── (선생님 지시 2026-10-30: "빈칸은 레드, 강조할 건 네이비")
+   빈칸은 가려 둔 동안 레드 칸, 누르면 열려서 레드 글씨가 된다. 열고 닫는 것은 slide-deck.js의 wireReveal.
+   강조는 네이비 굵은 글씨다. 전에는 가린 빈칸이 네이비 칸이라 둘이 같은 색이었다. */
+.deckpage .blank{background:var(--red);color:transparent;border-radius:2px;
   padding:0 .25em;cursor:pointer;-webkit-user-select:none;user-select:none}
 .deckpage .blank.open{background:var(--red-100);color:var(--red);font-weight:700}
+.deckpage strong{color:var(--navy);font-weight:800}
 
 /* ── 동기 유발(사진, 영상) ── 한 쪽에 하나. 쪽을 거의 다 쓴다 */
 .deckpage .s-media{display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -347,51 +353,51 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   <section class="slot">
     <div class="slotbar"><span class="slotno">4</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">개념 노트 #1 : 성리학적 질서의 확산</h2></div><div class="s-body s-page haslabel"><div class="prow"><div class="plabel">서원</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt">설립 : 16C 이후 <span class="blank" data-answer="사림">사림</span>이 향촌에 설립</span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt">기능 : 훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침</span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt">최초 : <span class="blank" data-answer="주세붕">주세붕</span>이 백운동 서원 건립 → 명종 대 ‘<span class="blank" data-answer="소수서원">소수서원</span>’이라는 사액 서원이 됨</span></div><div class="pl lv1"><span class="pm">4.</span><span class="pt">영향 : 향촌 사회에 성리학적 질서 보급, 사림의 정치적 기반 강화</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">성리학적 질서의 확산</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">서원</div>
+        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">설립</span><span class="pv">16C 이후 <span class="blank" data-answer="사림">사림</span>이 향촌에 설립</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">기능</span><span class="pv">훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침</span></span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt"><span class="pk">최초</span><span class="pv"><span class="blank" data-answer="주세붕">주세붕</span>이 백운동 서원 건립 → 명종 대 ‘<span class="blank" data-answer="소수서원">소수서원</span>’이라는 사액 서원이 됨</span></span></div><div class="pl lv1"><span class="pm">4.</span><span class="pt"><span class="pk">영향</span><span class="pv">향촌 사회에 성리학적 질서 보급, 사림의 정치적 기반 강화</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">5</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 이황의 사액 서원 건의</h2></div><div class="s-body s-page "><div class="prow">
-        <div class="plines"><div class="pl lv0 after0"><span class="pt">풍기 군수 이황이 말하기를 … 뜻을 구하는 선비들은 세상에서 시끄럽게 다투는 것을 싫어하여, 한적한 들판이나 고요한 물가로 나아가 선왕의 도를 익히므로 기꺼이 서원에 나아갑니다.</span></div><div class="pl lv0 after0"><span class="pt">… 국학이나 향교는 성곽 안에 있어 학령에 구애되고 과거에 유혹되니, 그 효과를 어찌 서원과 같다 하겠습니까.</span></div><div class="pl lv0 after0"><span class="pt">… 바라건대 감사와 군수가 서원에 물품만 지원하게 하고, 가혹한 법령으로 구속하지는 못하게 해 주소서. … 서원 교육이 크게 일어난다면 선비의 풍속이 변혁되고 습속이 날로 아름다워질 것입니다.</span></div><div class="pl lv0 after0"><span class="pt">『퇴계집』</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 이황의 사액 서원 건의</h2></div><div class="s-body s-page"><div class="prow">
+        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">풍기 군수 이황이 말하기를 … 뜻을 구하는 선비들은 세상에서 시끄럽게 다투는 것을 싫어하여, 한적한 들판이나 고요한 물가로 나아가 선왕의 도를 익히므로 기꺼이 서원에 나아갑니다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">… 국학이나 향교는 성곽 안에 있어 학령에 구애되고 과거에 유혹되니, 그 효과를 어찌 서원과 같다 하겠습니까.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">… 바라건대 감사와 군수가 서원에 물품만 지원하게 하고, 가혹한 법령으로 구속하지는 못하게 해 주소서. … 서원 교육이 크게 일어난다면 선비의 풍속이 변혁되고 습속이 날로 아름다워질 것입니다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">『퇴계집』</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">6</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">개념 노트 #1 : 향약</h2></div><div class="s-body s-page haslabel"><div class="prow"><div class="plabel">향약</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt">의미 : 향촌의 <span class="blank" data-answer="자치 규약">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt">보급 : 중종 대 <span class="blank" data-answer="조광조">조광조</span>가 중국의 향약 소개하면서 보급 시작</span></div><div class="pl lv0 after1"><span class="pt">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt">영향 : 사림의 영향력 강화, 성리학적 사회 질서 확산</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">향약</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">향약</div>
+        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">의미</span><span class="pv">향촌의 <span class="blank" data-answer="자치 규약">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">보급</span><span class="pv">중종 대 <span class="blank" data-answer="조광조">조광조</span>가 중국의 향약 소개하면서 보급 시작</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pv">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt"><span class="pk">영향</span><span class="pv">사림의 영향력 강화, 성리학적 사회 질서 확산</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">7</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">개념 노트 #1 : 유교 윤리의 보급</h2></div><div class="s-body s-page "><div class="prow">
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt">서적 편찬</span></div><div class="pl lv0 after1"><span class="pt">『<span class="blank" data-answer="삼강행실도">삼강행실도</span>』: 유교 기본 윤리인 삼강오륜 보급을 위해 편찬</span></div><div class="pl lv0 after1"><span class="pt">『<span class="blank" data-answer="소학">소학</span>』: 유학의 도덕과 예법을 배우는 기본서, 유학 교육의 입문서</span></div><div class="pl lv0 after1"><span class="pt">『<span class="blank" data-answer="주자가례">주자가례</span>』: 가정에서 지켜야 할 예법 정리한 책</span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt">생활 양식 : 유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">유교 윤리의 보급</h2></div><div class="s-body s-page"><div class="prow">
+        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pv">서적 편찬</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="삼강행실도">삼강행실도</span>』</span><span class="pv">유교 기본 윤리인 삼강오륜 보급을 위해 편찬</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="소학">소학</span>』</span><span class="pv">유학의 도덕과 예법을 배우는 기본서, 유학 교육의 입문서</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="주자가례">주자가례</span>』</span><span class="pv">가정에서 지켜야 할 예법 정리한 책</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">생활 양식</span><span class="pv">유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">8</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">개념 노트 #2 : 붕당의 형성</h2></div><div class="s-body s-page haslabel"><div class="prow"><div class="plabel">붕당 형성</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt">사림 집권 : 사화 이후 국정 운영 중심이 왕권에서 <span class="blank" data-answer="신권">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt">붕당 형성 : <span class="blank" data-answer="외척">외척</span>의 정치 참여 문제, <span class="blank" data-answer="이조 전랑">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화</span></div><div class="pl lv0 after1"><span class="pt">→ 사림이 <span class="blank" data-answer="동인">동인</span>과 <span class="blank" data-answer="서인">서인</span>으로 나뉨</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">붕당의 형성</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">붕당 형성</div>
+        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">사림 집권</span><span class="pv">사화 이후 국정 운영 중심이 왕권에서 <span class="blank" data-answer="신권">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">붕당 형성</span><span class="pv"><span class="blank" data-answer="외척">외척</span>의 정치 참여 문제, <span class="blank" data-answer="이조 전랑">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pv">→ 사림이 <span class="blank" data-answer="동인">동인</span>과 <span class="blank" data-answer="서인">서인</span>으로 나뉨</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">9</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">개념 노트 #2 : 동인과 서인</h2></div><div class="s-body s-page haslabel"><div class="prow"><div class="plabel">동인</div>
-        <div class="plines"><div class="pl lv0 after0"><span class="pt">주로 <span class="blank" data-answer="이황">이황</span>과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 <span class="blank" data-answer="북인">북인</span>과 남인으로 분화</span></div></div></div><div class="prow"><div class="plabel">서인</div>
-        <div class="plines"><div class="pl lv0 after0"><span class="pt">주로 <span class="blank" data-answer="이이">이이</span>와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 <span class="blank" data-answer="노론">노론</span>과 소론으로 분화</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">동인과 서인</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">동인</div>
+        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">주로 <span class="blank" data-answer="이황">이황</span>과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 <span class="blank" data-answer="북인">북인</span>과 남인으로 분화</span></span></div></div></div><div class="prow"><div class="plabel">서인</div>
+        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">주로 <span class="blank" data-answer="이이">이이</span>와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 <span class="blank" data-answer="노론">노론</span>과 소론으로 분화</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">10</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 동인과 서인의 분당</h2></div><div class="s-body s-page "><div class="prow">
-        <div class="plines"><div class="pl lv0 after0"><span class="pt">이조 전랑 자리를 두고 김효원과 심의겸이 서로 맞섰다. 심의겸은 김효원이 예전에 외척 윤원형의 집에 드나든 자라 하여 그가 전랑이 되는 것을 막았다.</span></div><div class="pl lv0 after0"><span class="pt">뒤에 김효원이 전랑이 되자, 이번에는 심의겸의 동생 심충겸이 그 자리에 추천되었다. 김효원이 말하기를 &quot;이조의 벼슬자리가 어찌 외척 집안의 물건이냐?&quot; 하며 반대하였다.</span></div><div class="pl lv0 after0"><span class="pt">이때부터 당론이 나뉘었다. 김효원을 지지하는 이들은 그가 한양 동쪽에 살아 <span class="blank" data-answer="동인">동인</span>(東人)이라 불렸고, 심의겸을 지지하는 이들은 그가 한양 서쪽에 살아 <span class="blank" data-answer="서인">서인</span>(西人)이라 불렸다.</span></div><div class="pl lv0 after0"><span class="pt">『당의통략』</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 동인과 서인의 분당</h2></div><div class="s-body s-page"><div class="prow">
+        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">이조 전랑 자리를 두고 김효원과 심의겸이 서로 맞섰다. 심의겸은 김효원이 예전에 외척 윤원형의 집에 드나든 자라 하여 그가 전랑이 되는 것을 막았다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">뒤에 김효원이 전랑이 되자, 이번에는 심의겸의 동생 심충겸이 그 자리에 추천되었다. 김효원이 말하기를 &quot;이조의 벼슬자리가 어찌 외척 집안의 물건이냐?&quot; 하며 반대하였다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">이때부터 당론이 나뉘었다. 김효원을 지지하는 이들은 그가 한양 동쪽에 살아 <span class="blank" data-answer="동인">동인</span>(東人)이라 불렸고, 심의겸을 지지하는 이들은 그가 한양 서쪽에 살아 <span class="blank" data-answer="서인">서인</span>(西人)이라 불렸다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">『당의통략』</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">11</span>
       <span class="slotstep">미션 활동</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">미션 활동</span><h2 class="s-head">미션 Check : 사화에서 살아남기</h2></div><div class="s-body s-page "><div class="prow">
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt">LMS 시스템 속 미션 Check 중 ‘사화에서 살아남기’를 선택합니다. 선생님이 알려주는 방 코드를 입력하여 게임에 입장합니다.</span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt">게임을 시작하기 전, 나의 선비 캐릭터를 설정합니다. 나의 호(號)를 짓고, 스승(‘이황, 조식’ 또는 ‘이이, 성혼’)과 기반(‘중앙 관직형’ 또는 ‘향촌 서원형’)을 고릅니다.</span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt">1498년부터 1575년까지, 여섯 장면을 차례로 헤쳐 나갑니다. 상황을 읽고 제한 시간 안에 선택합니다. 선택에 따라 관직(官)과 명예(名)가 오르내리고, 살아남거나 화를 입습니다.</span></div><div class="pl lv1"><span class="pm">4.</span><span class="pt">마지막 장면까지 마치면 결말이 나오고, 나의 77년이 정리됩니다. 마지막으로 ‘소감 남기기’에 오늘 알게 된 것과 생각한 것을 적습니다.</span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">미션 활동</span><h2 class="s-head">사화에서 살아남기</h2></div><div class="s-body s-page"><div class="prow">
+        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pv">LMS 시스템 속 미션 Check 중 ‘사화에서 살아남기’를 선택합니다. 선생님이 알려주는 방 코드를 입력하여 게임에 입장합니다.</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pv">게임을 시작하기 전, 나의 선비 캐릭터를 설정합니다. 나의 호(號)를 짓고, 스승(‘이황, 조식’ 또는 ‘이이, 성혼’)과 기반(‘중앙 관직형’ 또는 ‘향촌 서원형’)을 고릅니다.</span></span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt"><span class="pv">1498년부터 1575년까지, 여섯 장면을 차례로 헤쳐 나갑니다. 상황을 읽고 제한 시간 안에 선택합니다. 선택에 따라 관직(官)과 명예(名)가 오르내리고, 살아남거나 화를 입습니다.</span></span></div><div class="pl lv1"><span class="pm">4.</span><span class="pt"><span class="pv">마지막 장면까지 마치면 결말이 나오고, 나의 77년이 정리됩니다. 마지막으로 ‘소감 남기기’에 오늘 알게 된 것과 생각한 것을 적습니다.</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">12</span>
