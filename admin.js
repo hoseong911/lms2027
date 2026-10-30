@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030w';
-import { icon } from './shared/icons.js?v=20261030w';
+import * as M from './model.js?v=20261030x';
+import { icon } from './shared/icons.js?v=20261030x';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1231,7 +1231,7 @@ function axisRail(l){
 }
 
 /* 단계 하나를 고치는 칸. 어떤 칸을 그릴지는 축 정의의 edit가 정한다
-   (cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / concept 개념 줄 / question 읽기만). */
+   (cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / pages 페이지 / question 읽기만). */
 function axisEditor(l, ax){
   const k = ax.key;
 
@@ -1243,8 +1243,11 @@ function axisEditor(l, ax){
 
   if (ax.edit === 'cover'){
     const d = M.getDeck(l.id);
-    // 강 번호와 강의 제목은 이미 있는 것에서 오므로 여기서 고치지 않는다
-    return fld('단원', `<input class="f grow" data-act="deck-cover" data-f="unit" data-id="${l.id}"
+    // 강 번호와 강의 제목은 이미 있는 것에서 오므로 여기서 고치지 않는다.
+    // 표지에 적는 것은 학습 주제, 단원, 교과서 쪽수 셋이다(선생님 지시 2026-10-30)
+    return fld('학습 주제', `<input class="f grow" data-act="deck-cover" data-f="topic" data-id="${l.id}"
+        value="${esc(d.cover.topic || '')}" aria-label="학습 주제">`)
+      + fld('단원', `<input class="f grow" data-act="deck-cover" data-f="unit" data-id="${l.id}"
         value="${esc(d.cover.unit)}" aria-label="단원">`)
       + fld('교과서 쪽수', `<input class="f grow" data-act="deck-cover" data-f="pages" data-id="${l.id}"
         value="${esc(d.cover.pages)}" aria-label="교과서 쪽수">`);
@@ -1444,9 +1447,10 @@ function editPages(el, fn){
      .hwpx  한글 파일. 표 칸과 문단이 그대로 들어 있어 이쪽이 정확하다(좌우 비교표도 읽는다)
      .pdf   한글이 없을 때의 대비. 글자 자리로 어림한다
    어느 쪽인지는 shared/worksheet.js의 worksheetFromFile이 가른다. 여기서 직접 고르지 않는다.
-   제목에 "미션"이 든 페이지부터는 미션 활동으로, 나머지는 개념 노트로 들어간다.
-   이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 되돌릴 수 없다).
-   다 넣으면 콘텐츠 탭의 개념 노트 단계로 옮겨 가서 바로 고칠 수 있게 한다. */
+   전시학습확인, 동기 유발, 맺음말을 뺀 나머지 단계를 다 채운다(선생님 지시 2026-10-30:
+   "활동지를 올리면 슬라이드 만든 섹션에 다 채워져야 해"): 표지(학습 주제/단원/쪽수), 학습 목표,
+   개념 노트, 미션 활동, 오늘의 질문. 이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 못 되돌린다).
+   다 넣으면 슬라이드 탭의 개념 노트 단계로 옮겨 가 바로 고칠 수 있게 한다. */
 function importWorksheet(lessonId){
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.hwpx,application/pdf,.pdf';
@@ -1455,27 +1459,42 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030w');
+      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030x');
       got = await worksheetFromFile(file);
     } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
-    if (!got.concept.length && !got.mission.length){ toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
+    const cover = got.cover || {}, objective = got.objective || [], question = got.question || null;
+    const coverHas = !!(cover.topic || cover.unit || cover.pages);
+    if (!got.concept.length && !got.mission.length && !objective.length && !question && !coverHas){
+      toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return;
+    }
 
-    // 지금 적힌 페이지가 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다. 비교 묶음은 네 칸까지)
+    // 지금 적힌 내용이 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다. 비교 묶음은 네 칸까지)
     const has = k => M.pagesFilled(M.getPages(lessonId, k));
     const l = M.getLesson(lessonId);
-    if ((got.concept.length && has('concept')) || (got.mission.length && has('mission'))){
+    const willReplace = (got.concept.length && has('concept')) || (got.mission.length && has('mission'))
+      || (objective.length && (M.getDeck(lessonId).objective.items || []).length)
+      || (question && String(l.parts?.question?.question || '').trim());
+    if (willReplace){
       const ok = await confirmDelete({ title:'이미 적힌 내용을 바꿀까요?', okText:'바꾸기',
-        bodyHtml:`<p>활동지에서 꺼낸 내용으로 개념 노트${got.mission.length ? '와 미션 활동' : ''} 페이지를 바꿉니다. 지금 적힌 페이지는 지워집니다.</p>` });
+        bodyHtml:`<p>활동지에서 꺼낸 내용으로 슬라이드 섹션을 채웁니다. 이미 적어 둔 표지, 학습 목표, 개념 노트, 미션 활동, 오늘의 질문은 지워집니다.</p>` });
       if (!ok) return;
     }
+
+    const done = [];
+    if (coverHas){ M.deckSetCover(lessonId, cover); done.push('표지'); }
+    if (objective.length){ M.deckSetItems(lessonId, 'objective', objective); done.push(`학습 목표 ${objective.length}줄`); }
     if (got.concept.length){
       if (!l.parts?.concept) M.setLessonPart(lessonId, 'concept', true);
-      M.setPages(lessonId, 'concept', got.concept);
+      M.setPages(lessonId, 'concept', got.concept); done.push(`개념 노트 ${got.concept.length}페이지`);
     }
-    if (got.mission.length) M.setPages(lessonId, 'mission', got.mission);
-    state.conceptTab = 'content'; state.conceptLessonId = lessonId; state.axisStep = 'concept';
+    if (got.mission.length){ M.setPages(lessonId, 'mission', got.mission); done.push(`미션 활동 ${got.mission.length}페이지`); }
+    if (question){
+      if (!l.parts?.question) M.setQuestionEnabled(lessonId, true);
+      M.setQuestion(lessonId, { question: question.question, guide: question.guide }); done.push('오늘의 질문');
+    }
+    state.conceptTab = 'content'; state.conceptLessonId = lessonId; state.axisStep = 'cover';
     render();
-    toast(`개념 노트 ${got.concept.length}페이지${got.mission.length ? `, 미션 활동 ${got.mission.length}페이지` : ''}를 넣었습니다.`);
+    toast(done.length ? `${done.join(', ')}을(를) 넣었습니다.` : '활동지에서 넣을 내용을 찾지 못했습니다.');
   });
   inp.click();
 }
@@ -2706,7 +2725,7 @@ document.getElementById('shell').addEventListener('change', e => {
       const row = pages[p]?.rows[r]; const box = side ? row?.[side] : row;
       if (!box) return false; box[f] = v; });
     if (f === 'text'){ el.value = M.indentText(v); el.rows = Math.max(2, v.split('\n').length); }
-  } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 단원, 교과서 쪽수
+  } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 학습 주제, 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운
     state.conceptLessonId = el.value; render();

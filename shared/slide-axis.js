@@ -59,7 +59,7 @@ export function reviewTypeDef(key){ return REVIEW_TYPES.find(t => t.key === key)
    개념 노트와 오늘의 질문은 parts 쪽에 있으므로 덱에 칸을 두지 않는다. */
 export function blankDeck(){
   return {
-    cover:     { unit:'', pages:'' },   // 단원, 교과서 쪽수
+    cover:     { topic:'', unit:'', pages:'' },   // 학습 주제, 단원, 교과서 쪽수
     review:    { items:[] },            // [{ q, a }]
     objective: { items:[] },            // ['목표 한 줄', ...]
     hook:      { items:[] },            // [{ kind:'image'|'video', url, caption }]

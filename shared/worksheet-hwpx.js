@@ -33,8 +33,9 @@
  * 이 파일은 Firebase도 화면도 모른다. 노드에서는 JSZip을 넘겨 시험한다
  * (hwpxRead로 꺼내고 hwpxToParts로 바꾼다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030w';
-import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages } from './worksheet.js?v=20261030w';
+import { lineLevel } from './slide-axis.js?v=20261030x';
+import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
+  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030x';
 
 // 브라우저는 CDN에서 JSZip을 불러온다. PDF.js와 같이 판 번호를 못박는다
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';
@@ -140,7 +141,62 @@ export function hwpxBlocks(xml, blanks = new Set()){
 const cellLines = c => c.paras.join('\n').split('\n').map(t => t.replace(/[\s　]+/g, ' ').trim()).filter(Boolean);
 const cellText = c => cellLines(c).join('\n');
 
-/* 덩어리 목록을 { concept, mission } 페이지 배열로 바꾼다(worksheet.js의 makeCollector가 모은다). */
+/* ── 쪽이 아닌 단계(표지, 학습 목표, 오늘의 질문) 뽑기 (선생님 지시 2026-10-30) ──
+   이것들은 개념/미션처럼 괄호 쪽으로 오지 않는다. 표지와 학습 목표는 활동지 머리 표의
+   라벨 칸 + 값 칸에서, 오늘의 질문은 "[ 생각 Check ]" 쪽의 문단에서 온다. 두 가지를
+   col(meta)로 모은다(worksheet.js의 setCover, addObjective, setQuestion). 개념/미션 모으기는
+   그대로다: 머리는 첫 괄호 전이라 어차피 건너뛰고(skip), 생각 Check 쪽은 제목으로 가린다.
+   라벨 정규식(UNIT_RE 등)은 pdf 길과 같이 쓰도록 worksheet.js에 있다. */
+
+// 머리 표에서 학습 단원/주제/교과서 쪽수와 학습 목표를 꺼낸다. 첫 괄호 머리를 만나면 멈춘다
+function fillMeta(blocks, col){
+  for (const b of blocks){
+    if (b.type === 'p'){ if (unwrapTitle(b.text) !== null) return; continue; }
+    for (const row of b.rows){
+      const cells = row.map(cellText);
+      if (cells.some(t => unwrapTitle(t) !== null)) return;   // 본문 시작(머리 끝)
+      const ne = cells.filter(Boolean);
+      if (ne.length < 2) continue;
+      const [label, ...rest] = ne;
+      const tokens = rest.flatMap(t => t.split('\n')).map(s => s.trim()).filter(Boolean);
+      if (UNIT_RE.test(label)){
+        tokens.forEach(t => { if (LECNO_RE.test(t)) return;
+          PAGE_RE.test(t) ? col.setCover({ pages: t }) : col.setCover({ unit: t }); });
+      } else if (TOPIC_RE.test(label)){
+        col.setCover({ topic: tokens.join(' ') });
+      } else if (OBJ_RE.test(label)){
+        tokens.forEach(t => col.addObjective(t));
+      }
+    }
+  }
+}
+
+// "[ 생각 Check ]" 쪽을 찾아 첫 문단을 질문, 나머지를 설명문으로 담는다
+function fillQuestion(blocks, col){
+  for (const b of blocks){
+    if (b.type !== 'tbl') continue;
+    let active = false;
+    for (const row of b.rows){
+      if (!active){
+        if (row.some(c => { const t = unwrapTitle(cellLines(c)[0] || ''); return t !== null && QUESTION_RE.test(t); }))
+          active = true;
+        continue;
+      }
+      for (const c of row){
+        // 확인란 칸(개념/미션/질문 체크표)과 군더더기는 뺀다. 한 문장쯤 되는 칸이 질문이다
+        const lines = cellLines(c).filter(x => !JUNK_RE.test(x) && x !== '확인란' && !/^(개념|미션|질문)$/.test(x));
+        if (lines.length && lines[0].length > SHORT){
+          col.setQuestion(lines[0], lines.slice(1).join('\n'));
+          return;
+        }
+      }
+    }
+  }
+}
+
+/* 덩어리 목록을 { concept, mission, cover, objective, question }로 바꾼다. 개념/미션은 쪽 배열이고
+   (worksheet.js의 makeCollector가 모은다), 표지/학습목표/질문은 머리 표와 생각 Check 쪽에서 뽑는다
+   (fillMeta, fillQuestion). */
 export function blocksToParts(blocks){
   const col = makeCollector();
   const anyTitle = blocks.some(b => b.type === 'p'
@@ -204,8 +260,12 @@ export function blocksToParts(blocks){
     }
   });
 
+  fillMeta(blocks, col);
+  fillQuestion(blocks, col);
+
   const { concept, mission } = col.pages;
-  return { concept: tidyPages(concept), mission: tidyPages(mission) };
+  const { cover, objective, question } = col.meta;
+  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question };
 }
 
 /* zip 안에서 글자 모양 표(Contents/header.xml)와 section XML들을 차례대로 꺼낸다.

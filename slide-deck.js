@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind } from './shared/slide-axis.js?v=20261030w';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind } from './shared/slide-axis.js?v=20261030x';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -79,7 +79,7 @@ export function buildSlides(lesson, no){
   SLIDE_AXIS.forEach(ax => {
     if (ax.key === 'cover'){
       push('cover', { type:'cover', no, title:lesson.title || '',
-        unit:deck.cover?.unit || '', pages:deck.cover?.pages || '' });
+        topic:deck.cover?.topic || '', unit:deck.cover?.unit || '', pages:deck.cover?.pages || '' });
 
     } else if (ax.key === 'review'){
       const qa = (deck.review?.items || []).filter(it => String(it?.q || '').trim());
@@ -254,9 +254,12 @@ export function renderSlide(s){
   if (s.type === 'cover'){
     const no = s.no != null && String(s.no).trim() !== '' ? `${esc(s.no)}강` : '';
     const meta = [s.unit, s.pages && `교과서 ${s.pages}`].filter(Boolean).map(esc);
+    // 학습 주제는 제목과 다를 때만 부제로 세운다(강의 이름을 주제로 지으면 겹쳐 보이지 않게)
+    const sub = s.topic && s.topic !== s.title ? s.topic : '';
     return `<div class="s-cover">
       ${no ? `<div class="s-no">${no}</div>` : ''}
       <h1 class="s-title">${esc(s.title)}</h1>
+      ${sub ? `<div class="s-sub">${esc(sub)}</div>` : ''}
       ${meta.length ? `<div class="s-meta">${meta.join('<span class="s-dot"></span>')}</div>` : ''}
     </div>`;
   }

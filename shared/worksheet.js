@@ -17,17 +17,19 @@
  * ── 활동지 모양을 읽는 규칙 (두 길이 같이 쓴다) ──
  *   - 쪽 제목: 괄호로 감싼 줄. "[ 개념 노트 #1 : 성리학적 질서의 확산 ]", "< 사료 : ... >".
  *             선생님 활동지는 묶음 머리를 큰 글씨가 아니라 이 괄호로 알린다(2026-10-30 확인).
- *   - 넣지 않는 것: 첫 제목 위의 줄(활동지 머리: 학교 이름, 학번 칸, 학습 단원, 학습 주제),
- *             제목에 "질문"이나 "생각 Check"가 든 쪽(오늘의 질문 메뉴에 따로 있다),
- *             제목에 "학습 목표"가 든 쪽(축의 학습 목표 단계에 따로 적는다),
- *             내용이 하나도 없는 쪽.
+ *   - 개념/미션 쪽에 넣지 않는 것: 첫 제목 위의 줄(활동지 머리: 학교 이름, 학번 칸),
+ *             제목에 "질문"이나 "생각 Check"가 든 쪽, 제목에 "학습 목표"가 든 쪽, 내용이 없는 쪽.
+ *   - 다만 전시학습확인, 동기 유발, 맺음말을 뺀 나머지 단계는 다 채운다(선생님 지시 2026-10-30:
+ *             "활동지를 올리면 슬라이드 만든 섹션에 다 채워져야 해"). 쪽이 아닌 단계는 meta로 모은다:
+ *             머리 표의 학습 단원/학습 주제/교과서 쪽수 → 표지(cover), 학습 목표 → objective,
+ *             생각 Check 쪽의 질문과 설명문 → 오늘의 질문(question). 모으는 것은 hwpx/pdf 길이 한다.
  *   - **묶음 하나가 페이지 하나다**(요구사항 139). 활동지 한 쪽에 라벨이 여럿이면 라벨마다
  *             페이지를 따로 만든다(제목은 그 쪽 제목을 그대로 되쓴다). 사료 쪽은 쪼개지 않는다.
  *   - 미션: 제목에 "미션"이 든 쪽부터는 미션 활동 쪽으로 간다.
  *   - 제목의 단계 이름 머리("개념 노트 #1 : ")는 뗀다(slide-axis.js의 stripStepPrefix).
  *             "사료 : "는 떼지 않는다. 그 머리로 사료 쪽인 줄 알기 때문이다(SOURCE_RE).
  */
-import { stripStepPrefix, SOURCE_RE, rowFilled } from './slide-axis.js?v=20261030w';
+import { stripStepPrefix, SOURCE_RE, rowFilled } from './slide-axis.js?v=20261030x';
 
 export const SHORT = 10;   // 라벨로 볼 수 있는 가장 긴 글자 수
 
@@ -39,8 +41,18 @@ export const unwrapTitle = t => {
   return m ? m[1].trim() : null;
 };
 
-// 축의 다른 단계에 따로 있는 쪽이라 페이지로 넣지 않는다
+// 축의 다른 단계에 따로 있는 쪽이라 개념/미션 페이지로 넣지 않는다(대신 meta로 따로 뽑는다)
 export const SKIP_TITLE_RE = /질문|생각\s*Check|학습\s*목표/i;
+
+/* 머리 표(또는 PDF의 머리 줄)에서 쪽이 아닌 단계를 가리는 라벨. hwpx와 pdf가 같이 쓴다.
+   PAGE_RE는 교과서 쪽수("p.117~119"), LECNO_RE는 강 번호("29강", 강의에 이미 있어 버린다),
+   QUESTION_RE는 오늘의 질문 쪽 제목("생각 Check", "오늘의 질문"). */
+export const UNIT_RE     = /^(?:학습\s*)?단원/;
+export const TOPIC_RE    = /^(?:학습\s*)?주제/;
+export const OBJ_RE      = /^(?:학습\s*)?목표/;
+export const PAGE_RE     = /(?:^p\.?\s*\d|쪽|페이지|\d+\s*[~∼－-]\s*\d)/i;
+export const LECNO_RE    = /^\d+\s*강$/;
+export const QUESTION_RE = /질문|생각\s*Check/i;
 
 /* 군더더기: 쪽 번호("1/2", "- 3 -", 숫자만), 그리고 화살표나 기호만 있는 글.
    기호만 있는 것은 활동지에서 그림으로 쓴 것이라(붕당이 갈라지는 ⇙ ⇘ 같은 것) 글로 옮길 것이 없다.
@@ -56,6 +68,11 @@ export function makeCollector(){
   let skip = true;          // 첫 제목을 만나기 전까지는 활동지 머리라 넣지 않는다
   let parentTitle = '';     // 사료 쪽이 끝나고 표로 돌아올 때 다시 쓸 제목
   let inSource = false;
+  /* 개념 노트와 미션 활동 밖의 단계(표지, 학습 목표, 오늘의 질문)도 활동지에서 가져온다
+     (선생님 지시 2026-10-30: "활동지를 올리면 슬라이드 만든 섹션에 다 채워져야 해").
+     이것들은 쪽(page)이 아니라 머리 표의 라벨/값이나 생각 Check 쪽에서 오므로, 쪽 모으기와
+     따로 여기 meta에 담는다. 두 길(hwpx, pdf)이 같은 모양으로 채운다(아래 setter). */
+  const meta = { cover:{ topic:'', unit:'', pages:'' }, objective:[], question:null };
 
   /* 같은 제목으로 다음 페이지를 연다(묶음 하나가 페이지 하나라는 원칙. 아래 newRow).
      newPage와 달리 제목을 다시 읽지 않는다: 미션인지, 넣지 않을 쪽인지, 사료 쪽인지는
@@ -64,10 +81,30 @@ export function makeCollector(){
 
   const api = {
     get pages(){ return { concept, mission }; },
+    get meta(){ return meta; },       // 표지, 학습 목표, 오늘의 질문(쪽이 아닌 단계)
     get row(){ return row; },        // 지금 채우는 묶음(PDF 길이 줄을 이을 때 앞 글을 본다)
     get inSource(){ return inSource; },
     get parentTitle(){ return parentTitle; },
     get skipping(){ return skip; },
+
+    /* 머리의 학습 단원, 학습 주제, 교과서 쪽수를 표지(cover)에 담는다. 이미 든 것은 덮지 않는다
+       (머리에 같은 라벨이 여러 번 나와도 처음 것을 쓴다). */
+    setCover(patch){
+      for (const k of ['topic', 'unit', 'pages']){
+        const v = String(patch?.[k] ?? '').trim();
+        if (v && !meta.cover[k]) meta.cover[k] = v;
+      }
+    },
+    // 학습 목표 한 줄. 슬라이드가 번호를 매기므로 "1." 머리는 떼고 담는다(objective는 줄 글자 배열)
+    addObjective(line){
+      const t = String(line ?? '').replace(/^\s*\d{1,2}\.\s*/, '').trim();
+      if (t) meta.objective.push(t);
+    },
+    // 오늘의 질문. 첫 문단이 질문, 나머지가 설명문이다. 처음 채운 것을 쓴다
+    setQuestion(question, guide){
+      const q = String(question ?? '').trim();
+      if (q && !meta.question) meta.question = { question: q, guide: String(guide ?? '').trim() };
+    },
 
     /* 제목이 없는 활동지(괄호 머리를 하나도 안 쓴 것)는 처음부터 다 담는다.
        두 길 다 줄을 다 읽어 본 뒤 이것을 불러 준다. */
@@ -139,11 +176,11 @@ export const tidyPages = pages => pages.filter(p => p.rows.some(rowHasText));
 export async function worksheetFromFile(file){
   const name = String(file?.name || '').toLowerCase();
   if (name.endsWith('.hwpx')){
-    const { worksheetFromHwpx } = await import('./worksheet-hwpx.js?v=20261030w');
+    const { worksheetFromHwpx } = await import('./worksheet-hwpx.js?v=20261030x');
     return worksheetFromHwpx(file);
   }
   if (name.endsWith('.pdf')){
-    const { worksheetFromPdf } = await import('./worksheet-pdf.js?v=20261030w');
+    const { worksheetFromPdf } = await import('./worksheet-pdf.js?v=20261030x');
     return worksheetFromPdf(file);
   }
   throw new Error('한글 파일(.hwpx)이나 PDF만 올릴 수 있습니다.');

@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261030w';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261030x';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -93,7 +93,7 @@ export const ADMIN_MENUS = [
   { key:'students',  name:'학생 관리',       icon:'users' },
   { key:'progress',  name:'진도 관리',       icon:'clipboard-list' },
   { key:'notice',    name:'공지사항',        icon:'megaphone' },
-  { key:'concept',   name:'개념 노트',       icon:'book-open' },
+  { key:'concept',   name:'강의 라이브러리', icon:'book-open' },
   { key:'mission',   name:'미션 활동',       icon:'target' },
   { key:'question',  name:'오늘의 질문',     icon:'message-square' },
   { key:'formative', name:'형성평가',        icon:'circle-check' },
@@ -139,10 +139,12 @@ export async function setMenuOrder(order){
 }
 
 /* 메뉴 안의 서브 메뉴. 미션 활동은 열어 둔 앱이 탭이 되므로 여기 적지 않는다.
-   강의 라이브러리는 개념 노트의 서브 메뉴로 둔다(선생님 지시 2026-10-28) :
-   강의(차시) 자체를 만들고 칸을 채우는 자리가 개념 노트를 고치는 자리와 같기 때문. */
+   강의 라이브러리(key는 그대로 concept) 메뉴 아래에 강의 관리 / 슬라이드 / 디자인 셋을 둔다
+   (선생님 지시 2026-10-30): 좁은 뜻의 개념 노트는 슬라이드의 한 단계일 뿐이고, 여기서 하는 일은
+   강의(차시)를 만들고 슬라이드를 채우고 꾸미는 것이라 메뉴 이름을 강의 라이브러리로 올렸다.
+   "슬라이드" 탭이 곧 축 편집기다(아래 content 값은 그대로 두어 상태·분기 코드를 건드리지 않는다). */
 export const ADMIN_SUBMENUS = {
-  concept:  [ { v:'library', label:'강의 라이브러리' }, { v:'content', label:'콘텐츠' }, { v:'design',  label:'디자인' } ],
+  concept:  [ { v:'library', label:'강의 관리' }, { v:'content', label:'슬라이드' }, { v:'design',  label:'디자인' } ],
   question: [ { v:'manage',  label:'질문 관리' }, { v:'answers', label:'답변' }, { v:'pick', label:'PICK' } ],
   // 형성평가는 문제를 만드는 자리와 학생들이 푼 결과를 보는 자리 둘이다(선생님 지시 2026-10-29).
   formative:[ { v:'manage',  label:'문제 관리' }, { v:'result',  label:'성취도 관리' } ],
@@ -951,7 +953,7 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow } from './shared/slide-axis.js?v=20261030w';
+  ROW_TYPES, rowKind, convertRow } from './shared/slide-axis.js?v=20261030x';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -990,6 +992,13 @@ export function deckMoveItem(lessonId, key, idx, dir){
 export function deckDelItem(lessonId, key, idx){
   const arr = deckItems(lessonId, key); if (!arr || arr[idx] === undefined) return;
   arr.splice(idx, 1); saveLesson(lessonId);
+}
+/* 줄 목록(학습 목표, 맺음말처럼 items가 글자 배열인 단계)을 통째로 갈아 끼운다.
+   활동지 변환(admin.js의 importWorksheet)이 학습 목표를 한꺼번에 넣을 때 쓴다. */
+export function deckSetItems(lessonId, key, items){
+  const d = getDeck(lessonId);
+  if (!d || !d[key] || !Array.isArray(d[key].items)) return;
+  d[key].items = (items || []).map(t => String(t ?? '')); saveLesson(lessonId);
 }
 
 /* 그 단계에 적은 것이 있는가. 어드민 왼쪽 축 목록이 채움 표시로 쓴다.

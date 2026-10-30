@@ -24,15 +24,15 @@
  *           단계는 줄 글자에 기호가 그대로 남아 있어서 따로 적어 두지 않는다.
  *   - 미션: 제목에 "미션"이 든 페이지부터는 미션 활동 쪽으로 간다.
  *   - 제목의 단계 이름 머리("개념 노트 #1 : ")는 떼고 가져온다(slide-axis.js의 stripStepPrefix).
- *   - 넣지 않는 것: 첫 페이지 제목 위의 줄(활동지 머리: 강의 제목, 반 번호 이름 칸),
- *           제목에 "질문"이나 "생각 Check"가 든 페이지(오늘의 질문 메뉴에 따로 있다),
- *           제목에 "학습 목표"가 든 페이지(축의 학습 목표 단계에 따로 적는다),
- *           내용 줄이 하나도 없는 페이지(큰 글씨 제목만 덩그러니 선 것).
+ *   - 개념/미션에 넣지 않는 것: 머리 줄(강의 제목, 반 번호 이름 칸), 질문·생각 Check 쪽,
+ *           학습 목표 쪽, 내용 줄이 없는 페이지. 이 가운데 머리의 단원/주제/쪽수와 학습 목표,
+ *           생각 Check의 질문은 표지·학습목표·오늘의 질문 단계로 따로 뽑는다(fillMetaPdf, fillQuestionPdf).
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030w';
-import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages } from './worksheet.js?v=20261030w';
+import { lineLevel } from './slide-axis.js?v=20261030x';
+import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
+  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030x';
 
 // 브라우저는 CDN에서 PDF.js를 불러온다. 판 번호를 못박아 둔다(바뀌면 꺼내는 결과가 달라질 수 있다)
 const PDFJS_VER = '4.10.38';
@@ -137,8 +137,9 @@ function wrapGlue(prev, next){
   return (tail.length === 1 && HANGUL_RE.test(tail) && HANGUL_RE.test(head)) ? '' : ' ';
 }
 
-/* 꺼낸 줄을 페이지로 나눈다. 돌려주는 것은 { concept, mission } 두 덩어리이고
-   둘 다 slide-axis.js의 fromPages가 받는 페이지 배열이다: [{ title, rows:[{ label, text }] }]. */
+/* 꺼낸 줄을 { concept, mission, cover, objective, question }으로 나눈다. concept/mission은
+   slide-axis.js의 fromPages가 받는 페이지 배열이고([{ title, rows:[{ label, text }] }]),
+   cover/objective/question은 머리 줄과 생각 Check 쪽에서 뽑은 것이다(fillMetaPdf, fillQuestionPdf). */
 export function linesToParts(lines){
   const clean = lines.filter(l => !JUNK_RE.test(l.text.trim()));
   if (!clean.length) return { concept: [], mission: [] };
@@ -205,9 +206,63 @@ export function linesToParts(lines){
     if (text) addLine(text, l.full);
   });
 
+  /* 쪽이 아닌 단계(표지, 학습 목표, 오늘의 질문)도 채운다(선생님 지시 2026-10-30).
+     PDF는 표 칸이 사라져 어림이라, 한글 파일(worksheet-hwpx.js)의 표 기반 뽑기보다 성기다.
+     머리 줄(첫 괄호 머리 앞)의 조각(segs)을 한글 파일의 칸처럼 라벨 + 값으로 본다. */
+  fillMetaPdf(clean, titleOf, col);
+  fillQuestionPdf(clean, titleOf, col);
+
   // 내용 줄이 없는 페이지(제목만 덩그러니 선 것)는 뺀다
   const { concept, mission } = col.pages;
-  return { concept: tidyPages(concept), mission: tidyPages(mission) };
+  const { cover, objective, question } = col.meta;
+  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question };
+}
+
+/* 머리 줄에서 표지(학습 단원/주제/교과서 쪽수)와 학습 목표를 뽑는다. 첫 괄호 머리를 만나면 멈춘다.
+   학습 목표는 라벨 줄 뒤에 "1." "2." 줄로 이어지므로, 목표 라벨을 본 뒤의 번호 줄을 거둔다. */
+function fillMetaPdf(clean, titleOf, col){
+  let objMode = false;
+  for (const l of clean){
+    if (titleOf(l) !== null) return;
+    const segs = l.segs.map(s => s.text.trim()).filter(Boolean);
+    const label = segs[0] || '';
+    const rest = segs.slice(1);
+    if (UNIT_RE.test(label)){
+      objMode = false;
+      rest.flatMap(t => t.split(/\s{2,}/)).map(s => s.trim()).filter(Boolean).forEach(t => {
+        if (LECNO_RE.test(t)) return;
+        PAGE_RE.test(t) ? col.setCover({ pages: t }) : col.setCover({ unit: t });
+      });
+    } else if (TOPIC_RE.test(label)){
+      objMode = false;
+      if (rest.length) col.setCover({ topic: rest.join(' ') });
+    } else if (OBJ_RE.test(label)){
+      objMode = true;
+      rest.forEach(t => col.addObjective(t));
+    } else if (objMode && lineLevel(l.text).lv === 1){
+      col.addObjective(l.text);                 // 목표 라벨 뒤로 이어지는 "1." "2." 줄
+    } else {
+      objMode = false;
+    }
+  }
+}
+
+/* "[ 생각 Check ]" 쪽을 찾아 첫 문장을 질문, 뒤따르는 문장을 설명문으로 담는다.
+   확인란(개념/미션/질문 체크표)과 군더더기 줄은 뺀다. */
+function fillQuestionPdf(clean, titleOf, col){
+  let active = false;
+  const guide = [];
+  let question = '';
+  for (const l of clean){
+    const t = titleOf(l);
+    if (t !== null){ if (active) break; active = QUESTION_RE.test(t); continue; }
+    if (!active) continue;
+    const s = l.text.trim();
+    if (!s || JUNK_RE.test(s) || s === '확인란' || /^(개념|미션|질문)$/.test(s)) continue;
+    if (!question){ if (s.length > SHORT) question = s; }
+    else guide.push(s);
+  }
+  if (question) col.setQuestion(question, guide.join(' '));
 }
 
 // 브라우저에서 PDF.js를 한 번만 불러 둔다
