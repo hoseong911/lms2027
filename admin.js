@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031a';
-import { icon } from './shared/icons.js?v=20261031a';
+import * as M from './model.js?v=20261031b';
+import { icon } from './shared/icons.js?v=20261031b';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1490,7 +1490,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031a');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031b');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });
@@ -1648,14 +1648,19 @@ function missionTools(app){
       <button class="ib ib-primary" data-act="mission-save" data-v="${esc(app.id)}" title="저장" aria-label="저장">${icon('check',16)}</button>
       <button class="ib ib-danger" data-act="mission-del" data-v="${esc(app.id)}" title="삭제" aria-label="삭제">${icon('trash-2',16)}</button></div>`;
 }
-// 세부 내용 칸. 이름표 + 입력 칸 한 줄씩(일반 설정과 같은 모양). 앱 키는 만들 때만 적는다.
+/* 세부 내용 칸. 이름표 + 입력 칸 한 줄씩(일반 설정과 같은 모양).
+   앱 키는 문서 id다. 활동지로 자동 등록한 앱은 임시 키(app_...)로 서는데, 그런 앱은 키 칸을 비워
+   보여 주고(placeholder) 교사가 적으면 그 키로 옮긴다(saveMission → setMissionAppKey). 선생님 지시
+   2026-10-30: "비워놓고 내가 넣을 수 있게". 직접 만든 앱은 그 키를 그대로 보여 준다(고치면 옮겨진다). */
 function missionForm(app){
   const arch = app?.archive || {};
   const line = (label, ctl, top) => `<div class="row ${top?'row-top':''}"><div class="t gen-label">${label}</div>${ctl}</div>`;
   const inp = (id, v, extra = '') => `<input class="f grow" id="${id}" value="${esc(v || '')}" ${extra}>`;
   const lessons = M.getLessons();
+  const autoKey = app && /^app_/.test(app.id);   // 활동지가 자동으로 붙인 임시 키
   return line('제목', inp('ma-name', app?.name))
-    + line('앱 키', inp('ma-key', app?.id, app ? 'disabled' : ''))
+    + line('앱 키', inp('ma-key', app ? (autoKey ? '' : app.id) : '',
+        autoKey ? 'placeholder="앱 키를 정해 주세요 (예: j_sahwa)"' : ''))
     + line('웹앱 주소', inp('ma-su', app?.studentUrl))
     + line('어드민 주소', inp('ma-au', app?.adminUrl))
     + line('연결할 강의', `<select class="sel grow" id="ma-lesson" aria-label="연결할 강의">
@@ -1694,8 +1699,13 @@ function saveMission(id){
     archive: { topic:g('ma-topic').value.trim(), intent:g('ma-intent').value.trim(), content:g('ma-content').value.trim() },
   };
   try {
-    if (id){ M.updateMissionApp(id, payload); toast('앱을 저장했습니다.'); }
-    else { const a = M.addMissionApp({ ...payload, key:g('ma-key').value }); state.missionSel = a.id; toast('앱을 추가했습니다.'); }
+    if (id){
+      // 키 칸에 적었고 지금 키와 다르면 그 키로 옮긴다(자동 등록 앱의 임시 키를 실제 키로 바꾸는 길)
+      const newKey = g('ma-key').value.trim();
+      let appId = id;
+      if (newKey && newKey !== id){ appId = M.setMissionAppKey(id, newKey).id; state.missionSel = appId; }
+      M.updateMissionApp(appId, payload); toast('앱을 저장했습니다.');
+    } else { const a = M.addMissionApp({ ...payload, key:g('ma-key').value }); state.missionSel = a.id; toast('앱을 추가했습니다.'); }
     render();
   } catch(e){ toast(e.message); }
 }

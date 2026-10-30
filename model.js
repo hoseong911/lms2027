@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031a';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031b';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -959,7 +959,7 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031a';
+  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031b';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -1370,6 +1370,22 @@ export function updateMissionApp(id, patch){
 export function deleteMissionApp(id){
   DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id);
   del(COLLECTIONS.missionApps, id);
+}
+/* 앱 키(= 문서 id)를 바꾼다. 활동지로 자동 등록한 앱은 임시 키(app_...)로 서는데, 교사가 미션 활동
+   메뉴에서 실제 키(예: j_sahwa)를 적으면 그 키로 문서를 옮긴다(선생님 지시 2026-10-30: "비워놓고
+   내가 넣을 수 있게"). 앱 키를 가리키는 다른 문서가 없어서(강의와는 lessonId 필드로 이어진다) 옮겨도
+   딸린 것이 깨지지 않는다. 옛 문서를 지우고 새 id로 같은 내용을 다시 쓴다. */
+export function setMissionAppKey(oldId, newKey){
+  const a = getMissionApp(oldId); if (!a) return null;
+  const key = String(newKey || '').trim();
+  if (!key) throw new Error('앱 키를 적어 주세요.');
+  if (key === oldId) return a;
+  if (DEMO.missionApps.some(x => x.id === key)) throw new Error('이미 있는 앱 키입니다.');
+  const moved = { ...a, id: key };
+  DEMO.missionApps = DEMO.missionApps.filter(x => x.id !== oldId).concat(moved);
+  del(COLLECTIONS.missionApps, oldId);
+  put(COLLECTIONS.missionApps, moved);
+  return moved;
 }
 
 /* ── 공지사항 (선생님 지시 2026-10-30, 요구사항 109, 110, 115) ──
