@@ -15,6 +15,8 @@
 
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
+// 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
+import { normalizeDeck } from './shared/slide-axis.js?v=20261030h';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -907,6 +909,68 @@ export function conceptMoveLine(lessonId, idx, dir){
 }
 export function conceptDelLine(lessonId, idx){
   const c = conceptOf(lessonId); if (c && c[idx]){ c.splice(idx, 1); saveLesson(lessonId); }
+}
+
+/* ══ 강의 슬라이드의 축과 덱 (선생님 지시 2026-10-30, 요구사항 125) ══════════
+   축 정의와 덱 모양은 shared/slide-axis.js 한 곳에 있다(슬라이드 엔진과 변환 도구가
+   Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
+   어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
+export { SLIDE_AXIS, AXIS_ORDER, axisStep } from './shared/slide-axis.js?v=20261030h';
+
+export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
+
+// 표지 메타(단원, 교과서 쪽수). 강 번호와 강의 제목은 이미 있는 것에서 온다
+export function deckSetCover(lessonId, patch){
+  const d = getDeck(lessonId); if (!d) return;
+  Object.assign(d.cover, patch); saveLesson(lessonId);
+}
+
+/* 단계 안의 줄을 더하고 고치고 옮기고 지운다. 줄의 모양이 단계마다 달라서(글자 하나,
+   문답 둘, 사진 셋) 더하는 것만 단계별로 가르고 나머지는 한 길로 쓴다. */
+function deckItems(lessonId, key){
+  const d = getDeck(lessonId);
+  return d && d[key] && Array.isArray(d[key].items) ? d[key].items : null;
+}
+export function deckAddItem(lessonId, key){
+  const arr = deckItems(lessonId, key); if (!arr) return;
+  if (key === 'review')    arr.push({ q:'', a:'' });
+  else if (key === 'hook') arr.push({ kind:'image', url:'', caption:'' });
+  else                     arr.push('');
+  saveLesson(lessonId);
+}
+// field가 없으면 줄 전체가 글자 하나인 단계(학습 목표, 미션 안내, 맺음말)다.
+export function deckSetItem(lessonId, key, idx, field, value){
+  const arr = deckItems(lessonId, key); if (!arr || arr[idx] === undefined) return;
+  if (field) arr[idx][field] = value; else arr[idx] = value;
+  saveLesson(lessonId);
+}
+export function deckMoveItem(lessonId, key, idx, dir){
+  const arr = deckItems(lessonId, key); if (!arr) return;
+  const j = idx + dir; if (j < 0 || j >= arr.length) return;
+  [arr[idx], arr[j]] = [arr[j], arr[idx]];
+  saveLesson(lessonId);
+}
+export function deckDelItem(lessonId, key, idx){
+  const arr = deckItems(lessonId, key); if (!arr || arr[idx] === undefined) return;
+  arr.splice(idx, 1); saveLesson(lessonId);
+}
+
+/* 그 단계에 적은 것이 있는가. 어드민 왼쪽 축 목록이 채움 표시로 쓴다.
+   슬라이드를 펼 때 빈 단계를 건너뛰는 기준은 slide-deck.js의 buildSlides에 있다
+   (여기와 저기가 어긋나면 "채웠다고 나오는데 쪽이 없다"가 되므로 기준을 같게 둔다). */
+export function deckStepFilled(lessonId, key){
+  const l = getLesson(lessonId); if (!l) return false;
+  if (key === 'cover') return true;                       // 표지는 제목만 있어도 선다
+  if (key === 'concept') return (l.parts?.concept?.content || []).some(ln =>
+    String(ln.type === 'divider' ? ln.title : ln.text || '').trim());
+  if (key === 'question') return !!String(l.parts?.question?.question || '').trim();
+  const d = getDeck(lessonId);
+  if (key === 'mission') return (d.mission.items || []).some(t => String(t).trim())
+    || !!String(l.parts?.mission?.title || '').trim();
+  const arr = d[key]?.items || [];
+  if (key === 'review') return arr.some(it => String(it?.q || '').trim());
+  if (key === 'hook')   return arr.some(it => String(it?.url || '').trim());
+  return arr.some(t => String(t).trim());
 }
 
 // ── 오늘의 질문 ──

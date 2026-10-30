@@ -12,7 +12,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261030c';
+import * as M from './model.js?v=20261030h';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
@@ -346,7 +346,7 @@ function viewMenu(){
      제목 밑의 부제목(강의 제목)은 걷었다(요구사항 119). 제목은 다른 메뉴처럼 강의 제목 하나다
      (칸 제목은 기본값이 "개념 노트"라 그대로 쓰면 카드가 다 같은 글자가 된다). */
   return head + `<div class="grid">${items.map(it => `
-    <div class="card" data-act="open-slide" data-lid="${it.lesson.id}">
+    <div class="card" data-act="open-slide" data-lid="${it.lesson.id}" data-no="${it.no}">
       <span class="no">${it.no}강</span>
       <div class="body"><div class="t">${esc(it.lesson.title)}</div></div>
       <span class="chev">${icon('monitor',18)}</span></div>`).join('')}</div>`;
@@ -381,10 +381,16 @@ function scoreCard(c){
 /* 강의 하나를 연 화면의 제목은 "N강. 강의 주제"다(선생님 지시 2026-10-30, 요구사항 123).
    차수는 목록 카드와 같은 셈이다: 이 강의실에 꽂혀 공개된 강의 중 몇 번째인가(M.getPartItems의 no와 같다).
    못 찾으면 제목만 쓴다. */
-function lessonHead(l){
+/* 그 강의실에서 몇 번째로 꽂힌 강의인가(1강, 2강). 꽂혀 공개된 것만 센다.
+   화면 제목(lessonHead)과 슬라이드 주소의 no가 같은 값을 써야 해서 셈을 여기 하나로 모았다. */
+function lessonNo(l){
   const i = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson)
     .findIndex(cl => cl.lessonId === l.id);
-  return i < 0 ? l.title : `${i + 1}강. ${l.title}`;
+  return i < 0 ? '' : String(i + 1);
+}
+function lessonHead(l){
+  const no = lessonNo(l);
+  return no ? `${no}강. ${l.title}` : l.title;
 }
 
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
@@ -428,7 +434,7 @@ function partView(l, k){
   if (k === 'concept')
     return `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div>
       <div class="bigt">${esc(p.title || d.name)}</div>
-      <button class="primary wide" data-act="open-slide" data-lid="${l.id}">
+      <button class="primary wide" data-act="open-slide" data-lid="${l.id}" data-no="${lessonNo(l)}">
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
   if (k === 'mission'){
@@ -656,7 +662,7 @@ $app.addEventListener('click', e => {
 
     // 강의 슬라이드는 늘 새 탭 전체화면(요구사항 87). 교실 화면에 투사하는 것이 주 용도다.
     case 'open-slide':
-      window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}`, '_blank', 'noopener');
+      window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}&no=${encodeURIComponent(el.dataset.no || '')}`, '_blank', 'noopener');
       break;
 
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;

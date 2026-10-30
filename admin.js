@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030c';
+import * as M from './model.js?v=20261030h';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -33,7 +33,8 @@ const state = {
 
   // 칸별 메뉴 넷 (2026-10-27)
   conceptTab: 'content',           // 개념 노트 서브 메뉴 'content' | 'design'
-  conceptLessonId: null,           // 콘텐츠에서 펼친 강의
+  conceptLessonId: null,           // 콘텐츠(축 편집기)에서 고른 강의
+  axisStep: 'cover',               // 축 편집기에서 펼친 단계(shared/slide-axis.js의 key)
   questionTab: 'manage',           // 오늘의 질문 서브 메뉴 'manage' | 'answers' | 'pick'
   questionSubject: null,           // 오늘의 질문 과목 탭(서브 메뉴 셋 공통)
   questionSel: null,               // 질문 관리에서 고른 강의(오른쪽 편집 칸)
@@ -1142,21 +1143,153 @@ function pageConcept(){
   if (state.conceptTab === 'design')
     return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
 
-  const lessons = M.getLessonsWithPart('concept');
-  if (!lessons.length) return head + `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
-  const list = lessons.map(l => {
-    const open = state.conceptLessonId === l.id;
-    const row = `<div class="row ${open?'on':''}">
-      <div class="grow rowlink" data-act="concept-open" data-id="${l.id}">
-        <div class="t"><span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span>${esc(l.title)}</div></div></div>`;
-    return open ? row + conceptEditor(l) : row;
-  }).join('');
-  return head + list;
+  // 콘텐츠 탭이 곧 강의 슬라이드 축 편집기다(선생님 지시 2026-10-30, 요구사항 125)
+  return head + pageAxis();
 }
 
-/* 개념 콘텐츠 편집기: 페이지(제목)와 내용 줄을 쌓는다(2026 contentLines 모티브).
-   각 줄은 입력칸이고 포커스가 빠질 때(change) 저장한다. 순서/삭제는 버튼으로. */
-function conceptEditor(l){
+
+/* ── 강의 슬라이드 축 편집기 (선생님 지시 2026-10-30, 요구사항 125) ─────────
+   "표지 - 전시학습확인(퀴즈 등) - 학습 목표 - 동기 유발 내용(사진, 영상류) -
+    개념 노트(강의 내용) - 미션 활동 - 오늘의 질문 - 맺음말 이 순서야"
+
+   두 단이다(화면 규칙): 왼쪽은 강의 목록, 오른쪽은 고른 강의의 축 여덟 줄.
+   줄을 누르면 그 단계를 고치는 칸이 그 줄 아래에 펼쳐진다.
+
+   단계는 고정이라 더하고 빼고 섞는 단추를 두지 않는다. 내용이 빈 단계는 슬라이드에서
+   그냥 빠지므로 켜고 끄는 스위치도 없다. 줄 오른쪽의 채움 표시가 그 자리를 대신한다.
+
+   개념 노트와 오늘의 질문 단계는 이미 제자리가 있는 내용을 그대로 쓴다
+   (shared/slide-axis.js의 from 참고). 같은 것을 두 군데 적지 않게 하려는 것이다.
+   개념 노트는 여기서 바로 고치고, 오늘의 질문은 읽기만 하고 고치는 것은 그 메뉴에서 한다. */
+function pageAxis(){
+  const lessons = M.getLessonsWithPart('concept');
+  if (!lessons.length) return `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
+  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 강의를 고른다.
+  if (!lessons.some(l => l.id === state.conceptLessonId))
+    state.conceptLessonId = WIDE.matches ? lessons[0].id : null;
+
+  const row = l => `<div class="row ${l.id===state.conceptLessonId?'on':''}">
+      <div class="grow rowlink" data-act="axis-lesson" data-id="${l.id}">
+        <div class="t">${!WIDE.matches ? `<span class="chev">${icon(l.id===state.conceptLessonId?'chevron-down':'chevron-right',14)}</span>` : ''}${esc(l.title)}</div></div>
+      ${l.id===state.conceptLessonId ? `<div class="tools">
+        <button class="ib" data-act="axis-preview" data-id="${l.id}"
+          title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}</button></div>` : ''}</div>`;
+  const l = M.getLesson(state.conceptLessonId);
+
+  // 좁은 화면에서는 고른 강의 줄 아래로 축이 펼쳐진다(다른 두 단 화면과 같은 길)
+  if (!WIDE.matches)
+    return lessons.map(x => x.id === state.conceptLessonId
+      ? row(x) + `<div class="detail">${axisRows(x)}</div>` : row(x)).join('');
+
+  if (!l) return `<div class="split split-axis"><div class="split-list">${lessons.map(row).join('')}</div></div>`;
+  return `<div class="split split-axis">
+    <div class="split-list">${lessons.map(row).join('')}</div>
+    <div class="pane">
+      <div class="pane-head"><h3>${esc(l.title)}</h3>
+        <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
+          title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}<span>미리보기</span></button></div>
+      <div class="dscroll">${axisRows(l)}</div>
+    </div></div>`;
+}
+
+// 축 여덟 줄. 고른 줄 아래에 그 단계를 고치는 칸이 펼쳐진다
+function axisRows(l){
+  return M.SLIDE_AXIS.map((ax, i) => {
+    const open = state.axisStep === ax.key;
+    const filled = M.deckStepFilled(l.id, ax.key);
+    const row = `<div class="axrow ${open?'on':''} ${filled?'':'off'}" data-act="axis-step" data-k="${ax.key}">
+      <span class="axno">${i + 1}</span>
+      <span class="grow">${esc(ax.name)}</span>
+      ${filled ? `<span class="axdot">${icon('check',15)}</span>` : ''}
+      <span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span></div>`;
+    return open ? row + `<div class="axedit">${axisEditor(l, ax)}</div>` : row;
+  }).join('');
+}
+
+/* 단계 하나를 고치는 칸. 어떤 칸을 그릴지는 축 정의의 edit가 정한다
+   (cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / concept 개념 줄 / question 읽기만). */
+function axisEditor(l, ax){
+  const k = ax.key;
+
+  if (ax.edit === 'cover'){
+    const d = M.getDeck(l.id);
+    // 강 번호와 강의 제목은 이미 있는 것에서 오므로 여기서 고치지 않는다
+    return `<div class="formrow">
+        <input class="f grow" data-act="deck-cover" data-f="unit" data-id="${l.id}"
+          value="${esc(d.cover.unit)}"><span class="unit">단원</span></div>
+      <div class="formrow">
+        <input class="f grow" data-act="deck-cover" data-f="pages" data-id="${l.id}"
+          value="${esc(d.cover.pages)}"><span class="unit">교과서 쪽수</span></div>`;
+  }
+
+  if (ax.edit === 'concept')
+    // 개념 노트는 parts.concept.content를 그대로 쓴다: 이미 있는 줄 편집기를 그 자리에 둔다
+    return conceptLines(l);
+
+  if (ax.edit === 'question'){
+    const q = l.parts?.question;
+    if (!q) return `<div class="placeholder">이 강의에는 오늘의 질문 칸이 없습니다.</div>`;
+    if (!String(q.question || '').trim()) return `<div class="placeholder">오늘의 질문이 비어 있습니다.</div>`;
+    return `<div class="axread"><div class="axq">${esc(q.question)}</div>
+      ${q.guide ? `<div class="axg">${esc(q.guide)}</div>` : ''}</div>`;
+  }
+
+  const items = M.getDeck(l.id)[k]?.items || [];
+  const tools = i => `<div class="tools">
+    <button class="ib ib-sm" data-act="deck-up" data-id="${l.id}" data-k="${k}" data-i="${i}"
+      ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
+    <button class="ib ib-sm" data-act="deck-down" data-id="${l.id}" data-k="${k}" data-i="${i}"
+      ${i===items.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
+    <button class="ib ib-sm ib-danger" data-act="deck-del" data-id="${l.id}" data-k="${k}" data-i="${i}"
+      title="삭제" aria-label="삭제">${icon('trash-2',14)}</button></div>`;
+
+  let rows = '';
+  if (ax.edit === 'qa'){
+    // 전시학습확인: 묻는 줄과 답 줄 둘. 답은 수업 중에 눌러서 연다
+    rows = items.map((it, i) => `<div class="ce-line">
+      <span class="ce-tag">${i + 1}</span>
+      <div class="qacols">
+        <input class="f" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="q"
+          value="${esc(it.q)}">
+        <div class="formrow"><input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}"
+          data-i="${i}" data-f="a" value="${esc(it.a)}"><span class="unit">답</span></div>
+      </div>${tools(i)}</div>`).join('');
+
+  } else if (ax.edit === 'media'){
+    // 동기 유발: 사진이면 그림 주소, 영상이면 유튜브 주소. 한 쪽에 하나씩 뜬다
+    rows = items.map((it, i) => `<div class="ce-line">
+      <span class="ce-tag">${i + 1}</span>
+      <div class="qacols">
+        <div class="formrow">
+          <select class="f" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="kind">
+            <option value="image" ${it.kind!=='video'?'selected':''}>사진</option>
+            <option value="video" ${it.kind==='video'?'selected':''}>영상</option></select>
+          <input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="url"
+            value="${esc(it.url)}"><span class="unit">주소</span></div>
+        <div class="formrow"><input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}"
+          data-i="${i}" data-f="caption" value="${esc(it.caption)}"><span class="unit">설명</span></div>
+      </div>${tools(i)}</div>`).join('');
+
+  } else {
+    // 학습 목표, 미션 활동 안내, 맺음말: 줄 하나가 글자 하나다
+    rows = items.map((it, i) => `<div class="ce-line">
+      <span class="ce-tag">${i + 1}</span>
+      <input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}"
+        value="${esc(it)}">${tools(i)}</div>`).join('');
+  }
+
+  // 미션 활동은 제목이 미션 활동 메뉴에서 온다. 여기 적는 것은 활동 안내 줄이다
+  const head = k === 'mission' && String(l.parts?.mission?.title || '').trim()
+    ? `<div class="axread"><div class="axq">${esc(l.parts.mission.title)}</div></div>` : '';
+
+  return head + (rows || `<div class="placeholder">내용이 없습니다.</div>`)
+    + `<div class="ce-add"><button class="btn-chip" data-act="deck-add" data-id="${l.id}" data-k="${k}">
+        ${icon('plus',13)}줄 추가</button></div>`;
+}
+
+/* 개념 노트 줄(페이지 제목과 내용 줄). 전에는 pageConcept이 바로 그렸는데,
+   축 편집기의 개념 노트 단계가 그 자리를 그대로 쓰도록 따로 뗐다. */
+function conceptLines(l){
   const content = M.getConceptContent(l.id);
   const lines = content.length ? content.map((ln, i) => {
     const tools = `<div class="tools">
@@ -1172,9 +1305,8 @@ function conceptEditor(l){
   const add = `<div class="ce-add">
     <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="divider">${icon('plus',13)}페이지</button>
     <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="row">${icon('plus',13)}내용 줄</button></div>`;
-  return `<div class="detail"><div class="ce-wrap">${lines}${add}</div></div>`;
+  return `<div class="ce-wrap">${lines}${add}</div>`;
 }
-
 /* ── 미션 활동 (hoistory/lms "미션 Check" 카드 틀 이식) ─────────────────────
    선생님 지시 2026-10-28: 미션 활동도 hoistory 기본 틀로.
    hoistory 카드가 들고 있던 것을 그대로 옮겼다: 제목, 웹앱 주소, 어드민 주소, 아이콘,
@@ -1998,11 +2130,24 @@ document.getElementById('shell').addEventListener('click', e => {
     }
     // 개념 노트
     case 'concept-tab': state.conceptTab = v; state.conceptLessonId = null; render(); break;
-    case 'concept-open': state.conceptLessonId = state.conceptLessonId === id ? null : id; render(); break;
     case 'ce-add': M.conceptAddLine(id, k); render(); break;
     case 'ce-up': M.conceptMoveLine(id, +k, -1); render(); break;
     case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
     case 'ce-del': M.conceptDelLine(id, +k); render(); break;
+
+    /* 강의 슬라이드 축 편집기(요구사항 125). 두 단이라 넓은 화면에서는 같은 강의를
+       다시 눌러도 닫지 않는다(화면 규칙). 좁은 화면에서만 닫힌다. */
+    case 'axis-lesson':
+      state.conceptLessonId = (!WIDE.matches && state.conceptLessonId === id) ? null : id;
+      render(); break;
+    case 'axis-step': state.axisStep = state.axisStep === k ? null : k; render(); break;
+    // 미리보기는 학생이 보는 그 슬라이드를 그대로 새 탭에 띄운다(같은 slide-deck.js를 쓴다)
+    case 'axis-preview':
+      window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;
+    case 'deck-add': M.deckAddItem(id, k); render(); break;
+    case 'deck-up': M.deckMoveItem(id, k, +el.dataset.i, -1); render(); break;
+    case 'deck-down': M.deckMoveItem(id, k, +el.dataset.i, 1); render(); break;
+    case 'deck-del': M.deckDelItem(id, k, +el.dataset.i); render(); break;
 
     // 미션 활동: 앱 어드민은 브라우저 새 탭으로. 목록은 최신순이라 순서 단추가 없다
     case 'mission-admin': openMissionAdmin(M.getMissionApp(v)); break;
@@ -2249,6 +2394,13 @@ document.getElementById('shell').addEventListener('change', e => {
     state.formativeResultId = el.value; render();
   } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
+  } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 단원, 교과서 쪽수
+    M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
+  } else if (el.dataset.act === 'deck-set'){
+    /* 축 편집기의 줄: 포커스가 빠질 때 저장하고 다시 그리지 않는다(커서 유지).
+       사진과 영상 고르개(data-f="kind")만 다시 그린다: 고른 것에 따라 칸 이름이 바뀐다. */
+    M.deckSetItem(el.dataset.id, el.dataset.k, +el.dataset.i, el.dataset.f || null, el.value);
+    if (el.dataset.f === 'kind') render();
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
   } else if (el.dataset.act === 'enroll'){

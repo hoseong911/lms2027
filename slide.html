@@ -8,30 +8,29 @@
      주 용도가 교사가 교실 화면에 투사하는 것이라, 다른 화면과 달리 여기만 전체화면이다.
      모바일에서는 가로로 눕힌다.
 
-     ※ 지금은 뼈대다. 슬라이드 엔진(활동지에서 쪽 만들기)은 방학 과제라 쪽 내용이 비어 있다.
-       레포의 slide-render.js와 page-lesson.*이 그때 쓸 재료다. -->
-<link rel="stylesheet" href="shared/theme.css?v=20261029f">
+     쪽을 만들고 그리는 것은 slide-deck.js 하나다(축은 shared/slide-axis.js).
+     어드민 미리보기가 같은 파일을 불러써서 두 화면이 어긋나지 않는다.
+     주소: slide.html?lesson=강의id&no=강번호  (no는 그 강의실에서 몇 번째로 꽂혔는가) -->
+<link rel="stylesheet" href="slide-deck.css?v=20261030h">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff;font-family:var(--font)}
-#guard{position:fixed;inset:0;display:grid;place-items:center;color:#9FB3CC}
+#guard{position:fixed;inset:0;display:grid;place-items:center;color:#9FB3CC;font-size:var(--fs-body)}
 
-/* 쪽: 16:9를 화면 안에 꽉 채워 넣는다(잘리지 않게) */
-#stage{position:fixed;inset:0;display:grid;place-items:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-#page{position:relative;width:min(100vw, calc(100vh * 16 / 9));height:min(100vh, calc(100vw * 9 / 16));
-  background:#fff;color:var(--navy);display:grid;place-items:center;text-align:center;padding:5%}
-#page .ttl{font-size:clamp(20px,4.2vmin,46px);font-weight:800;letter-spacing:-.5px;margin-bottom:2vmin}
-#page .sub{font-size:clamp(12px,2.1vmin,20px);color:var(--sub)}
-#page .mark{position:absolute;left:3%;top:4%;font-size:clamp(10px,1.7vmin,15px);color:var(--navy-400);letter-spacing:.5px}
+/* 쪽을 화면 가운데에 꽉 채워 넣는다(잘리지 않게) */
+#stage{position:fixed;inset:0;display:grid;place-items:center;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#stage .deckframe{width:min(100vw, calc(100vh * 16 / 9))}
 
 /* 위쪽 막대: 마우스를 올리거나 화면을 건드리면 나온다. 투사 중에는 숨는다 */
 #bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
-  padding:10px 14px;background:rgba(4,30,66,.92);color:#fff;font-size:13px;
+  padding:10px 14px;background:rgba(4,30,66,.92);color:#fff;font-size:var(--fs-meta);
   transform:translateY(-100%);transition:transform .18s;z-index:5}
 #bar.show{transform:none}
-#bar .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bar .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-body)}
+#bar .step{color:#9FB3CC}
 #bar button{border:1px solid rgba(255,255,255,.35);background:none;color:#fff;border-radius:var(--r-btn);
-  padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+  padding:0 12px;min-height:var(--h-ctl);font-size:var(--fs-meta);cursor:pointer;font-family:inherit}
 #bar button:hover{background:rgba(255,255,255,.12)}
 #hot{position:fixed;left:0;right:0;top:0;height:28px;z-index:4}
 
@@ -49,7 +48,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 <div id="guard">슬라이드를 불러오는 중…</div>
 
 <div id="stage" hidden>
-  <div id="page"></div>
+  <div class="deckframe"><div class="deckpage" id="page"></div></div>
 </div>
 <button class="nav" id="prev" aria-label="이전 쪽" hidden>‹</button>
 <button class="nav" id="next" aria-label="다음 쪽" hidden>›</button>
@@ -57,42 +56,46 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 <div id="hot"></div>
 <div id="bar">
   <span class="grow" id="bar-title"></span>
+  <span class="step" id="bar-step"></span>
   <span id="bar-no"></span>
   <button id="btn-full">전체화면</button>
   <button id="btn-close">닫기</button>
 </div>
 
 <script type="module">
-import * as M from './model.js?v=20261028h';
+import * as M from './model.js?v=20261030h';
+import { SLIDE_AXIS } from './shared/slide-axis.js?v=20261030h';
+import { buildSlides, renderSlide, wireReveal } from './slide-deck.js?v=20261030h';
 
 const q = new URLSearchParams(location.search);
-const lesson = M.getLesson(q.get('lesson'));
 const $ = id => document.getElementById(id);
+
+await M.loadCore();
+const lesson = M.getLesson(q.get('lesson'));
+const no = q.get('no') || '';
 
 if (!lesson){
   $('guard').textContent = '강의를 찾지 못했습니다.';
 } else {
-  // 뼈대: 쪽 내용이 아직 없으므로 표지 한 장만 세운다.
-  // 슬라이드 엔진이 붙으면 이 배열을 실제 쪽으로 바꾼다.
-  const pages = [{ ttl: lesson.parts?.concept?.title || lesson.title, sub: lesson.title }];
+  const pages = buildSlides(lesson, no);
+  const stepName = k => (SLIDE_AXIS.find(a => a.key === k) || {}).name || '';
   let i = 0;
 
   const draw = () => {
-    const p = pages[i];
-    $('page').innerHTML = `<div class="mark">${esc(lesson.title)}</div>
-      <div><div class="ttl">${esc(p.ttl)}</div><div class="sub">${esc(p.sub || '')}</div></div>`;
+    $('page').innerHTML = renderSlide(pages[i]);
+    $('bar-step').textContent = stepName(pages[i]?.step);
     $('bar-no').textContent = `${i + 1} / ${pages.length}`;
     $('dots').innerHTML = pages.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('');
     $('prev').hidden = i === 0;
     $('next').hidden = i === pages.length - 1;
   };
-  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const go = d => { const n = i + d; if (n >= 0 && n < pages.length){ i = n; draw(); } };
 
   $('guard').hidden = true;
   $('stage').hidden = false;
   $('dots').hidden = false;
-  $('bar-title').textContent = lesson.title;
+  $('bar-title').textContent = no ? `${no}강. ${lesson.title}` : lesson.title;
+  wireReveal($('page'));   // 가린 빈칸과 전시학습확인 답을 눌러서 연다
   draw();
 
   /* 전체화면: 브라우저는 사용자가 누른 뒤에만 들어가게 해 준다(자동 진입 불가).

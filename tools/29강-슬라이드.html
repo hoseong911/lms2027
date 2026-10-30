@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>29강 슬라이드 미리보기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+/* theme.css: 색과 형태의 단일 출처 (2026-10-27)
+   ───────────────────────────────────────────────────────────────────────────
+   메인 색은 롯데 자이언츠의 네이비와 레드다(선생님 지시 2026-10-27).
+     네이비 #041E42 (Pantone 289 C)   레드 #D00F31
+   디자인 기조는 플랫 + 미니멀리즘: 그림자, 그라데이션, 알약 테두리를 쓰지 않는다.
+   색을 고칠 때는 이 파일 하나만 고친다. admin.css와 index.css가 맨 위에서 불러 쓴다. */
+:root{
+  /* 부트 가드: index.js, admin.js가 이 값이 1인지 보고 화면을 띄운다.
+     이 파일은 admin.css와 index.css가 @import로 불러오는 제일 끝 고리라,
+     여기까지 왔으면 위의 CSS도 다 온 것이다. 지우지 말 것. */
+  --lms-css-ok:1;
+
+  /* ── 브랜드 두 색 ── */
+  --navy:#041E42;
+  --red:#D00F31;
+
+  /* 네이비에서 뽑은 단계: 진한 쪽부터 */
+  --navy-800:#0A2B55;
+  --navy-600:#1B4B84;
+  --navy-400:#5A7BA6;
+  --navy-100:#E8EDF4;   /* 켜진 메뉴 같은 옅은 바탕 */
+  --red-dark:#A60B27;
+  --red-100:#FCEAEE;
+
+  /* ── 바탕과 글자 ── */
+  --bg:#F4F5F7;         /* 화면 바탕 */
+  --card:#FFFFFF;       /* 카드, 줄, 입력 칸 바탕 */
+  --ink:var(--navy);    /* 본문 글자도 네이비 */
+  --sub:#68727F;        /* 보조 글자 */
+  --line:#DDE2E9;       /* 1px 선 */
+  --line-strong:#C3CBD6;
+  --hover:#EEF1F5;      /* 마우스 올렸을 때 */
+
+  /* ── 쓰임새 이름 (화면 코드는 이쪽을 쓴다) ── */
+  /* 강조는 레드(선생님 지시 2026-10-29: 메인색이 둘인데 네이비 위주로만 짜여 있다).
+     글자와 선은 네이비, 고른 것, 켜진 것, 주 버튼, 오늘 같은 강조는 레드 */
+  --accent:var(--red);        /* 주 버튼, 켜진 항목 */
+  --accent-soft:var(--red-100);
+  --danger:var(--red);        /* 삭제 같은 되돌릴 수 없는 것 */
+
+  /* 판정 두 색 (선생님 지시 2026-10-29: "통과는 초록, 미흡은 빨강. 모든 규칙에서 적용").
+     초록은 브랜드 두 색 밖이지만 통과와 미흡을 한눈에 가리라는 지시라 여기 한 곳에만 둔다.
+     오늘의 질문의 통과와 미흡(50자 미만, 조금 미흡, 지연 제출, 교사, 미제출), 성적 조회의 달성 표시가 쓴다 */
+  --green:#1B7F3B;
+  --pass:var(--green);        /* 통과 */
+  --fail:var(--red);          /* 미흡 */
+
+  /* 반투명 바탕 (선생님 지시 2026-10-29: 섹션 배경색을 다 뺐더니 밋밋하다).
+     고른 목록 줄은 레드 반투명 바탕으로 알린다(테두리로 두르지 않는다).
+     상세 패널의 연한 네이비 바탕(--navy-fade)은 선생님이 "진짜 별로"라고 해서 같은 날 걷어냈다.
+     상세는 바탕 없이 구분선으로만 나눈다. 연한 네이비 바탕을 다시 만들지 않는다. */
+  --accent-fade:rgba(208,15,49,.10);
+  --accent-fade-hover:rgba(208,15,49,.16);
+  --scrim:rgba(4,30,66,.45);   /* 모달 덮개 */
+
+  /* ── 강의 안 네 칸과 복습 ──
+     성적(포트폴리오)에 들어가는 셋은 브랜드색, 성적 무관인 둘은 회색 계열로 둔다.
+     (요구사항 70, 71: 형성평가와 복습은 성적에 반영하지 않는다) */
+  --concept:#041E42;    /* 개념노트 : 네이비 */
+  --mission:#D00F31;    /* 미션     : 레드 */
+  --question:#2E6FA8;   /* 질문노트 : 밝은 네이비(개념노트와 구분되게) */
+  --formative:#8A94A3;  /* 형성평가 : 회색(성적 무관) */
+  --review:#5A7BA6;     /* 복습     : 연한 네이비(성적 무관) */
+
+  /* ── 형태 (플랫, 미니멀) ── */
+  --r:4px;              /* 카드와 줄의 모서리 */
+  --r-btn:8px;          /* 액션 아이콘 버튼은 8px (화면 규칙 2026-10-25) */
+  --font:"Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+
+  /* ── 높이: 딱 두 값만 쓴다 (선생님 지시 2026-10-29: 메뉴마다 폭과 높이가 들쭉날쭉하다) ──
+     조작 칸(입력 칸, 드롭다운, 아이콘 단추, 작은 버튼, 토글, 검색 칸)은 전부 --h-ctl.
+     목록 줄은 안에 무엇이 들었든 --h-row. 줄을 더 넉넉하게 하려면 이 두 값만 바꾼다. */
+  --h-ctl:32px;
+  --h-row:46px;
+  --w-list:300px;       /* 두 칸 화면(학생 관리)의 왼쪽 목록 폭 */
+  --w-list-room:170px;  /* 강의실 관리의 왼쪽 목록 폭: 강의실 이름이 짧아 좁게 */
+  --w-sc-detail:230px;  /* 성적 조회의 오른쪽 내역 폭: 강의 차수와 OX뿐이라 좁다 */
+
+  /* ── 글자 크기: 딱 네 단계만 쓴다 (선생님 지시 2026-10-27) ──
+     가장 작은 글씨가 9pt(한글과컴퓨터 기준) = 12px. 이 네 값 말고는 쓰지 않는다.
+     13, 14, 16, 17 같은 어중간한 크기 금지. 역할이 같으면 어느 화면에서나 같은 크기. */
+  --fs-title:22px;      /* 페이지 제목(h2), 로고 */
+  --fs-head:18px;       /* 소제목, 모달 제목, 강조 수치 */
+  --fs-body:15px;       /* 본문: 줄, 입력칸, 버튼, 메뉴, 탭 */
+  --fs-meta:12px;       /* 보조: 이름표, 단위, 배지 (가장 작음, 9pt) */
+}
+
+/* ── 스크롤바: 가늘고 연하게, 위아래 화살표 없이 (선생님 지시 2026-10-29) ──
+   진한 스크롤바와 화살표 단추를 싫어한다. 모든 화면이 이 파일을 불러 쓰므로 여기 한 곳에 둔다.
+   크롬, 엣지, 사파리는 ::-webkit-scrollbar로 그린다(화살표 단추를 0으로). 파이어폭스만 표준 속성을 쓴다:
+   크롬에서 표준 속성을 같이 주면 ::-webkit-scrollbar가 무시되고 화살표가 되살아나기 때문이다. */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-thumb{background:#E4E8ED;border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:#D3D9E0}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+@supports not selector(::-webkit-scrollbar){
+  *{scrollbar-width:thin;scrollbar-color:#E4E8ED transparent}
+}
+
+/* 강의 슬라이드 모양 (2026-10-30, 요구사항 125)
+   색은 shared/theme.css 한 곳에서. slide.html과 어드민 미리보기가 같이 쓴다.
+   기조는 다른 화면과 같다: 플랫 + 미니멀(그림자, 그라데이션, 알약 없음).
+
+   다만 글자 크기만은 네 단계 규칙(--fs-title/head/body/meta) 밖이다. 교실 앞 화면에
+   투사하는 쪽이라 쪽 크기에 따라 글자가 같이 커져야 뒤에서 보인다. 그래서 쪽 안의 글자는
+   vmin(쪽의 짧은 변 기준 비율)으로 준다. 어드민 미리보기의 작은 쪽에서도 같은 비율로 줄어든다.
+   쪽 바깥(위쪽 막대, 단추)은 다른 화면과 같이 네 단계를 쓴다. */
+
+
+/* ── 16:9 쪽 ──
+   .deckframe 이 쪽을 담는 16:9 상자고 .deckpage 가 그 안을 꽉 채운다.
+   상자에 container-type:size 를 주면 안쪽에서 1cqmin(상자의 짧은 변의 1%)을 쓸 수 있다.
+   그래서 전체화면 투사든 어드민의 작은 미리보기든 글자 비율이 저절로 같다.
+   쪽마다 크기를 따로 계산해 주지 않아도 되는 까닭이다. */
+.deckframe{
+  container-type:size;
+  width:min(100%, calc(100% * 16 / 9));
+  aspect-ratio:16 / 9;
+  background:#fff;overflow:hidden;
+}
+.deckpage{
+  --sz: 1cqmin;        /* 글자 크기의 기준 한 칸 (상자 높이의 1%) */
+  position:relative;width:100%;height:100%;background:#fff;color:var(--navy);
+  display:flex;flex-direction:column;justify-content:center;
+  padding:calc(var(--sz) * 7) calc(var(--sz) * 8);
+  overflow:hidden;font-family:var(--font);letter-spacing:-.02em;
+}
+/* 컨테이너 질의를 못 읽는 옛 브라우저에서는 화면 기준으로 떨어진다(글자가 사라지지 않게) */
+@supports not (container-type: size){ .deckpage{ --sz: 1vmin } }
+
+/* 단계 이름표(전시학습확인, 학습 목표 같은 것). 왼쪽 위에 작게 */
+.deckpage .s-mark{position:absolute;left:calc(var(--sz) * 4);top:calc(var(--sz) * 3.4);
+  font-size:calc(var(--sz) * 2.2);font-weight:700;color:var(--red);letter-spacing:.06em}
+
+/* ── 표지 ── 가운데로 모은다 */
+.deckpage .s-cover{text-align:center;margin:auto}
+.deckpage .s-no{font-size:calc(var(--sz) * 3.2);font-weight:700;color:var(--red);
+  letter-spacing:.1em;margin-bottom:calc(var(--sz) * 2)}
+.deckpage .s-title{font-size:calc(var(--sz) * 7.6);font-weight:800;margin:0;line-height:1.25;
+  letter-spacing:-.03em}
+.deckpage .s-meta{display:flex;align-items:center;justify-content:center;gap:calc(var(--sz) * 1.6);
+  margin-top:calc(var(--sz) * 3.2);font-size:calc(var(--sz) * 2.4);color:var(--sub)}
+.deckpage .s-dot{width:calc(var(--sz) * .55);height:calc(var(--sz) * .55);background:var(--line-strong);
+  display:block;flex:0 0 auto}
+
+/* ── 쪽 제목(개념 노트의 페이지 제목, 미션 제목) ── */
+.deckpage .s-head{font-size:calc(var(--sz) * 4.4);font-weight:800;margin:0 0 calc(var(--sz) * 3);
+  padding-bottom:calc(var(--sz) * 1.4);border-bottom:2px solid var(--navy);letter-spacing:-.03em}
+
+/* 속은 제목 아래를 다 쓴다. 줄이 많으면 쪽 안에서만 내려간다(쪽이 잘리지 않게) */
+.deckpage .s-body{flex:1 1 auto;min-height:0;overflow:auto}
+
+/* ── 내용 줄(개념 노트, 미션 활동) ──
+   가로 구분선만 쓰는 다른 화면과 달리 여기는 선을 두지 않는다: 투사 화면에서 선이 많으면
+   글자가 묻힌다. 줄은 왼쪽의 작은 네모 하나로 구분한다. */
+.deckpage .s-rows{display:flex;flex-direction:column;gap:calc(var(--sz) * 1.5)}
+.deckpage .rline{position:relative;padding-left:calc(var(--sz) * 3);
+  font-size:calc(var(--sz) * 3);line-height:1.55}
+.deckpage .rline::before{content:"";position:absolute;left:0;top:calc(var(--sz) * 1.15);
+  width:calc(var(--sz) * 1);height:calc(var(--sz) * 1);background:var(--red)}
+
+/* ── 번호 목록(학습 목표) ── */
+.deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--sz) * 2.4);justify-content:center}
+.deckpage .nitem{display:flex;align-items:flex-start;gap:calc(var(--sz) * 2)}
+.deckpage .nn{flex:0 0 auto;display:grid;place-items:center;
+  width:calc(var(--sz) * 5);height:calc(var(--sz) * 5);background:var(--navy);color:#fff;
+  font-size:calc(var(--sz) * 2.8);font-weight:800}
+.deckpage .nt{flex:1;min-width:0;font-size:calc(var(--sz) * 3.4);line-height:1.5;
+  padding-top:calc(var(--sz) * .5)}
+
+/* ── 전시학습확인 ── 문답. 답은 눌러야 보인다 */
+.deckpage .s-qa{display:flex;flex-direction:column;gap:calc(var(--sz) * 2.6);justify-content:center}
+.deckpage .qa-q{display:flex;align-items:flex-start;gap:calc(var(--sz) * 1.6);
+  font-size:calc(var(--sz) * 3.2);line-height:1.5;font-weight:700}
+.deckpage .qa-n{flex:0 0 auto;color:var(--red);font-weight:800}
+.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.2) 0 0 calc(var(--sz) * 3.6);
+  border:0;border-radius:var(--r);background:var(--navy);color:transparent;
+  padding:calc(var(--sz) * 1.1) calc(var(--sz) * 2);font-family:inherit;cursor:pointer;
+  font-size:calc(var(--sz) * 2.8);line-height:1.4;text-align:left}
+.deckpage .qa-a.open{background:var(--navy-100);color:var(--navy);font-weight:700}
+
+/* ── 가린 빈칸 {정답} ── 누르면 열린다. 열고 닫는 것은 slide-deck.js의 wireReveal */
+.deckpage .blank{background:var(--navy);color:transparent;border-radius:2px;
+  padding:0 .25em;cursor:pointer;-webkit-user-select:none;user-select:none}
+.deckpage .blank.open{background:var(--red-100);color:var(--red);font-weight:700}
+
+/* ── 동기 유발(사진, 영상) ── 한 쪽에 하나. 쪽을 거의 다 쓴다 */
+.deckpage .s-media{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:calc(var(--sz) * 1.8);overflow:hidden}
+.deckpage .mframe{flex:1 1 auto;min-height:0;width:100%;display:grid;place-items:center}
+.deckpage .mframe img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+/* 영상은 16:9를 지키면서 쪽 안에 들어가게. 높이가 모자라면 높이에 맞춰 폭이 줄어든다 */
+.deckpage .mframe.vid iframe{border:0;display:block;
+  width:min(100%, calc(100cqh * 16 / 9));aspect-ratio:16 / 9;max-height:100%}
+.deckpage .mcap{flex:0 0 auto;font-size:calc(var(--sz) * 2.4);color:var(--sub);text-align:center}
+
+/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 크게 */
+.deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--sz) * 3)}
+.deckpage .qbig{font-size:calc(var(--sz) * 5);font-weight:800;line-height:1.4;letter-spacing:-.03em}
+.deckpage .qguide{font-size:calc(var(--sz) * 2.6);line-height:1.7;color:var(--sub);
+  border-left:3px solid var(--red);padding-left:calc(var(--sz) * 2)}
+
+/* ── 맺음말 ── 가운데로 모아 크게 */
+.deckpage .s-close{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:calc(var(--sz) * 2.2);text-align:center}
+.deckpage .cline{font-size:calc(var(--sz) * 4);font-weight:700;line-height:1.5;letter-spacing:-.03em}
+
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 80px}
+h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
+.sub{font-size:var(--fs-body);color:var(--sub);margin:0 0 22px}
+.axis{list-style:none;margin:0 0 30px;padding:0;display:grid;gap:0;
+  border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line-strong)}
+.axis li{display:flex;align-items:center;gap:10px;min-height:var(--h-row);
+  font-size:var(--fs-body);font-weight:700;border-top:1px solid var(--line)}
+.axis li:first-child{border-top:0}
+.axis li b{display:grid;place-items:center;width:22px;height:22px;background:var(--navy);
+  color:#fff;font-size:var(--fs-meta)}
+.axis li span{margin-left:auto;font-weight:500;color:var(--sub);font-size:var(--fs-meta)}
+.axis li.none{color:var(--sub);font-weight:500}
+.axis li.none b{background:var(--line-strong)}
+.slot{margin-bottom:26px}
+.slotbar{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.slotno{display:grid;place-items:center;width:22px;height:22px;background:var(--navy);color:#fff;
+  font-size:var(--fs-meta);font-weight:700}
+.slotstep{font-size:var(--fs-meta);font-weight:700;color:var(--red);letter-spacing:.06em}
+.slot .deckframe{width:100%;border:1px solid var(--line)}
+</style></head><body>
+<div class="wrap">
+  <h1>29강. 살아 남은 자들, 다시 갈라지다</h1>
+  <p class="sub">Ⅳ-2. 사림의 성장과 문화의 발달 (교과서 p.117~119), 쪽 13장</p>
+  <ul class="axis"><li class=""><b>1</b> 표지
+      <span>1쪽</span></li><li class=""><b>2</b> 전시학습확인
+      <span>1쪽</span></li><li class=""><b>3</b> 학습 목표
+      <span>1쪽</span></li><li class="none"><b>4</b> 동기 유발
+      <span>비었음</span></li><li class=""><b>5</b> 개념 노트
+      <span>7쪽</span></li><li class=""><b>6</b> 미션 활동
+      <span>1쪽</span></li><li class=""><b>7</b> 오늘의 질문
+      <span>1쪽</span></li><li class=""><b>8</b> 맺음말
+      <span>1쪽</span></li></ul>
+  
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">1</span>
+      <span class="slotstep">표지</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-cover">
+      <div class="s-no">29강</div>
+      <h1 class="s-title">살아 남은 자들, 다시 갈라지다</h1>
+      <div class="s-meta">Ⅳ-2. 사림의 성장과 문화의 발달<span class="s-dot"></span>교과서 p.117~119</div>
+    </div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">2</span>
+      <span class="slotstep">전시학습확인</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">전시학습확인</div><div class="s-body s-qa">
+      <div class="qa">
+        <div class="qa-q"><span class="qa-n">1</span>조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?</div>
+        <button class="qa-a" data-act="reveal">사화</button>
+      </div>
+      <div class="qa">
+        <div class="qa-q"><span class="qa-n">2</span>조광조의 개혁이 꺾이고 사림이 쫓겨난 중종 대의 사화는?</div>
+        <button class="qa-a" data-act="reveal">기묘사화</button>
+      </div>
+      <div class="qa">
+        <div class="qa-q"><span class="qa-n">3</span>사화를 겪은 사림이 힘을 다시 모은 곳은 향촌의 무엇인가?</div>
+        <button class="qa-a" data-act="reveal">서원과 향약</button>
+      </div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">3</span>
+      <span class="slotstep">학습 목표</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">학습 목표</div><div class="s-body s-num">
+      <div class="nitem"><span class="nn">1</span><span class="nt">서원과 향약이 보급되면서 조선에 성리학적 질서가 확산되었음을 설명할 수 있다.</span></div>
+      <div class="nitem"><span class="nn">2</span><span class="nt">사림이 붕당을 형성하는 배경과 과정에 대해 말할 수 있다.</span></div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">4</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">개념 노트 #1 : 성리학적 질서의 확산</h2>
+      <div class="s-body s-rows"><div class="rline"><strong>서원</strong> 1. 설립 : 16C 이후 <span class="blank" data-answer="사림">사림</span>이 향촌에 설립</div><div class="rline">2. 기능 : 훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침</div><div class="rline">3. 최초 : <span class="blank" data-answer="주세붕">주세붕</span>이 백운동 서원 건립 → 명종 대 ‘<span class="blank" data-answer="소수서원">소수서원</span>’이라는 사액 서원이 됨</div><div class="rline">4. 영향 : 향촌 사회에 성리학적 질서 보급, 사림의 정치적 기반 강화</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">5</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">사료 : 이황의 사액 서원 건의</h2>
+      <div class="s-body s-rows"><div class="rline">풍기 군수 이황이 말하기를 … 뜻을 구하는 선비들은 세상에서 시끄럽게 다투는 것을 싫어하여, 한적한 들판이나 고요한 물가로 나아가 선왕의 도를 익히므로 기꺼이 서원에 나아갑니다.</div><div class="rline">… 국학이나 향교는 성곽 안에 있어 학령에 구애되고 과거에 유혹되니, 그 효과를 어찌 서원과 같다 하겠습니까.</div><div class="rline">… 바라건대 감사와 군수가 서원에 물품만 지원하게 하고, 가혹한 법령으로 구속하지는 못하게 해 주소서. … 서원 교육이 크게 일어난다면 선비의 풍속이 변혁되고 습속이 날로 아름다워질 것입니다.</div><div class="rline">『퇴계집』</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">6</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">개념 노트 #1 : 향약</h2>
+      <div class="s-body s-rows"><div class="rline"><strong>향약</strong> 1. 의미 : 향촌의 <span class="blank" data-answer="자치 규약">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</div><div class="rline">2. 보급 : 중종 대 <span class="blank" data-answer="조광조">조광조</span>가 중국의 향약 소개하면서 보급 시작</div><div class="rline">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</div><div class="rline">3. 영향 : 사림의 영향력 강화, 성리학적 사회 질서 확산</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">7</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">개념 노트 #1 : 유교 윤리의 보급</h2>
+      <div class="s-body s-rows"><div class="rline"><strong>1. 서적 편찬</strong></div><div class="rline">『<span class="blank" data-answer="삼강행실도">삼강행실도</span>』: 유교 기본 윤리인 삼강오륜 보급을 위해 편찬</div><div class="rline">『<span class="blank" data-answer="소학">소학</span>』: 유학의 도덕과 예법을 배우는 기본서, 유학 교육의 입문서</div><div class="rline">『<span class="blank" data-answer="주자가례">주자가례</span>』: 가정에서 지켜야 할 예법 정리한 책</div><div class="rline"><strong>2. 생활 양식</strong> : 유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">8</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">개념 노트 #2 : 붕당의 형성</h2>
+      <div class="s-body s-rows"><div class="rline"><strong>붕당 형성</strong> 1. 사림 집권 : 사화 이후 국정 운영 중심이 왕권에서 <span class="blank" data-answer="신권">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</div><div class="rline">2. 붕당 형성 : <span class="blank" data-answer="외척">외척</span>의 정치 참여 문제, <span class="blank" data-answer="이조 전랑">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화</div><div class="rline">→ 사림이 <span class="blank" data-answer="동인">동인</span>과 <span class="blank" data-answer="서인">서인</span>으로 나뉨</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">9</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">개념 노트 #2 : 동인과 서인</h2>
+      <div class="s-body s-rows"><div class="rline"><strong>동인</strong> 주로 <span class="blank" data-answer="이황">이황</span>과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 <span class="blank" data-answer="북인">북인</span>과 남인으로 분화</div><div class="rline"><strong>서인</strong> 주로 <span class="blank" data-answer="이이">이이</span>와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 <span class="blank" data-answer="노론">노론</span>과 소론으로 분화</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">10</span>
+      <span class="slotstep">개념 노트</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">개념 노트</div><h2 class="s-head">사료 : 동인과 서인의 분당</h2>
+      <div class="s-body s-rows"><div class="rline">이조 전랑 자리를 두고 김효원과 심의겸이 서로 맞섰다. 심의겸은 김효원이 예전에 외척 윤원형의 집에 드나든 자라 하여 그가 전랑이 되는 것을 막았다.</div><div class="rline">뒤에 김효원이 전랑이 되자, 이번에는 심의겸의 동생 심충겸이 그 자리에 추천되었다. 김효원이 말하기를 &quot;이조의 벼슬자리가 어찌 외척 집안의 물건이냐?&quot; 하며 반대하였다.</div><div class="rline">이때부터 당론이 나뉘었다. 김효원을 지지하는 이들은 그가 한양 동쪽에 살아 <span class="blank" data-answer="동인">동인</span>(東人)이라 불렸고, 심의겸을 지지하는 이들은 그가 한양 서쪽에 살아 <span class="blank" data-answer="서인">서인</span>(西人)이라 불렸다.</div><div class="rline">『당의통략』</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">11</span>
+      <span class="slotstep">미션 활동</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">미션 활동</div><h2 class="s-head">미션 Check : 사화에서 살아남기</h2>
+      <div class="s-body s-rows"><div class="rline">1. LMS 시스템 속 미션 Check 중 ‘사화에서 살아남기’를 선택합니다. 선생님이 알려주는 방 코드를 입력하여 게임에 입장합니다.</div><div class="rline">2. 게임을 시작하기 전, 나의 선비 캐릭터를 설정합니다. 나의 호(號)를 짓고, 스승(‘이황, 조식’ 또는 ‘이이, 성혼’)과 기반(‘중앙 관직형’ 또는 ‘향촌 서원형’)을 고릅니다.</div><div class="rline">3. 1498년부터 1575년까지, 여섯 장면을 차례로 헤쳐 나갑니다. 상황을 읽고 제한 시간 안에 선택합니다. 선택에 따라 관직(官)과 명예(名)가 오르내리고, 살아남거나 화를 입습니다.</div><div class="rline">4. 마지막 장면까지 마치면 결말이 나오고, 나의 77년이 정리됩니다. 마지막으로 ‘소감 남기기’에 오늘 알게 된 것과 생각한 것을 적습니다.</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">12</span>
+      <span class="slotstep">오늘의 질문</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">오늘의 질문</div><div class="s-body s-q">
+      <div class="qbig">사림은 왜 정권을 장악한 뒤에 다시 둘로 나뉘게 되었을까?</div>
+      <div class="qguide">사림은 수 차례 화를 입었지만, 지방의 서원 등을 중심으로 다시 힘을 모아 결국 선조 대에는 권력을 장악하게 되었습니다. 하지만 그들은 결국 붕당을 형성하면서 다시 나누어지게 되었는데요. 같은 길을 걷던 자들이 왜 둘로 다시 나누어지게 되었을까요? 여러분들의 생각을 이유와 함께 자유롭게 작성해 보세요.</div></div></div></div>
+  </section>
+  <section class="slot">
+    <div class="slotbar"><span class="slotno">13</span>
+      <span class="slotstep">맺음말</span></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">맺음말</div><div class="s-body s-close"><div class="cline">사림은 살아남아 권력을 잡았지만, 그 안에서 다시 갈라졌습니다.</div><div class="cline">다음 시간에는 갈라진 붕당이 어떻게 맞서 갔는지를 봅니다.</div></div></div></div>
+  </section>
+</div>
+<script>
+// 가린 빈칸과 전시학습확인 답을 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작)
+document.addEventListener('click', e => {
+  const t = e.target.closest('.blank, .qa-a');
+  if (t) t.classList.toggle('open');
+});
+</script>
+</body></html>

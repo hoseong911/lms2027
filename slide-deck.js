@@ -1,0 +1,213 @@
+/* ════════════════════════════════════════════════════════════════════════
+   강의 슬라이드 엔진: 덱(강의 하나) → 쪽 배열 → 쪽 HTML.
+
+   축은 model.js의 SLIDE_AXIS 하나에서 온다(선생님 지시 2026-10-30, 요구사항 125).
+     표지, 전시학습확인, 학습 목표, 동기 유발, 개념 노트, 미션 활동, 오늘의 질문, 맺음말
+
+   학생 슬라이드(slide.html)와 어드민 미리보기가 이 파일 하나를 같이 불러써서 두 쪽이
+   언제나 같게 보인다. 모양(색, 크기)은 slide-deck.css 한 곳에 있다.
+
+   hoistory 2026의 slide-render.js를 그대로 들고 오지 않았다(선생님 지시 2026-10-30:
+   "이식은 보고 따라하라는 뜻"). 거기서 가져온 생각은 셋이다:
+     하나, 쪽 만들기와 쪽 그리기를 한 파일에 두어 두 화면이 어긋나지 않게 한다.
+     둘,   빈칸 문법 {정답} 과 굵게 문법 **굵게** 를 본문에 둔다.
+     셋,   유튜브 주소에서 영상 id와 시작 시각을 읽어 끼운다.
+   2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
+   ════════════════════════════════════════════════════════════════════════ */
+// Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
+import { SLIDE_AXIS, normalizeDeck } from './shared/slide-axis.js?v=20261030h';
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
+  ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+/* 본문 한 줄을 HTML로. 두 가지 문법만 둔다(2026에서 가져온 것).
+     {정답}   빈칸. 수업 중에는 가려 두었다가 눌러서 연다
+     **굵게** 강조
+   가린 빈칸의 정답은 data-answer에 넣는다: 눌러서 열 때 그 글자를 꺼내 쓴다.
+
+   빈칸을 먼저 떼어 두는 자리표는 NUL(눈에 안 보이는 0번 글자)로 둔다. 글 안에 우연히
+   나올 수 없는 글자라야 "1 더하기 1 은" 같은 본문을 빈칸으로 잘못 읽지 않는다.
+   소스에 NUL을 그대로 적으면 파일이 바이너리로 보여서 String.fromCharCode로 만든다. */
+const NUL = String.fromCharCode(0);
+const NUL_RE = new RegExp(NUL + '(\\d+)' + NUL, 'g');
+export function inlineText(str){
+  const blanks = [];
+  let s = String(str ?? '').replace(/\{([^}]+)\}/g, (_, inner) => {
+    blanks.push(inner);
+    return NUL + (blanks.length - 1) + NUL;
+  });
+  s = esc(s).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  return s.replace(NUL_RE, (_, i) =>
+    `<span class="blank" data-answer="${esc(blanks[+i])}">${esc(blanks[+i])}</span>`);
+}
+
+/* 유튜브 주소에서 영상 id와 시작 시각(초)을 읽는다. watch?v=, youtu.be/, embed/, shorts/ 넷 다 받는다.
+   시작 시각은 t=90, t=90s, t=1m30s, t=1h2m3s 모양을 초로 바꾼다. */
+export function youTube(url){
+  const u = String(url ?? '');
+  const m = u.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);
+  if (!m) return null;
+  let start = 0;
+  const t = u.match(/[?&#](?:t|start)=([0-9hms]+)/i);
+  if (t){
+    const raw = t[1].toLowerCase();
+    if (/^\d+s?$/.test(raw)) start = parseInt(raw, 10) || 0;
+    else {
+      const h = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+      if (h) start = (+(h[1] || 0)) * 3600 + (+(h[2] || 0)) * 60 + (+(h[3] || 0));
+    }
+  }
+  return { id: m[1], start };
+}
+
+/* ── 덱을 쪽 배열로 편다 ──────────────────────────────────────────────────
+   쪽 하나 = { type, step, 그 종류가 쓰는 칸들 }. step은 축 단계 key라 쪽마다
+   어느 단계에서 나온 쪽인지 알 수 있다(위쪽 단계 이름표와 어드민 미리보기가 쓴다).
+
+   내용이 빈 단계는 쪽을 만들지 않는다. 그래서 동기 유발을 안 쓰는 차시는 그 단계가
+   슬라이드에서 그냥 빠진다. 끄는 스위치를 따로 두지 않는 까닭이다.
+
+   no는 강 번호(그 강의실에서 몇 번째로 꽂혔는가)다. 강의 본체에는 차수가 없고
+   강의실마다 다를 수 있어서 부르는 쪽이 넘겨 준다(index.js의 카드가 아는 값이다). */
+export function buildSlides(lesson, no){
+  if (!lesson) return [];
+  const deck = normalizeDeck(lesson) || {};
+  const out = [];
+  const push = (step, slide) => out.push(Object.assign({ step }, slide));
+  const lines = key => (deck[key]?.items || []).map(t => String(t ?? '').trim()).filter(Boolean);
+
+  SLIDE_AXIS.forEach(ax => {
+    if (ax.key === 'cover'){
+      push('cover', { type:'cover', no, title:lesson.title || '',
+        unit:deck.cover?.unit || '', pages:deck.cover?.pages || '' });
+
+    } else if (ax.key === 'review'){
+      const qa = (deck.review?.items || []).filter(it => String(it?.q || '').trim());
+      if (qa.length) push('review', { type:'qa', items:qa });
+
+    } else if (ax.key === 'objective'){
+      const items = lines('objective');
+      if (items.length) push('objective', { type:'numbered', items });
+
+    } else if (ax.key === 'hook'){
+      // 사진과 영상은 한 쪽에 하나다: 교실 화면에 띄우는 것이라 크게 봐야 한다
+      (deck.hook?.items || []).forEach(it => {
+        if (String(it?.url || '').trim())
+          push('hook', { type:'media', kind:it.kind === 'video' ? 'video' : 'image',
+            url:it.url, caption:it.caption || '' });
+      });
+
+    } else if (ax.key === 'concept'){
+      // 개념 노트는 parts.concept.content를 쓴다(이미 있는 줄 편집기 그대로).
+      // 'divider' 줄이 쪽을 나눈다: 페이지 제목이 나오면 거기서 새 쪽이다.
+      const content = lesson.parts?.concept?.content || [];
+      let cur = null;
+      content.forEach(ln => {
+        if (ln.type === 'divider'){
+          cur = { type:'rows', title:String(ln.title || '').trim(), rows:[] };
+          push('concept', cur);
+        } else {
+          const text = String(ln.text || '').trim(); if (!text) return;
+          if (!cur){ cur = { type:'rows', title:'', rows:[] }; push('concept', cur); }
+          cur.rows.push(text);
+        }
+      });
+      // 제목만 있고 줄이 하나도 없는 쪽은 뺀다(페이지 줄만 만들어 두고 비워 둔 경우)
+      for (let i = out.length - 1; i >= 0; i--)
+        if (out[i].step === 'concept' && !out[i].rows.length && !out[i].title) out.splice(i, 1);
+
+    } else if (ax.key === 'mission'){
+      const items = lines('mission');
+      const title = String(lesson.parts?.mission?.title || '').trim();
+      if (items.length || title) push('mission', { type:'mission', title, items });
+
+    } else if (ax.key === 'question'){
+      const q = String(lesson.parts?.question?.question || '').trim();
+      if (q) push('question', { type:'question', question:q,
+        guide:String(lesson.parts?.question?.guide || '').trim() });
+
+    } else if (ax.key === 'closing'){
+      const items = lines('closing');
+      if (items.length) push('closing', { type:'closing', items });
+    }
+  });
+  return out;
+}
+
+// 축 단계 이름(쪽 왼쪽 위 이름표). 표지에는 달지 않는다
+const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
+
+/* ── 쪽 하나를 HTML로 ────────────────────────────────────────────────────
+   돌려주는 것은 #page 안에 들어갈 속이다. 바깥 16:9 틀과 색은 slide-deck.css가 잡는다. */
+export function renderSlide(s){
+  if (!s) return '';
+  const mark = s.type === 'cover' ? ''
+    : `<div class="s-mark">${esc(stepName(s.step))}</div>`;
+
+  if (s.type === 'cover'){
+    const no = s.no != null && String(s.no).trim() !== '' ? `${esc(s.no)}강` : '';
+    const meta = [s.unit, s.pages && `교과서 ${s.pages}`].filter(Boolean).map(esc);
+    return `<div class="s-cover">
+      ${no ? `<div class="s-no">${no}</div>` : ''}
+      <h1 class="s-title">${esc(s.title)}</h1>
+      ${meta.length ? `<div class="s-meta">${meta.join('<span class="s-dot"></span>')}</div>` : ''}
+    </div>`;
+  }
+
+  if (s.type === 'qa')
+    return `${mark}<div class="s-body s-qa">${s.items.map((it, i) => `
+      <div class="qa">
+        <div class="qa-q"><span class="qa-n">${i + 1}</span>${inlineText(it.q)}</div>
+        ${String(it.a || '').trim()
+          ? `<button class="qa-a" data-act="reveal">${inlineText(it.a)}</button>` : ''}
+      </div>`).join('')}</div>`;
+
+  if (s.type === 'numbered')
+    return `${mark}<div class="s-body s-num">${s.items.map((t, i) => `
+      <div class="nitem"><span class="nn">${i + 1}</span><span class="nt">${inlineText(t)}</span></div>`
+    ).join('')}</div>`;
+
+  if (s.type === 'media'){
+    const yt = s.kind === 'video' ? youTube(s.url) : null;
+    const frame = yt
+      ? `<iframe src="https://www.youtube-nocookie.com/embed/${esc(yt.id)}?rel=0${yt.start ? '&start=' + yt.start : ''}"
+           title="영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+           allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`
+      : `<img src="${esc(s.url)}" alt="${esc(s.caption || '')}" loading="lazy">`;
+    return `${mark}<div class="s-body s-media">
+      <div class="mframe ${s.kind === 'video' ? 'vid' : 'img'}">${frame}</div>
+      ${s.caption ? `<div class="mcap">${inlineText(s.caption)}</div>` : ''}</div>`;
+  }
+
+  if (s.type === 'rows')
+    return `${mark}${s.title ? `<h2 class="s-head">${inlineText(s.title)}</h2>` : ''}
+      <div class="s-body s-rows">${s.rows.map(t =>
+        `<div class="rline">${inlineText(t)}</div>`).join('')}</div>`;
+
+  if (s.type === 'mission')
+    return `${mark}${s.title ? `<h2 class="s-head">${inlineText(s.title)}</h2>` : ''}
+      <div class="s-body s-rows">${s.items.map(t =>
+        `<div class="rline">${inlineText(t)}</div>`).join('')}</div>`;
+
+  if (s.type === 'question')
+    return `${mark}<div class="s-body s-q">
+      <div class="qbig">${inlineText(s.question)}</div>
+      ${s.guide ? `<div class="qguide">${inlineText(s.guide)}</div>` : ''}</div>`;
+
+  if (s.type === 'closing')
+    return `${mark}<div class="s-body s-close">${s.items.map(t =>
+      `<div class="cline">${inlineText(t)}</div>`).join('')}</div>`;
+
+  return mark;
+}
+
+/* 가린 빈칸과 전시학습확인 답을 눌러서 여는 것. 쪽을 그린 뒤 한 번 걸어 준다.
+   쪽을 다시 그려도 위임이라 다시 걸 필요가 없다(컨테이너에 한 번만). */
+export function wireReveal(root){
+  if (!root || root.dataset.revealWired) return;
+  root.dataset.revealWired = '1';
+  root.addEventListener('click', e => {
+    const t = e.target.closest('.blank, .qa-a');
+    if (t) t.classList.toggle('open');
+  });
+}

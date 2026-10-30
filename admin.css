@@ -586,6 +586,48 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
   padding:11px 16px;border-radius:var(--r);font-size:var(--fs-body);z-index:50;display:none;max-width:90vw;text-align:center}
 #toast.err{background:var(--red)}
 
+
+/* ══════ 강의 슬라이드 축 편집기 (선생님 지시 2026-10-30, 요구사항 125) ══════
+   두 단 틀(.split)을 그대로 쓴다. 왼쪽은 강의 목록, 오른쪽은 축 여덟 줄.
+   왼쪽 폭은 강의 제목이 길어 학생 관리와 같은 --w-list다. */
+.split.split-axis{grid-template-columns:var(--w-list) minmax(0,1fr)}
+
+/* 축 한 줄. 합쳐진 목록 줄 모양(가로 구분선만, 맞닿는 테두리는 하나로) */
+.axrow{display:flex;align-items:center;gap:10px;border:0;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);border-radius:0;min-height:var(--h-row);
+  padding:0 2px;cursor:pointer;background:transparent}
+.axrow + .axrow{border-top:0}
+.axrow:hover{background:var(--hover)}
+.axrow.on{background:var(--accent-fade)}
+.axrow.on:hover{background:var(--accent-fade-hover)}
+/* 단계 번호: 축 순서가 한눈에 보여야 해서 줄마다 단다 */
+.axno{flex:0 0 auto;display:grid;place-items:center;width:22px;height:22px;
+  background:var(--navy);color:#fff;font-size:var(--fs-meta);font-weight:700}
+.axrow.on .axno{background:var(--accent)}
+.axrow .grow{flex:1;min-width:0;font-weight:700}
+/* 채운 단계 표시. 안 채운 줄은 글자를 흐리게 둔다(스위치를 두지 않는 대신이다) */
+.axdot{flex:0 0 auto;display:grid;color:var(--pass)}
+.axrow.off .grow{font-weight:500;color:var(--sub)}
+.axrow .chev{margin-right:0}
+
+/* 펼친 단계의 편집 칸. 줄 아래에 들어가는 상세라 바탕 없이 왼쪽 선으로만 들여쓴다 */
+.axedit{border-left:2px solid var(--accent);padding:12px 0 16px 14px;margin-bottom:2px}
+.axedit .ce-add{margin-top:10px}
+.axedit .formrow{margin-bottom:8px}
+
+/* 다른 메뉴에서 온 내용을 읽기만 하는 칸(오늘의 질문, 미션 제목).
+   고칠 수 없는 자리라 입력 칸으로 그리지 않는다 */
+.axread{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 2px}
+.axread .axq{font-size:var(--fs-head);font-weight:700;line-height:1.5}
+.axread .axg{font-size:var(--fs-body);color:var(--sub);line-height:1.7;margin-top:8px;white-space:pre-wrap}
+
+/* 줄 하나에 칸이 둘 이상인 단계(전시학습확인의 문답, 동기 유발의 주소와 설명) */
+.qacols{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.qacols .f{width:100%}
+.qacols .formrow{margin-bottom:0}
+.axedit .ce-line{align-items:flex-start}
+.axedit .ce-line .ce-tag{min-width:22px;padding-top:6px}
+.axedit .ce-line .tools{padding-top:3px}
 /* ══════ 좁은 화면 ══════
    선생님은 PC와 모바일 둘 다로 들어온다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
 @media (max-width:760px){
