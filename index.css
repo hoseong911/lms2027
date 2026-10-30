@@ -35,7 +35,7 @@ html:not(.lms-ready) #app{display:none}
 .iconbtn:hover{background:var(--hover);color:var(--ink)}
 
 /* ── 공지사항 글 목록 (선생님 지시 2026-10-30) ── 강의실 안 맨 위. 가로 구분선만 있는 목록 줄 */
-.notices{margin-bottom:18px}
+.notices{margin-bottom:0;padding-bottom:18px;border-bottom:1px solid var(--line-strong)}
 .sechead{font-size:var(--fs-head);font-weight:700;margin:0 0 8px}
 .nrow{display:flex;align-items:center;gap:8px;min-height:var(--h-row);padding:0 2px;cursor:pointer;
   border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -56,8 +56,12 @@ html:not(.lms-ready) #app{display:none}
 .notice .nbody{font-size:var(--fs-body);line-height:1.7;white-space:pre-wrap;
   border-top:1px solid var(--line);padding-top:14px}
 
-/* 메뉴 묶음 둘(강의 보기와 성적 / 세부 영역) 사이 간격 */
-.grid.menus + .grid.menus{margin-top:18px}
+/* ── 묶음 사이 구분선 (선생님 지시 2026-10-30) ──
+   강의실 안의 세 묶음은 공지사항, 강의 보기와 성적, 나머지 메뉴다.
+   묶음끼리 진한 1px 선(--line-strong)으로 가른다. 공지 글 줄에 쓰는 --line보다 진해서
+   "목록 안의 줄"과 "묶음을 가르는 선"이 헷갈리지 않는다. 선 위아래 여백은 18px로 같게 둔다. */
+.grid.menus{padding:18px 0 0}
+.grid.menus + .grid.menus{border-top:1px solid var(--line-strong)}
 
 /* ── 카드 ── 폰에서는 한 줄, 넓어지면 두 줄 */
 .grid{display:grid;gap:8px}
@@ -74,8 +78,10 @@ html:not(.lms-ready) #app{display:none}
    (강의 보기, 개념 노트, 미션 활동, 오늘의 질문, 형성평가). 따로 크기를 주는 클래스를 만들지 않는다.
    크기는 18px(--fs-head)로 못박았다(선생님 지시 2026-10-30: "강의 차수 글씨는 18로") */
 .card .no{flex:0 0 auto;min-width:48px;font-size:var(--fs-head);font-weight:700;color:var(--navy)}
-/* 메뉴 카드 아이콘 바탕은 전부 메인 레드 하나(선생님 지시 2026-10-30: 칸마다 색이 달랐다) */
+/* 메뉴 카드 아이콘 바탕: 묶음마다 브랜드 두 색 중 하나다(선생님 지시 2026-10-30).
+   첫 묶음(강의 보기, 성적)은 네이비, 나머지 메뉴 묶음은 레드. 칸마다 색을 따로 주지 않는다. */
 .card.menu .ic{background:var(--accent)}
+.menus-main .card.menu .ic{background:var(--navy)}
 .card .body{flex:1;min-width:0}
 .card .t{font-weight:700;font-size:var(--fs-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

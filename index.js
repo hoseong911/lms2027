@@ -258,10 +258,12 @@ function noticeList(c){
   const rows = shown.map(n => `<div class="nrow" data-act="open-notice" data-id="${esc(n.id)}">
       <span class="t">${esc(n.title)}</span><span class="chev">${icon('chevron-right',16)}</span></div>`).join('')
     || `<div class="nempty">공지사항이 없습니다.</div>`;
+  // 더보기 옆 괄호는 "아직 안 보인 글이 몇 개 더 있는지"다(선생님 지시 2026-10-30).
+  const rest = all.length - NOTICE_MAX;
   const toggle = all.length > NOTICE_MAX
     ? (state.noticeAll
         ? `<button class="morebtn" data-act="notice-less">접기</button>`
-        : `<button class="morebtn" data-act="notice-more">더보기</button>`)
+        : `<button class="morebtn" data-act="notice-more">더보기 (${rest})</button>`)
     : '';
   return `<section class="notices"><div class="sechead">공지사항</div>${rows}${toggle}</section>`;
 }
@@ -279,12 +281,13 @@ function noticeModal(){
       <div class="nbody">${esc(n.body)}</div></div></div>`;
 }
 
-/* 메뉴 카드 묶음 하나. 아이콘 바탕은 전부 메인 레드다(선생님 지시 2026-10-30: 색이 여러 개였다).
-   색은 index.css의 .card.menu .ic 한 곳에서 준다. */
+/* 메뉴 카드 묶음 하나. 묶음 이름을 격자에 클래스로 달아 둔다(menus-main / menus-part):
+   index.css가 이 클래스로 아이콘 바탕색을 가른다(첫 묶음 네이비, 나머지 레드.
+   선생님 지시 2026-10-30). 색은 index.css 한 곳에서 주고 여기서는 색을 쓰지 않는다. */
 function menuGrid(group){
   const counts = {};
   M.PART_TYPES.forEach(p => counts[p.key] = M.getPartItems(state.courseId, p.key).length);
-  return `<div class="grid menus">${M.STUDENT_MENUS.filter(m => m.group === group).map(m => {
+  return `<div class="grid menus menus-${group}">${M.STUDENT_MENUS.filter(m => m.group === group).map(m => {
     const sub = m.kind === 'part' ? `${counts[m.key]}개` : '';
     return `<div class="card menu" data-act="open-menu" data-k="${m.key}">
       <span class="ic">${icon(m.icon,22)}</span>
