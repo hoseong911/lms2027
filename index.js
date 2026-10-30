@@ -375,6 +375,15 @@ function scoreCard(c){
     <div class="row total"><span>최종</span><b>${sc.total} / ${sc.maxScore}</b></div></div>`;
 }
 
+/* 강의 하나를 연 화면의 제목은 "N강. 강의 주제"다(선생님 지시 2026-10-30, 요구사항 123).
+   차수는 목록 카드와 같은 셈이다: 이 강의실에 꽂혀 공개된 강의 중 몇 번째인가(M.getPartItems의 no와 같다).
+   못 찾으면 제목만 쓴다. */
+function lessonHead(l){
+  const i = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson)
+    .findIndex(cl => cl.lessonId === l.id);
+  return i < 0 ? l.title : `${i + 1}강. ${l.title}`;
+}
+
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
 function viewLesson(){
   const l = M.getLesson(state.lessonId);
@@ -394,7 +403,7 @@ function viewLesson(){
     <button class="navbtn" data-act="part-next" ${idx>=order.length-1?'disabled':''}>다음</button></div>`;
 
   // 강의 보기 메뉴에서 들어오므로 뒤로 가면 강의 목록이다
-  return topbar(l.title, 'back-menu')
+  return topbar(lessonHead(l), 'back-menu')
     + `<div class="lessontabs">${tabs}</div>`
     + `<div class="partview">${partView(l, state.partKey)}</div>` + nav;
 }
@@ -404,7 +413,7 @@ function viewPart(){
   const l = M.getLesson(state.lessonId);
   const d = M.partDef(state.partKey);
   if (!l || !d) return topbar('', 'back-menu') + `<div class="empty">찾지 못했습니다.</div>`;
-  return topbar(l.title, 'back-menu') + `<div class="partview">${partView(l, state.partKey)}</div>`;
+  return topbar(lessonHead(l), 'back-menu') + `<div class="partview">${partView(l, state.partKey)}</div>`;
 }
 
 /* 칸 하나의 알맹이.
