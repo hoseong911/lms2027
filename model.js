@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261030u';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261030v';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -582,6 +582,43 @@ export function unplaceLesson(clId){
   return cl;
 }
 
+/* 강의 하나를 지우면 무엇이 같이 없어지는가. 확인 창 문구를 쓰려고 미리 센다. */
+export function lessonUsage(lessonId){
+  const cls = DEMO.courseLessons.filter(cl => cl.lessonId === lessonId);
+  const ids = new Set(cls.map(cl => cl.id));
+  return {
+    rooms:   new Set(cls.map(cl => cl.courseId)).size,
+    links:   cls.length,
+    grades:  DEMO.grades.filter(g => ids.has(g.clId)).length,
+    subs:    DEMO.submissions.filter(s => ids.has(s.clId)).length,
+    apps:    DEMO.missionApps.filter(a => a.lessonId === lessonId).length,
+    inGrade: isGradeLesson(lessonId),
+  };
+}
+/* 강의 본체 하나 삭제. 스물다섯째 글이 "어드민에는 강의를 지우는 단추가 아직 없다"고
+   남긴 구멍을 메운 것이다(2027 예시를 넣어 보고 지울 길이 없었다).
+   창고에서 지우는 것이라 되돌릴 수 없고
+   연결한 강의실에서도 다 빠진다. deleteCourse와 방향이 반대다: 그쪽은 강의실을 지워도
+   강의 내용이 창고에 남지만, 이쪽은 내용 자체가 없어진다.
+   같이 지우는 것
+   - 연결(course_lessons)과 그 연결에 매인 성적, 제출물: unplaceLesson이 한다
+   - 성적 반영 강의 목록(settings/grade): 지운 강의 id가 남으면 없는 강의를 집계에 센다
+   - 미션 앱이 걸어 둔 강의 고리: 앱 자체는 남기고 고리만 끊는다
+   돌려주는 inGrade가 참이면 부르는 쪽이 saveGradeConfig()로 설정을 다시 써야 한다
+   (settings/grade는 put이 아니라 문서를 통째로 쓰는 자리라 여기서 혼자 저장하지 않는다). */
+export function deleteLesson(lessonId){
+  const l = getLesson(lessonId); if (!l) return null;
+  const used = lessonUsage(lessonId);
+  DEMO.courseLessons.filter(cl => cl.lessonId === lessonId).forEach(cl => unplaceLesson(cl.id));
+  if (used.inGrade) toggleGradeLesson(lessonId, false);
+  DEMO.missionApps.filter(a => a.lessonId === lessonId).forEach(a => {
+    a.lessonId = null; put(COLLECTIONS.missionApps, a);
+  });
+  DEMO.lessons = DEMO.lessons.filter(x => x.id !== lessonId);
+  del(COLLECTIONS.lessons, lessonId);
+  return { lesson:l, ...used };
+}
+
 /* ── 진도표의 강의 줄 (hoistory 진도 계획 틀 이식, 선생님 지시 2026-10-28) ──
    hoistory에서는 진도표 한 줄이 모든 반에 공통이고 반마다 날짜만 달랐다. 2027도 같게 둔다:
    진도표에서 강의를 더하면 **그 과목의 강의실 전부에 같이 연결된다**(요구사항 49의 과목 일괄).
@@ -913,7 +950,7 @@ export function setPages(lessonId, key, pages){
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
-  lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled } from './shared/slide-axis.js?v=20261030u';
+  lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled } from './shared/slide-axis.js?v=20261030v';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 

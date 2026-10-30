@@ -157,6 +157,10 @@
 ### 되돌릴 수 없는 큰 삭제는 관리자 계정으로 다시 인증 (2026-10-25)
 - 학년도 삭제는 이름 입력 대신 **관리자 이메일과 비밀번호로 Firebase 재인증**(`reauthenticateWithCredential`)을 통과해야 한다. 선생님이 "너무 허술하다"고 했다.
 - 반 하나 삭제는 반 이름을 그대로 입력하는 확인으로 둔다.
+- **강의 삭제(`deleteLesson`)도 제목을 그대로 입력하는 확인**이다. 강의실 삭제와 방향이 반대라는 것을 잊지 말 것: 강의실을 지워도 강의 내용은 창고에 남지만, **강의를 지우면 내용 자체가 없어진다**(개념 노트, 미션 활동, 오늘의 질문, 형성평가가 다 `lessons` 문서 한 장 안에 있다).
+  - 같이 지우는 것: 연결(`course_lessons`)과 그 연결에 매인 성적, 제출물(`unplaceLesson`이 한다), 성적 반영 강의 목록(`settings/grade`), 미션 앱이 걸어 둔 `lessonId` 고리(앱 자체는 남기고 고리만 끊는다).
+  - `settings/grade`는 `put`이 아니라 문서를 통째로 쓰는 자리라 `deleteLesson`이 혼자 저장하지 않는다. 돌려주는 `inGrade`가 참이면 **부르는 쪽이 `saveGradeConfig()`를 불러야 한다.**
+  - 지운 뒤에는 **그 강의 id를 들고 있던 화면 상태를 다 풀어야 한다**(`lessonId`, `conceptLessonId`, `questionSel`, `questionLessonId`, `formativeLessonId`, `formativeResultId`). 안 풀면 없는 강의를 찾아 빈 화면이 된다. 새 화면에 강의 id를 담는 state를 더하면 이 목록에도 더한다.
 
 ### 버튼, 배지, 태그, 카테고리 모양 (2026-10-25, 같은 날 한 번 정정됨)
 - **알약 모양(`border-radius:999px`) 테두리를 쓰지 않는다.**

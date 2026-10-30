@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030u';
+import * as M from './model.js?v=20261030v';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1082,9 +1082,12 @@ function pageLessons(){
   const tabs = catline([{v:'edit',label:'강의 편집'},{v:'place',label:'강의실 연결 콘텐츠'}], state.lessonTab, 'lesson-tab');
   const body = state.lessonTab === 'edit' ? lessonEditor(l) : lessonPlacer(l);
 
+  // 삭제는 머리줄 오른쪽에. 창고에서 지우는 것이라 강의실 상세와 같은 자리, 같은 모양으로 둔다
   return `<div class="pagehead">
       <button class="ib" data-act="lesson-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
-      <h2>${esc(l.title)}</h2></div>${tabs}${body}`;
+      <h2>${esc(l.title)}</h2>
+      <button class="ib ib-danger" data-act="lesson-del" data-id="${l.id}"
+        title="강의 삭제" aria-label="강의 삭제">${icon('trash-2',16)}</button></div>${tabs}${body}`;
 }
 
 function lessonEditor(l){
@@ -1425,7 +1428,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030u');
+      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030v');
       got = await worksheetFromFile(file);
     } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
@@ -2286,6 +2289,38 @@ document.getElementById('shell').addEventListener('click', e => {
     }
     case 'lesson-open': state.lessonId = id; state.lessonTab = 'edit'; render(); break;
     case 'lesson-close': state.lessonId = null; render(); break;
+    /* 강의 삭제. 강의실 삭제와 달리 내용 자체가 없어지므로
+       제목을 그대로 치게 한다. 지운 뒤에는 그 강의를 가리키던 화면 상태를 다 풀어야 한다:
+       안 풀면 다음 그리기에서 없는 강의를 찾아 빈 화면이 된다. */
+    case 'lesson-del': {
+      const l = M.getLesson(id); if (!l) break;
+      const name = l.title, u = M.lessonUsage(id);
+      const gone = [
+        u.links  ? `강의실 연결 ${u.links}개` : '',
+        u.subs   ? `제출물 ${u.subs}건` : '',
+        u.grades ? `성적 ${u.grades}건` : '',
+        u.apps   ? `미션 앱 연결 ${u.apps}개` : '',
+      ].filter(Boolean);
+      confirmDelete({
+        title: `${name} 강의 삭제`,
+        // 목록 끝 낱말에 따라 조사가 달라지므로 아예 조사를 쓰지 않는다(강의실 삭제와 같은 꼴)
+        bodyHtml: `개념 노트, 미션 활동, 오늘의 질문, 형성평가에 적은 내용이 모두 없어집니다.`
+          + (gone.length ? `<br>같이 없어지는 것: ${gone.join(', ')}.` : '')
+          + (u.inGrade ? `<ul><li>성적 반영 강의 목록에서도 빠집니다</li></ul>` : '')
+          + `<br>지우려면 <b>${esc(name)}</b>을 그대로 적어 주세요.`,
+        needText: name,
+      }).then(ok => {
+        if (!ok) return;
+        const res = M.deleteLesson(id);
+        ['lessonId', 'conceptLessonId', 'questionSel', 'questionLessonId',
+         'formativeLessonId', 'formativeResultId']
+          .forEach(key => { if (state[key] === id) state[key] = null; });
+        // 성적 화면이 고른 연결 강의(state.scClId)는 그리는 쪽이 스스로 고친다(pageScores)
+        if (res?.inGrade) M.saveGradeConfig().catch(() => toast('성적 설정을 저장하지 못했습니다.'));
+        toast(`${name} 강의를 삭제했습니다.`); render();
+      });
+      break;
+    }
     case 'lesson-tab': state.lessonTab = v; render(); break;
     case 'part-toggle': M.setLessonPart(state.lessonId, k, !(M.getLesson(state.lessonId).order||[]).includes(k)); render(); break;
     case 'part-off': M.setLessonPart(state.lessonId, k, false); render(); break;
