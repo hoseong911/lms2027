@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030n';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030p';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -256,9 +256,9 @@ export function renderSlide(s){
     </div>`;
   }
 
-  /* 전시학습확인: 문항 유형 셋(단답형, OX, 초성형. 선생님 지시 2026-10-30).
+  /* 전시학습확인: 문항 유형 셋(단답형, 진위형, 초성형. 선생님 지시 2026-10-30).
      유형이 가르는 것은 "학생이 어떻게 답하는가"라서 답 칸의 모양만 다르다.
-       OX     : O와 X 두 칸이 처음부터 서 있고(답하는 꼴이라서), 정답인 쪽이 나중에 켜진다
+       진위형 : O와 X 두 칸이 처음부터 서 있고(답하는 꼴이라서), 정답인 쪽이 나중에 켜진다
        그 밖  : 답 칸이 처음에는 아예 보이지 않다가 나중에 나타난다
      답은 슬라이드 애니메이션처럼 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘. 답은 내가
      화살표 버튼으로 조작하거나 페이지 업다운으로 조작할때 나오게"). 답 하나가 한 단계(data-step)이고

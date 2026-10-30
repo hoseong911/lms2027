@@ -66,6 +66,12 @@
   --r:4px;              /* 카드와 줄의 모서리 */
   --r-btn:8px;          /* 액션 아이콘 버튼은 8px (화면 규칙 2026-10-25) */
   --font:"Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  /* 둘째 글꼴: 페이퍼로지 (선생님 지시 2026-10-30).
+     "폰트를 하나 더 사용하자. 페이퍼로지 폰트야. 그건 개념 노트에서만 사용할게."
+     아직 어느 칸에도 걸지 않았다. 어디에 쓸지는 선생님이 따로 말씀하실 자리다.
+     쓸 때는 개념 노트 쪽에만 font-family:var(--font-note)를 건다. 전역 --font을 바꾸지 않는다.
+     글꼴 파일은 아래 @font-face에서 받는다(네 굵기: 400, 600, 700, 800). */
+  --font-note:"Paperlogy","Pretendard","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
 
   /* ── 높이: 딱 두 값만 쓴다 (선생님 지시 2026-10-29: 메뉴마다 폭과 높이가 들쭉날쭉하다) ──
      조작 칸(입력 칸, 드롭다운, 아이콘 단추, 작은 버튼, 토글, 검색 칸)은 전부 --h-ctl.
@@ -99,3 +105,18 @@
 @supports not selector(::-webkit-scrollbar){
   *{scrollbar-width:thin;scrollbar-color:#E4E8ED transparent}
 }
+
+/* ── 페이퍼로지 글꼴 받기 (선생님 지시 2026-10-30) ──
+   "폰트를 하나 더 사용하자. 페이퍼로지 폰트야. 그건 개념 노트에서만 사용할게."
+   눈누에서 푼 무료 글꼴이고 jsDelivr 판 번호를 못박아 받는다(판이 바뀌어 모양이 흔들리지 않게).
+   굵기 넷만 받는다: 400 보통, 600 조금 굵게, 700 굵게, 800 많이 굵게.
+   font-display:swap이라 글꼴이 늦게 와도 글이 먼저 보인다(교실에서 쓰는 화면이라 기다리지 않게).
+   아직 어느 칸에도 걸지 않았다. 쓸 자리는 var(--font-note)로 건다. */
+@font-face{font-family:'Paperlogy';font-weight:400;font-style:normal;font-display:swap;
+  src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2')}
+@font-face{font-family:'Paperlogy';font-weight:600;font-style:normal;font-display:swap;
+  src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2')}
+@font-face{font-family:'Paperlogy';font-weight:700;font-style:normal;font-display:swap;
+  src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2')}
+@font-face{font-family:'Paperlogy';font-weight:800;font-style:normal;font-display:swap;
+  src:url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2')}

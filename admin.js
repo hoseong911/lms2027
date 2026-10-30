@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030n';
+import * as M from './model.js?v=20261030p';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1113,7 +1113,7 @@ function lessonEditor(l){
     <div class="deck"><div class="sectionlabel">이 강의의 칸 (순서 자유)</div>${deck}</div>
     <div class="palette"><div class="sectionlabel">칸 넣고 빼기</div>${palette}
       <div class="formrow" style="margin-top:10px;flex-direction:column;align-items:stretch">
-        <button class="btn-text" data-act="lesson-import" style="display:flex;align-items:center;justify-content:center;gap:8px"
+        <button class="btn-text" data-act="lesson-import" data-id="${l.id}" style="display:flex;align-items:center;justify-content:center;gap:8px"
           title="활동지를 올려 개념 노트를 만듭니다">${icon('upload',16)}<span>활동지 올리기</span></button>
       </div>
     </div></div>`;
@@ -1177,13 +1177,22 @@ function pageAxis(){
   if (!M.SLIDE_AXIS.some(a => a.key === state.axisStep)) state.axisStep = M.SLIDE_AXIS[0].key;
   const ax = M.axisStep(state.axisStep);
 
-  // 드롭다운은 어드민의 다른 고르개(.sel)와 같은 모양이다. 글자와 화살표 둘레에 여백이 있다
+  /* 드롭다운은 어드민의 다른 고르개(.sel)와 같은 모양이다. 글자와 화살표 둘레에 여백이 있다.
+     오른쪽 단추 셋(선생님 지시 2026-10-30): 저장, 미리보기, 활동지 올리기.
+     활동지 올리기는 강의 라이브러리의 강의 편집에만 있던 것을 여기에도 둔 것이다
+     ("콘텐츠에서 활동지 올리는 기능이 없네?"). 같은 importWorksheet를 부른다.
+     저장은 알림용이다: 칸은 커서가 빠질 때 이미 저장되므로(axis-save) 눌러서 확인만 받는다. */
   const picker = `<div class="axhead">
     <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
       ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
     </select>
+    <span class="axhead-sp"></span>
+    <button class="btn-text" data-act="axis-save"
+      title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button>
     <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
       title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}<span>미리보기</span></button>
+    <button class="btn-text" data-act="lesson-import" data-id="${l.id}"
+      title="활동지를 올려 개념 노트를 만듭니다" aria-label="활동지 올리기">${icon('upload',16)}<span>활동지 올리기</span></button>
   </div>`;
 
   return picker + `<div class="axwrap">
@@ -1248,17 +1257,20 @@ function axisEditor(l, ax){
     <button class="ib ib-sm ib-danger" data-act="deck-del" data-id="${l.id}" data-k="${k}" data-i="${i}"
       title="삭제" aria-label="삭제">${icon('trash-2',14)}</button></div>`;
 
-  // 줄 하나를 묶는 틀. 머리에 번호와 도구를 두고 그 아래에 이름표 붙은 칸을 쌓는다
+  /* 줄 하나를 묶는 틀. 머리에 번호와 도구를 두고 그 아래에 이름표 붙은 칸을 쌓는다.
+     번호는 콘텐츠 탭 어디서나 같은 모양(.axnum) 하나다(선생님 지시 2026-10-30:
+     "번호를 표시하든 페이지를 표시하든 숫자가 있잖아 그거 하나로 통일"). */
   const card = (i, body, badge = '') => `<div class="axitem">
-    <div class="axitem-head"><span class="axitem-no">${i + 1}</span>${badge}
+    <div class="axitem-head"><span class="axnum">${i + 1}</span>${badge}
       <span class="axitem-sp"></span>${tools(i)}</div>
     <div class="axitem-body">${body}</div></div>`;
 
   let rows = '';
   if (ax.edit === 'qa'){
-    /* 전시학습확인: 문항 유형 셋(선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형").
+    /* 전시학습확인: 문항 유형 셋(선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형".
+       이름은 같은 날 지시로 진위형, 단답형, 초성형으로 맞췄다. shared/slide-axis.js의 REVIEW_TYPES).
        유형은 문항마다 따로 고른다(한 화면에 세 유형이 섞여 서는 것이 보통이다).
-       OX만 답 칸이 라디오 둘이고 단답형과 초성형은 글자 한 칸이다.
+       진위형만 답 칸이 라디오 둘(O, X)이고 단답형과 초성형은 글자 한 칸이다.
        초성은 선생님이 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
     rows = items.map((it, i) => {
       const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
@@ -1292,7 +1304,7 @@ function axisEditor(l, ax){
     /* 학습 목표, 맺음말: 줄 하나가 글자 하나다.
        줄이 길어지는 자리가 있어 한 칸짜리 입력이 아니라 늘어나는 글 칸을 쓴다. */
     rows = items.map((it, i) => `<div class="ce-line">
-      <span class="ce-tag">${i + 1}</span>
+      <span class="axnum">${i + 1}</span>
       <textarea class="f grow ta ta1" rows="2" data-act="deck-set" data-id="${l.id}" data-k="${k}"
         data-i="${i}" aria-label="${esc(ax.name)} ${i + 1}번">${esc(it)}</textarea>${tools(i)}</div>`).join('');
   }
@@ -1306,7 +1318,8 @@ function axisEditor(l, ax){
    "2026에 사용한 lms 콘텐츠 편집기를 참고하여 개념노트 페이지와 미션 활동 페이지 만들어줄것"
 
    2026 편집기(개념 Check, 미션 Check)에서 본뜬 틀: 페이지마다 제목 칸이 있고, 그 아래에
-   묶음(왼쪽 라벨 칸 + 오른쪽 내용 글 칸)이 여럿 선다. 내용 글 칸은 한 줄이 한 항목이다.
+   묶음(라벨 칸 + 내용 글 칸)이 여럿 선다. 내용 글 칸은 한 줄이 한 항목이다.
+   라벨과 내용은 세로로 쌓는다(선생님 지시 2026-10-30. 처음엔 2026처럼 가로였다).
    2026처럼 개념과 미션이 같은 편집기다(k가 'concept'이냐 'mission'이냐만 다르다).
    2026의 형식 고르기(연표, 비교표 등), 이미지 번호, 글자 크기 칸, 끌어서 옮기기는 가져오지
    않았다. 시킨 것이 아니다.
@@ -1323,27 +1336,41 @@ function pageEditor(l, k){
       title="${title}" aria-label="${title}">${icon(ic, 14)}</button>`;
 
   const body = pages.map((pg, p) => {
+    /* 묶음은 라벨이 위, 내용이 아래로 세로로 쌓인다(선생님 지시 2026-10-30:
+       "행라벨과 내용은 가로로 쌓지 말고 세로로 쌓아줘"). 왼쪽 라벨 칸 격자로 되돌리지 않는다.
+       "라벨" "내용"이라는 안내 글줄(옛 .pgcols)은 걷고 칸 안의 플레이스홀더로 넣었다
+       (같은 지시: "라벨 내용 이라는 문구는 없애고 그걸 플레이스홀더로 잡아줘").
+       왼쪽 들여쓰기(옛 --pg-in)도 걷었다: 라벨과 내용이 페이지 번호와 같은 선에서 시작한다
+       (같은 지시: "시작하는 위치를 페이지 숫자랑 같은 위치에서"). 다시 들여 쓰지 않는다.
+       삭제 단추는 라벨 줄 오른쪽이다: 내용 칸은 적은 만큼 아래로 길어져 거기 매달면 자리가 흔들린다. */
     const rows = pg.rows.map((r, ri) => `<div class="pgrow">
-        <textarea class="f pglabel" rows="1" ${at('pg-set', p, ri)} data-f="label" aria-label="라벨">${esc(r.label)}</textarea>
-        <textarea class="f grow pgtext" rows="${Math.max(2, r.text.split('\n').length)}" ${at('pg-set', p, ri)}
-          data-f="text" aria-label="내용">${esc(M.indentText(r.text))}</textarea>
-        <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '묶음 삭제', { danger:true })}</div></div>`).join('');
-    // 칸 이름은 칸마다 달지 않고 묶음들 위에 한 줄로 둔다(화면 규칙: 형식 안내는 구역 위에 한 줄)
-    const cols = pg.rows.length ? `<div class="pgcols"><span class="pglabel">라벨</span><span>내용</span></div>` : '';
+        <div class="pgrow-top">
+          <textarea class="f grow pglabel" rows="1" ${at('pg-set', p, ri)} data-f="label"
+            placeholder="라벨" aria-label="라벨">${esc(r.label)}</textarea>
+          <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '묶음 삭제', { danger:true })}</div>
+        </div>
+        <textarea class="f pgtext" rows="${Math.max(2, r.text.split('\n').length)}" ${at('pg-set', p, ri)}
+          data-f="text" placeholder="내용" aria-label="내용">${esc(M.indentText(r.text))}</textarea></div>`).join('');
+    /* 머리줄: 번호, 제목 칸, 그 다음 단추 넷. 묶음 추가는 순서 바꾸기 다음 자리다
+       (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을 위치시켜줘").
+       제목 칸은 그래서 늘어나지 않고 폭이 정해져 있다(.pgtitle).
+       묶음 추가를 묶음 목록 아래로 되돌리지 않는다. */
     return `<section class="pgblock">
-      <div class="pghead"><span class="pgno">${p + 1}</span>
-        <input class="f grow pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
+      <div class="pghead"><span class="axnum">${p + 1}</span>
+        <input class="f pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
         <div class="tools">
           ${btn('pg-up', p, null, 'arrow-up', '페이지 위로', { off: p === 0 })}
           ${btn('pg-down', p, null, 'arrow-down', '페이지 아래로', { off: p === pages.length - 1 })}
+          ${btn('pg-row-add', p, null, 'plus', '묶음 추가')}
           ${btn('pg-del', p, null, 'trash-2', '페이지 삭제', { danger:true })}</div></div>
-      ${cols}${rows}
-      <div class="ce-add"><button class="btn-chip" ${at('pg-row-add', p)}>${icon('plus',13)}묶음</button></div>
+      ${rows}
     </section>`;
   }).join('');
 
-  return (body || `<div class="placeholder">내용이 없습니다.</div>`)
-    + `<div class="ce-add pgadd"><button class="btn-chip" ${at('pg-add')}>${icon('plus',13)}페이지</button></div>`;
+  // 페이지 추가는 맨 위다(선생님 지시 2026-10-30: "페이지 추가하는 버튼을 위로 올려줘").
+  // 페이지가 쌓이면 아래 끝이 멀어 누르러 내려가야 했다. 아래로 되돌리지 않는다
+  return `<div class="ce-add pgadd"><button class="btn-chip" ${at('pg-add')}>${icon('plus',13)}페이지</button></div>`
+    + (body || `<div class="placeholder">내용이 없습니다.</div>`);
 }
 
 /* 페이지 편집기의 단추와 칸이 부르는 길. 페이지 배열을 받아 고치고 통째로 저장한다(M.setPages).
@@ -1370,7 +1397,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030o');
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030p');
       got = await worksheetFromPdf(file);
     } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
@@ -2208,7 +2235,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'part-off': M.setLessonPart(state.lessonId, k, false); render(); break;
     case 'part-up': M.moveLessonPart(state.lessonId, k, -1); render(); break;
     case 'part-down': M.moveLessonPart(state.lessonId, k, 1); render(); break;
-    case 'lesson-import': if (state.lessonId) importWorksheet(state.lessonId); break;
+    // 강의 라이브러리의 강의 편집과 콘텐츠 탭 머리줄 둘이 같이 쓴다(data-id로 강의를 받는다)
+    case 'lesson-import': { const lid = id || state.lessonId; if (lid) importWorksheet(lid); break; }
     case 'place-toggle': {
       // 데모: 꽂기만(해제는 다음 단계). 꽂혀 있지 않으면 꽂는다.
       const already = M.getCourseLessons(id).some(cl => cl.lessonId === state.lessonId);
@@ -2242,6 +2270,13 @@ document.getElementById('shell').addEventListener('click', e => {
     /* 강의 슬라이드 축 편집기(요구사항 125, 126). 강의 고르기는 드롭다운이라 change 쪽에 있다.
        단계는 늘 하나 열려 있다(오른쪽 편집창이 비지 않게). 같은 줄을 다시 눌러도 닫지 않는다. */
     case 'axis-step': state.axisStep = k; render(); break;
+    /* 저장: 칸은 커서가 빠질 때 이미 모델에 들어가 있다(pg-set, pg-title, deck-set).
+       아직 칸 안에 커서가 있을 수 있으니 그것부터 흘려 보내고(blur가 change를 띄운다) 알린다.
+       여기서 다시 그리지 않는다: 화면에 보이는 글이 이미 저장된 글이라 그릴 것이 없고,
+       그리면 방금 적던 자리만 잃는다 */
+    case 'axis-save':
+      document.activeElement?.blur?.();
+      toast('저장했습니다.'); break;
     // 미리보기는 학생이 보는 그 슬라이드를 그대로 새 탭에 띄운다(같은 slide-deck.js를 쓴다)
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;

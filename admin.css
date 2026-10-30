@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261030j");
+@import url("shared/theme.css?v=20261030p");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -406,9 +406,8 @@ div.selrow{cursor:default}
   color:var(--ink);border-radius:var(--r-btn);height:var(--h-ctl);padding:0 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
 .btn-chip:hover:not(:disabled){border-color:var(--line-strong)}
 
-/* 줄 목록 편집(학습 목표, 맺음말): 번호와 글 칸 한 줄씩 */
+/* 줄 목록 편집(학습 목표, 맺음말): 번호와 글 칸 한 줄씩. 번호 모양은 .axnum 하나다 */
 .ce-line{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.ce-tag{flex:0 0 auto;font-size:var(--fs-meta);font-weight:700;color:var(--navy);min-width:40px}
 .ce-add{display:flex;gap:8px;margin-top:10px}
 .btn-chip.danger{border-color:var(--red);color:var(--red)}
 .btn-chip.danger:hover:not(:disabled){background:var(--red);color:#fff}
@@ -479,6 +478,10 @@ div.selrow{cursor:default}
 .f{border:1px solid var(--line);border-radius:var(--r);padding:0 10px;font-size:var(--fs-body);background:transparent;
   color:var(--ink);font-family:inherit}
 input.f{height:var(--h-ctl)}
+/* 입력 칸 모양을 쓴 드롭다운도 조작 칸 높이 그대로다(theme.css: 드롭다운은 전부 --h-ctl).
+   안 주면 브라우저 기본 높이라 위아래가 꽉 끼었다(선생님 지시 2026-10-30:
+   "문항 유형 고르는 드롭다운 여백이 너무 없어(위아래)") */
+select.f{height:var(--h-ctl)}
 textarea.f{padding:8px 10px}
 .f::placeholder{color:var(--sub)}
 .f:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 -2px 0 -1px var(--accent)}
@@ -593,8 +596,10 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
    다른 두 단 화면(.split)과 섞이지 않게 클래스 이름을 따로 뒀다(.axwrap). */
 /* 강의 드롭다운: 다른 고르개(.sel)와 같은 모양에 여백을 더 준다
    (선생님 지시 2026-10-30: "드롭다운 칸 여백 너무 없음"). 높이는 조작 칸 규칙(--h-ctl) 그대로다 */
-.axhead{display:flex;align-items:center;gap:12px;margin:0 0 20px}
+.axhead{display:flex;align-items:center;gap:10px;margin:0 0 20px;flex-wrap:wrap}
 .axpick{flex:0 1 460px;min-width:0;font-weight:700;padding:0 38px 0 16px;background-position:right 14px center}
+/* 단추 셋(저장, 미리보기, 활동지 올리기)은 오른쪽 끝으로 밀어 둔다 */
+.axhead-sp{flex:1 1 auto}
 
 .axwrap{display:grid;grid-template-columns:var(--w-axis) minmax(0,1fr);gap:20px;
   align-items:stretch;min-height:0}
@@ -629,8 +634,6 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 .axitem{border-top:1px solid var(--line);padding:4px 0 12px}
 .axitem:first-child{border-top:0}
 .axitem-head{display:flex;align-items:center;gap:9px;min-height:var(--h-ctl)}
-.axitem-no{flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;
-  background:var(--navy-600);color:#fff;font-size:var(--fs-meta);font-weight:700}
 .axitem-sp{flex:1}
 .axitem-body > .row{border-top:0}
 /* 유형과 종류 고르개는 칸을 다 채우지 않는다: 짧은 낱말이라 길면 읽기가 더 힘들다 */
@@ -642,10 +645,19 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 .axread .axq{font-size:var(--fs-head);font-weight:700;line-height:1.5}
 .axread .axg{font-size:var(--fs-body);color:var(--sub);line-height:1.7;margin-top:8px;white-space:pre-wrap}
 
+/* ── 콘텐츠 탭의 번호는 이 모양 하나다 (선생님 지시 2026-10-30) ──
+   "번호를 표시하든 페이지를 표시하든 숫자가 있잖아 그거 하나로 통일 좀할게."
+   전에는 셋이었다: 문항 번호는 네이비 바탕 흰 숫자 배지(.axitem-no), 페이지 번호(.pgno)와
+   줄 번호(.ce-tag)는 네이비 글씨. 셋 중 둘이 쓰던 네이비 글씨 쪽으로 맞췄다(플랫, 미니멀 기조).
+   페이지 번호, 문항 번호, 줄 번호가 다 이 클래스를 쓴다. 새 번호 칸을 또 만들지 않는다.
+   폭을 정해 두는 까닭: 번호가 한 자리에서 두 자리로 늘어도 옆 칸이 밀리지 않는다 */
+.axnum{flex:0 0 auto;width:24px;font-weight:700;color:var(--navy);
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
 /* 줄 하나가 글자 하나인 단계(학습 목표, 미션 안내, 맺음말).
    줄이 길어지는 자리가 있어 늘어나는 글 칸을 쓴다. 번호와 도구는 글 칸 첫 줄에 맞춘다 */
 .axpane-body .ce-line{align-items:flex-start}
-.axpane-body .ce-line .ce-tag{min-width:20px;padding-top:7px;text-align:right}
+.axpane-body .ce-line .axnum{padding-top:7px}
 .axpane-body .ce-line .tools{padding-top:3px}
 .ta1{min-height:var(--h-ctl);resize:vertical}
 
@@ -654,30 +666,34 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
    페이지 하나가 한 묶음 카드이고(화면 규칙: 한 묶음은 카드 하나) 페이지 사이는 선 하나로 나눈다.
    글 칸은 적은 만큼 늘어난다(field-sizing). 못 읽는 브라우저는 rows로 어림한 높이에 손잡이로 늘린다. */
 /* 페이지 번호는 "1페이지"가 아니라 숫자만(선생님 지시 2026-10-30: "1 2 이런식으로 간결하게").
-   번호 칸 폭(--pg-in)만큼 그 아래 묶음 칸들을 들여서 번호가 왼쪽에 홀로 서 보이게 한다 */
-.pgblock{--pg-in:34px;border-top:1px solid var(--line);padding:14px 0 16px}
+   모양은 콘텐츠 탭 공용 번호 칸(.axnum) 하나다.
+   머리줄은 번호, 제목 칸, 단추 넷(위, 아래, 묶음 추가, 삭제) 순이다. 제목 칸은 늘어나지 않는다
+   (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을") */
+.pgblock{border-top:1px solid var(--line);padding:14px 0 16px}
 .pgblock:first-child{border-top:0;padding-top:6px}
 .pghead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.pgno{flex:0 0 auto;width:calc(var(--pg-in) - 10px);font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
-.pgtitle{font-weight:700}
-.pgcols{display:flex;gap:8px;padding-left:var(--pg-in);margin-bottom:4px;font-size:var(--fs-meta);color:var(--sub)}
-.pgrow{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px var(--pg-in)}
-.pglabel{flex:0 0 140px;width:140px}
+.pgtitle{flex:0 1 420px;min-width:0;font-weight:700}
+
+/* 묶음: 라벨이 위, 내용이 아래로 세로로 쌓인다(선생님 지시 2026-10-30).
+   왼쪽 들여쓰기(옛 --pg-in)를 걷어 라벨과 내용이 페이지 번호와 같은 선에서 시작한다
+   (같은 지시: "시작하는 위치를 페이지 숫자랑 같은 위치에서"). 다시 들여 쓰지 않는다.
+   "라벨" "내용" 안내 글줄(옛 .pgcols)은 걷고 칸 안의 플레이스홀더로 넣었다 */
+.pgrow{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+.pgrow-top{display:flex;align-items:flex-start;gap:8px}
 .pgrow textarea.f{resize:vertical;font:inherit;line-height:1.6;field-sizing:content;min-height:var(--h-ctl)}
 .pgrow .pglabel{font-weight:700}
 /* 내용 칸: 단계 들여쓰기를 빈칸으로 보여 주므로(indentText) 빈칸 폭이 고른 편이 단계가 가지런하다 */
-.pgtext{white-space:pre-wrap;tab-size:4}
+.pgtext{white-space:pre-wrap;tab-size:4;width:100%}
 .pgrow .tools{padding-top:3px}
-.pgblock .ce-add{margin:4px 0 0 var(--pg-in)}
-.ce-add.pgadd{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+/* 페이지 추가는 묶음들 위, 편집창 맨 위다(선생님 지시 2026-10-30).
+   아래 밑줄이 첫 페이지와 나누는 선을 겸한다(.pgblock:first-child는 윗선이 없다) */
+.ce-add.pgadd{margin:8px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 
 /* 좁은 화면에서는 줄자가 위쪽 가로 줄이 되고 편집창이 그 아래로 내려온다.
-   페이지 편집기는 라벨 칸이 내용 칸 위로 올라가고 왼쪽 들여쓰기를 걷는다 */
+   페이지 편집기는 넓은 화면에서도 이미 세로로 쌓이므로 여기서 더 손댈 것이 없다.
+   제목 칸만 남은 너비를 다 쓰게 둔다 */
 @media (max-width:860px){
-  .pgcols{display:none}
-  .pgrow{flex-wrap:wrap;margin-left:0}
-  .pglabel{flex:1 1 100%;width:auto}
-  .pgblock .ce-add{margin-left:0}
+  .pgtitle{flex:1 1 auto}
   .axwrap{grid-template-columns:minmax(0,1fr);gap:14px}
   .axrail{flex-direction:row;overflow-x:auto;scrollbar-width:none;border-bottom:0}
   .axrail::-webkit-scrollbar{display:none}
