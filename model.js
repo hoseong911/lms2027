@@ -80,7 +80,7 @@ export const STUDENT_MENUS = [
   { key:'lessons', name:'강의 보기', icon:'monitor',     kind:'lessons', group:'main' },
   { key:'score',   name:'성적',      icon:'bar-chart-3', kind:'score',   group:'main' },
   ...PART_TYPES.map(p => ({ key:p.key, name:p.name, icon:p.icon, kind:'part', group:'part' })),
-  { key:'review',  name:'복습',      icon:'list-ordered', kind:'review', group:'part' },
+  // 복습은 일단 뺐다(선생님 지시 2026-10-30, 요구사항 120). 되살릴 때 kind:'review'로 다시 넣는다.
 ];
 
 // 어드민 왼쪽 메뉴

@@ -47,7 +47,12 @@ html:not(.lms-ready) #app{display:none}
 .morebtn{display:block;width:100%;min-height:var(--h-ctl);margin-top:4px;border:0;background:none;
   color:var(--sub);font-size:var(--fs-body);font-family:inherit;cursor:pointer}
 .morebtn:hover{color:var(--accent)}
-.notice h2{font-size:var(--fs-title);margin:4px 0 12px;letter-spacing:-.2px}
+/* 공지 글 모달(선생님 지시 2026-10-30). 흰 바탕은 모달이라 쓴다. 길면 모달 안에서만 내려간다 */
+.modal-back{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:60;padding:16px}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:var(--r);width:min(560px,100%);
+  max-height:calc(100vh - 32px);overflow:auto;padding:18px 20px 22px}
+.notice .mhead{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
+.notice h2{flex:1;min-width:0;font-size:var(--fs-head);margin:4px 0 0;letter-spacing:-.2px}
 .notice .nbody{font-size:var(--fs-body);line-height:1.7;white-space:pre-wrap;
   border-top:1px solid var(--line);padding-top:14px}
 
@@ -64,8 +69,10 @@ html:not(.lms-ready) #app{display:none}
 .card:hover{border-color:var(--accent)}
 .card:active{background:var(--accent-fade)}
 .card .ic{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
-/* 강의 차수(1강, 2강). 작아서 안 보인다고 해서 키웠다(선생님 지시 2026-10-30) */
-.card .no{flex:0 0 auto;min-width:48px;font-size:var(--fs-head);font-weight:700;color:var(--navy-600)}
+/* 강의 차수(1강, 2강). 작아서 안 보인다고 해서 키웠고(선생님 지시 2026-10-30),
+   같은 날 "모든 메뉴의 강의차수 글씨 크기를 동일하게" 해서 학생 화면의 차수는 전부 이 한 줄이다
+   (강의 보기, 개념 노트, 미션 활동, 오늘의 질문, 형성평가). 따로 크기를 주는 클래스를 만들지 않는다 */
+.card .no{flex:0 0 auto;min-width:52px;font-size:var(--fs-title);font-weight:700;color:var(--navy)}
 /* 메뉴 카드 아이콘 바탕은 전부 메인 레드 하나(선생님 지시 2026-10-30: 칸마다 색이 달랐다) */
 .card.menu .ic{background:var(--accent)}
 .card .body{flex:1;min-width:0}
@@ -159,7 +166,6 @@ html:not(.lms-ready) #app{display:none}
 
 /* 오늘의 질문·형성평가 공용 목록 카드: 큰 차수 + 강의명 */
 .bigcard{align-items:center}
-.bigcard .bigno{flex:0 0 auto;min-width:52px;font-size:var(--fs-title);font-weight:700;color:var(--navy)}
 .bigcard .t.big{font-size:var(--fs-head);font-weight:700;white-space:normal}
 
 /* 오늘의 질문 */

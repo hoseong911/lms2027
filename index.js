@@ -12,21 +12,21 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261030b';
+import * as M from './model.js?v=20261030c';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
 const $app = document.getElementById('app');
 
 const state = {
-  view: 'login',          // login | rooms | home | menu | lesson | part | notice
+  view: 'login',          // login | rooms | home | menu | lesson | part
   sno: '', name: '',
   courseId: null,
   lessonId: null,         // 강의 보기에서 고른 강의
   partKey: null,          // 보고 있는 칸
   menuKey: null,          // 고른 메뉴(강의 보기도 메뉴 하나다)
   noticeAll: false,       // 공지사항 더보기를 눌렀는가(강의실을 새로 열면 다시 5개)
-  noticeId: null,         // 열어 본 공지사항 글
+  noticeId: null,         // 모달로 띄운 공지사항 글(없으면 null)
 
   // 로그인 화면 (선생님 지시 2026-10-28)
   loginStep: 'check',     // 'check'(학번, 이름, 비밀번호) | 'setup'(첫 접속: 비밀번호 만들기)
@@ -239,9 +239,9 @@ function viewRooms(){
 
 /* ── 강의실 안 ── 메뉴 한 화면 (선생님 지시 2026-10-30, 요구사항 108)
    전에는 배치 셋(강의 보기 / 메뉴 / 콘텐츠)을 탭으로 넘겼다. 이제 탭 없이 이 한 화면이다.
-     맨 위   : 공지사항 글 목록(최대 5개, 더 있으면 더보기). 버튼이 아니라 글이 바로 보인다(요구사항 110)
+     맨 위   : 공지사항 글 목록(최대 5개, 더보기와 접기). 버튼이 아니라 글이 바로 보인다(요구사항 110, 117)
      첫 묶음 : 강의 보기, 성적
-     둘째 묶음: 개념 노트, 미션 활동, 오늘의 질문, 형성평가, 복습
+     둘째 묶음: 개념 노트, 미션 활동, 오늘의 질문, 형성평가 (복습은 일단 뺐다, 요구사항 120)
    콘텐츠(뽑기, 게임)는 강의실 밖으로 옮길 자리라 여기서 뺐다. */
 const NOTICE_MAX = 5;
 function viewHome(){
@@ -250,24 +250,33 @@ function viewHome(){
 }
 
 // 공지사항 글 목록. 그 강의실 과목의 글만(과목마다 따로, 요구사항 115).
-// 제목만 보이고 누르면 그 글이 열린다. 늘 최신순(M.getNotices).
+// 제목만 보이고 누르면 그 글이 모달로 뜬다(요구사항 118). 늘 최신순(M.getNotices).
+// 5개가 넘으면 [더보기], 편 뒤에는 [접기](요구사항 117).
 function noticeList(c){
   const all = M.getNotices(YEAR, c?.subject);
   const shown = state.noticeAll ? all : all.slice(0, NOTICE_MAX);
   const rows = shown.map(n => `<div class="nrow" data-act="open-notice" data-id="${esc(n.id)}">
       <span class="t">${esc(n.title)}</span><span class="chev">${icon('chevron-right',16)}</span></div>`).join('')
     || `<div class="nempty">공지사항이 없습니다.</div>`;
-  const more = (!state.noticeAll && all.length > NOTICE_MAX)
-    ? `<button class="morebtn" data-act="notice-more">더보기</button>` : '';
-  return `<section class="notices"><div class="sechead">공지사항</div>${rows}${more}</section>`;
+  const toggle = all.length > NOTICE_MAX
+    ? (state.noticeAll
+        ? `<button class="morebtn" data-act="notice-less">접기</button>`
+        : `<button class="morebtn" data-act="notice-more">더보기</button>`)
+    : '';
+  return `<section class="notices"><div class="sechead">공지사항</div>${rows}${toggle}</section>`;
 }
 
-// 공지사항 글 하나
-function viewNotice(){
-  const n = M.getNotice(state.noticeId);
-  if (!n) return topbar('공지사항', 'back-home') + `<div class="empty">글을 찾지 못했습니다.</div>`;
-  return topbar('공지사항', 'back-home')
-    + `<article class="notice"><h2>${esc(n.title)}</h2><div class="nbody">${esc(n.body)}</div></article>`;
+/* 공지사항 글 하나: 화면을 바꾸지 않고 모달로 띄운다(선생님 지시 2026-10-30, 요구사항 118).
+   흰 바탕은 모달이라 쓴다(화면 규칙). 덮개를 누르거나, X를 누르거나, Esc로 닫는다.
+   render()가 state.noticeId를 보고 화면 끝에 붙인다. */
+function noticeModal(){
+  const n = state.noticeId && M.getNotice(state.noticeId);
+  if (!n) return '';
+  return `<div class="modal-back" data-act="close-notice">
+    <div class="modal notice" role="dialog" aria-modal="true" aria-label="${esc(n.title)}">
+      <div class="mhead"><h2>${esc(n.title)}</h2>
+        <button class="iconbtn" data-act="close-notice" aria-label="닫기" title="닫기">${icon('x',18)}</button></div>
+      <div class="nbody">${esc(n.body)}</div></div></div>`;
 }
 
 /* 메뉴 카드 묶음 하나. 아이콘 바탕은 전부 메인 레드다(선생님 지시 2026-10-30: 색이 여러 개였다).
@@ -275,13 +284,8 @@ function viewNotice(){
 function menuGrid(group){
   const counts = {};
   M.PART_TYPES.forEach(p => counts[p.key] = M.getPartItems(state.courseId, p.key).length);
-  const n = {
-    review: M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz).length,
-  };
   return `<div class="grid menus">${M.STUDENT_MENUS.filter(m => m.group === group).map(m => {
-    const sub = m.kind === 'part'   ? `${counts[m.key]}개`
-              : m.kind === 'review' ? `${n.review}개`
-              : '';
+    const sub = m.kind === 'part' ? `${counts[m.key]}개` : '';
     return `<div class="card menu" data-act="open-menu" data-k="${m.key}">
       <span class="ic">${icon(m.icon,22)}</span>
       <div class="body"><div class="t">${esc(m.name)}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>
@@ -314,7 +318,6 @@ function viewMenu(){
 
   if (m.kind === 'lessons') return head + lessonCards();
   if (m.kind === 'score')   return head + scoreCard(c);
-  if (m.kind === 'review')  return head + reviewList();
 
   // 칸 모아 보기: 강의마다 그 칸 하나씩. 최신 강의가 맨 위(요구사항 112)
   const items = M.getPartItems(state.courseId, m.key).reverse();
@@ -336,30 +339,23 @@ function viewMenu(){
         <span class="chev">${icon('globe',18)}</span></div>`;
     }).join('')}</div>`;
 
-  // 그 밖(개념 노트): 기존 카드
+  /* 개념 노트: 누르면 화면을 거치지 않고 바로 새 탭에 슬라이드가 열린다(선생님 지시 2026-10-30, 요구사항 121).
+     제목 밑의 부제목(강의 제목)은 걷었다(요구사항 119). 제목은 다른 메뉴처럼 강의 제목 하나다
+     (칸 제목은 기본값이 "개념 노트"라 그대로 쓰면 카드가 다 같은 글자가 된다). */
   return head + `<div class="grid">${items.map(it => `
-    <div class="card" data-act="open-part" data-lid="${it.lesson.id}" data-k="${m.key}">
+    <div class="card" data-act="open-slide" data-lid="${it.lesson.id}">
       <span class="no">${it.no}강</span>
-      <div class="body"><div class="t">${esc(it.part.title || m.name)}</div>
-        <div class="s">${esc(it.lesson.title)}</div></div>
-      <span class="chev">${icon('chevron-right',18)}</span></div>`).join('')}</div>`;
+      <div class="body"><div class="t">${esc(it.lesson.title)}</div></div>
+      <span class="chev">${icon('monitor',18)}</span></div>`).join('')}</div>`;
 }
 
 // 오늘의 질문·형성평가 공용 목록 카드(규칙: 둘은 목록이 똑같다). 큰 차수 + 강의명.
+// 차수 글씨는 학생 화면의 모든 목록이 같은 .no 하나를 쓴다(요구사항 119).
 function bigLessonCard(it){
   return `<div class="card bigcard" data-act="open-part" data-lid="${it.lesson.id}" data-k="${state.menuKey}">
-    <span class="bigno">${it.no}강</span>
+    <span class="no">${it.no}강</span>
     <div class="body"><div class="t big">${esc(it.lesson.title)}</div></div>
     <span class="chev">${icon('chevron-right',18)}</span></div>`;
-}
-
-function reviewList(){
-  const qs = M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz);
-  if (!qs.length) return `<div class="empty">열린 복습이 없습니다.</div>`;
-  return `<div class="grid">${qs.map(cq => `<div class="card" data-act="noop">
-    <span class="ic" style="background:var(--review)">${icon('list-ordered',22)}</span>
-    <div class="body"><div class="t">${esc(cq.quiz.title)}</div>
-      <div class="s">${cq.quiz.source === 'auto' ? '자동 생성' : '외부 문제'}</div></div></div>`).join('')}</div>`;
 }
 
 /* 성적(요구사항 4의 성적 창구): model.js studentGrade로 그 자리에서 계산한다.
@@ -516,10 +512,18 @@ function fmReadOne(it){
 // ── 렌더 ──
 function render(){
   const v = { login:viewLogin, rooms:viewRooms, home:viewHome,
-              lesson:viewLesson, menu:viewMenu, part:viewPart, notice:viewNotice }[state.view];
+              lesson:viewLesson, menu:viewMenu, part:viewPart }[state.view];
+  state.noticeId = null;   // 다시 그리면 모달은 사라진다
   $app.innerHTML = v ? v() : '';
   window.scrollTo(0, 0);
 }
+
+function closeNoticeModal(){
+  state.noticeId = null;
+  $app.querySelector('.modal-back')?.remove();
+}
+// Esc로 공지 모달을 닫는다
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.noticeId) closeNoticeModal(); });
 
 // ── 이벤트 위임 ──
 $app.addEventListener('click', e => {
@@ -612,8 +616,22 @@ $app.addEventListener('click', e => {
     case 'back-rooms': state.view = 'rooms'; render(); break;
     case 'back-home': state.view = 'home'; render(); break;
     case 'back-menu': state.view = 'menu'; render(); break;
-    case 'notice-more': state.noticeAll = true; render(); break;
-    case 'open-notice': state.noticeId = el.dataset.id; state.view = 'notice'; render(); break;
+    // 더보기, 접기는 목록만 다시 그린다(render는 맨 위로 스크롤하므로 쓰지 않는다)
+    case 'notice-more': case 'notice-less': {
+      state.noticeAll = el.dataset.act === 'notice-more';
+      const sec = $app.querySelector('.notices');
+      if (sec) sec.outerHTML = noticeList(M.getCourse(state.courseId));
+      break;
+    }
+    // 공지 글은 모달로. 화면은 그대로 두고 위에 얹었다가 닫으면 걷는다(요구사항 118)
+    case 'open-notice':
+      state.noticeId = el.dataset.id;
+      $app.insertAdjacentHTML('beforeend', noticeModal());
+      break;
+    case 'close-notice':
+      // 덮개 안(모달 본문)을 누른 것은 닫지 않는다. 덮개 자체나 X 단추만 닫는다
+      if (el.classList.contains('modal-back') && e.target !== el) break;
+      closeNoticeModal(); break;
 
     case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.fm = null; state.view = 'lesson'; render(); break;
     case 'open-menu': state.menuKey = el.dataset.k; state.fm = null; state.view = 'menu'; render(); break;
