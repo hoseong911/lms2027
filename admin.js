@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030p';
+import * as M from './model.js?v=20261030q';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1187,7 +1187,7 @@ function pageAxis(){
        미리보기    : 학생이 보는 슬라이드를 새 탭에
        활동지 올리기: 강의 라이브러리의 강의 편집에만 있던 것을 여기에도 둔 것이다
                      ("콘텐츠에서 활동지 올리는 기능이 없네?"). 같은 importWorksheet를 부른다
-       활동지 지우기: 올린 활동지로 채운 페이지를 비운다(clearWorksheet) */
+       활동지 지우기: 강의 내용을 전부 비운다(clearAxisContent. 요구사항 134) */
   const picker = `<div class="axhead">
     <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
       ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
@@ -1200,7 +1200,8 @@ function pageAxis(){
       <button class="ib" data-act="lesson-import" data-id="${l.id}"
         title="활동지 올리기" aria-label="활동지 올리기">${icon('upload',16)}</button>
       <button class="ib ib-danger" data-act="axis-clear" data-id="${l.id}"
-        title="올린 활동지 지우기" aria-label="올린 활동지 지우기">${icon('trash-2',16)}</button>
+        title="올린 활동지 지우기 (강의 내용을 모두 비웁니다)"
+        aria-label="올린 활동지 지우기. 강의 내용을 모두 비웁니다">${icon('trash-2',16)}</button>
     </div>
   </div>`;
 
@@ -1406,7 +1407,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030p');
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030q');
       got = await worksheetFromPdf(file);
     } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
@@ -1432,28 +1433,32 @@ function importWorksheet(lessonId){
   inp.click();
 }
 
-/* ── 올린 활동지 지우기 (선생님 지시 2026-10-30, 요구사항 133) ──
+/* ── 올린 활동지 지우기 (선생님 지시 2026-10-30, 요구사항 133, 134) ──
    "올린 활동지를 삭제하는 기능은 없네 그거 추가해줘."
    활동지 파일은 어디에도 저장하지 않는다(브라우저 안에서 글자만 꺼내 쓰고 버린다).
-   그래서 "올린 활동지를 지운다"는 곧 그 내용으로 채운 페이지를 비우는 것이다.
-   올리기가 개념 노트와 미션 활동 둘을 채우므로 지우기도 둘을 같이 본다.
-   무엇을 지우는지 먼저 세어 보여 주고 묻는다(되돌릴 수 없다). */
-function clearWorksheet(lessonId){
-  // 빈 페이지만 만들어 둔 것은 "내용 없음"으로 본다(올리기의 has와 같은 기준)
-  const pagesOf = k => M.getPages(lessonId, k)
-    .filter(p => p.title.trim() || p.rows.some(r => r.label.trim() || r.text.trim()));
-  const c = pagesOf('concept').length, m = pagesOf('mission').length;
-  if (!c && !m){ toast('지울 내용이 없습니다.'); return; }
-  const what = [c ? `개념 노트 ${c}페이지` : '', m ? `미션 활동 ${m}페이지` : ''].filter(Boolean).join(', ');
-  confirmDelete({ title:'올린 활동지 지우기', okText:'지우기',
-    bodyHtml:`<b>${esc(what)}</b>를 모두 지웁니다.`
-      + `<ul><li>활동지에서 꺼내 넣은 내용과 그 뒤에 손으로 고친 것이 함께 사라집니다</li>`
-      + `<li>되돌릴 수 없습니다. 활동지 PDF로 다시 올릴 수는 있습니다</li></ul>` })
+   그래서 "올린 활동지를 지운다"는 곧 그 내용으로 채운 것을 비우는 것이다.
+
+   **비우는 범위는 강의 내용 전부다**(선생님 지시 2026-10-30, 요구사항 134:
+   "활동지를 지웠는데 왜 강의는 그대로지? 강의 콘텐츠도 없어저야지").
+   처음에는 개념 노트와 미션 활동 페이지만 비웠는데, 표지, 전시학습확인, 학습 목표, 동기 유발,
+   맺음말이 남아 강의가 그대로인 것처럼 보였다. **다시 좁히지 않는다.**
+   강의와 칸, 강의실에 꽂은 것, 성적과 진도, 오늘의 질문은 그대로다
+   (무엇을 두고 무엇을 비우는지는 model.js의 clearLessonContent 머리 주석에 있다).
+   무엇을 비우는지 단계 이름으로 먼저 보여 주고 묻는다(되돌릴 수 없다). */
+function clearAxisContent(lessonId){
+  const steps = M.lessonContentSteps(lessonId);
+  if (!steps.length){ toast('비울 내용이 없습니다.'); return; }
+  const names = steps.map(k => M.axisStep(k)?.name).filter(Boolean).join(', ');
+  confirmDelete({ title:'올린 활동지 지우기', okText:'비우기',
+    bodyHtml:`<p>이 강의의 내용을 모두 비웁니다: <b>${esc(names)}</b></p>`
+      + `<ul><li>활동지에서 꺼내 넣은 것과 그 뒤에 손으로 고친 것이 함께 사라집니다</li>`
+      + `<li>강의와 칸은 그대로 남습니다. 활동지를 다시 올리면 바로 채워집니다</li>`
+      + `<li>오늘의 질문은 그 메뉴에서 고치는 것이라 그대로 둡니다</li>`
+      + `<li>성적과 진도 기록은 지우지 않습니다</li></ul>` })
     .then(ok => {
       if (!ok) return;
-      if (c) M.setPages(lessonId, 'concept', []);
-      if (m) M.setPages(lessonId, 'mission', []);
-      toast('올린 활동지를 지웠습니다.'); render();
+      M.clearLessonContent(lessonId);
+      toast('강의 내용을 비웠습니다.'); render();
     });
 }
 /* ── 미션 활동 (hoistory/lms "미션 Check" 카드 틀 이식) ─────────────────────
@@ -2311,8 +2316,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'axis-save':
       document.activeElement?.blur?.();
       toast('저장했습니다.'); break;
-    // 올린 활동지 지우기(요구사항 133). 올리기와 짝이고 개념 노트와 미션 활동을 같이 본다
-    case 'axis-clear': if (id) clearWorksheet(id); break;
+    // 올린 활동지 지우기(요구사항 133, 134). 올리기와 짝이고 강의 내용 전부를 비운다
+    case 'axis-clear': if (id) clearAxisContent(id); break;
     // 미리보기는 학생이 보는 그 슬라이드를 그대로 새 탭에 띄운다(같은 slide-deck.js를 쓴다)
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;

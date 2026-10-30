@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages } from './shared/slide-axis.js?v=20261030p';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER } from './shared/slide-axis.js?v=20261030q';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -913,7 +913,7 @@ export function setPages(lessonId, key, pages){
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
-  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030p';
+  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030q';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -972,6 +972,57 @@ export function deckStepFilled(lessonId, key){
   if (key === 'review') return arr.some(it => String(it?.q || '').trim());
   if (key === 'hook')   return arr.some(it => String(it?.url || '').trim());
   return arr.some(t => String(t).trim());
+}
+
+/* ── 강의 내용 비우기 (선생님 지시 2026-10-30, 요구사항 134) ──
+   "활동지를 지웠는데 왜 강의는 그대로지? 강의 콘텐츠도 없어저야지.
+    콘텐츠에서 지우는 건 변형되서 올라온 콘텐츠 자체를 지우는거잖아."
+   처음에는 개념 노트와 미션 활동 페이지만 비웠더니 표지, 전시학습확인, 학습 목표, 동기 유발,
+   맺음말이 남아 강의가 그대로인 것처럼 보였다. 이제 축 여덟 단계의 내용을 다 비운다.
+
+   비우는 것은 내용뿐이다. 다음은 그대로 둔다:
+     강의 자체와 칸(parts)        다시 올리면 바로 채워지게. 강의를 지우는 것은 강의 라이브러리의 일이다
+     강의실에 꽂은 것             학생 화면의 자리는 그대로
+     성적(course_grades)과 진도   강의 내용과 매여 있지 않다
+     오늘의 질문(parts.question)  그 메뉴에서 고치는 것이고 활동지가 넣는 것도 아니다
+     미션 활동 메뉴의 이름        같은 까닭(parts.mission.title)
+
+   덱이 든 단계 여섯은 덱을 빈 모양으로 되돌리는 것으로 한 번에 비운다: 빈 모양의 출처는
+   blankDeck 하나다. 단계를 늘릴 때 여기에 또 적지 않아도 같이 비워진다. */
+function stepHasContent(lessonId, key){
+  const l = getLesson(lessonId); if (!l) return false;
+  const d = getDeck(lessonId);
+  const pageFilled = content => toPages(content).some(p => String(p.title).trim()
+    || p.rows.some(r => String(r.label).trim() || String(r.text).trim()));
+  /* deckStepFilled를 쓰지 않고 따로 세는 까닭: 저기와 여기가 묻는 것이 다르다.
+     저기는 "슬라이드에 쪽이 서는가", 여기는 "비울 것이 있는가"다.
+       표지는 저기서 늘 true다(강의 제목만 있어도 쪽이 선다). 여기서는 비울 것,
+       곧 단원과 교과서 쪽수가 적혀 있는지만 본다.
+       미션 활동은 저기서 미션 활동 메뉴의 이름도 센다. 그 이름은 여기서 지우지 않으므로 뺀다.
+     이 함수가 세는 것과 clearLessonContent가 지우는 것이 정확히 같아야 한다
+     (어긋나면 "지운다고 했는데 남아 있다"가 된다). 둘을 늘 같이 고친다. */
+  if (key === 'cover')    return !!(String(d.cover.unit).trim() || String(d.cover.pages).trim());
+  if (key === 'concept')  return pageFilled(l.parts?.concept?.content);
+  if (key === 'mission')  return pageFilled(d.mission.content);
+  if (key === 'question') return false;              // 다른 메뉴 소유라 비우지 않는다
+  const arr = d[key]?.items || [];
+  if (key === 'review') return arr.some(it => String(it?.q || '').trim());
+  if (key === 'hook')   return arr.some(it => String(it?.url || '').trim());
+  return arr.some(t => String(t).trim());
+}
+// 비울 내용이 있는 단계들(축 순서). 어드민이 확인 창에 "무엇을 지우는지" 적는 데 쓴다
+export function lessonContentSteps(lessonId){
+  return AXIS_ORDER.filter(k => stepHasContent(lessonId, k));
+}
+// 비우고 무엇을 비웠는지 돌려준다. 비울 것이 없으면 아무것도 하지 않는다
+export function clearLessonContent(lessonId){
+  const l = getLesson(lessonId); if (!l) return [];
+  const had = lessonContentSteps(lessonId);
+  if (!had.length) return [];
+  l.deck = blankDeck();                              // 덱이 든 단계 여섯이 한 번에 빈다
+  if (l.parts?.concept) l.parts.concept.content = [];
+  saveLesson(lessonId);
+  return had;
 }
 
 // ── 오늘의 질문 ──
