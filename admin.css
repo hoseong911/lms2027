@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261029f");
+@import url("shared/theme.css?v=20261030i");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -587,33 +587,60 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 #toast.err{background:var(--red)}
 
 
-/* ══════ 강의 슬라이드 축 편집기 (선생님 지시 2026-10-30, 요구사항 125) ══════
-   두 단 틀(.split)을 그대로 쓴다. 왼쪽은 강의 목록, 오른쪽은 축 여덟 줄.
-   왼쪽 폭은 강의 제목이 길어 학생 관리와 같은 --w-list다. */
-.split.split-axis{grid-template-columns:var(--w-list) minmax(0,1fr)}
+/* ══════ 강의 슬라이드 축 편집기 (선생님 지시 2026-10-30, 요구사항 125, 126) ══════
+   "강의를 드롭다운으로 선택하면 전체 너비로 편집창이 뜨게. 맨 왼쪽에 편집해야 할 메뉴를
+    작게 두고 그걸 누르면 오른쪽에서 편집 상세 내용을 건들게."
 
-/* 축 한 줄. 합쳐진 목록 줄 모양(가로 구분선만, 맞닿는 테두리는 하나로) */
-.axrow{display:flex;align-items:center;gap:10px;border:0;border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line);border-radius:0;min-height:var(--h-row);
-  padding:0 2px;cursor:pointer;background:transparent}
-.axrow + .axrow{border-top:0}
+   그래서 강의 목록 단(--w-list 300px)을 걷고 머리줄 드롭다운으로 바꿨다. 남은 너비를
+   편집창이 다 쓴다. 그 안이 다시 두 칸인데 왼쪽은 축 단계 줄자(--w-axis)라 훨씬 좁다.
+   다른 두 단 화면(.split)과 섞이지 않게 클래스 이름을 따로 뒀다(.axwrap). */
+.axhead{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.axpick{flex:0 1 420px;min-width:0;font-weight:700}
+
+.axwrap{display:grid;grid-template-columns:var(--w-axis) minmax(0,1fr);gap:20px;
+  align-items:stretch;min-height:0}
+
+/* 왼쪽 줄자: 단계 고르개라서 목록 줄(--h-row 46px)보다 낮고 글씨도 본문 크기 그대로다.
+   가로 구분선만, 맞닿는 테두리는 하나로(화면 규칙) */
+.axrail{display:flex;flex-direction:column;min-width:0;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.axrow{display:flex;align-items:center;gap:9px;width:100%;border:0;border-top:1px solid var(--line);
+  border-radius:0;min-height:var(--h-ctl);padding:5px 6px 5px 2px;cursor:pointer;
+  background:transparent;font-family:inherit;font-size:var(--fs-body);color:var(--ink);text-align:left}
+.axrow:first-child{border-top:0}
 .axrow:hover{background:var(--hover)}
 .axrow.on{background:var(--accent-fade)}
 .axrow.on:hover{background:var(--accent-fade-hover)}
 /* 단계 번호: 축 순서가 한눈에 보여야 해서 줄마다 단다 */
-.axno{flex:0 0 auto;display:grid;place-items:center;width:22px;height:22px;
+.axno{flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;
   background:var(--navy);color:#fff;font-size:var(--fs-meta);font-weight:700}
 .axrow.on .axno{background:var(--accent)}
-.axrow .grow{flex:1;min-width:0;font-weight:700}
-/* 채운 단계 표시. 안 채운 줄은 글자를 흐리게 둔다(스위치를 두지 않는 대신이다) */
-.axdot{flex:0 0 auto;display:grid;color:var(--pass)}
-.axrow.off .grow{font-weight:500;color:var(--sub)}
-.axrow .chev{margin-right:0}
+.axnm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 안 채운 단계는 흐리게 둔다. 켜고 끄는 스위치를 두지 않는 대신 여기서 빈 자리를 본다 */
+.axrow.off .axnm{font-weight:500;color:var(--sub)}
+.axrow.off .axno{background:var(--line-strong)}
 
-/* 펼친 단계의 편집 칸. 줄 아래에 들어가는 상세라 바탕 없이 왼쪽 선으로만 들여쓴다 */
-.axedit{border-left:2px solid var(--accent);padding:12px 0 16px 14px;margin-bottom:2px}
-.axedit .ce-add{margin-top:10px}
-.axedit .formrow{margin-bottom:8px}
+/* 오른쪽 편집 상세. 상세 패널이라 바탕 없이 세로 구분선 하나로만 나눈다(화면 규칙) */
+.axpane{display:flex;flex-direction:column;min-width:0;min-height:0;
+  border-left:1px solid var(--line);padding-left:20px}
+.axpane-head{display:flex;align-items:center;gap:12px;min-height:var(--h-row);
+  padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.axpane-head h3{flex:1;margin:0;font-size:var(--fs-title);letter-spacing:-.2px}
+.axpane-body{flex:1 1 auto;min-height:0}
+.axpane-body .ce-add{margin-top:12px}
+.axpane-body > .row:first-child{border-top:0}
+
+/* 문항 하나를 묶은 칸(전시학습확인, 동기 유발). 머리에 번호와 도구, 아래에 이름표 붙은 칸들.
+   한 묶음이 카드 하나라는 규칙(2026-10-28)에 맞춰 묶음 사이는 얇은 선으로만 나눈다 */
+.axitem{border-top:1px solid var(--line);padding:4px 0 12px}
+.axitem:first-child{border-top:0}
+.axitem-head{display:flex;align-items:center;gap:9px;min-height:var(--h-ctl)}
+.axitem-no{flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;
+  background:var(--navy-600);color:#fff;font-size:var(--fs-meta);font-weight:700}
+.axitem-sp{flex:1}
+.axitem-body > .row{border-top:0}
+/* 유형과 종류 고르개는 칸을 다 채우지 않는다: 짧은 낱말이라 길면 읽기가 더 힘들다 */
+.axtype{width:130px;flex:0 0 auto}
 
 /* 다른 메뉴에서 온 내용을 읽기만 하는 칸(오늘의 질문, 미션 제목).
    고칠 수 없는 자리라 입력 칸으로 그리지 않는다 */
@@ -621,13 +648,23 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 .axread .axq{font-size:var(--fs-head);font-weight:700;line-height:1.5}
 .axread .axg{font-size:var(--fs-body);color:var(--sub);line-height:1.7;margin-top:8px;white-space:pre-wrap}
 
-/* 줄 하나에 칸이 둘 이상인 단계(전시학습확인의 문답, 동기 유발의 주소와 설명) */
-.qacols{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.qacols .f{width:100%}
-.qacols .formrow{margin-bottom:0}
-.axedit .ce-line{align-items:flex-start}
-.axedit .ce-line .ce-tag{min-width:22px;padding-top:6px}
-.axedit .ce-line .tools{padding-top:3px}
+/* 줄 하나가 글자 하나인 단계(학습 목표, 미션 안내, 맺음말).
+   줄이 길어지는 자리가 있어 늘어나는 글 칸을 쓴다. 번호와 도구는 글 칸 첫 줄에 맞춘다 */
+.axpane-body .ce-line{align-items:flex-start}
+.axpane-body .ce-line .ce-tag{min-width:20px;padding-top:7px;text-align:right}
+.axpane-body .ce-line .tools{padding-top:3px}
+.ta1{min-height:var(--h-ctl);resize:vertical}
+
+/* 좁은 화면에서는 줄자가 위쪽 가로 줄이 되고 편집창이 그 아래로 내려온다 */
+@media (max-width:860px){
+  .axwrap{grid-template-columns:minmax(0,1fr);gap:14px}
+  .axrail{flex-direction:row;overflow-x:auto;scrollbar-width:none;border-bottom:0}
+  .axrail::-webkit-scrollbar{display:none}
+  .axrow{width:auto;flex:0 0 auto;border-top:0;padding:5px 10px 5px 6px}
+  .axnm{white-space:nowrap}
+  .axpane{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:4px}
+  .axpick{flex:1 1 auto}
+}
 /* ══════ 좁은 화면 ══════
    선생님은 PC와 모바일 둘 다로 들어온다. 좁아지면 왼쪽 메뉴가 위쪽 가로 줄이 된다. */
 @media (max-width:760px){

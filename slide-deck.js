@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck } from './shared/slide-axis.js?v=20261030h';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef } from './shared/slide-axis.js?v=20261030i';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -154,13 +154,29 @@ export function renderSlide(s){
     </div>`;
   }
 
+  /* 전시학습확인: 문항 유형 셋(단답형, OX, 초성형. 선생님 지시 2026-10-30).
+     유형이 가르는 것은 "학생이 어떻게 답하는가"라서 답 칸의 모양만 다르다.
+       OX     : O와 X 두 칸이 서고 정답인 쪽이 눌러서 열린다
+       그 밖  : 가린 답 한 칸이 눌러서 열린다
+     글배치: 묻는 줄은 번호와 유형 이름표를 머리에 두고, 답은 묻는 줄 밑으로 들여 쓴다.
+     번호 칸 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가 가지런하다. */
   if (s.type === 'qa')
-    return `${mark}<div class="s-body s-qa">${s.items.map((it, i) => `
-      <div class="qa">
-        <div class="qa-q"><span class="qa-n">${i + 1}</span>${inlineText(it.q)}</div>
-        ${String(it.a || '').trim()
-          ? `<button class="qa-a" data-act="reveal">${inlineText(it.a)}</button>` : ''}
-      </div>`).join('')}</div>`;
+    return `${mark}<div class="s-body s-qa">${s.items.map((it, i) => {
+      const ans = String(it.a || '').trim();
+      let answer = '';
+      if (it.type === 'ox'){
+        const on = ans.toUpperCase();
+        answer = `<div class="qa-ox">${['O','X'].map(v =>
+          `<button class="qa-oxb ${on === v ? 'is' : ''}" data-act="reveal">${v}</button>`).join('')}</div>`;
+      } else if (ans){
+        answer = `<button class="qa-a" data-act="reveal">${inlineText(ans)}</button>`;
+      }
+      return `<div class="qa">
+        <div class="qa-q"><span class="qa-n">${i + 1}</span>
+          <span class="qa-t">${esc(reviewTypeDef(it.type).name)}</span>
+          <span class="qa-txt">${inlineText(it.q)}</span></div>
+        ${answer}</div>`;
+    }).join('')}</div>`;
 
   if (s.type === 'numbered')
     return `${mark}<div class="s-body s-num">${s.items.map((t, i) => `
@@ -207,6 +223,13 @@ export function wireReveal(root){
   if (!root || root.dataset.revealWired) return;
   root.dataset.revealWired = '1';
   root.addEventListener('click', e => {
+    // OX는 어느 쪽을 눌러도 두 칸이 같이 열린다: 어느 쪽이 답인지 보여 주는 것이 목적이다
+    const ox = e.target.closest('.qa-ox');
+    if (ox){
+      const on = ox.querySelector('.qa-oxb.open');
+      ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on));
+      return;
+    }
     const t = e.target.closest('.blank, .qa-a');
     if (t) t.classList.toggle('open');
   });

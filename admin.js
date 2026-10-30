@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030h';
+import * as M from './model.js?v=20261030i';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1152,11 +1152,17 @@ function pageConcept(){
    "표지 - 전시학습확인(퀴즈 등) - 학습 목표 - 동기 유발 내용(사진, 영상류) -
     개념 노트(강의 내용) - 미션 활동 - 오늘의 질문 - 맺음말 이 순서야"
 
-   두 단이다(화면 규칙): 왼쪽은 강의 목록, 오른쪽은 고른 강의의 축 여덟 줄.
-   줄을 누르면 그 단계를 고치는 칸이 그 줄 아래에 펼쳐진다.
+   화면 틀 (선생님 지시 2026-10-30, 요구사항 126)
+     "개념 노트 콘텐츠는 강의를 드롭다운으로 선택하면 전체 너비로 편집창이 뜨게 해줘.
+      맨 왼쪽에 편집해야 할 메뉴를 작게 두고 그걸 누르면 오른쪽에서 편집 상세 내용을 건들게 해줘."
+
+   그래서 강의는 왼쪽 목록이 아니라 **머리줄 드롭다운**으로 고른다. 목록이 먹던 300px이 비어
+   편집창이 화면 너비를 다 쓴다. 그 안이 다시 두 칸인데, 왼쪽은 축 여덟 단계를 **좁게**
+   세운 줄자(--w-axis)고 오른쪽이 고른 단계의 편집 상세다.
+   다른 두 단 화면(.split)과 달리 왼쪽이 "자료 목록"이 아니라 "단계 고르개"라서 훨씬 좁다.
 
    단계는 고정이라 더하고 빼고 섞는 단추를 두지 않는다. 내용이 빈 단계는 슬라이드에서
-   그냥 빠지므로 켜고 끄는 스위치도 없다. 줄 오른쪽의 채움 표시가 그 자리를 대신한다.
+   그냥 빠지므로 켜고 끄는 스위치도 없다. 줄의 채움 표시가 그 자리를 대신한다.
 
    개념 노트와 오늘의 질문 단계는 이미 제자리가 있는 내용을 그대로 쓴다
    (shared/slide-axis.js의 from 참고). 같은 것을 두 군데 적지 않게 하려는 것이다.
@@ -1164,45 +1170,39 @@ function pageConcept(){
 function pageAxis(){
   const lessons = M.getLessonsWithPart('concept');
   if (!lessons.length) return `<div class="empty">개념 노트가 있는 강의가 없습니다.</div>`;
-  // 넓은 화면에서는 오른쪽 칸이 늘 하나 떠 있어야 하므로 고른 것이 없으면 맨 위 강의를 고른다.
-  if (!lessons.some(l => l.id === state.conceptLessonId))
-    state.conceptLessonId = WIDE.matches ? lessons[0].id : null;
-
-  const row = l => `<div class="row ${l.id===state.conceptLessonId?'on':''}">
-      <div class="grow rowlink" data-act="axis-lesson" data-id="${l.id}">
-        <div class="t">${!WIDE.matches ? `<span class="chev">${icon(l.id===state.conceptLessonId?'chevron-down':'chevron-right',14)}</span>` : ''}${esc(l.title)}</div></div>
-      ${l.id===state.conceptLessonId ? `<div class="tools">
-        <button class="ib" data-act="axis-preview" data-id="${l.id}"
-          title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}</button></div>` : ''}</div>`;
+  // 고른 강의가 없거나 사라졌으면 맨 위(최신) 강의를 고른다. 편집창이 늘 하나 떠 있어야 한다
+  if (!lessons.some(l => l.id === state.conceptLessonId)) state.conceptLessonId = lessons[0].id;
   const l = M.getLesson(state.conceptLessonId);
+  // 단계도 늘 하나 열려 있다(오른쪽 칸이 비지 않게)
+  if (!M.SLIDE_AXIS.some(a => a.key === state.axisStep)) state.axisStep = M.SLIDE_AXIS[0].key;
+  const ax = M.axisStep(state.axisStep);
 
-  // 좁은 화면에서는 고른 강의 줄 아래로 축이 펼쳐진다(다른 두 단 화면과 같은 길)
-  if (!WIDE.matches)
-    return lessons.map(x => x.id === state.conceptLessonId
-      ? row(x) + `<div class="detail">${axisRows(x)}</div>` : row(x)).join('');
+  const picker = `<div class="axhead">
+    <select class="f axpick" data-act="axis-lesson" aria-label="강의 고르기">
+      ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
+    </select>
+    <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
+      title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}<span>미리보기</span></button>
+  </div>`;
 
-  if (!l) return `<div class="split split-axis"><div class="split-list">${lessons.map(row).join('')}</div></div>`;
-  return `<div class="split split-axis">
-    <div class="split-list">${lessons.map(row).join('')}</div>
-    <div class="pane">
-      <div class="pane-head"><h3>${esc(l.title)}</h3>
-        <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
-          title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}<span>미리보기</span></button></div>
-      <div class="dscroll">${axisRows(l)}</div>
+  return picker + `<div class="axwrap">
+    <nav class="axrail">${axisRail(l)}</nav>
+    <div class="axpane">
+      <div class="axpane-head"><h3>${esc(ax.name)}</h3></div>
+      <div class="axpane-body">${axisEditor(l, ax)}</div>
     </div></div>`;
 }
 
-// 축 여덟 줄. 고른 줄 아래에 그 단계를 고치는 칸이 펼쳐진다
-function axisRows(l){
+/* 왼쪽 줄자: 축 여덟 단계. 좁아서 번호와 이름만 들어간다.
+   채운 단계는 이름이 진하고 왼쪽에 레드 띠가 선다. 안 채운 단계는 흐리다
+   (켜고 끄는 스위치를 두지 않는 대신 여기서 어디가 비었는지 본다). */
+function axisRail(l){
   return M.SLIDE_AXIS.map((ax, i) => {
-    const open = state.axisStep === ax.key;
+    const on = state.axisStep === ax.key;
     const filled = M.deckStepFilled(l.id, ax.key);
-    const row = `<div class="axrow ${open?'on':''} ${filled?'':'off'}" data-act="axis-step" data-k="${ax.key}">
-      <span class="axno">${i + 1}</span>
-      <span class="grow">${esc(ax.name)}</span>
-      ${filled ? `<span class="axdot">${icon('check',15)}</span>` : ''}
-      <span class="chev">${icon(open?'chevron-down':'chevron-right',16)}</span></div>`;
-    return open ? row + `<div class="axedit">${axisEditor(l, ax)}</div>` : row;
+    return `<button class="axrow ${on?'on':''} ${filled?'':'off'}"
+      data-act="axis-step" data-k="${ax.key}" aria-current="${on?'true':'false'}">
+      <span class="axno">${i + 1}</span><span class="axnm">${esc(ax.name)}</span></button>`;
   }).join('');
 }
 
@@ -1211,15 +1211,19 @@ function axisRows(l){
 function axisEditor(l, ax){
   const k = ax.key;
 
+  /* 글배치(선생님 지시 2026-10-30: "글배치까지 한꺼번에 신경써야해")
+     편집창이 넓어졌으니 칸마다 단위 글씨를 오른쪽에 매달지 않고, 이름표를 왼쪽에 세로로
+     가지런히 세운다. 이미 쓰는 틀(.row.row-top + .gen-label)을 그대로 쓴다:
+     일반 설정과 형성평가 문제 만들기가 같은 틀이라 어드민 안에서 폼 모양이 하나로 보인다. */
+  const fld = (label, ctl) => `<div class="row row-top"><div class="t gen-label">${label}</div>${ctl}</div>`;
+
   if (ax.edit === 'cover'){
     const d = M.getDeck(l.id);
     // 강 번호와 강의 제목은 이미 있는 것에서 오므로 여기서 고치지 않는다
-    return `<div class="formrow">
-        <input class="f grow" data-act="deck-cover" data-f="unit" data-id="${l.id}"
-          value="${esc(d.cover.unit)}"><span class="unit">단원</span></div>
-      <div class="formrow">
-        <input class="f grow" data-act="deck-cover" data-f="pages" data-id="${l.id}"
-          value="${esc(d.cover.pages)}"><span class="unit">교과서 쪽수</span></div>`;
+    return fld('단원', `<input class="f grow" data-act="deck-cover" data-f="unit" data-id="${l.id}"
+        value="${esc(d.cover.unit)}" aria-label="단원">`)
+      + fld('교과서 쪽수', `<input class="f grow" data-act="deck-cover" data-f="pages" data-id="${l.id}"
+        value="${esc(d.cover.pages)}" aria-label="교과서 쪽수">`);
   }
 
   if (ax.edit === 'concept')
@@ -1243,39 +1247,53 @@ function axisEditor(l, ax){
     <button class="ib ib-sm ib-danger" data-act="deck-del" data-id="${l.id}" data-k="${k}" data-i="${i}"
       title="삭제" aria-label="삭제">${icon('trash-2',14)}</button></div>`;
 
+  // 줄 하나를 묶는 틀. 머리에 번호와 도구를 두고 그 아래에 이름표 붙은 칸을 쌓는다
+  const card = (i, body, badge = '') => `<div class="axitem">
+    <div class="axitem-head"><span class="axitem-no">${i + 1}</span>${badge}
+      <span class="axitem-sp"></span>${tools(i)}</div>
+    <div class="axitem-body">${body}</div></div>`;
+
   let rows = '';
   if (ax.edit === 'qa'){
-    // 전시학습확인: 묻는 줄과 답 줄 둘. 답은 수업 중에 눌러서 연다
-    rows = items.map((it, i) => `<div class="ce-line">
-      <span class="ce-tag">${i + 1}</span>
-      <div class="qacols">
-        <input class="f" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="q"
-          value="${esc(it.q)}">
-        <div class="formrow"><input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}"
-          data-i="${i}" data-f="a" value="${esc(it.a)}"><span class="unit">답</span></div>
-      </div>${tools(i)}</div>`).join('');
+    /* 전시학습확인: 문항 유형 셋(선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형").
+       유형은 문항마다 따로 고른다(한 화면에 세 유형이 섞여 서는 것이 보통이다).
+       OX만 답 칸이 라디오 둘이고 단답형과 초성형은 글자 한 칸이다.
+       초성은 선생님이 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
+    rows = items.map((it, i) => {
+      const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
+      const type = `<select class="f axtype" ${set('type')} aria-label="문항 유형">
+        ${M.REVIEW_TYPES.map(t => `<option value="${t.key}" ${it.type===t.key?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>`;
+      const a = it.type === 'ox'
+        ? `<div class="grow fmox">${['O','X'].map(v => `<label class="fmoxb">
+            <input type="radio" class="fmradio" name="rv-${l.id}-${i}" value="${v}"
+              ${String(it.a).toUpperCase()===v?'checked':''} ${set('a')}>${v}</label>`).join('')}</div>`
+        : `<input class="f grow" ${set('a')} value="${esc(it.a)}" aria-label="정답">`;
+      return card(i, fld('유형', `<div class="grow">${type}</div>`)
+        + fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)
+        + fld('정답', a));
+    }).join('');
 
   } else if (ax.edit === 'media'){
     // 동기 유발: 사진이면 그림 주소, 영상이면 유튜브 주소. 한 쪽에 하나씩 뜬다
-    rows = items.map((it, i) => `<div class="ce-line">
-      <span class="ce-tag">${i + 1}</span>
-      <div class="qacols">
-        <div class="formrow">
-          <select class="f" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="kind">
+    rows = items.map((it, i) => {
+      const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
+      return card(i,
+        fld('종류', `<div class="grow"><select class="f axtype" ${set('kind')} aria-label="종류">
             <option value="image" ${it.kind!=='video'?'selected':''}>사진</option>
-            <option value="video" ${it.kind==='video'?'selected':''}>영상</option></select>
-          <input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="url"
-            value="${esc(it.url)}"><span class="unit">주소</span></div>
-        <div class="formrow"><input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}"
-          data-i="${i}" data-f="caption" value="${esc(it.caption)}"><span class="unit">설명</span></div>
-      </div>${tools(i)}</div>`).join('');
+            <option value="video" ${it.kind==='video'?'selected':''}>영상</option></select></div>`)
+        + fld(it.kind === 'video' ? '유튜브 주소' : '그림 주소',
+            `<input class="f grow" ${set('url')} value="${esc(it.url)}" aria-label="주소">`)
+        + fld('설명', `<input class="f grow" ${set('caption')} value="${esc(it.caption)}" aria-label="설명">`));
+    }).join('');
 
   } else {
-    // 학습 목표, 미션 활동 안내, 맺음말: 줄 하나가 글자 하나다
+    /* 학습 목표, 미션 활동 안내, 맺음말: 줄 하나가 글자 하나다.
+       줄이 길어지는 자리(미션 안내)가 있어 한 칸짜리 입력이 아니라 늘어나는 글 칸을 쓴다. */
     rows = items.map((it, i) => `<div class="ce-line">
       <span class="ce-tag">${i + 1}</span>
-      <input class="f grow" data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}"
-        value="${esc(it)}">${tools(i)}</div>`).join('');
+      <textarea class="f grow ta ta1" rows="2" data-act="deck-set" data-id="${l.id}" data-k="${k}"
+        data-i="${i}" aria-label="${esc(ax.name)} ${i + 1}번">${esc(it)}</textarea>${tools(i)}</div>`).join('');
   }
 
   // 미션 활동은 제목이 미션 활동 메뉴에서 온다. 여기 적는 것은 활동 안내 줄이다
@@ -2135,12 +2153,9 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
     case 'ce-del': M.conceptDelLine(id, +k); render(); break;
 
-    /* 강의 슬라이드 축 편집기(요구사항 125). 두 단이라 넓은 화면에서는 같은 강의를
-       다시 눌러도 닫지 않는다(화면 규칙). 좁은 화면에서만 닫힌다. */
-    case 'axis-lesson':
-      state.conceptLessonId = (!WIDE.matches && state.conceptLessonId === id) ? null : id;
-      render(); break;
-    case 'axis-step': state.axisStep = state.axisStep === k ? null : k; render(); break;
+    /* 강의 슬라이드 축 편집기(요구사항 125, 126). 강의 고르기는 드롭다운이라 change 쪽에 있다.
+       단계는 늘 하나 열려 있다(오른쪽 편집창이 비지 않게). 같은 줄을 다시 눌러도 닫지 않는다. */
+    case 'axis-step': state.axisStep = k; render(); break;
     // 미리보기는 학생이 보는 그 슬라이드를 그대로 새 탭에 띄운다(같은 slide-deck.js를 쓴다)
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;
@@ -2396,11 +2411,15 @@ document.getElementById('shell').addEventListener('change', e => {
     M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
+  } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운
+    state.conceptLessonId = el.value; render();
   } else if (el.dataset.act === 'deck-set'){
     /* 축 편집기의 줄: 포커스가 빠질 때 저장하고 다시 그리지 않는다(커서 유지).
-       사진과 영상 고르개(data-f="kind")만 다시 그린다: 고른 것에 따라 칸 이름이 바뀐다. */
+       고르개 둘만 다시 그린다. 고른 것에 따라 아래 칸의 모양이 바뀌기 때문이다:
+       문항 유형(type)은 정답 칸이 글자 한 칸과 OX 라디오로 갈리고,
+       동기 유발 종류(kind)는 주소 칸의 이름표가 그림과 유튜브로 갈린다. */
     M.deckSetItem(el.dataset.id, el.dataset.k, +el.dataset.i, el.dataset.f || null, el.value);
-    if (el.dataset.f === 'kind') render();
+    if (el.dataset.f === 'kind' || el.dataset.f === 'type') render();
   } else if (el.dataset.act === 'q-score'){   // 답변 점수 저장
     M.setSubScore(el.dataset.id, el.value);
   } else if (el.dataset.act === 'enroll'){

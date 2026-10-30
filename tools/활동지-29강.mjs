@@ -109,11 +109,13 @@ export const LESSON = {
   deck: {
     cover: { unit: 'Ⅳ-2. 사림의 성장과 문화의 발달', pages: 'p.117~119' },
 
-    // 활동지에 없는 단계: 지난 차시(사화)를 묻는 임시 문항이다. 선생님이 고치실 자리
+    /* 활동지에 없는 단계: 지난 차시(사화)를 묻는 임시 문항이다. 선생님이 고치실 자리.
+       유형 셋(단답형, OX, 초성형)이 어떻게 보이는지 보이게 하나씩 넣었다.
+       초성형의 초성은 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
     review: { items: [
-      { q: '조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?', a: '사화' },
-      { q: '조광조의 개혁이 꺾이고 사림이 쫓겨난 중종 대의 사화는?', a: '기묘사화' },
-      { q: '사화를 겪은 사림이 힘을 다시 모은 곳은 향촌의 무엇인가?', a: '서원과 향약' },
+      { type:'short',   q: '조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?', a: '사화' },
+      { type:'ox',      q: '조광조의 개혁은 중종의 지지가 끝까지 이어져 성공하였다.', a: 'X' },
+      { type:'initial', q: '사화를 겪은 사림이 향촌에서 힘을 다시 모은 곳은? (ㅅㅇ)', a: '서원' },
     ]},
 
     // 활동지에 없는 단계. 사진과 영상 주소는 지어낼 수 없어 비워 둔다(빈 단계는 슬라이드에서 빠진다)
@@ -238,6 +240,9 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
 <script>
 // 가린 빈칸과 전시학습확인 답을 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작)
 document.addEventListener('click', e => {
+  const ox = e.target.closest('.qa-ox');
+  if (ox){ const on = ox.querySelector('.qa-oxb.open');
+    ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on)); return; }
   const t = e.target.closest('.blank, .qa-a');
   if (t) t.classList.toggle('open');
 });

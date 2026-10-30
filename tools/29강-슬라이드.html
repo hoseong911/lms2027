@@ -81,6 +81,8 @@
   --w-list:300px;       /* 두 칸 화면(학생 관리)의 왼쪽 목록 폭 */
   --w-list-room:170px;  /* 강의실 관리의 왼쪽 목록 폭: 강의실 이름이 짧아 좁게 */
   --w-sc-detail:230px;  /* 성적 조회의 오른쪽 내역 폭: 강의 차수와 OX뿐이라 좁다 */
+  --w-axis:148px;       /* 슬라이드 축 편집기 왼쪽 줄자: 단계 이름만 들어가서 가장 좁다
+                           (선생님 지시 2026-10-30: "맨 왼쪽에 편집해야 할 메뉴를 작게 두고") */
 
   /* ── 글자 크기: 딱 네 단계만 쓴다 (선생님 지시 2026-10-27) ──
      가장 작은 글씨가 9pt(한글과컴퓨터 기준) = 12px. 이 네 값 말고는 쓰지 않는다.
@@ -175,16 +177,33 @@
 .deckpage .nt{flex:1;min-width:0;font-size:calc(var(--sz) * 3.4);line-height:1.5;
   padding-top:calc(var(--sz) * .5)}
 
-/* ── 전시학습확인 ── 문답. 답은 눌러야 보인다 */
-.deckpage .s-qa{display:flex;flex-direction:column;gap:calc(var(--sz) * 2.6);justify-content:center}
-.deckpage .qa-q{display:flex;align-items:flex-start;gap:calc(var(--sz) * 1.6);
-  font-size:calc(var(--sz) * 3.2);line-height:1.5;font-weight:700}
-.deckpage .qa-n{flex:0 0 auto;color:var(--red);font-weight:800}
-.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.2) 0 0 calc(var(--sz) * 3.6);
+/* ── 전시학습확인 ── 문답 셋(단답형, OX, 초성형). 답은 눌러야 보인다
+   글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
+   가지런하다. 답 칸은 그 시작 위치에 맞춰 들여 쓴다(--qa-in 한 값으로 묶어 둔다). */
+.deckpage .s-qa{--qa-in:calc(var(--sz) * 13);
+  display:flex;flex-direction:column;gap:calc(var(--sz) * 2.4);justify-content:center}
+.deckpage .qa-q{display:flex;align-items:baseline;gap:calc(var(--sz) * 1.4);
+  font-size:calc(var(--sz) * 3);line-height:1.5}
+.deckpage .qa-n{flex:0 0 auto;width:calc(var(--sz) * 2.6);text-align:right;
+  color:var(--red);font-weight:800}
+/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 폭을 고정해 물음 시작선을 맞춘다 */
+.deckpage .qa-t{flex:0 0 auto;width:calc(var(--sz) * 7.4);
+  font-size:calc(var(--sz) * 1.9);font-weight:700;color:var(--sub);
+  border:1px solid var(--line-strong);border-radius:2px;
+  padding:calc(var(--sz) * .3) 0;text-align:center;letter-spacing:.02em}
+.deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
+.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in);
   border:0;border-radius:var(--r);background:var(--navy);color:transparent;
   padding:calc(var(--sz) * 1.1) calc(var(--sz) * 2);font-family:inherit;cursor:pointer;
-  font-size:calc(var(--sz) * 2.8);line-height:1.4;text-align:left}
+  font-size:calc(var(--sz) * 2.6);line-height:1.4;text-align:left}
 .deckpage .qa-a.open{background:var(--navy-100);color:var(--navy);font-weight:700}
+/* OX: 두 칸이 나란히 선다. 정답인 쪽만 눌렀을 때 레드로 켜진다(.is) */
+.deckpage .qa-ox{display:flex;gap:calc(var(--sz) * 1.4);margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in)}
+.deckpage .qa-oxb{width:calc(var(--sz) * 7);border:2px solid var(--line-strong);border-radius:var(--r);
+  background:transparent;color:var(--line-strong);font-family:inherit;cursor:pointer;
+  font-size:calc(var(--sz) * 3);font-weight:800;padding:calc(var(--sz) * .7) 0;line-height:1.2}
+.deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
+.deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
 
 /* ── 가린 빈칸 {정답} ── 누르면 열린다. 열고 닫는 것은 slide-deck.js의 wireReveal */
 .deckpage .blank{background:var(--navy);color:transparent;border-radius:2px;
@@ -259,19 +278,19 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   <section class="slot">
     <div class="slotbar"><span class="slotno">2</span>
       <span class="slotstep">전시학습확인</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-mark">전시학습확인</div><div class="s-body s-qa">
-      <div class="qa">
-        <div class="qa-q"><span class="qa-n">1</span>조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?</div>
-        <button class="qa-a" data-act="reveal">사화</button>
-      </div>
-      <div class="qa">
-        <div class="qa-q"><span class="qa-n">2</span>조광조의 개혁이 꺾이고 사림이 쫓겨난 중종 대의 사화는?</div>
-        <button class="qa-a" data-act="reveal">기묘사화</button>
-      </div>
-      <div class="qa">
-        <div class="qa-q"><span class="qa-n">3</span>사화를 겪은 사림이 힘을 다시 모은 곳은 향촌의 무엇인가?</div>
-        <button class="qa-a" data-act="reveal">서원과 향약</button>
-      </div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-mark">전시학습확인</div><div class="s-body s-qa"><div class="qa">
+        <div class="qa-q"><span class="qa-n">1</span>
+          <span class="qa-t">단답형</span>
+          <span class="qa-txt">조선에서 사림과 훈구가 충돌해 사림이 큰 화를 입은 네 차례의 사건을 무엇이라 하는가?</span></div>
+        <button class="qa-a" data-act="reveal">사화</button></div><div class="qa">
+        <div class="qa-q"><span class="qa-n">2</span>
+          <span class="qa-t">OX</span>
+          <span class="qa-txt">조광조의 개혁은 중종의 지지가 끝까지 이어져 성공하였다.</span></div>
+        <div class="qa-ox"><button class="qa-oxb " data-act="reveal">O</button><button class="qa-oxb is" data-act="reveal">X</button></div></div><div class="qa">
+        <div class="qa-q"><span class="qa-n">3</span>
+          <span class="qa-t">초성형</span>
+          <span class="qa-txt">사화를 겪은 사림이 향촌에서 힘을 다시 모은 곳은? (ㅅㅇ)</span></div>
+        <button class="qa-a" data-act="reveal">서원</button></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">3</span>
@@ -344,6 +363,9 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
 <script>
 // 가린 빈칸과 전시학습확인 답을 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작)
 document.addEventListener('click', e => {
+  const ox = e.target.closest('.qa-ox');
+  if (ox){ const on = ox.querySelector('.qa-oxb.open');
+    ox.querySelectorAll('.qa-oxb').forEach(b => b.classList.toggle('open', !on)); return; }
   const t = e.target.closest('.blank, .qa-a');
   if (t) t.classList.toggle('open');
 });

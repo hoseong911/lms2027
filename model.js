@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck } from './shared/slide-axis.js?v=20261030h';
+import { normalizeDeck } from './shared/slide-axis.js?v=20261030i';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -915,7 +915,7 @@ export function conceptDelLine(lessonId, idx){
    축 정의와 덱 모양은 shared/slide-axis.js 한 곳에 있다(슬라이드 엔진과 변환 도구가
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
-export { SLIDE_AXIS, AXIS_ORDER, axisStep } from './shared/slide-axis.js?v=20261030h';
+export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef } from './shared/slide-axis.js?v=20261030i';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -933,7 +933,8 @@ function deckItems(lessonId, key){
 }
 export function deckAddItem(lessonId, key){
   const arr = deckItems(lessonId, key); if (!arr) return;
-  if (key === 'review')    arr.push({ q:'', a:'' });
+  // 전시학습확인은 새 문항을 단답형으로 시작한다(유형 셋 중 첫째, 선생님이 말씀하신 순서)
+  if (key === 'review')    arr.push({ type:'short', q:'', a:'' });
   else if (key === 'hook') arr.push({ kind:'image', url:'', caption:'' });
   else                     arr.push('');
   saveLesson(lessonId);

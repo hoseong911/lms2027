@@ -36,6 +36,23 @@ export const SLIDE_AXIS = [
 export const AXIS_ORDER = SLIDE_AXIS.map(s => s.key);
 export function axisStep(key){ return SLIDE_AXIS.find(s => s.key === key) || null; }
 
+/* 전시학습확인 문항의 유형 셋 (선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형").
+   말씀하신 순서 그대로다. 키는 형성평가(model.js의 FORMATIVE_TYPES)와 같게 맞췄다:
+   같은 것을 두 이름으로 부르지 않으려는 것이다. 다만 형성평가는 ox를 "진위형"이라 부르고
+   여기서는 선생님이 말씀하신 "OX"로 적는다(두 이름을 하나로 맞출지는 선생님께 물어볼 자리).
+
+   유형이 슬라이드에서 가르는 것은 "학생이 어떻게 답하는가"다.
+     short   단답형  답을 말이나 글로
+     ox      OX      O인지 X인지
+     initial 초성형  초성을 보고 낱말을
+   초성은 선생님이 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
+export const REVIEW_TYPES = [
+  { key:'short',   name:'단답형' },
+  { key:'ox',      name:'OX' },
+  { key:'initial', name:'초성형' },
+];
+export function reviewTypeDef(key){ return REVIEW_TYPES.find(t => t.key === key) || REVIEW_TYPES[0]; }
+
 /* 덱(lesson.deck): 축 단계마다 칸 하나. 덱이 직접 들고 있는 것만 여기 있다.
    개념 노트와 오늘의 질문은 parts 쪽에 있으므로 덱에 칸을 두지 않는다. */
 export function blankDeck(){
@@ -58,6 +75,11 @@ export function normalizeDeck(lesson){
   else Object.keys(base).forEach(k => {
     if (!lesson.deck[k] || typeof lesson.deck[k] !== 'object') lesson.deck[k] = base[k];
     else if (Array.isArray(base[k].items) && !Array.isArray(lesson.deck[k].items)) lesson.deck[k].items = [];
+  });
+  /* 전시학습확인에 유형이 생기기 전(2026-10-30 낮)에 적어 둔 문항은 유형 칸이 없다.
+     그런 문항은 단답형으로 본다: 그때 적을 수 있던 것이 묻는 줄과 답 줄뿐이었다. */
+  lesson.deck.review.items.forEach(it => {
+    if (it && typeof it === 'object' && !REVIEW_TYPES.some(t => t.key === it.type)) it.type = 'short';
   });
   return lesson.deck;
 }

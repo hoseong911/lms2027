@@ -4,9 +4,10 @@
 
    다만 글자 크기만은 네 단계 규칙(--fs-title/head/body/meta) 밖이다. 교실 앞 화면에
    투사하는 쪽이라 쪽 크기에 따라 글자가 같이 커져야 뒤에서 보인다. 그래서 쪽 안의 글자는
-   vmin(쪽의 짧은 변 기준 비율)으로 준다. 어드민 미리보기의 작은 쪽에서도 같은 비율로 줄어든다.
+   모두 --sz 한 값의 배수다. --sz는 쪽 상자의 짧은 변의 1%(1cqmin)라서, 전체화면 투사든
+   어드민의 작은 미리보기든 글자 비율이 저절로 같다(아래 .deckframe 주석 참고).
    쪽 바깥(위쪽 막대, 단추)은 다른 화면과 같이 네 단계를 쓴다. */
-@import url("shared/theme.css?v=20261029f");
+@import url("shared/theme.css?v=20261030i");
 
 /* ── 16:9 쪽 ──
    .deckframe 이 쪽을 담는 16:9 상자고 .deckpage 가 그 안을 꽉 채운다.
@@ -69,16 +70,33 @@
 .deckpage .nt{flex:1;min-width:0;font-size:calc(var(--sz) * 3.4);line-height:1.5;
   padding-top:calc(var(--sz) * .5)}
 
-/* ── 전시학습확인 ── 문답. 답은 눌러야 보인다 */
-.deckpage .s-qa{display:flex;flex-direction:column;gap:calc(var(--sz) * 2.6);justify-content:center}
-.deckpage .qa-q{display:flex;align-items:flex-start;gap:calc(var(--sz) * 1.6);
-  font-size:calc(var(--sz) * 3.2);line-height:1.5;font-weight:700}
-.deckpage .qa-n{flex:0 0 auto;color:var(--red);font-weight:800}
-.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.2) 0 0 calc(var(--sz) * 3.6);
+/* ── 전시학습확인 ── 문답 셋(단답형, OX, 초성형). 답은 눌러야 보인다
+   글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
+   가지런하다. 답 칸은 그 시작 위치에 맞춰 들여 쓴다(--qa-in 한 값으로 묶어 둔다). */
+.deckpage .s-qa{--qa-in:calc(var(--sz) * 13);
+  display:flex;flex-direction:column;gap:calc(var(--sz) * 2.4);justify-content:center}
+.deckpage .qa-q{display:flex;align-items:baseline;gap:calc(var(--sz) * 1.4);
+  font-size:calc(var(--sz) * 3);line-height:1.5}
+.deckpage .qa-n{flex:0 0 auto;width:calc(var(--sz) * 2.6);text-align:right;
+  color:var(--red);font-weight:800}
+/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 폭을 고정해 물음 시작선을 맞춘다 */
+.deckpage .qa-t{flex:0 0 auto;width:calc(var(--sz) * 7.4);
+  font-size:calc(var(--sz) * 1.9);font-weight:700;color:var(--sub);
+  border:1px solid var(--line-strong);border-radius:2px;
+  padding:calc(var(--sz) * .3) 0;text-align:center;letter-spacing:.02em}
+.deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
+.deckpage .qa-a{display:block;margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in);
   border:0;border-radius:var(--r);background:var(--navy);color:transparent;
   padding:calc(var(--sz) * 1.1) calc(var(--sz) * 2);font-family:inherit;cursor:pointer;
-  font-size:calc(var(--sz) * 2.8);line-height:1.4;text-align:left}
+  font-size:calc(var(--sz) * 2.6);line-height:1.4;text-align:left}
 .deckpage .qa-a.open{background:var(--navy-100);color:var(--navy);font-weight:700}
+/* OX: 두 칸이 나란히 선다. 정답인 쪽만 눌렀을 때 레드로 켜진다(.is) */
+.deckpage .qa-ox{display:flex;gap:calc(var(--sz) * 1.4);margin:calc(var(--sz) * 1.1) 0 0 var(--qa-in)}
+.deckpage .qa-oxb{width:calc(var(--sz) * 7);border:2px solid var(--line-strong);border-radius:var(--r);
+  background:transparent;color:var(--line-strong);font-family:inherit;cursor:pointer;
+  font-size:calc(var(--sz) * 3);font-weight:800;padding:calc(var(--sz) * .7) 0;line-height:1.2}
+.deckpage .qa-oxb.open{border-color:var(--navy);color:var(--navy)}
+.deckpage .qa-oxb.is.open{border-color:var(--red);color:var(--red);background:var(--red-100)}
 
 /* ── 가린 빈칸 {정답} ── 누르면 열린다. 열고 닫는 것은 slide-deck.js의 wireReveal */
 .deckpage .blank{background:var(--navy);color:transparent;border-radius:2px;
