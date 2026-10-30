@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER } from './shared/slide-axis.js?v=20261030q';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER } from './shared/slide-axis.js?v=20261030r';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -40,11 +40,11 @@ export const COLLECTIONS = {
   courseRoster:       'hoclass_course_roster',  // 학년도 학생 명부 { year, studentNo, name }  id = 학년도_학번
                                         //   강의실 명단에서 다 빠져도 학생은 여기 남는다(2026-10-29)
   courseAuth:         'hoclass_course_auth',    // 비밀번호 해시 { hash }  id = 학년도_학번 (로그인 때만 읽음)
-  courseLessons:      'hoclass_course_lessons', // 강의실에 꽂힌 차시 { courseId, lessonId, order, isOpen, date }
+  courseLessons:      'hoclass_course_lessons', // 강의실 연결 콘텐츠(차시) { courseId, lessonId, order, isOpen, date }
   lessons:            'hoclass_lessons',        // 강의 본체 창고(과목 없음). parts 4칸 + order
   courseSubmissions:  'hoclass_course_submissions', // 제출물 통합 { clId, part, courseId, studentNo, answer, score, ... }
   courseGrades:       'hoclass_course_grades',  // 성적 기록 { clId, studentNo, 영역별 달성/기한, absent, feedback }
-                                        //   id = 꽂힌강의id_학번. 급간 표와 반영 강의는 hoclass_settings/grade
+                                        //   id = 연결강의id_학번. 급간 표와 반영 강의는 hoclass_settings/grade
 
   // ── 나중(예약): 해당 단계에서 실제로 만든다 ──
   quizzes:            'hoclass_quizzes',        // 복습 문제 창고            (5단계 복습 허브)
@@ -232,8 +232,8 @@ const DEMO = {
   roster:       [],   // course_roster  { id:'학년도_학번', year, studentNo, name }
   lessons:      [],   // lessons        { id, title, parts:{concept,mission,question,formative}, order:[] }
   courseLessons:[],   // course_lessons { id, courseId, lessonId, order, isOpen, date:'M/D' }
-  submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
-  grades:       [],   // course_grades   { id:'꽂힌강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
+  submissions:  [],   // course_submissions { id:'연결강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
+  grades:       [],   // course_grades   { id:'연결강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
   gradeConf:    { bands:null, lessons:[], feedbackTemplates:[] },  // settings/grade  급간 표 + 반영 강의 + 피드백 템플릿
   notices:      [],   // notices        { id, year, subject, title, body, createdAt }
 
@@ -352,7 +352,7 @@ export function getLessons(){ return [...DEMO.lessons]; }
 // 강의 창고를 최신순으로(강의 라이브러리, 개념 노트 콘텐츠 목록). 강의 id 접두는 'L'이다(addLesson).
 export function getLessonsNewest(){ return newestFirst(DEMO.lessons, 'L'); }
 export function getLesson(id){ return DEMO.lessons.find(l => l.id === id) || null; }
-// 강의실에 꽂힌 강의 (order 순). 각 항목에 lesson 본체를 붙여 준다.
+// 강의실 연결 콘텐츠 (order 순). 각 항목에 lesson 본체를 붙여 준다.
 export function getCourseLessons(courseId){
   return DEMO.courseLessons
     .filter(cl => cl.courseId === courseId)
@@ -360,7 +360,7 @@ export function getCourseLessons(courseId){
     .map(cl => ({ ...cl, lesson: getLesson(cl.lessonId) }));
 }
 /* 메뉴별 배치가 쓰는 조회: 한 강의실에서 그 칸을 가진 공개 강의만 차례로.
-   돌려주는 것은 { cl(꽂힌 자리), lesson, part(그 칸의 내용), no(몇 번째 강의인가) }. */
+   돌려주는 것은 { cl(연결 자리), lesson, part(그 칸의 내용), no(몇 번째 강의인가) }. */
 export function getPartItems(courseId, partKey){
   return getCourseLessons(courseId)
     .filter(cl => cl.isOpen && cl.lesson)
@@ -554,7 +554,7 @@ export function toggleCourseLessonOpen(id){
   const cl = DEMO.courseLessons.find(c => c.id === id);
   if (cl){ cl.isOpen = !cl.isOpen; put(COLLECTIONS.courseLessons, cl); }
 }
-// 한 강의실 안에서 꽂힌 강의의 차례를 위/아래로(dir: -1 위, +1 아래). order 값을 맞바꾼다.
+// 한 강의실 안에서 연결 강의의 차례를 위/아래로(dir: -1 위, +1 아래). order 값을 맞바꾼다.
 export function moveCourseLesson(courseId, clId, dir){
   const arr = DEMO.courseLessons.filter(c => c.courseId === courseId).sort((a,b) => a.order - b.order);
   const i = arr.findIndex(c => c.id === clId); if (i < 0) return;
@@ -570,7 +570,7 @@ export function setCourseLessonDate(clId, date){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
   cl.date = String(date ?? '').trim(); put(COLLECTIONS.courseLessons, cl); return cl;
 }
-// 꽂힌 강의 하나를 그 강의실에서 뺀다. 강의 내용 자체는 창고에 남는다.
+// 연결 강의 하나를 그 강의실에서 뺀다. 강의 내용 자체는 창고에 남는다.
 export function unplaceLesson(clId){
   const cl = DEMO.courseLessons.find(c => c.id === clId); if (!cl) return null;
   DEMO.courseLessons = DEMO.courseLessons.filter(c => c.id !== clId);
@@ -584,8 +584,8 @@ export function unplaceLesson(clId){
 
 /* ── 진도표의 강의 줄 (hoistory 진도 계획 틀 이식, 선생님 지시 2026-10-28) ──
    hoistory에서는 진도표 한 줄이 모든 반에 공통이고 반마다 날짜만 달랐다. 2027도 같게 둔다:
-   진도표에서 강의를 더하면 **그 과목의 강의실 전부에 같이 꽂힌다**(요구사항 49의 과목 일괄).
-   돌려주는 것은 만든 강의와 꽂은 강의실 수다. */
+   진도표에서 강의를 더하면 **그 과목의 강의실 전부에 같이 연결된다**(요구사항 49의 과목 일괄).
+   돌려주는 것은 만든 강의와 연결한 강의실 수다. */
 export function addLessonToSubject(year, subject, title){
   const t = String(title ?? '').trim();
   if (!t) throw new Error('강의 제목을 적어 주세요.');
@@ -689,12 +689,12 @@ export async function saveGradeConfig(bands){
 
 /* 그 강의의 그 칸이 성적에서 몇 칸을 차지하는가. 칸이 켜져 있으면 1, 꺼져 있으면 0(미실시)이다.
    배수(1배, 2배) 고르개는 선생님 지시로 걷어냈다(2026-10-28). 강의는 창고에 있는 것이라
-   켜고 끄기는 그 강의를 꽂은 모든 강의실에 같이 걸린다. */
+   켜고 끄기는 그 강의를 연결한 모든 강의실에 같이 걸린다. */
 export function partWeight(lessonId, partKey){
   return getLesson(lessonId)?.parts?.[partKey] ? 1 : 0;
 }
 
-// ── 성적 기록 (course_grades, 문서 id = 꽂힌강의id_학번) ──
+// ── 성적 기록 (course_grades, 문서 id = 연결강의id_학번) ──
 const emptyBlock = () => ({ achievedN:0, onTimeN:0 });
 function blankRec(clId, studentNo){
   const cl = DEMO.courseLessons.find(x => x.id === clId);
@@ -768,7 +768,7 @@ export function setGradeFeedback(clId, studentNo, text){
   g.feedback = String(text ?? '').trim();
   return saveGrade(g);
 }
-// 그 반에 이 강의 성적을 공개했는가. 2027은 꽂힌 강의가 이미 반 단위라 거기에 붙인다.
+// 그 반에 이 강의 성적을 공개했는가. 2027은 연결 강의가 이미 반 단위라 거기에 붙인다.
 export function toggleGradePublished(clId){
   const cl = DEMO.courseLessons.find(x => x.id === clId); if (!cl) return null;
   cl.gradePublished = !cl.gradePublished;
@@ -913,7 +913,7 @@ export function setPages(lessonId, key, pages){
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
-  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030q';
+  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030r';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -982,7 +982,7 @@ export function deckStepFilled(lessonId, key){
 
    비우는 것은 내용뿐이다. 다음은 그대로 둔다:
      강의 자체와 칸(parts)        다시 올리면 바로 채워지게. 강의를 지우는 것은 강의 라이브러리의 일이다
-     강의실에 꽂은 것             학생 화면의 자리는 그대로
+     강의실 연결 콘텐츠          학생 화면의 자리는 그대로
      성적(course_grades)과 진도   강의 내용과 매여 있지 않다
      오늘의 질문(parts.question)  그 메뉴에서 고치는 것이고 활동지가 넣는 것도 아니다
      미션 활동 메뉴의 이름        같은 까닭(parts.mission.title)
@@ -1127,7 +1127,7 @@ export function moveFormativeItem(lessonId, i, dir){
 export function getQuestionSubs(clId){
   return DEMO.submissions.filter(s => s.clId === clId && s.part === 'question');
 }
-/* 제출물 저장: 학생 화면과 미션 미니앱이 쓰는 한 길. 문서 id가 꽂힌강의, 칸, 학번이라
+/* 제출물 저장: 학생 화면과 미션 미니앱이 쓰는 한 길. 문서 id가 연결강의, 칸, 학번이라
    다시 내면 같은 줄을 고친다. 처음 적힌 at(제출 시각)은 기한 판정의 기준이라 덮어쓰지 않는다
    (2026 네컷에서 다시 낼 때마다 시각이 덮여 기한이 지각으로 뒤집힌 적이 있다). */
 export function saveSubmission({ clId, part, studentNo, answer, score, answers }){

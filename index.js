@@ -12,7 +12,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261030q';
+import * as M from './model.js?v=20261030r';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
@@ -297,7 +297,7 @@ function menuGrid(group){
 }
 
 /* 강의 보기: 예전 "강의 보기" 배치를 메뉴 하나로 연다(요구사항 111).
-   1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다. 차수는 꽂힌 차례 그대로 매기고,
+   1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다. 차수는 연결한 차례 그대로 매기고,
    늘어놓는 것은 최신순이라 마지막 강의가 맨 위다(요구사항 112). */
 function lessonCards(){
   const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
@@ -379,9 +379,9 @@ function scoreCard(c){
 }
 
 /* 강의 하나를 연 화면의 제목은 "N강. 강의 주제"다(선생님 지시 2026-10-30, 요구사항 123).
-   차수는 목록 카드와 같은 셈이다: 이 강의실에 꽂혀 공개된 강의 중 몇 번째인가(M.getPartItems의 no와 같다).
+   차수는 목록 카드와 같은 셈이다: 이 강의실에 연결돼 공개된 강의 중 몇 번째인가(M.getPartItems의 no와 같다).
    못 찾으면 제목만 쓴다. */
-/* 그 강의실에서 몇 번째로 꽂힌 강의인가(1강, 2강). 꽂혀 공개된 것만 센다.
+/* 그 강의실에서 몇 번째로 연결한 강의인가(1강, 2강). 연결돼 공개된 것만 센다.
    화면 제목(lessonHead)과 슬라이드 주소의 no가 같은 값을 써야 해서 셈을 여기 하나로 모았다. */
 function lessonNo(l){
   const i = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson)

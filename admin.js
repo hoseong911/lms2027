@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030q';
+import * as M from './model.js?v=20261030r';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -65,7 +65,7 @@ const state = {
   scTab: 'input',                  // 서브 메뉴 'input' | 'setting' | 'view'
   scSubject: null,                 // 과목 탭
   scCourseId: null,                // 반 탭(강의실)
-  scClId: null,                    // 성적 입력에서 고른 꽂힌 강의
+  scClId: null,                    // 성적 입력에서 고른 연결 강의
   scOpenNo: null,                  // 성적 조회에서 강의별 내역을 펼친 학생(학번)
 };
 
@@ -73,7 +73,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const val = id => (document.getElementById(id)?.value || '').trim();
 
 /* 최신순 (선생님 지시 2026-10-30, 요구사항 112): "특정 정렬 조건이 없다면 무조건 최신순."
-   꽂힌 강의는 차수를 꽂힌 차례대로 매긴 다음 마지막 차수(가장 최근 강의)부터 늘어놓는다.
+   연결 강의는 차수를 연결한 차례대로 매긴 다음 마지막 차수(가장 최근 강의)부터 늘어놓는다.
    돌려주는 것은 [{ x:원래 항목, no:차수 }]. 진도표와 성적 조회 표는 차수 순서 자체가 내용이라 쓰지 않는다. */
 const numberedNewest = list => list.map((x, i) => ({ x, no:i + 1 })).reverse();
 
@@ -413,17 +413,17 @@ function studentCard(courseId, studentNo){
      - 왼쪽 두 열: 강의 번호와 주제. 주제는 그 자리에서 고치면 강의 제목이 바뀐다
      - 가운데: 반마다 수업일자('M/D'). 오늘과 지난 날은 색으로 구분한다
      - 오른쪽 관리 열: 그 줄(강의)을 그 과목 강의실 전부에서 뺀다
-     - 툴바의 [강의 추가]: 한 줄을 더하면 **그 과목 강의실 전부에 같이 꽂힌다**
+     - 툴바의 [강의 추가]: 한 줄을 더하면 **그 과목 강의실 전부에 같이 연결된다**
    hoistory에서 안 가져온 것:
      [번호 자동 채우기]와 [주제 새로고침]은 hoistory가 번호와 주제를 손으로 적어
-     따로 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 꽂힌 순서에서 저절로 나오고
+     따로 맞춰 줘야 했기 때문에 있던 단추다. 2027은 번호가 연결한 순서에서 저절로 나오고
      주제가 강의 제목 그 자체라 맞출 것이 없다.
    과목 탭은 어제 지시(요구사항 96)대로 그대로 둔다. */
-/* 강의실들에 깔린 강의를 모은다: 어느 반에든 꽂혀 있으면 한 줄이 선다.
-   세우는 차례는 꽂힌 순서(order)가 가장 앞인 것 기준이다(반마다 순서가 어긋나도 한 줄로 선다).
+/* 강의실들에 깔린 강의를 모은다: 어느 반에든 연결돼 있으면 한 줄이 선다.
+   세우는 차례는 연결한 순서(order)가 가장 앞인 것 기준이다(반마다 순서가 어긋나도 한 줄로 선다).
    진도 관리와 질문 관리가 같이 쓴다. */
 function placedLessons(rooms){
-  const placed = {};                     // 강의실id -> 꽂힌 강의 배열
+  const placed = {};                     // 강의실id -> 연결 강의 배열
   const firstOrder = new Map();          // 강의id -> 가장 앞선 order
   rooms.forEach(c => {
     placed[c.id] = M.getCourseLessons(c.id);
@@ -463,7 +463,7 @@ function pageProgress(){
   const { placed, lessons } = placedLessons(rooms);
   const addRow = state.progAdding ? `<div class="row">
     <input class="f grow" id="prog-new-title" autocomplete="off" aria-label="강의 제목">
-    <span class="unit">${esc(state.progSubject)} 강의실 ${rooms.length}개에 같이 꽂습니다</span>
+    <span class="unit">${esc(state.progSubject)} 강의실 ${rooms.length}개에 같이 연결합니다</span>
     <div class="tools">
       <button class="ib ib-primary" data-act="prog-add-save" title="추가" aria-label="추가">${icon('check',16)}</button>
       <button class="ib" data-act="prog-add-cancel" title="취소" aria-label="취소">${icon('x',16)}</button>
@@ -488,7 +488,7 @@ function pageProgress(){
     const cells = rooms.map(c => {
       const cl = placed[c.id].find(x => x.lessonId === l.id);
       if (!cl) return `<td class="na"><button class="pl-plus" data-act="prog-place" data-id="${c.id}" data-lid="${l.id}"
-        title="${esc(M.roomName(c))}에 이 강의를 꽂습니다" aria-label="꽂기">${icon('plus',12)}</button></td>`;
+        title="${esc(M.roomName(c))}에 이 강의를 연결합니다" aria-label="연결">${icon('plus',12)}</button></td>`;
       const st = M.dateStatus(cl.date);
       return `<td class="ds-${st}"><input class="f dateinput" data-act="cl-date" data-id="${cl.id}"
         value="${esc(cl.date || '')}" inputmode="numeric" aria-label="${esc(M.roomName(c))} 수업일자"></td>`;
@@ -579,7 +579,7 @@ function pageScores(){
      3) 머리줄의 달성, 기한 옆 체크표시를 누르면 그 열이 모두 체크된다 */
 function scoreInputPanel(c){
   const cls = M.getCourseLessons(c.id);
-  if (!cls.length) return `<div class="empty">꽂힌 강의가 없습니다.</div>`;
+  if (!cls.length) return `<div class="empty">연결된 강의가 없습니다.</div>`;
   if (!cls.some(cl => cl.id === state.scClId)) state.scClId = cls[cls.length - 1].id;   // 처음엔 최신 강의
   const cl = cls.find(x => x.id === state.scClId);
 
@@ -618,7 +618,7 @@ function scoreInputPanel(c){
   const auto = M.autoDetect(cl.id);
   const templates = M.getFeedbackTemplates();
 
-  // 제목 옆 스위치로 그 강의의 칸을 켜고 끈다(그 강의를 꽂은 모든 강의실에 같이 걸린다).
+  // 제목 옆 스위치로 그 강의의 칸을 켜고 끈다(그 강의를 연결한 모든 강의실에 같이 걸린다).
   const head1 = areas.map(a => `<th colspan="2" class="ga-${a.key} ${a.on?'':'ga-off'}">
       <span class="gahead">${esc(a.name)}
         <button class="sw sw-sm ${a.on?'on':''}" role="switch" aria-checked="${a.on}"
@@ -1079,7 +1079,7 @@ function pageLessons(){
     return `${addForm}${listSide}`;
 
   const l = M.getLesson(state.lessonId);
-  const tabs = catline([{v:'edit',label:'강의 편집'},{v:'place',label:'강의실에 꽂기'}], state.lessonTab, 'lesson-tab');
+  const tabs = catline([{v:'edit',label:'강의 편집'},{v:'place',label:'강의실 연결 콘텐츠'}], state.lessonTab, 'lesson-tab');
   const body = state.lessonTab === 'edit' ? lessonEditor(l) : lessonPlacer(l);
 
   return `<div class="pagehead">
@@ -1127,7 +1127,7 @@ function lessonPlacer(l){
   const rows = M.getCourses(state.year).map(c => `<label class="checkline">
     <input type="checkbox" data-act="place-toggle" data-id="${c.id}" ${placed.has(c.id)?'checked':''}>
     <span>${esc(M.roomName(c))}</span></label>`).join('');
-  return `<div class="sectionlabel">이 강의를 올릴 강의실</div>${rows}`;
+  return `<div class="sectionlabel">이 강의를 연결할 강의실</div>${rows}`;
 }
 
 /* ── 개념 노트 ──
@@ -1407,7 +1407,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030q');
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030r');
       got = await worksheetFromPdf(file);
     } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
@@ -1442,7 +1442,7 @@ function importWorksheet(lessonId){
    "활동지를 지웠는데 왜 강의는 그대로지? 강의 콘텐츠도 없어저야지").
    처음에는 개념 노트와 미션 활동 페이지만 비웠는데, 표지, 전시학습확인, 학습 목표, 동기 유발,
    맺음말이 남아 강의가 그대로인 것처럼 보였다. **다시 좁히지 않는다.**
-   강의와 칸, 강의실에 꽂은 것, 성적과 진도, 오늘의 질문은 그대로다
+   강의와 칸, 강의실 연결 콘텐츠, 성적과 진도, 오늘의 질문은 그대로다
    (무엇을 두고 무엇을 비우는지는 model.js의 clearLessonContent 머리 주석에 있다).
    무엇을 비우는지 단계 이름으로 먼저 보여 주고 묻는다(되돌릴 수 없다). */
 function clearAxisContent(lessonId){
@@ -1527,12 +1527,12 @@ function missionForm(app){
     + line('아카이브 내용', `<textarea class="f grow ta" id="ma-content" rows="5">${esc(arch.content || '')}</textarea>`, true);
 }
 /* 강의에 차수를 붙인다("3강. 제목", 선생님 지시 2026-10-29. 차수 뒤에 마침표를 찍는다). 차수는 진도 관리와 같이 그 과목 강의실들에
-   꽂힌 차례(placedLessons)에서 나온다. 과목이 둘 이상이면 앞에 과목을 붙이고, 어디에도 안 꽂힌 강의는 제목만 뒤에 둔다. */
+   연결한 차례(placedLessons)에서 나온다. 과목이 둘 이상이면 앞에 과목을 붙이고, 어디에도 연결하지 않은 강의는 제목만 뒤에 둔다. */
 function numberedLessons(lessons){
   const all = M.getCourses(state.year);
   const subjects = [...new Set(all.map(c => c.subject))].sort((a,b) => a.localeCompare(b,'ko'));
   const out = [], seen = new Set();
-  // 과목 안에서는 최신 강의가 위, 안 꽂힌 강의도 새로 만든 것이 위(요구사항 112)
+  // 과목 안에서는 최신 강의가 위, 연결하지 않은 강의도 새로 만든 것이 위(요구사항 112)
   subjects.forEach(s => {
     const rooms = all.filter(c => c.subject === s);
     numberedNewest(placedLessons(rooms).lessons).forEach(({ x:l, no }) => {
@@ -1700,7 +1700,7 @@ function questionForm(l){
 }
 
 /* 답변과 PICK의 고르개: 강의 드롭다운(오늘의 질문이 켜진 강의만) + 전체, 반 버튼.
-   고른 반(또는 전체)의 꽂힌 강의들을 targets로 돌려준다. */
+   고른 반(또는 전체)의 연결 강의들을 targets로 돌려준다. */
 function questionAnswers(rooms, placed, lessons){
   // 최신 강의가 맨 위, 처음 고르는 것도 최신 강의(요구사항 112)
   const qLessons = lessons.map((l, i) => ({ l, no:i + 1 })).filter(x => x.l.parts?.question).reverse();
@@ -1708,7 +1708,7 @@ function questionAnswers(rooms, placed, lessons){
   if (!qLessons.some(x => x.l.id === state.questionLessonId)) state.questionLessonId = qLessons[0].l.id;
   const lesson = M.getLesson(state.questionLessonId);
 
-  // 이 강의가 꽂힌 반만 버튼이 된다
+  // 이 강의를 연결한 반만 버튼이 된다
   const withCl = rooms.map(c => ({ c, cl:placed[c.id].find(x => x.lessonId === lesson.id) })).filter(x => x.cl);
   if (state.questionRoom !== 'all' && !withCl.some(x => x.c.id === state.questionRoom)) state.questionRoom = 'all';
   const targets = state.questionRoom === 'all' ? withCl : withCl.filter(x => x.c.id === state.questionRoom);
@@ -1831,7 +1831,7 @@ function questionGrade(targets, subs, one){
   return gtabs + body;
 }
 
-// 지금 고른 강의와 반(또는 전체)의 꽂힌 강의 id들. AI 채점이 이 단위로 돈다.
+// 지금 고른 강의와 반(또는 전체)의 연결 강의 id들. AI 채점이 이 단위로 돈다.
 function questionTargetClIds(){
   const rooms = M.getCourses(state.year).filter(c => c.subject === state.questionSubject
     && (state.questionRoom === 'all' || c.id === state.questionRoom));
@@ -1859,11 +1859,11 @@ async function runQuestionAI(regrade){
 
 /* ── 형성평가 ──
    성적에 들어가지 않는다(요구사항 70). 문제 유형은 단답, OX, 초성, 선택형 넷(2026-10-27).
-   오늘의 질문과 같이 **과목 탭 아래 꽂힌 강의 전체**를 세운다(선생님 지시 2026-10-29:
+   오늘의 질문과 같이 **과목 탭 아래 연결 강의 전체**를 세운다(선생님 지시 2026-10-29:
    "형성평가는 강의랑 연동되어야 하니까 오늘의 질문처럼 연결된 강의에서 생성할 수 있게").
    전에는 형성평가가 이미 있는 강의만 보여 줘서 새로 만들 길이 없었다.
    서브 메뉴 둘:
-     문제 관리   : 두 단. 왼쪽은 꽂힌 강의 전체(눈 단추로 형성평가를 켜고 끈다),
+     문제 관리   : 두 단. 왼쪽은 연결 강의 전체(눈 단추로 형성평가를 켜고 끈다),
                    오른쪽은 고른 강의의 문항 목록과 문제 만들기 칸
      성취도 관리 : 학생들이 푼 결과. 강의별과 전체 누적을 같은 드롭다운에서 고른다 */
 function pageFormative(){
@@ -1883,11 +1883,11 @@ function pageFormative(){
   return head + subTabs + formativeManage(lessons);
 }
 
-/* 문제 관리: 왼쪽은 꽂힌 강의 전체(차수, 제목, 눈 단추), 오른쪽은 고른 강의의 문항.
+/* 문제 관리: 왼쪽은 연결 강의 전체(차수, 제목, 눈 단추), 오른쪽은 고른 강의의 문항.
    눈 단추가 형성평가 칸을 켜고 끈다(오늘의 질문 질문 관리와 같은 길, M.setFormativeEnabled).
    끈 강의의 문항은 partsOff에 맡겨 두었다가 다시 켜면 되살아난다. */
 function formativeManage(lessons){
-  if (!lessons.length) return `<div class="empty">꽂힌 강의가 없습니다.</div>`;
+  if (!lessons.length) return `<div class="empty">연결된 강의가 없습니다.</div>`;
   const items = numberedNewest(lessons);   // 최신 강의가 맨 위(요구사항 112)
   if (!lessons.some(l => l.id === state.formativeLessonId))
     state.formativeLessonId = WIDE.matches ? items[0].x.id : null;
@@ -2011,19 +2011,19 @@ function fmReadForm(){
 
 /* 성취도 관리 (선생님 지시 2026-10-29: "학생들이 푼 정답률, 오답률 이런거 확인하는거야 학생명단으로 끌고와서").
    같은 날 보강: "강의별, 전체 누적 이렇게 다양하게 볼수 있게." 드롭다운 맨 위가 전체 누적이다.
-     전체 누적 : 그 과목에서 형성평가가 켜진 꽂힌 강의를 다 더한다. 응시 열이 몇 개를 풀었는지 알려 준다
-     강의별    : 그 강의가 꽂힌 반만 선다
+     전체 누적 : 그 과목에서 형성평가가 켜진 연결 강의를 다 더한다. 응시 열이 몇 개를 풀었는지 알려 준다
+     강의별    : 그 강의를 연결한 반만 선다
    고르개 줄 모양은 오늘의 질문 답변과 같다(드롭다운 + 반 카테고리 줄, 전체 포함).
    맞고 틀림은 문제 안의 답(items[].a)과 견주어 M.formativeResult가 센다. 안 쓴 문항은 오답으로 센다. */
 const FM_ALL = '__all__';
 function formativeResultPanel(rooms, placed, lessons){
-  // 형성평가가 켜진 꽂힌 강의만. 차수는 진도 관리와 같이 꽂힌 차례에서 나온다
+  // 형성평가가 켜진 연결 강의만. 차수는 진도 관리와 같이 연결한 차례에서 나온다
   const fmLessons = lessons.map((l, i) => ({ l, no:i + 1 })).filter(x => x.l.parts?.formative).reverse();   // 최신이 위
   if (!fmLessons.length) return `<div class="empty">형성평가가 켜진 강의가 없습니다.</div>`;
   const cum = state.formativeResultId === FM_ALL;
   if (!cum && !fmLessons.some(x => x.l.id === state.formativeResultId)) state.formativeResultId = FM_ALL;
 
-  // 전체 누적은 그 과목 반을 다 세우고, 강의별은 그 강의가 꽂힌 반만 세운다
+  // 전체 누적은 그 과목 반을 다 세우고, 강의별은 그 강의를 연결한 반만 세운다
   const target = cum ? fmLessons : fmLessons.filter(x => x.l.id === state.formativeResultId);
   const withRooms = rooms
     .map(c => ({ c, cls:target.map(x => ({ x, cl:placed[c.id].find(p => p.lessonId === x.l.id) })).filter(y => y.cl) }))
@@ -2210,7 +2210,7 @@ document.getElementById('shell').addEventListener('click', e => {
       const name = M.roomName(c), d = M.courseDeps(id);
       const gone = [
         d.students ? `학생 ${d.students}명의 이 강의실 등록` : '',
-        d.lessons  ? `꽂힌 강의 ${d.lessons}개` : '',
+        d.lessons  ? `연결 강의 ${d.lessons}개` : '',
         d.quizzes  ? `걸린 복습 ${d.quizzes}개` : '',
         d.subs     ? `제출물과 성적 ${d.subs}건` : '',
       ].filter(Boolean);
@@ -2277,9 +2277,9 @@ document.getElementById('shell').addEventListener('click', e => {
     // 강의 라이브러리의 강의 편집과 콘텐츠 탭 머리줄 둘이 같이 쓴다(data-id로 강의를 받는다)
     case 'lesson-import': { const lid = id || state.lessonId; if (lid) importWorksheet(lid); break; }
     case 'place-toggle': {
-      // 데모: 꽂기만(해제는 다음 단계). 꽂혀 있지 않으면 꽂는다.
+      // 데모: 연결만(해제는 다음 단계). 연결돼 있지 않으면 연결한다.
       const already = M.getCourseLessons(id).some(cl => cl.lessonId === state.lessonId);
-      if (!already){ M.placeLesson(id, state.lessonId); toast('강의실에 꽂았습니다.'); }
+      if (!already){ M.placeLesson(id, state.lessonId); toast('강의실에 연결했습니다.'); }
       else toast('해제는 다음 단계에서 붙입니다.');
       render(); break;
     }
@@ -2439,7 +2439,7 @@ document.getElementById('shell').addEventListener('click', e => {
       toast(cl?.gradePublished ? '이 반에 성적을 반영했습니다.' : '성적 반영을 내렸습니다.');
       render(); break;
     }
-    // 영역 머리줄의 스위치: 그 강의의 그 칸을 켜고 끈다(그 강의를 꽂은 모든 강의실 공통).
+    // 영역 머리줄의 스위치: 그 강의의 그 칸을 켜고 끈다(그 강의를 연결한 모든 강의실 공통).
     case 'sc-part-enable': {
       const lid = el.dataset.lid;
       const on = !M.getLesson(lid)?.parts?.[k];
@@ -2477,10 +2477,10 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'prog-add-save': {
       const t = val('prog-new-title');
       const r = run(() => M.addLessonToSubject(state.year, state.progSubject, t));
-      if (r){ state.progAdding = false; toast(`${state.progSubject} 강의실 ${r.rooms}개에 꽂았습니다.`); render(); }
+      if (r){ state.progAdding = false; toast(`${state.progSubject} 강의실 ${r.rooms}개에 연결했습니다.`); render(); }
       break;
     }
-    case 'prog-place': {   // 그 반에만 빠져 있던 강의를 꽂는다
+    case 'prog-place': {   // 그 반에만 빠져 있던 강의를 연결한다
       M.placeLesson(id, el.dataset.lid); render(); break;
     }
     case 'prog-memo':   // 같은 강의의 메모 버튼을 다시 누르면 닫는다

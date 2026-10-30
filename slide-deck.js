@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030q';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030r';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -67,7 +67,7 @@ export function youTube(url){
    내용이 빈 단계는 쪽을 만들지 않는다. 그래서 동기 유발을 안 쓰는 차시는 그 단계가
    슬라이드에서 그냥 빠진다. 끄는 스위치를 따로 두지 않는 까닭이다.
 
-   no는 강 번호(그 강의실에서 몇 번째로 꽂혔는가)다. 강의 본체에는 차수가 없고
+   no는 강 번호(그 강의실에서 몇 번째로 연결했는가)다. 강의 본체에는 차수가 없고
    강의실마다 다를 수 있어서 부르는 쪽이 넘겨 준다(index.js의 카드가 아는 값이다). */
 export function buildSlides(lesson, no){
   if (!lesson) return [];
