@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030x';
-import { icon } from './shared/icons.js?v=20261030x';
+import * as M from './model.js?v=20261030y';
+import { icon } from './shared/icons.js?v=20261030y';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1063,16 +1063,21 @@ function openStudentModal(){
   document.addEventListener('keydown', onKey);
 }
 
+/* 강의 번호표(목록, 머리줄, 고르개): 숫자형은 "29강."처럼 점을 찍어 제목과 구분하고(선생님 지시
+   2026-10-30), 라벨형("[OT]")은 대괄호가 이미 구분하므로 점을 안 찍는다. 레드 글씨(.lnum)로 선다. */
+function lnumTag(num){
+  const b = M.lessonBadge(num);
+  if (!b) return '';
+  return `<span class="lnum">${esc(b)}${/^\d/.test(b) ? '.' : ''}</span> `;
+}
+
 // ── 강의 라이브러리 (개념 노트의 서브 메뉴, 선생님 지시 2026-10-28) ──
 function pageLessons(){
   const lessons = M.getLessonsNewest();   // 새로 만든 강의가 맨 위(요구사항 112)
-  const listSide = lessons.map(l => {
-    const badge = M.lessonBadge(l.num);
-    return `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
-      <div class="grow"><div class="t">${badge ? `<span class="lnum">${esc(badge)}</span> ` : ''}${esc(l.title)}</div>
+  const listSide = lessons.map(l => `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
+      <div class="grow"><div class="t">${lnumTag(l.num)}${esc(l.title)}</div>
         <div class="s">${(l.order||[]).map(k => M.partDef(k)?.name).filter(Boolean).join(', ') || '빈 강의'}</div></div>
-      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`;
-  }).join('') || `<div class="empty">강의가 없습니다.</div>`;
+      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`).join('') || `<div class="empty">강의가 없습니다.</div>`;
 
   /* 강의 만들기 (선생님 지시 2026-10-30): 기본은 활동지(슬라이드)로 바로 만드는 것이다.
      활동지에 있는 단계(미션, 질문 등)와 강 번호, 제목이 자동으로 들어간다. 빈 강의로 시작해
@@ -1096,10 +1101,9 @@ function pageLessons(){
   const body = state.lessonTab === 'edit' ? lessonEditor(l) : lessonPlacer(l);
 
   // 삭제는 머리줄 오른쪽에. 창고에서 지우는 것이라 강의실 상세와 같은 자리, 같은 모양으로 둔다
-  const badge = M.lessonBadge(l.num);
   return `<div class="pagehead">
       <button class="ib" data-act="lesson-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
-      <h2>${badge ? `<span class="lnum">${esc(badge)}</span> ` : ''}${esc(l.title)}</h2>
+      <h2>${lnumTag(l.num)}${esc(l.title)}</h2>
       <button class="ib ib-danger" data-act="lesson-del" data-id="${l.id}"
         title="강의 삭제" aria-label="강의 삭제">${icon('trash-2',16)}</button></div>${tabs}${body}`;
 }
@@ -1215,7 +1219,7 @@ function pageAxis(){
   const picker = `<div class="axhead">
     <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
       ${lessons.map(x => { const b = M.lessonBadge(x.num);
-        return `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${b ? esc(b) + ' ' : ''}${esc(x.title)}</option>`; }).join('')}
+        return `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${b ? esc(b) + (/^\d/.test(b)?'. ':' ') : ''}${esc(x.title)}</option>`; }).join('')}
     </select>
     <div class="tools">
       <button class="ib ib-primary" data-act="axis-save"
@@ -1482,7 +1486,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030x');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030y');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });

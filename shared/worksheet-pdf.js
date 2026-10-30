@@ -30,9 +30,9 @@
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261030x';
+import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261030y';
 import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
-  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030x';
+  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261030y';
 
 // 브라우저는 CDN에서 PDF.js를 불러온다. 판 번호를 못박아 둔다(바뀌면 꺼내는 결과가 달라질 수 있다)
 const PDFJS_VER = '4.10.38';
