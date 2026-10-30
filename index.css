@@ -71,8 +71,9 @@ html:not(.lms-ready) #app{display:none}
 .card .ic{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
 /* 강의 차수(1강, 2강). 작아서 안 보인다고 해서 키웠고(선생님 지시 2026-10-30),
    같은 날 "모든 메뉴의 강의차수 글씨 크기를 동일하게" 해서 학생 화면의 차수는 전부 이 한 줄이다
-   (강의 보기, 개념 노트, 미션 활동, 오늘의 질문, 형성평가). 따로 크기를 주는 클래스를 만들지 않는다 */
-.card .no{flex:0 0 auto;min-width:52px;font-size:var(--fs-title);font-weight:700;color:var(--navy)}
+   (강의 보기, 개념 노트, 미션 활동, 오늘의 질문, 형성평가). 따로 크기를 주는 클래스를 만들지 않는다.
+   크기는 18px(--fs-head)로 못박았다(선생님 지시 2026-10-30: "강의 차수 글씨는 18로") */
+.card .no{flex:0 0 auto;min-width:48px;font-size:var(--fs-head);font-weight:700;color:var(--navy)}
 /* 메뉴 카드 아이콘 바탕은 전부 메인 레드 하나(선생님 지시 2026-10-30: 칸마다 색이 달랐다) */
 .card.menu .ic{background:var(--accent)}
 .card .body{flex:1;min-width:0}
