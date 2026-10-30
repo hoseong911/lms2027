@@ -160,8 +160,11 @@ function fillMeta(blocks, col){
       const [label, ...rest] = ne;
       const tokens = rest.flatMap(t => t.split('\n')).map(s => s.trim()).filter(Boolean);
       if (UNIT_RE.test(label)){
-        tokens.forEach(t => { if (LECNO_RE.test(t)) return;
-          PAGE_RE.test(t) ? col.setCover({ pages: t }) : col.setCover({ unit: t }); });
+        tokens.forEach(t => {
+          if (LECNO_RE.test(t)) col.setNum(t.replace(/\s*강\s*$/, ''));   // "29강" → 번호 29
+          else if (PAGE_RE.test(t)) col.setCover({ pages: t });
+          else col.setCover({ unit: t });
+        });
       } else if (TOPIC_RE.test(label)){
         col.setCover({ topic: tokens.join(' ') });
       } else if (OBJ_RE.test(label)){
@@ -194,9 +197,9 @@ function fillQuestion(blocks, col){
   }
 }
 
-/* 덩어리 목록을 { concept, mission, cover, objective, question }로 바꾼다. 개념/미션은 쪽 배열이고
-   (worksheet.js의 makeCollector가 모은다), 표지/학습목표/질문은 머리 표와 생각 Check 쪽에서 뽑는다
-   (fillMeta, fillQuestion). */
+/* 덩어리 목록을 { concept, mission, cover, objective, question, num }로 바꾼다. 개념/미션은 쪽 배열이고
+   (worksheet.js의 makeCollector가 모은다), 표지/학습목표/질문/강번호는 머리 표와 생각 Check 쪽에서
+   뽑는다(fillMeta, fillQuestion). */
 export function blocksToParts(blocks){
   const col = makeCollector();
   const anyTitle = blocks.some(b => b.type === 'p'
@@ -274,8 +277,8 @@ export function blocksToParts(blocks){
   fillQuestion(blocks, col);
 
   const { concept, mission } = col.pages;
-  const { cover, objective, question } = col.meta;
-  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question };
+  const { cover, objective, question, num } = col.meta;
+  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question, num };
 }
 
 /* zip 안에서 글자 모양 표(Contents/header.xml)와 section XML들을 차례대로 꺼낸다.

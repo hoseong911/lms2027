@@ -72,7 +72,7 @@ export function makeCollector(){
      (선생님 지시 2026-10-30: "활동지를 올리면 슬라이드 만든 섹션에 다 채워져야 해").
      이것들은 쪽(page)이 아니라 머리 표의 라벨/값이나 생각 Check 쪽에서 오므로, 쪽 모으기와
      따로 여기 meta에 담는다. 두 길(hwpx, pdf)이 같은 모양으로 채운다(아래 setter). */
-  const meta = { cover:{ topic:'', unit:'', pages:'' }, objective:[], question:null };
+  const meta = { cover:{ topic:'', unit:'', pages:'' }, objective:[], question:null, num:'' };
 
   /* 같은 제목으로 다음 페이지를 연다(묶음 하나가 페이지 하나라는 원칙. 아래 newRow).
      newPage와 달리 제목을 다시 읽지 않는다: 미션인지, 넣지 않을 쪽인지, 사료 쪽인지는
@@ -105,6 +105,8 @@ export function makeCollector(){
       const q = String(question ?? '').trim();
       if (q && !meta.question) meta.question = { question: q, guide: String(guide ?? '').trim() };
     },
+    // 강 번호. 머리 표의 "29강" 같은 칸에서 숫자만 떼어 담는다(강의 라이브러리 번호표가 "N강"으로 보인다)
+    setNum(n){ const s = String(n ?? '').trim(); if (s && !meta.num) meta.num = s; },
 
     /* 제목이 없는 활동지(괄호 머리를 하나도 안 쓴 것)는 처음부터 다 담는다.
        두 길 다 줄을 다 읽어 본 뒤 이것을 불러 준다. */

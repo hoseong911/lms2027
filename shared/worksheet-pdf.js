@@ -216,8 +216,8 @@ export function linesToParts(lines){
 
   // 내용 줄이 없는 페이지(제목만 덩그러니 선 것)는 뺀다
   const { concept, mission } = col.pages;
-  const { cover, objective, question } = col.meta;
-  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question };
+  const { cover, objective, question, num } = col.meta;
+  return { concept: tidyPages(concept), mission: tidyPages(mission), cover, objective, question, num };
 }
 
 /* 머리 줄에서 표지(학습 단원/주제/교과서 쪽수)와 학습 목표를 뽑는다. 첫 괄호 머리를 만나면 멈춘다.
@@ -232,8 +232,9 @@ function fillMetaPdf(clean, titleOf, col){
     if (UNIT_RE.test(label)){
       objMode = false;
       rest.flatMap(t => t.split(/\s{2,}/)).map(s => s.trim()).filter(Boolean).forEach(t => {
-        if (LECNO_RE.test(t)) return;
-        PAGE_RE.test(t) ? col.setCover({ pages: t }) : col.setCover({ unit: t });
+        if (LECNO_RE.test(t)) col.setNum(t.replace(/\s*강\s*$/, ''));   // "29강" → 번호 29
+        else if (PAGE_RE.test(t)) col.setCover({ pages: t });
+        else col.setCover({ unit: t });
       });
     } else if (TOPIC_RE.test(label)){
       objMode = false;

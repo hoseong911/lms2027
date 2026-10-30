@@ -1074,13 +1074,18 @@ function pageLessons(){
       ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`;
   }).join('') || `<div class="empty">강의가 없습니다.</div>`;
 
-  /* 강의 만들기 (선생님 지시 2026-10-30): 번호 칸에 숫자를 적으면 표지에 "N강", OT·수행 같은
-     말이면 "[OT]"로 붙는다(shared/slide-axis.js의 lessonBadge). 번호는 비워도 된다. */
-  const addForm = `<div class="formrow">
+  /* 강의 만들기 (선생님 지시 2026-10-30): 기본은 활동지(슬라이드)로 바로 만드는 것이다.
+     활동지에 있는 단계(미션, 질문 등)와 강 번호, 제목이 자동으로 들어간다. 빈 강의로 시작해
+     직접 채울 수도 있다. 번호 칸에 숫자를 적으면 "N강", OT·수행 같은 말이면 "[OT]"로 붙는다. */
+  const addForm = `<div class="formrow" style="margin-bottom:8px">
+    <button class="btn-text" data-act="lesson-from-worksheet" style="display:flex;align-items:center;gap:8px"
+      title="활동지(한글 .hwpx 권장)를 올리면 그 내용으로 강의가 만들어집니다">${icon('upload',16)}<span>활동지로 강의 만들기</span></button>
+  </div>
+  <div class="formrow">
     <input class="f" id="l-num" placeholder="번호" style="max-width:88px" aria-label="강의 번호"
       title="숫자면 N강, OT·수행 같은 말이면 [OT]로 표시됩니다">
-    <input class="f grow" id="l-title" placeholder="새 강의 제목">
-    <button class="btn-text" data-act="lesson-add">강의 만들기</button>
+    <input class="f grow" id="l-title" placeholder="빈 강의 제목(직접 채우기)">
+    <button class="btn-text" data-act="lesson-add">빈 강의 만들기</button>
   </div>`;
 
   if (!state.lessonId)
@@ -1467,52 +1472,86 @@ function editPages(el, fn){
    "활동지를 올리면 슬라이드 만든 섹션에 다 채워져야 해"): 표지(학습 주제/단원/쪽수), 학습 목표,
    개념 노트, 미션 활동, 오늘의 질문. 이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 못 되돌린다).
    다 넣으면 슬라이드 탭의 개념 노트 단계로 옮겨 가 바로 고칠 수 있게 한다. */
-function importWorksheet(lessonId){
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.hwpx,application/pdf,.pdf';
-  inp.addEventListener('change', async () => {
-    const file = inp.files?.[0]; if (!file) return;
-    toast('활동지에서 글자를 꺼내고 있습니다.');
-    let got;
-    try {
-      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030x');
-      got = await worksheetFromFile(file);
-    } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
-    const cover = got.cover || {}, objective = got.objective || [], question = got.question || null;
-    const coverHas = !!(cover.topic || cover.unit || cover.pages);
-    if (!got.concept.length && !got.mission.length && !objective.length && !question && !coverHas){
-      toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return;
-    }
-
-    // 지금 적힌 내용이 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다. 비교 묶음은 네 칸까지)
-    const has = k => M.pagesFilled(M.getPages(lessonId, k));
-    const l = M.getLesson(lessonId);
-    const willReplace = (got.concept.length && has('concept')) || (got.mission.length && has('mission'))
-      || (objective.length && (M.getDeck(lessonId).objective.items || []).length)
-      || (question && String(l.parts?.question?.question || '').trim());
-    if (willReplace){
-      const ok = await confirmDelete({ title:'이미 적힌 내용을 바꿀까요?', okText:'바꾸기',
-        bodyHtml:`<p>활동지에서 꺼낸 내용으로 슬라이드 섹션을 채웁니다. 이미 적어 둔 표지, 학습 목표, 개념 노트, 미션 활동, 오늘의 질문은 지워집니다.</p>` });
-      if (!ok) return;
-    }
-
-    const done = [];
-    if (coverHas){ M.deckSetCover(lessonId, cover); done.push('표지'); }
-    if (objective.length){ M.deckSetItems(lessonId, 'objective', objective); done.push(`학습 목표 ${objective.length}줄`); }
-    if (got.concept.length){
-      if (!l.parts?.concept) M.setLessonPart(lessonId, 'concept', true);
-      M.setPages(lessonId, 'concept', got.concept); done.push(`개념 노트 ${got.concept.length}페이지`);
-    }
-    if (got.mission.length){ M.setPages(lessonId, 'mission', got.mission); done.push(`미션 활동 ${got.mission.length}페이지`); }
-    if (question){
-      if (!l.parts?.question) M.setQuestionEnabled(lessonId, true);
-      M.setQuestion(lessonId, { question: question.question, guide: question.guide }); done.push('오늘의 질문');
-    }
-    state.conceptTab = 'content'; state.conceptLessonId = lessonId; state.axisStep = 'cover';
-    render();
-    toast(done.length ? `${done.join(', ')}을(를) 넣었습니다.` : '활동지에서 넣을 내용을 찾지 못했습니다.');
+/* 파일 하나를 골라 활동지로 읽는다(한글 .hwpx 권장, PDF도 됨). 못 읽으면 토스트만 띄우고 null.
+   worksheetFromFile이 확장자를 보고 한글/PDF를 가른다(여기서 직접 고르지 않는다). */
+async function pickWorksheet(){
+  return new Promise(resolve => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.hwpx,application/pdf,.pdf';
+    inp.addEventListener('change', async () => {
+      const file = inp.files?.[0]; if (!file){ resolve(null); return; }
+      toast('활동지에서 글자를 꺼내고 있습니다.');
+      try {
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030x');
+        resolve(await worksheetFromFile(file));
+      } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
+    });
+    inp.click();
   });
-  inp.click();
+}
+const worksheetEmpty = got => !got || (!got.concept?.length && !got.mission?.length
+  && !got.objective?.length && !got.question
+  && !(got.cover && (got.cover.topic || got.cover.unit || got.cover.pages)) && !got.num);
+
+/* 활동지에서 꺼낸 것을 강의에 채운다. 활동지에 있는 단계만 자동으로 생긴다(선생님 지시 2026-10-30:
+   "미션이란 말이 있으면 미션 활동이 자동으로 생기고 질문이라는 말이 있으면 질문이 생기고").
+   강 번호도 활동지에서 가져온다(별도로 고칠 수 있다). 돌려주는 것은 넣은 단계 이름 목록이다. */
+function applyWorksheet(lessonId, got){
+  const l = M.getLesson(lessonId);
+  const cover = got.cover || {}, objective = got.objective || [], question = got.question || null;
+  const done = [];
+  if (got.num) M.setLessonNum(lessonId, got.num);
+  if (cover.topic || cover.unit || cover.pages){ M.deckSetCover(lessonId, cover); done.push('표지'); }
+  if (objective.length){ M.deckSetItems(lessonId, 'objective', objective); done.push(`학습 목표 ${objective.length}줄`); }
+  if (got.concept.length){
+    if (!l.parts?.concept) M.setLessonPart(lessonId, 'concept', true);
+    M.setPages(lessonId, 'concept', got.concept); done.push(`개념 노트 ${got.concept.length}페이지`);
+  }
+  if (got.mission.length){
+    if (!l.parts?.mission) M.setLessonPart(lessonId, 'mission', true);   // "미션" 있으면 미션 활동 자동 생성
+    M.setPages(lessonId, 'mission', got.mission); done.push(`미션 활동 ${got.mission.length}페이지`);
+  }
+  if (question){
+    if (!l.parts?.question) M.setQuestionEnabled(lessonId, true);         // "질문" 있으면 오늘의 질문 자동 생성
+    M.setQuestion(lessonId, { question: question.question, guide: question.guide }); done.push('오늘의 질문');
+  }
+  return done;
+}
+
+/* 이미 있는 강의에 활동지를 올린다. 이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 못 되돌린다).
+   다 넣으면 슬라이드 탭으로 옮겨 가 바로 고칠 수 있게 한다. */
+async function importWorksheet(lessonId){
+  const got = await pickWorksheet();
+  if (worksheetEmpty(got)){ if (got) toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
+
+  // 지금 적힌 내용이 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다. 비교 묶음은 네 칸까지)
+  const has = k => M.pagesFilled(M.getPages(lessonId, k));
+  const l = M.getLesson(lessonId);
+  const willReplace = (got.concept.length && has('concept')) || (got.mission.length && has('mission'))
+    || (got.objective.length && (M.getDeck(lessonId).objective.items || []).length)
+    || (got.question && String(l.parts?.question?.question || '').trim());
+  if (willReplace){
+    const ok = await confirmDelete({ title:'이미 적힌 내용을 바꿀까요?', okText:'바꾸기',
+      bodyHtml:`<p>활동지에서 꺼낸 내용으로 슬라이드 섹션을 채웁니다. 이미 적어 둔 표지, 학습 목표, 개념 노트, 미션 활동, 오늘의 질문은 지워집니다.</p>` });
+    if (!ok) return;
+  }
+  const done = applyWorksheet(lessonId, got);
+  state.conceptTab = 'content'; state.conceptLessonId = lessonId; state.axisStep = 'cover';
+  render();
+  toast(done.length ? `${done.join(', ')}을(를) 넣었습니다.` : '활동지에서 넣을 내용을 찾지 못했습니다.');
+}
+
+/* 강의 라이브러리에서 활동지 하나로 강의를 통째로 만든다(선생님 지시 2026-10-30:
+   "강의 라이브러리에서 슬라이드 생성만 해도 강의가 만들어지게"). 제목은 학습 주제, 번호는 강 번호를
+   활동지에서 가져오고, 미션/질문 같은 단계도 활동지에 있으면 자동으로 생긴다(applyWorksheet). */
+async function createLessonFromWorksheet(){
+  const got = await pickWorksheet();
+  if (worksheetEmpty(got)){ if (got) toast('활동지에서 강의로 만들 내용을 찾지 못했습니다.'); return; }
+  const title = (got.cover?.topic || got.concept?.[0]?.title || '새 강의').trim();
+  const l = M.addLesson(title, got.num || '');
+  const done = applyWorksheet(l.id, got);
+  state.lessonId = l.id; state.lessonTab = 'edit'; render();
+  toast(`"${title}" 강의를 만들었습니다 (${done.join(', ')}).`);
 }
 
 /* ── 올린 활동지 지우기 (선생님 지시 2026-10-30, 요구사항 133, 134) ──
@@ -2349,6 +2388,7 @@ document.getElementById('shell').addEventListener('click', e => {
       const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }
       const l = M.addLesson(title, val('l-num')); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
     }
+    case 'lesson-from-worksheet': createLessonFromWorksheet(); break;   // 활동지 하나로 강의 통째로 만들기
     case 'lesson-open': state.lessonId = id; state.lessonTab = 'edit'; render(); break;
     case 'lesson-close': state.lessonId = null; render(); break;
     /* 강의 삭제. 강의실 삭제와 달리 내용 자체가 없어지므로
