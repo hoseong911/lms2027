@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031b';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031c';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -959,7 +959,7 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031b';
+  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031c';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -1302,7 +1302,7 @@ export async function gradeQuestionsAI(clId, onStatus = () => {}){
 - 60~74: 자기 생각은 있으나 근거 없이 단편적이거나 질문과 살짝 어긋남
 - 45~59: 관련은 있으나 한두 문장으로 성의가 뚜렷이 부족
 - 0~44: 질문과 완전히 무관, 무의미한 반복이나 복붙, 장난 답변
-질문: "${q.prompt || ''}"
+질문: "${q.question || ''}"
 ${q.guide ? `수업 참고: "${String(q.guide).slice(0, 300)}"` : ''}
 답변 목록(JSON): ${JSON.stringify(needAi.map(s => ({ subId:s.id, text:s.answer || '' })))}
 응답은 JSON 배열만 출력(다른 텍스트 없이): [{"subId":"...","quality":0~100 정수}]`;

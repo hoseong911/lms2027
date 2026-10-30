@@ -12,8 +12,8 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261031b';
-import { icon } from './shared/icons.js?v=20261031b';
+import * as M from './model.js?v=20261031c';
+import { icon } from './shared/icons.js?v=20261031c';
 
 const YEAR = 2027;
 const $app = document.getElementById('app');
@@ -454,7 +454,7 @@ function partView(l, k){
 /* 오늘의 질문(학생): 본 질문을 큰 글씨로, 설명문, 답 칸, 글자수(공백 제외), 작은 제출 단추. */
 function questionView(p){
   const guide = p.guide ? `<div class="q-guide">${esc(p.guide)}</div>` : '';
-  return `<div class="q-big">${esc(p.prompt || '질문이 아직 없습니다.')}</div>${guide}
+  return `<div class="q-big">${esc(p.question || '질문이 아직 없습니다.')}</div>${guide}
     <textarea id="q-answer" aria-label="내 생각"></textarea>
     <div class="q-foot"><span class="q-count" id="q-count">0자</span>
       <button class="btn-mini" data-act="submit-demo">제출</button></div>`;

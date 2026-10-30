@@ -33,9 +33,9 @@
  * 이 파일은 Firebase도 화면도 모른다. 노드에서는 JSZip을 넘겨 시험한다
  * (hwpxRead로 꺼내고 hwpxToParts로 바꾼다).
  */
-import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261031b';
+import { lineLevel, SOURCE_RE } from './slide-axis.js?v=20261031c';
 import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages,
-  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261031b';
+  UNIT_RE, TOPIC_RE, OBJ_RE, PAGE_RE, LECNO_RE, QUESTION_RE } from './worksheet.js?v=20261031c';
 
 // 브라우저는 CDN에서 JSZip을 불러온다. PDF.js와 같이 판 번호를 못박는다
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';

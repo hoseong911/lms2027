@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031b';
-import { icon } from './shared/icons.js?v=20261031b';
+import * as M from './model.js?v=20261031c';
+import { icon } from './shared/icons.js?v=20261031c';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -585,7 +585,7 @@ function scoreInputPanel(c){
   const cl = cls.find(x => x.id === state.scClId);
 
   const lessonSel = `<select class="sel sel-lesson" data-act="sc-lesson" aria-label="강의">
-    ${numberedNewest(cls).map(({ x, no }) => `<option value="${x.id}" ${x.id===state.scClId?'selected':''}>${no}강. ${esc(x.lesson?.title || '(삭제된 강의)')}</option>`).join('')}
+    ${numberedNewest(cls).map(({ x, no }) => `<option value="${x.id}" ${x.id===state.scClId?'selected':''}>${lessonNo(x.lesson, no)} ${esc(x.lesson?.title || '(삭제된 강의)')}</option>`).join('')}
   </select>`;
 
   const students = M.getStudentsByCourse(c.id).slice().sort((a,b) => a.studentNo.localeCompare(b.studentNo));
@@ -695,7 +695,7 @@ function scoreSettingPanel(rooms){
     const parts = M.GRADE_AREAS.filter(a => M.partWeight(l.id, a.key)).map(a => a.name).join(', ');
     return `<label class="row compact selrow ${on?'on':''}">
       <input type="checkbox" data-act="sc-pick-lesson" data-lid="${l.id}" ${on?'checked':''}>
-      <span class="grow"><span class="t">${no}강 ${esc(l.title)}</span>
+      <span class="grow"><span class="t">${lessonNo(l, no)} ${esc(l.title)}</span>
         ${parts ? `<span class="s">${esc(parts)}</span>` : `<span class="s">성적에 드는 칸이 없습니다.</span>`}</span></label>`;
   }).join('') : `<div class="empty">깔린 강의가 없습니다.</div>`;
 
@@ -1069,6 +1069,14 @@ function lnumTag(num){
   const b = M.lessonBadge(num);
   if (!b) return '';
   return `<span class="lnum">${esc(b)}${/^\d/.test(b) ? '.' : ''}</span> `;
+}
+/* 강의 번호 라벨(드롭다운, 목록의 글자): 강의 고유 번호(num)가 있으면 그걸로("29강."/"[OT]"),
+   없으면 그 과목 강의실 연결 차례(no)로 "N강."(선생님 지시 2026-10-30: 질문 관리 등에서 1강이 아니라
+   강의가 가진 번호 29강으로 보여야 한다). 번호도 연결도 없으면 빈 문자열. */
+function lessonNo(l, no){
+  const b = M.lessonBadge(l?.num);
+  if (b) return /^\d/.test(b) ? `${b}.` : b;
+  return no != null ? `${no}강.` : '';
 }
 
 // ── 강의 라이브러리 (개념 노트의 서브 메뉴, 선생님 지시 2026-10-28) ──
@@ -1490,7 +1498,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031b');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031c');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });
@@ -1684,10 +1692,13 @@ function numberedLessons(lessons){
     const rooms = all.filter(c => c.subject === s);
     numberedNewest(placedLessons(rooms).lessons).forEach(({ x:l, no }) => {
       if (seen.has(l.id)) return; seen.add(l.id);
-      out.push({ l, placed:true, label:`${subjects.length > 1 ? s + ' ' : ''}${no}강. ${l.title}` });
+      out.push({ l, placed:true, label:`${subjects.length > 1 ? s + ' ' : ''}${lessonNo(l, no)} ${l.title}` });
     });
   });
-  M.newestFirst(lessons.filter(l => !seen.has(l.id)), 'L').forEach(l => out.push({ l, placed:false, label:l.title }));
+  M.newestFirst(lessons.filter(l => !seen.has(l.id)), 'L').forEach(l => {
+    const pre = lessonNo(l, null);
+    out.push({ l, placed:false, label:`${pre ? pre + ' ' : ''}${l.title}` });
+  });
   return out;
 }
 // 저장 단추: 오른쪽 칸(좁으면 펼친 칸)의 값을 읽어 추가하거나 고친다.
@@ -1814,7 +1825,7 @@ function questionManage(lessons){
     const on = !!l.parts?.question;
     // 켜고 끄기는 강의실 관리의 공개 단추와 같은 눈 모양(선생님 지시 2026-10-29). 켜져 있으면 레드.
     return `<div class="row compact ${l.id===state.questionSel?'on':''}">
-      <div class="grow rowlink" data-act="q-sel" data-id="${l.id}"><div class="t">${no}강 ${esc(l.title)}</div></div>
+      <div class="grow rowlink" data-act="q-sel" data-id="${l.id}"><div class="t">${lessonNo(l, no)} ${esc(l.title)}</div></div>
       <div class="tools"><button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="q-enable" data-id="${l.id}"
         title="${on?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="오늘의 질문 공개 전환">${icon('eye',14)}</button></div></div>`;
   };
@@ -1826,7 +1837,7 @@ function questionManage(lessons){
       ? row(it) + `<div class="detail">${questionTools(sel)}${questionForm(sel)}</div>` : row(it)).join('');
   return `<div class="split split-question">
       <div class="split-list">${items.map(row).join('')}</div>
-      <div class="pane"><div class="pane-head"><h3>${cur.no}강 ${esc(sel.title)}</h3>${questionTools(sel)}</div>
+      <div class="pane"><div class="pane-head"><h3>${lessonNo(sel, cur.no)} ${esc(sel.title)}</h3>${questionTools(sel)}</div>
         <div class="dscroll">${questionForm(sel)}</div></div></div>`;
 }
 function questionTools(l){
@@ -1842,7 +1853,7 @@ function questionForm(l){
   // 미션 활동 세부 칸과 같은 모양: 이름표 + 글 칸 한 줄씩
   return `<div class="qform">
       <div class="row row-top"><div class="t gen-label">질문</div>
-        <textarea class="f grow" id="q-ed-prompt" rows="3" aria-label="질문">${esc(q.prompt || '')}</textarea></div>
+        <textarea class="f grow" id="q-ed-prompt" rows="3" aria-label="질문">${esc(q.question || '')}</textarea></div>
       <div class="row row-top"><div class="t gen-label">설명문</div>
         <div class="grow tacount-wrap">
           <textarea class="f" id="q-ed-guide" rows="10" aria-label="설명문">${esc(q.guide || '')}</textarea>
@@ -1872,14 +1883,14 @@ function questionAnswers(rooms, placed, lessons){
   // 첫 줄: 강의 드롭다운 옆에 반 태그(선생님 지시 2026-10-28). 공개 토글은 줄 끝.
   const pickers = `<div class="qbar">
     <select class="sel sel-lesson" data-act="q-lesson" aria-label="강의">
-      ${qLessons.map(x => `<option value="${x.l.id}" ${x.l.id===lesson.id?'selected':''}>${x.no}강 ${esc(x.l.title)}</option>`).join('')}
+      ${qLessons.map(x => `<option value="${x.l.id}" ${x.l.id===lesson.id?'selected':''}>${lessonNo(x.l, x.no)} ${esc(x.l.title)}</option>`).join('')}
     </select>
     ${catline(withCl.map(x => ({ v:x.c.id, label:`${x.c.classNo}반` })), state.questionRoom, 'q-room', '전체',
       openBtn ? `<span class="line-end">${openBtn}</span>` : '')}</div>`;
 
   const q = lesson.parts.question;
   // 질문과 안내문 묶음. 아래 탭 줄과 붙어 보이지 않게 .qinfo로 간격을 둔다(선생님 지시 2026-10-28).
-  const info = q.prompt ? `<div class="qinfo"><div class="row"><div class="grow"><div class="t">${esc(q.prompt)}</div>
+  const info = q.question ? `<div class="qinfo"><div class="row"><div class="grow"><div class="t">${esc(q.question)}</div>
     ${q.guide ? `<div class="s">${esc(q.guide)}</div>` : ''}</div></div></div>` : '';
 
   const subs = targets.flatMap(x => M.getQuestionSubs(x.cl.id));
@@ -2048,7 +2059,7 @@ function formativeManage(lessons){
     const on = !!l.parts?.formative;
     const n = on ? (l.parts.formative.items || []).length : 0;
     return `<div class="row compact ${l.id===state.formativeLessonId?'on':''}">
-      <div class="grow rowlink" data-act="fm-open" data-id="${l.id}"><div class="t">${no}강. ${esc(l.title)}${
+      <div class="grow rowlink" data-act="fm-open" data-id="${l.id}"><div class="t">${lessonNo(l, no)} ${esc(l.title)}${
         on && n ? `<span class="gsub">${n}문항</span>` : ''}</div></div>
       <div class="tools"><button class="ib ib-sm ${on?'ib-primary':''}" aria-pressed="${on}" data-act="fm-enable" data-id="${l.id}"
         title="${on?'형성평가 있음 (누르면 끕니다)':'없음 (누르면 켭니다)'}" aria-label="형성평가 켜고 끄기">${icon('eye',14)}</button></div></div>`;
@@ -2186,7 +2197,7 @@ function formativeResultPanel(rooms, placed, lessons){
   const pickers = `<div class="qbar">
     <select class="sel sel-lesson" data-act="fm-result-lesson" aria-label="볼 범위">
       <option value="${FM_ALL}" ${cum?'selected':''}>전체 누적</option>
-      ${fmLessons.map(x => `<option value="${x.l.id}" ${x.l.id===state.formativeResultId?'selected':''}>${x.no}강. ${esc(x.l.title)}</option>`).join('')}
+      ${fmLessons.map(x => `<option value="${x.l.id}" ${x.l.id===state.formativeResultId?'selected':''}>${lessonNo(x.l, x.no)} ${esc(x.l.title)}</option>`).join('')}
     </select>
     ${catline(withRooms.map(x => ({ v:x.c.id, label:M.roomNo(x.c) })), state.formativeRoom, 'fm-room', '전체')}</div>`;
 
@@ -2595,7 +2606,7 @@ document.getElementById('shell').addEventListener('click', e => {
       render(); break;
     }
     case 'q-save':
-      run(() => M.setQuestion(id, { prompt:val('q-ed-prompt'), guide:val('q-ed-guide') }), '저장했습니다.');
+      run(() => M.setQuestion(id, { question:val('q-ed-prompt'), guide:val('q-ed-guide') }), '저장했습니다.');
       break;
     case 'q-ai-run': runQuestionAI(false); break;
     case 'q-ai-regrade': runQuestionAI(true); break;
