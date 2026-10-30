@@ -7,7 +7,7 @@
    모두 --sz 한 값의 배수다. --sz는 쪽 상자의 짧은 변의 1%(1cqmin)라서, 전체화면 투사든
    어드민의 작은 미리보기든 글자 비율이 저절로 같다(아래 .deckframe 주석 참고).
    쪽 바깥(위쪽 막대, 단추)은 다른 화면과 같이 네 단계를 쓴다. */
-@import url("shared/theme.css?v=20261030r");
+@import url("shared/theme.css?v=20261030s");
 
 /* ── 16:9 쪽 ──
    .deckframe 이 쪽을 담는 16:9 상자고 .deckpage 가 그 안을 꽉 채운다.

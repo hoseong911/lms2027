@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030r';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE } from './shared/slide-axis.js?v=20261030s';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -152,7 +152,7 @@ function pageSlides(content, fallback){
    (그래야 사료 쪽인 줄 안다).
    출전: 사료의 마지막 줄이 『퇴계집』처럼 책 이름 괄호에 싸였거나 "출처"로 시작하거나 줄표로
    시작하는 짧은 줄이면 출전으로 보고 본문에서 떼어 오른쪽 아래에 둔다. */
-const SOURCE_RE = /^(?:사료|글\s*자료|읽기\s*자료)\s*\d*\s*(?::\s*|$)/;
+// SOURCE_RE는 shared/slide-axis.js에 있다(활동지 변환과 같은 기준을 써야 해서 옮겼다)
 const CITE_RE = /^(?:[『「《〈<(\[].{0,30}[』」》〉>)\]]|출처\s*[:：]?.{0,40}|[-–]\s*\S.{0,30})$/;
 
 // 축 단계 이름(쪽 맨 위 배지). 표지에는 달지 않는다

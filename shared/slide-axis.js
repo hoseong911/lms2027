@@ -195,3 +195,9 @@ export function stripIndent(text){
  * (손으로 적은 제목이나 예전에 가져온 제목에 머리가 남아 있어도 쪽에는 서지 않게). */
 export const STEP_PREFIX_RE = /^(?:개념\s*노트|개념\s*Check|미션\s*활동|미션\s*Check)\s*(?:#\s*\d+)?\s*:\s*/i;
 export const stripStepPrefix = t => String(t ?? '').trim().replace(STEP_PREFIX_RE, '').trim();
+
+/* 사료 쪽인가: 제목이 "사료", "글자료", "읽기 자료"로 시작하면 사료 쪽이다.
+   슬라이드(slide-deck.js)가 사료 모양으로 그리고, 활동지 변환(worksheet-pdf.js)이 그 쪽을
+   따로 떼어 낼 때 같은 기준을 쓴다. 두 곳이 어긋나면 "변환은 사료로 뗐는데 사료처럼 안 그려진다"가
+   되므로 여기 한 곳에 둔다(STEP_PREFIX_RE를 여기로 옮긴 것과 같은 까닭). */
+export const SOURCE_RE = /^(?:사료|글\s*자료|읽기\s*자료)\s*\d*\s*(?::\s*|$)/;

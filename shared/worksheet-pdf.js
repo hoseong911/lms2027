@@ -13,9 +13,13 @@
  *         한글에서 바로 PDF로 저장한 활동지는 된다.
  *
  * 나누는 규칙 (활동지 모양에 맞춘 어림이다. 틀린 곳은 편집기에서 고친다)
- *   - 페이지 제목: 본문보다 글자가 뚜렷하게 큰 줄(본문 크기의 1.15배 이상). 거기서 새 페이지다.
- *   - 라벨: 같은 줄 맨 왼쪽에 짧은 낱말이 있고 멀리 떨어져 "1." 줄이 이어지면(표의 왼쪽 칸),
- *           또는 짧은 줄 하나가 홀로 서고 바로 밑에 "1." 줄이 오면 그 낱말이 라벨이다.
+ *   - 페이지 제목: 괄호로 감싼 줄("[ 개념 노트 #1 : ... ]", "< 사료 : ... >") 또는 본문보다
+ *           글자가 뚜렷하게 큰 줄(1.15배 이상). 거기서 새 페이지다. 선생님 활동지는 괄호 쪽이다.
+ *   - 묶음: 내용이 "1."로 시작하는 줄에서 새 묶음이다(활동지 표는 칸마다 1.부터 다시 센다).
+ *   - 라벨: 표의 왼쪽 칸. 내용 칸보다 뚜렷하게 왼쪽에 선 짧은 조각이다(자리로 가린다).
+ *           여러 줄로 쪼개져 내용 줄 사이에 끼어 있으면("유교" "윤리의" "보급") 이어 붙인다.
+ *   - 사료: 제목이 사료로 시작하면 쪽 하나를 따로 차지한다. 그 뒤에 다시 "1." 줄이 오면
+ *           표로 돌아온 것이라 본문 쪽을 같은 제목으로 다시 연다.
  *   - 단계: 줄 앞 기호가 "1."이면 1단계, "-"이면 2단계, "·"이면 3단계(slide-axis.js의 lineLevel).
  *           단계는 줄 글자에 기호가 그대로 남아 있어서 따로 적어 두지 않는다.
  *   - 미션: 제목에 "미션"이 든 페이지부터는 미션 활동 쪽으로 간다.
@@ -27,7 +31,7 @@
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel, stripStepPrefix } from './slide-axis.js?v=20261030r';
+import { lineLevel, stripStepPrefix, SOURCE_RE } from './slide-axis.js?v=20261030s';
 
 // 브라우저는 CDN에서 PDF.js를 불러온다. 판 번호를 못박아 둔다(바뀌면 꺼내는 결과가 달라질 수 있다)
 const PDFJS_VER = '4.10.38';
@@ -111,9 +115,33 @@ function pageLines(items){
   }).filter(l => l.text);
 }
 
-/* 쪽 번호, 머리말 같은 군더더기 줄: "1/2", "- 3 -", 숫자만 있는 줄 */
-const JUNK_RE = /^(?:\d+\s*\/\s*\d+|-\s*\d+\s*-|\d+)$/;
+/* 군더더기 줄: 쪽 번호("1/2", "- 3 -", 숫자만), 그리고 화살표나 기호만 있는 줄.
+   기호만 있는 줄은 활동지에서 그림으로 쓴 것이라(붕당이 갈라지는 ⇙ ⇘ 같은 것) 글로 옮길 것이 없다. */
+const JUNK_RE = /^(?:\d+\s*\/\s*\d+|-\s*\d+\s*-|\d+|[\s⇙⇘⇐⇒⇑⇓→←↑↓↔⇨⇦▶◀▲▼◆◇■□●○※*]+)$/;
 const SHORT = 10;   // 라벨로 볼 수 있는 가장 긴 글자 수
+
+/* 묶음 머리를 감싼 괄호: "[ 개념 노트 #1 : 성리학적 질서의 확산 ]", "< 사료 : 이황의 ... >".
+   선생님 활동지는 묶음 머리를 **큰 글씨가 아니라 이 괄호로** 알린다(2026-10-30 29강 활동지에서 확인).
+   처음에는 글자 크기만 보고 제목을 가렸는데 머리가 본문과 같은 11pt라 하나도 안 잡혔고,
+   활동지 한 장이 통째로 한 페이지 한 묶음이 되어 버렸다. 그래서 괄호 규칙을 더했다.
+   괄호는 떼고 안쪽 글만 제목으로 쓴다. */
+const WRAP_RE = /^[\[【〔<〈]\s*([^\]】〕>〉]+?)\s*[\]】〕>〉]$/;
+const unwrapTitle = t => { const m = WRAP_RE.exec(String(t ?? '').trim()); return m ? m[1].trim() : null; };
+
+/* 저절로 넘어간 줄을 앞 줄에 이을 때 빈칸을 넣는가 (2026-10-30 고침).
+   한글은 낱말 가운데서도 줄이 넘어간다("그 효과를 어찌 서" + "원과 같다 하겠습니까").
+   늘 빈칸으로 이으면 "서 원과"가 되어 낱말이 깨진다. 거꾸로 낱말이 끝나는 자리에서
+   넘어간 것이면 빈칸이 있어야 한다("… 서원" + "교육이 크게" → "서원 교육이").
+   줄 끝에서 먹힌 빈칸은 PDF에 남지 않아 둘을 가릴 길이 없다. 그래서 어림을 쓴다:
+   **앞 줄의 마지막 낱말이 한 글자뿐이면 낱말이 갈린 것으로 보고 그냥 붙인다.**
+   한글 낱말은 보통 두 글자가 넘고, 글자 단위로 넘어갈 때 끝에 한 글자만 남는 일이 잦다.
+   29강 활동지의 사료 두 쪽에 있는 여섯 자리가 이 규칙으로 다 맞았다. 틀리면 편집기에서 고친다. */
+const HANGUL_RE = /[가-힣]/;
+function wrapGlue(prev, next){
+  const tail = String(prev).split(/[\s　]+/).pop() || '';
+  const head = String(next)[0] || '';
+  return (tail.length === 1 && HANGUL_RE.test(tail) && HANGUL_RE.test(head)) ? '' : ' ';
+}
 
 /* 꺼낸 줄을 페이지로 나눈다. 돌려주는 것은 { concept, mission } 두 덩어리이고
    둘 다 slide-axis.js의 fromPages가 받는 페이지 배열이다: [{ title, rows:[{ label, text }] }]. */
@@ -125,49 +153,75 @@ export function linesToParts(lines){
   const tally = {};
   clean.forEach(l => { tally[l.size] = (tally[l.size] || 0) + l.text.length; });
   const body = +Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
-  const isTitle = l => l.size >= body * 1.15 && l.text.length <= 60;
+  /* 묶음 머리인가. 둘 중 하나면 머리다: 괄호로 감쌌거나(선생님 활동지가 쓰는 방식),
+     본문보다 글자가 뚜렷하게 크거나. 머리면 괄호를 뗀 제목을, 아니면 null을 돌려준다. */
+  const titleOf = l => unwrapTitle(l.text)
+    ?? (l.size >= body * 1.15 && l.text.length <= 60 ? l.text : null);
+
+  /* 표의 라벨 칸을 자리로 가린다 (2026-10-30 고침).
+     활동지 표는 왼쪽이 라벨 칸("서원", "향약", "유교 윤리의 보급"), 오른쪽이 내용 칸이다.
+     내용 칸의 왼쪽 끝(contentX)은 단계 기호(1. - ·)로 시작하는 줄들의 왼쪽 자리 최빈값이다.
+     그보다 뚜렷하게 왼쪽에 있는 짧은 조각이 라벨이다.
+     전에는 "짧은 낱말 다음에 1. 줄이 오면 라벨"이라는 글만 보는 어림이었는데,
+     라벨이 "1."이 아닌 줄 옆에 서거나(2. 기능 옆의 "서원") 홀로 서거나(향약) 여러 줄로
+     쪼개지면("유교" "윤리의" "보급") 다 놓쳤고, 사료의 출전(『퇴계집』)을 라벨로 잘못 봤다. */
+  const xs = {};
+  clean.forEach(l => {
+    const s = l.segs[0];
+    if (s && lineLevel(s.text).lv) xs[Math.round(s.x)] = (xs[Math.round(s.x)] || 0) + 1;
+  });
+  const hit = Object.entries(xs).sort((a, b) => b[1] - a[1])[0];
+  const labelX = hit ? +hit[0] - body * 1.5 : -Infinity;   // 이보다 왼쪽이면 라벨 칸
+  const isLabel = s => s.x < labelX && s.text.length <= SHORT && !lineLevel(s.text).lv;
 
   const concept = [], mission = [];
-  // 페이지 제목이 하나라도 있으면 첫 제목 위의 줄은 활동지 머리라 넣지 않는다(skip으로 시작)
-  let target = concept, page = null, row = null, skip = clean.some(isTitle);
+  // 묶음 머리가 하나라도 있으면 첫 머리 위의 줄은 활동지 머리(학교 이름, 학번 칸, 학습 목표)라 넣지 않는다
+  let target = concept, page = null, row = null, skip = clean.some(l => titleOf(l) !== null);
+  let parentTitle = '';     // 사료 쪽이 끝나고 표로 돌아올 때 다시 쓸 제목
+  let inSource = false;     // 지금 사료 쪽을 담고 있는가
   const newPage = title => {
     if (/미션/.test(title)) target = mission;
     // 오늘의 질문(생각 Check)과 학습 목표는 축의 다른 단계에 따로 있으므로 페이지로 넣지 않는다
     skip = /질문|생각\s*Check|학습\s*목표/i.test(title);
-    // "개념 노트 #1 : 성리학적 질서의 확산"은 "성리학적 질서의 확산"만 가져온다(선생님 지시 2026-10-30)
+    // "개념 노트 #1 : 성리학적 질서의 확산"은 "성리학적 질서의 확산"만 가져온다(선생님 지시 2026-10-30).
+    // "사료 : ..."의 사료 머리는 떼지 않는다(그 머리로 사료 쪽인 줄 안다)
     page = { title: stripStepPrefix(title), rows: [] }; row = null;
+    inSource = SOURCE_RE.test(page.title);
+    if (!inSource && !skip) parentTitle = page.title;
     if (!skip) target.push(page);
   };
   const ensurePage = () => { if (!page) newPage(''); };
   let prevFull = false;   // 바로 앞에 넣은 줄이 오른쪽 끝까지 꽉 찼는가(pdfLines의 full)
-  const newRow = label => { ensurePage(); row = { label, text: '' }; page.rows.push(row); prevFull = false; };
+  const newRow = () => { ensurePage(); row = { label:'', text:'' }; page.rows.push(row); prevFull = false; };
+  // 라벨은 여러 줄로 쪼개져 내용 줄 사이사이에 끼어 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다
+  const addLabel = t => { if (!row) newRow(); row.label = row.label ? `${row.label} ${t}` : t; };
   const addLine = (t, full) => {
     ensurePage();
-    if (!row) newRow('');
-    // 꽉 찬 줄 다음의 기호 없는 줄은 저절로 넘어간 줄이라 앞 줄에 잇는다(줄바꿈 대신 빈칸 하나)
+    if (!row) newRow();
+    // 꽉 찬 줄 다음의 기호 없는 줄은 저절로 넘어간 줄이라 앞 줄에 잇는다(줄바꿈 대신 빈칸이나 그냥 붙이기)
     const wrap = prevFull && row.text && !lineLevel(t).lv;
-    row.text += row.text ? (wrap ? ' ' : '\n') + t : t;
+    row.text += row.text ? (wrap ? wrapGlue(row.text, t) : '\n') + t : t;
     prevFull = !!full;
   };
 
-  clean.forEach((l, i) => {
-    if (isTitle(l)){ newPage(l.text); return; }
+  clean.forEach(l => {
+    const t = titleOf(l);
+    if (t !== null){ newPage(t); return; }
     if (skip) return;
-    const next = clean[i + 1];
-    const [first, ...rest] = l.segs;
-    const restText = rest.map(s => s.text).join(' ');
 
-    // 표의 왼쪽 칸: 짧은 낱말 + 멀리 떨어진 "1." 줄
-    if (rest.length && first.text.length <= SHORT && !lineLevel(first.text).lv
-        && lineLevel(restText).lv === 1){
-      newRow(first.text); addLine(restText, l.full); return;
+    const labels = l.segs.filter(isLabel);
+    const text = l.segs.filter(s => !isLabel(s)).map(s => s.text).join(' ');
+    const { lv, mark } = lineLevel(text);
+
+    /* "1."로 시작하는 줄에서 새 묶음이 시작된다: 활동지 표는 칸마다 1.부터 다시 센다.
+       그 앞이 사료 쪽이었으면 표로 돌아온 것이므로 본문 쪽을 같은 제목으로 다시 연다
+       (사료는 슬라이드에서 쪽 하나를 따로 차지한다). */
+    if (lv === 1 && mark === '1.'){
+      if (inSource) newPage(parentTitle);
+      newRow();
     }
-    // 홀로 선 짧은 줄 밑에 "1." 줄이 오면 그 줄이 라벨이다
-    if (l.text.length <= SHORT && !lineLevel(l.text).lv && next && !isTitle(next)
-        && lineLevel(next.text).lv === 1){
-      newRow(l.text); return;
-    }
-    addLine(l.text, l.full);
+    labels.forEach(s => addLabel(s.text));
+    if (text) addLine(text, l.full);
   });
 
   // 내용 줄이 없는 페이지(제목만 덩그러니 선 것)는 뺀다
