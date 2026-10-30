@@ -31,7 +31,8 @@
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel, stripStepPrefix, SOURCE_RE } from './slide-axis.js?v=20261030s';
+import { lineLevel } from './slide-axis.js?v=20261030t';
+import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages } from './worksheet.js?v=20261030t';
 
 // 브라우저는 CDN에서 PDF.js를 불러온다. 판 번호를 못박아 둔다(바뀌면 꺼내는 결과가 달라질 수 있다)
 const PDFJS_VER = '4.10.38';
@@ -115,18 +116,11 @@ function pageLines(items){
   }).filter(l => l.text);
 }
 
-/* 군더더기 줄: 쪽 번호("1/2", "- 3 -", 숫자만), 그리고 화살표나 기호만 있는 줄.
-   기호만 있는 줄은 활동지에서 그림으로 쓴 것이라(붕당이 갈라지는 ⇙ ⇘ 같은 것) 글로 옮길 것이 없다. */
-const JUNK_RE = /^(?:\d+\s*\/\s*\d+|-\s*\d+\s*-|\d+|[\s⇙⇘⇐⇒⇑⇓→←↑↓↔⇨⇦▶◀▲▼◆◇■□●○※*]+)$/;
-const SHORT = 10;   // 라벨로 볼 수 있는 가장 긴 글자 수
-
-/* 묶음 머리를 감싼 괄호: "[ 개념 노트 #1 : 성리학적 질서의 확산 ]", "< 사료 : 이황의 ... >".
-   선생님 활동지는 묶음 머리를 **큰 글씨가 아니라 이 괄호로** 알린다(2026-10-30 29강 활동지에서 확인).
+/* 군더더기 줄(JUNK_RE), 라벨 길이(SHORT), 묶음 머리 괄호(unwrapTitle)는 한글 파일 길과 같이 쓰므로
+   worksheet.js에 있다. 괄호 규칙이 생긴 까닭: 선생님 활동지는 묶음 머리를 큰 글씨가 아니라
+   "[ 개념 노트 #1 : ... ]", "< 사료 : ... >" 같은 괄호로 알린다(2026-10-30 29강 활동지에서 확인).
    처음에는 글자 크기만 보고 제목을 가렸는데 머리가 본문과 같은 11pt라 하나도 안 잡혔고,
-   활동지 한 장이 통째로 한 페이지 한 묶음이 되어 버렸다. 그래서 괄호 규칙을 더했다.
-   괄호는 떼고 안쪽 글만 제목으로 쓴다. */
-const WRAP_RE = /^[\[【〔<〈]\s*([^\]】〕>〉]+?)\s*[\]】〕>〉]$/;
-const unwrapTitle = t => { const m = WRAP_RE.exec(String(t ?? '').trim()); return m ? m[1].trim() : null; };
+   활동지 한 장이 통째로 한 페이지 한 묶음이 되어 버렸다. */
 
 /* 저절로 넘어간 줄을 앞 줄에 이을 때 빈칸을 넣는가 (2026-10-30 고침).
    한글은 낱말 가운데서도 줄이 넘어간다("그 효과를 어찌 서" + "원과 같다 하겠습니까").
@@ -174,40 +168,26 @@ export function linesToParts(lines){
   const labelX = hit ? +hit[0] - body * 1.5 : -Infinity;   // 이보다 왼쪽이면 라벨 칸
   const isLabel = s => s.x < labelX && s.text.length <= SHORT && !lineLevel(s.text).lv;
 
-  const concept = [], mission = [];
-  // 묶음 머리가 하나라도 있으면 첫 머리 위의 줄은 활동지 머리(학교 이름, 학번 칸, 학습 목표)라 넣지 않는다
-  let target = concept, page = null, row = null, skip = clean.some(l => titleOf(l) !== null);
-  let parentTitle = '';     // 사료 쪽이 끝나고 표로 돌아올 때 다시 쓸 제목
-  let inSource = false;     // 지금 사료 쪽을 담고 있는가
-  const newPage = title => {
-    if (/미션/.test(title)) target = mission;
-    // 오늘의 질문(생각 Check)과 학습 목표는 축의 다른 단계에 따로 있으므로 페이지로 넣지 않는다
-    skip = /질문|생각\s*Check|학습\s*목표/i.test(title);
-    // "개념 노트 #1 : 성리학적 질서의 확산"은 "성리학적 질서의 확산"만 가져온다(선생님 지시 2026-10-30).
-    // "사료 : ..."의 사료 머리는 떼지 않는다(그 머리로 사료 쪽인 줄 안다)
-    page = { title: stripStepPrefix(title), rows: [] }; row = null;
-    inSource = SOURCE_RE.test(page.title);
-    if (!inSource && !skip) parentTitle = page.title;
-    if (!skip) target.push(page);
-  };
-  const ensurePage = () => { if (!page) newPage(''); };
+  /* 쪽과 묶음을 모으는 것은 한글 파일 길과 같은 일꾼이다(worksheet.js의 makeCollector).
+     첫 머리 위의 활동지 머리 버리기, 질문과 학습 목표 쪽 버리기, 미션 쪽 가르기, 제목 머리 떼기,
+     사료 쪽과 되돌아오기가 다 거기 있다. 여기에는 PDF만의 것(자리로 라벨 가리기, 줄 잇기)만 남는다. */
+  const col = makeCollector();
+  if (!clean.some(l => titleOf(l) !== null)) col.noTitles();
+
   let prevFull = false;   // 바로 앞에 넣은 줄이 오른쪽 끝까지 꽉 찼는가(pdfLines의 full)
-  const newRow = () => { ensurePage(); row = { label:'', text:'' }; page.rows.push(row); prevFull = false; };
-  // 라벨은 여러 줄로 쪼개져 내용 줄 사이사이에 끼어 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다
-  const addLabel = t => { if (!row) newRow(); row.label = row.label ? `${row.label} ${t}` : t; };
+  const newRow = () => { col.newRow(); prevFull = false; };
   const addLine = (t, full) => {
-    ensurePage();
-    if (!row) newRow();
+    if (!col.row) newRow();
     // 꽉 찬 줄 다음의 기호 없는 줄은 저절로 넘어간 줄이라 앞 줄에 잇는다(줄바꿈 대신 빈칸이나 그냥 붙이기)
-    const wrap = prevFull && row.text && !lineLevel(t).lv;
-    row.text += row.text ? (wrap ? wrapGlue(row.text, t) : '\n') + t : t;
+    const prev = col.row.text;
+    col.addText(t, prevFull && prev && !lineLevel(t).lv ? wrapGlue(prev, t) : '\n');
     prevFull = !!full;
   };
 
   clean.forEach(l => {
     const t = titleOf(l);
-    if (t !== null){ newPage(t); return; }
-    if (skip) return;
+    if (t !== null){ col.newPage(t); prevFull = false; return; }
+    if (col.skipping) return;
 
     const labels = l.segs.filter(isLabel);
     const text = l.segs.filter(s => !isLabel(s)).map(s => s.text).join(' ');
@@ -217,16 +197,17 @@ export function linesToParts(lines){
        그 앞이 사료 쪽이었으면 표로 돌아온 것이므로 본문 쪽을 같은 제목으로 다시 연다
        (사료는 슬라이드에서 쪽 하나를 따로 차지한다). */
     if (lv === 1 && mark === '1.'){
-      if (inSource) newPage(parentTitle);
+      if (col.inSource) col.newPage(col.parentTitle);
       newRow();
     }
-    labels.forEach(s => addLabel(s.text));
+    // 라벨은 여러 줄로 쪼개져 내용 줄 사이사이에 끼어 있다("유교" "윤리의" "보급"). 그 묶음의 라벨에 이어 붙인다
+    labels.forEach(s => { if (!col.row) newRow(); col.addLabel(s.text); });
     if (text) addLine(text, l.full);
   });
 
   // 내용 줄이 없는 페이지(제목만 덩그러니 선 것)는 뺀다
-  const tidy = pages => pages.filter(p => p.rows.some(r => r.text.trim()));
-  return { concept: tidy(concept), mission: tidy(mission) };
+  const { concept, mission } = col.pages;
+  return { concept: tidyPages(concept), mission: tidyPages(mission) };
 }
 
 // 브라우저에서 PDF.js를 한 번만 불러 둔다

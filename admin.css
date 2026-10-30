@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261030s");
+@import url("shared/theme.css?v=20261030t");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -685,7 +685,7 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
    글 칸은 적은 만큼 늘어난다(field-sizing). 못 읽는 브라우저는 rows로 어림한 높이에 손잡이로 늘린다. */
 /* 페이지 번호는 "1페이지"가 아니라 숫자만(선생님 지시 2026-10-30: "1 2 이런식으로 간결하게").
    모양은 콘텐츠 탭 공용 번호 칸(.axnum) 하나다.
-   머리줄은 번호, 제목 칸, 단추 넷(위, 아래, 묶음 추가, 삭제) 순이다. 제목 칸은 늘어나지 않는다
+   머리줄은 번호, 제목 칸, 단추 다섯(위, 아래, 묶음 추가, 비교 묶음 추가, 삭제) 순이다. 제목 칸은 늘어나지 않는다
    (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을") */
 .pgblock{border-top:1px solid var(--line);padding:14px 0 16px}
 .pgblock:first-child{border-top:0;padding-top:6px}
@@ -703,6 +703,12 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
 /* 내용 칸: 단계 들여쓰기를 빈칸으로 보여 주므로(indentText) 빈칸 폭이 고른 편이 단계가 가지런하다 */
 .pgtext{white-space:pre-wrap;tab-size:4;width:100%}
 .pgrow .tools{padding-top:3px}
+/* 좌우 비교 묶음(요구사항 137): 보통 묶음(라벨 위, 내용 아래)이 두 칸으로 나란히 서고, 삭제 단추는
+   오른쪽 끝 위에 선다(보통 묶음과 같이 길어지는 내용 칸에 매달지 않는다). 좁은 화면에서는 위아래로 쌓는다 */
+.pgcmp{flex-direction:row;align-items:flex-start;gap:8px}
+.pgcmp-cols{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.pgcmp-col{display:flex;flex-direction:column;gap:6px;min-width:0}
+@media (max-width:760px){ .pgcmp-cols{grid-template-columns:minmax(0,1fr)} }
 /* 페이지 추가는 묶음들 위, 편집창 맨 위다(선생님 지시 2026-10-30).
    아래 밑줄이 첫 페이지와 나누는 선을 겸한다(.pgblock:first-child는 윗선이 없다) */
 .ce-add.pgadd{margin:8px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}

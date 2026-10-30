@@ -7,7 +7,7 @@
    모두 --sz 한 값의 배수다. --sz는 쪽 상자의 짧은 변의 1%(1cqmin)라서, 전체화면 투사든
    어드민의 작은 미리보기든 글자 비율이 저절로 같다(아래 .deckframe 주석 참고).
    쪽 바깥(위쪽 막대, 단추)은 다른 화면과 같이 네 단계를 쓴다. */
-@import url("shared/theme.css?v=20261030s");
+@import url("shared/theme.css?v=20261030t");
 
 /* ── 16:9 쪽 ──
    .deckframe 이 쪽을 담는 16:9 상자고 .deckpage 가 그 안을 꽉 채운다.
@@ -94,6 +94,19 @@
   border-bottom:calc(var(--px) * 5) solid var(--red);padding-bottom:calc(var(--px) * 6);
   margin-bottom:calc(var(--px) * 18)}
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 4);min-width:0}
+
+/* 좌우 비교 묶음(요구사항 137. 2026 슬라이드의 compare를 보고 따랐다). 두 칸이 같은 폭으로 나란히 서고
+   가운데에 VS가 선다. 칸 안은 보통 묶음과 같다(라벨 밑 레드 줄, 내용 줄 그리기).
+   2026의 그림자 상자와 색 채운 머리 띠는 가져오지 않았다(2027 화면 규칙: 그림자 없음, 선으로만 나눈다).
+   두 칸 사이는 세로 선 하나로 가르고 VS가 그 선 위에 앉는다. */
+.deckpage .pcmp{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  column-gap:calc(var(--px) * 40);align-items:stretch}
+.deckpage .pcmp-col{min-width:0}
+.deckpage .pcmp-vs{position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:var(--tfs);font-weight:800;color:var(--red);letter-spacing:.02em;line-height:1.3}
+.deckpage .pcmp-vs::before{content:"";position:absolute;inset:0 50%;border-left:2px solid var(--line)}
+/* VS 글자 뒤만 쪽 바탕색으로 덮어 선이 글자를 지나가지 않게 한다 */
+.deckpage .pcmp-vs span{position:relative;background:#fff;padding-block:calc(var(--px) * 12)}
 
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
    "수준이 떨어질 수록 들여쓰기". 들여쓰기는 나무 모양이 맡는다(slide-deck.js의 lineTree):

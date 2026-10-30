@@ -106,12 +106,25 @@ export function normalizeDeck(lesson){
  * 저장 모양은 예전 개념 노트 줄 배열을 그대로 잇는다(옛 강의를 옮기지 않아도 되게):
  *   { type:'divider', title }        페이지 제목. 여기서 새 페이지
  *   { type:'row', label, text }      묶음 하나. text는 여러 줄(줄바꿈으로 나눈다)
+ *
+ *   { type:'compare', left:{ label, text }, right:{ label, text } }
+ *                                    좌우 비교 묶음(선생님 지시 2026-10-30, 요구사항 137:
+ *                                    "기존 lms에서 좌우 비교하는 내용이 있거든? 그거를 참고해봐").
+ *                                    2026의 compare처럼 왼쪽과 오른쪽이 각각 라벨과 내용을 든다.
+ *                                    서인과 동인을 견주는 두 칸 표가 그 예다.
  * 개념 노트는 parts.concept.content, 미션 활동은 deck.mission.content 에 든다.
+ *
+ * 페이지로 펴면 비교 묶음은 { kind:'compare', label:'', text:'', left, right }다.
+ * label과 text를 빈 글자로 같이 두는 까닭: 묶음을 다루는 옛 코드가 r.label.trim()을 그냥 부른다.
+ * 그래도 "적힌 것이 있는가"는 rowFilled 한 곳으로 묻는다(비교 묶음은 네 칸을 다 봐야 한다).
  *
  * 예전 줄(label 칸이 아예 없는 row)은 한 줄이 row 하나였다. 그런 줄이 이어지면
  * 페이지로 펼 때 한 묶음으로 합친다(보이는 모양은 같고 편집기에서 칸이 줄줄이 서지 않게).
  * 새로 만든 묶음은 label 칸을 늘 들고 있어서(빈 글자라도) 합쳐지지 않는다.
  */
+const side = s => ({ label: String(s?.label ?? ''), text: String(s?.text ?? '') });
+export const blankCompare = () => ({ kind:'compare', label:'', text:'', left: side(), right: side() });
+
 export function toPages(content){
   const pages = [];
   let cur = null, lastLegacy = false;
@@ -121,6 +134,10 @@ export function toPages(content){
       cur = { title: String(ln.title ?? ''), rows: [] }; pages.push(cur); lastLegacy = false; return;
     }
     if (!cur){ cur = { title: '', rows: [] }; pages.push(cur); }
+    if (ln.type === 'compare'){
+      cur.rows.push({ ...blankCompare(), left: side(ln.left), right: side(ln.right) });
+      lastLegacy = false; return;
+    }
     const legacy = !('label' in ln);
     const text = String(ln.text ?? '');
     if (legacy && lastLegacy) cur.rows[cur.rows.length - 1].text += '\n' + text;
@@ -133,10 +150,21 @@ export function fromPages(pages){
   const out = [];
   (pages || []).forEach(p => {
     out.push({ type:'divider', title: String(p.title ?? '') });
-    (p.rows || []).forEach(r => out.push({ type:'row', label: String(r.label ?? ''), text: String(r.text ?? '') }));
+    (p.rows || []).forEach(r => out.push(r.kind === 'compare'
+      ? { type:'compare', left: side(r.left), right: side(r.right) }
+      : { type:'row', label: String(r.label ?? ''), text: String(r.text ?? '') }));
   });
   return out;
 }
+
+/* 묶음, 페이지에 적힌 것이 있는가. 어드민 채움 표시(deckStepFilled), 비울 것 세기(stepHasContent),
+   활동지를 덮어쓸지 묻기(importWorksheet)가 같이 쓴다. 비교 묶음이 생겨 칸이 넷이 되었으므로
+   곳곳에서 label과 text만 보던 것을 여기 한 곳으로 모았다(어긋나면 "비었다는데 내용이 있다"가 된다). */
+const filled = v => !!String(v ?? '').trim();
+export const rowFilled = r => !!r && (r.kind === 'compare'
+  ? filled(r.left?.label) || filled(r.left?.text) || filled(r.right?.label) || filled(r.right?.text)
+  : filled(r.label) || filled(r.text));
+export const pagesFilled = pages => (pages || []).some(p => filled(p.title) || p.rows.some(rowFilled));
 
 /* ── 내용 줄의 단계 (선생님 지시 2026-10-30) ──
  * "내용 수준 단계는 총 3단계로 1. , -, · 임. 활동지에서 수준이 떨어질 수록 들여쓰기를 해야 함."

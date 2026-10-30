@@ -25,7 +25,7 @@
  *   - 제목의 단계 이름 머리("개념 노트 #1 : ")는 뗀다(slide-axis.js의 stripStepPrefix).
  *             "사료 : "는 떼지 않는다. 그 머리로 사료 쪽인 줄 알기 때문이다(SOURCE_RE).
  */
-import { stripStepPrefix } from './slide-axis.js?v=20261030t';
+import { stripStepPrefix, SOURCE_RE, rowFilled } from './slide-axis.js?v=20261030t';
 
 export const SHORT = 10;   // 라벨로 볼 수 있는 가장 긴 글자 수
 
@@ -40,6 +40,11 @@ export const unwrapTitle = t => {
 // 축의 다른 단계에 따로 있는 쪽이라 페이지로 넣지 않는다
 export const SKIP_TITLE_RE = /질문|생각\s*Check|학습\s*목표/i;
 
+/* 군더더기: 쪽 번호("1/2", "- 3 -", 숫자만), 그리고 화살표나 기호만 있는 글.
+   기호만 있는 것은 활동지에서 그림으로 쓴 것이라(붕당이 갈라지는 ⇙ ⇘ 같은 것) 글로 옮길 것이 없다.
+   PDF는 그런 줄을, 한글 파일은 그런 칸을 버린다. */
+export const JUNK_RE = /^(?:\d+\s*\/\s*\d+|-\s*\d+\s*-|\d+|[\s⇙⇘⇐⇒⇑⇓→←↑↓↔⇨⇦▶◀▲▼◆◇■□●○※*]+)$/;
+
 /* 쪽을 모으는 일꾼. 두 길(hwpx, pdf)이 같은 모양을 만들도록 여기 한 곳에 둔다.
    돌려주는 것은 slide-axis.js의 fromPages가 받는 페이지 배열이다:
    [{ title, rows:[{ label, text } 또는 { kind:'compare', left, right }] }] */
@@ -52,6 +57,7 @@ export function makeCollector(){
 
   const api = {
     get pages(){ return { concept, mission }; },
+    get row(){ return row; },        // 지금 채우는 묶음(PDF 길이 줄을 이을 때 앞 글을 본다)
     get inSource(){ return inSource; },
     get parentTitle(){ return parentTitle; },
     get skipping(){ return skip; },
@@ -60,14 +66,14 @@ export function makeCollector(){
        두 길 다 줄을 다 읽어 본 뒤 이것을 불러 준다. */
     noTitles(){ skip = false; },
 
-    newPage(title, { source = false } = {}){
+    newPage(title){
       if (/미션/.test(title)) target = mission;
       skip = SKIP_TITLE_RE.test(title);
-      // "사료 : "는 떼지 않는다. 그 머리로 사료 쪽인 줄 안다
+      // "사료 : "는 떼지 않는다. 그 머리로 사료 쪽인 줄 안다(SOURCE_RE)
       page = { title: stripStepPrefix(title), rows: [] };
       row = null;
-      inSource = source;
-      if (!source && !skip) parentTitle = page.title;
+      inSource = SOURCE_RE.test(page.title);
+      if (!inSource && !skip) parentTitle = page.title;
       if (!skip) target.push(page);
     },
     ensurePage(){ if (!page) api.newPage(''); },
@@ -99,10 +105,10 @@ export function makeCollector(){
   return api;
 }
 
-/* 내용이 든 묶음인가. 빈 묶음만 있는 쪽은 쪽을 만들지 않는다 */
-export const rowHasText = r => r && (r.kind === 'compare'
-  ? !!(r.left?.label || r.left?.text || r.right?.label || r.right?.text)
-  : !!String(r.text || '').trim());
+/* 내용이 든 묶음인가. 빈 묶음만 있는 쪽은 쪽을 만들지 않는다.
+   보통 묶음은 라벨만 있고 내용이 없으면 없는 것으로 친다(라벨만 덩그러니 선 쪽을 만들지 않게).
+   비교 묶음은 네 칸 중 하나라도 있으면 있는 것이다(slide-axis.js의 rowFilled). */
+export const rowHasText = r => !!r && (r.kind === 'compare' ? rowFilled(r) : !!String(r.text || '').trim());
 
 export const tidyPages = pages => pages.filter(p => p.rows.some(rowHasText));
 

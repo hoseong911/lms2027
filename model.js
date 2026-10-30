@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER } from './shared/slide-axis.js?v=20261030s';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261030t';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -913,7 +913,7 @@ export function setPages(lessonId, key, pages){
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
-  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030s';
+  lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled } from './shared/slide-axis.js?v=20261030t';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -960,9 +960,9 @@ export function deckDelItem(lessonId, key, idx){
 export function deckStepFilled(lessonId, key){
   const l = getLesson(lessonId); if (!l) return false;
   if (key === 'cover') return true;                       // 표지는 제목만 있어도 선다
-  // 페이지 제목, 라벨, 내용 중 하나라도 적혀 있으면 쪽이 선다(slide-deck.js의 pageSlides와 같은 기준)
-  const pageFilled = content => toPages(content).some(p => String(p.title).trim()
-    || p.rows.some(r => String(r.label).trim() || String(r.text).trim()));
+  // 페이지 제목이나 묶음 칸 중 하나라도 적혀 있으면 쪽이 선다(slide-deck.js의 pageSlides와 같은 기준.
+  // 비교 묶음은 네 칸을 다 본다: slide-axis.js의 rowFilled)
+  const pageFilled = content => pagesFilled(toPages(content));
   if (key === 'concept') return pageFilled(l.parts?.concept?.content);
   if (key === 'question') return !!String(l.parts?.question?.question || '').trim();
   const d = getDeck(lessonId);
@@ -992,8 +992,7 @@ export function deckStepFilled(lessonId, key){
 function stepHasContent(lessonId, key){
   const l = getLesson(lessonId); if (!l) return false;
   const d = getDeck(lessonId);
-  const pageFilled = content => toPages(content).some(p => String(p.title).trim()
-    || p.rows.some(r => String(r.label).trim() || String(r.text).trim()));
+  const pageFilled = content => pagesFilled(toPages(content));   // 비교 묶음은 네 칸까지(rowFilled)
   /* deckStepFilled를 쓰지 않고 따로 세는 까닭: 저기와 여기가 묻는 것이 다르다.
      저기는 "슬라이드에 쪽이 서는가", 여기는 "비울 것이 있는가"다.
        표지는 저기서 늘 true다(강의 제목만 있어도 쪽이 선다). 여기서는 비울 것,

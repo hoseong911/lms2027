@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030s';
+import * as M from './model.js?v=20261030t';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1114,7 +1114,7 @@ function lessonEditor(l){
     <div class="palette"><div class="sectionlabel">칸 넣고 빼기</div>${palette}
       <div class="formrow" style="margin-top:10px;flex-direction:column;align-items:stretch">
         <button class="btn-text" data-act="lesson-import" data-id="${l.id}" style="display:flex;align-items:center;justify-content:center;gap:8px"
-          title="활동지를 올려 개념 노트를 만듭니다">${icon('upload',16)}<span>활동지 올리기</span></button>
+          title="활동지를 올려 개념 노트를 만듭니다 (한글 파일 .hwpx를 권합니다)">${icon('upload',16)}<span>활동지 올리기</span></button>
       </div>
     </div></div>`;
 }
@@ -1198,7 +1198,7 @@ function pageAxis(){
       <button class="ib" data-act="axis-preview" data-id="${l.id}"
         title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}</button>
       <button class="ib" data-act="lesson-import" data-id="${l.id}"
-        title="활동지 올리기" aria-label="활동지 올리기">${icon('upload',16)}</button>
+        title="활동지 올리기 (한글 파일 .hwpx를 권합니다)" aria-label="활동지 올리기. 한글 파일 .hwpx를 권합니다">${icon('upload',16)}</button>
       <button class="ib ib-danger" data-act="axis-clear" data-id="${l.id}"
         title="올린 활동지 지우기 (강의 내용을 모두 비웁니다)"
         aria-label="올린 활동지 지우기. 강의 내용을 모두 비웁니다">${icon('trash-2',16)}</button>
@@ -1353,7 +1353,20 @@ function pageEditor(l, k){
        왼쪽 들여쓰기(옛 --pg-in)도 걷었다: 라벨과 내용이 페이지 번호와 같은 선에서 시작한다
        (같은 지시: "시작하는 위치를 페이지 숫자랑 같은 위치에서"). 다시 들여 쓰지 않는다.
        삭제 단추는 라벨 줄 오른쪽이다: 내용 칸은 적은 만큼 아래로 길어져 거기 매달면 자리가 흔들린다. */
-    const rows = pg.rows.map((r, ri) => `<div class="pgrow">
+    /* 좌우 비교 묶음(요구사항 137): 왼쪽과 오른쪽이 각각 라벨과 내용을 든다. 보통 묶음과 같이
+       라벨이 위, 내용이 아래로 쌓이고 그것이 두 칸으로 나란히 선다(.pgcmp). 칸 이름은
+       data-f의 "left.label"처럼 쪽과 칸을 같이 적는다(pg-set이 갈라 읽는다). */
+    const cmpRow = (r, ri) => {
+      const side = (s, nm) => `<div class="pgcmp-col">
+          <textarea class="f grow pglabel" rows="1" ${at('pg-set', p, ri)} data-f="${s}.label"
+            placeholder="${nm} 라벨" aria-label="${nm} 라벨">${esc(r[s].label)}</textarea>
+          <textarea class="f pgtext" rows="${Math.max(2, r[s].text.split('\n').length)}" ${at('pg-set', p, ri)}
+            data-f="${s}.text" placeholder="${nm} 내용" aria-label="${nm} 내용">${esc(M.indentText(r[s].text))}</textarea></div>`;
+      return `<div class="pgrow pgcmp">
+        <div class="pgcmp-cols">${side('left', '왼쪽')}${side('right', '오른쪽')}</div>
+        <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '비교 묶음 삭제', { danger:true })}</div></div>`;
+    };
+    const rows = pg.rows.map((r, ri) => r.kind === 'compare' ? cmpRow(r, ri) : `<div class="pgrow">
         <div class="pgrow-top">
           <textarea class="f grow pglabel" rows="1" ${at('pg-set', p, ri)} data-f="label"
             placeholder="라벨" aria-label="라벨">${esc(r.label)}</textarea>
@@ -1361,10 +1374,11 @@ function pageEditor(l, k){
         </div>
         <textarea class="f pgtext" rows="${Math.max(2, r.text.split('\n').length)}" ${at('pg-set', p, ri)}
           data-f="text" placeholder="내용" aria-label="내용">${esc(M.indentText(r.text))}</textarea></div>`).join('');
-    /* 머리줄: 번호, 제목 칸, 그 다음 단추 넷. 묶음 추가는 순서 바꾸기 다음 자리다
+    /* 머리줄: 번호, 제목 칸, 그 다음 단추. 묶음 추가는 순서 바꾸기 다음 자리다
        (선생님 지시 2026-10-30: "페이지 제목란을 줄이고 순서바꾸는 버튼 다음에 추가버튼을 위치시켜줘").
        제목 칸은 그래서 늘어나지 않고 폭이 정해져 있다(.pgtitle).
-       묶음 추가를 묶음 목록 아래로 되돌리지 않는다. */
+       묶음 추가를 묶음 목록 아래로 되돌리지 않는다.
+       비교 묶음 추가(layout-grid)는 묶음 추가 바로 옆이다(요구사항 137). */
     return `<section class="pgblock">
       <div class="pghead"><span class="axnum">${p + 1}</span>
         <input class="f pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
@@ -1372,6 +1386,7 @@ function pageEditor(l, k){
           ${btn('pg-up', p, null, 'arrow-up', '페이지 위로', { off: p === 0 })}
           ${btn('pg-down', p, null, 'arrow-down', '페이지 아래로', { off: p === pages.length - 1 })}
           ${btn('pg-row-add', p, null, 'plus', '묶음 추가')}
+          ${btn('pg-row-add-cmp', p, null, 'layout-grid', '좌우 비교 묶음 추가')}
           ${btn('pg-del', p, null, 'trash-2', '페이지 삭제', { danger:true })}</div></div>
       ${rows}
     </section>`;
@@ -1392,29 +1407,31 @@ function editPages(el, fn){
   M.setPages(id, k, pages);
 }
 
-/* ── 활동지 PDF 올리기 (선생님 지시 2026-10-30) ──
+/* ── 활동지 올리기 (선생님 지시 2026-10-30, 요구사항 137) ──
    "토큰이 안드는 방향으로 변환해서 내용 인식해줄 것."
-   AI를 거치지 않는다. 브라우저 안에서 PDF 글자를 꺼내 페이지와 묶음으로 나눈다
-   (shared/worksheet-pdf.js. 파일이 어디로도 나가지 않고 사용료도 없다).
+   AI를 거치지 않는다. 브라우저 안에서 파일을 열어 페이지와 묶음으로 나눈다
+   (파일이 어디로도 나가지 않고 사용료도 없다). 받는 파일은 둘이다:
+     .hwpx  한글 파일. 표 칸과 문단이 그대로 들어 있어 이쪽이 정확하다(좌우 비교표도 읽는다)
+     .pdf   한글이 없을 때의 대비. 글자 자리로 어림한다
+   어느 쪽인지는 shared/worksheet.js의 worksheetFromFile이 가른다. 여기서 직접 고르지 않는다.
    제목에 "미션"이 든 페이지부터는 미션 활동으로, 나머지는 개념 노트로 들어간다.
    이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 되돌릴 수 없다).
    다 넣으면 콘텐츠 탭의 개념 노트 단계로 옮겨 가서 바로 고칠 수 있게 한다. */
 function importWorksheet(lessonId){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
+  inp.type = 'file'; inp.accept = '.hwpx,application/pdf,.pdf';
   inp.addEventListener('change', async () => {
     const file = inp.files?.[0]; if (!file) return;
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030s');
-      got = await worksheetFromPdf(file);
-    } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
-    if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
+      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030t');
+      got = await worksheetFromFile(file);
+    } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
+    if (!got.concept.length && !got.mission.length){ toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
 
-    // 지금 적힌 페이지가 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다)
-    const has = k => M.getPages(lessonId, k).some(p => p.title.trim()
-      || p.rows.some(r => r.label.trim() || r.text.trim()));
+    // 지금 적힌 페이지가 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다. 비교 묶음은 네 칸까지)
+    const has = k => M.pagesFilled(M.getPages(lessonId, k));
     const l = M.getLesson(lessonId);
     if ((got.concept.length && has('concept')) || (got.mission.length && has('mission'))){
       const ok = await confirmDelete({ title:'이미 적힌 내용을 바꿀까요?', okText:'바꾸기',
@@ -2293,11 +2310,12 @@ document.getElementById('shell').addEventListener('click', e => {
       [pages[p], pages[j]] = [pages[j], pages[p]];
     }); render(); break;
     case 'pg-row-add': editPages(el, (pages, p) => { pages[p]?.rows.push({ label:'', text:'' }); }); render(); break;
+    case 'pg-row-add-cmp': editPages(el, (pages, p) => { pages[p]?.rows.push(M.blankCompare()); }); render(); break;
     case 'pg-row-del': editPages(el, (pages, p, r) => { pages[p]?.rows.splice(r, 1); }); render(); break;
     case 'pg-del': {
       // 내용이 든 페이지는 지우기 전에 묻는다(빈 페이지는 바로 지운다)
       const pg = M.getPages(id, k)[+el.dataset.p]; if (!pg) break;
-      const full = pg.title.trim() || pg.rows.some(r => r.label.trim() || r.text.trim());
+      const full = pg.title.trim() || pg.rows.some(M.rowFilled);
       const drop = () => { editPages(el, (pages, p) => { pages.splice(p, 1); }); render(); };
       if (!full){ drop(); break; }
       confirmDelete({ title:'페이지 삭제',
@@ -2574,9 +2592,12 @@ document.getElementById('shell').addEventListener('change', e => {
   } else if (el.dataset.act === 'pg-set'){
     /* 묶음의 라벨과 내용. 다시 그리지 않는다(다른 칸을 눌러 포커스가 옮겨 가는 중이라 그리면 커서가 날아간다).
        내용은 들여쓰기 빈칸을 걷어 저장하고, 그 칸만 단계에 맞춰 다시 들여 써 보여 준다. */
-    const f = el.dataset.f;
+    // 비교 묶음의 칸은 "left.text"처럼 쪽과 칸 이름을 같이 적어 둔다(pageEditor의 cmpRow)
+    const [side, f] = el.dataset.f.includes('.') ? el.dataset.f.split('.') : [null, el.dataset.f];
     const v = f === 'text' ? M.stripIndent(el.value) : el.value.trim();
-    editPages(el, (pages, p, r) => { const row = pages[p]?.rows[r]; if (!row) return false; row[f] = v; });
+    editPages(el, (pages, p, r) => {
+      const row = pages[p]?.rows[r]; const box = side ? row?.[side] : row;
+      if (!box) return false; box[f] = v; });
     if (f === 'text'){ el.value = M.indentText(v); el.rows = Math.max(2, v.split('\n').length); }
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
