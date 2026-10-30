@@ -1178,21 +1178,30 @@ function pageAxis(){
   const ax = M.axisStep(state.axisStep);
 
   /* 드롭다운은 어드민의 다른 고르개(.sel)와 같은 모양이다. 글자와 화살표 둘레에 여백이 있다.
-     오른쪽 단추 셋(선생님 지시 2026-10-30): 저장, 미리보기, 활동지 올리기.
-     활동지 올리기는 강의 라이브러리의 강의 편집에만 있던 것을 여기에도 둔 것이다
-     ("콘텐츠에서 활동지 올리는 기능이 없네?"). 같은 importWorksheet를 부른다.
-     저장은 알림용이다: 칸은 커서가 빠질 때 이미 저장되므로(axis-save) 눌러서 확인만 받는다. */
+     오른쪽은 아이콘 단추 넷(선생님 지시 2026-10-30: "문구를 넣은 버튼 말고 그냥 svg 이모지만
+     써서 버튼 만들어줘"). 글씨를 뺀 까닭이 하나 더 있다: 머리줄이 고정 띠라서 낮아야 한다.
+     색은 화면 규칙 그대로다. 주 동작만 레드(.ib-primary), 되돌릴 수 없는 것만 레드 테두리
+     (.ib-danger), 나머지는 회색이다. 전에 넷 다 레드 채운 단추(.btn-text)였던 것은 미리보기가
+     쓰던 클래스를 그대로 늘려 쓴 탓이고 뜻이 있던 것이 아니다("버튼이 다 빨간색인 이유가 있을까?").
+       저장        : 알림용이다. 칸은 커서가 빠질 때 이미 저장되므로 눌러서 확인만 받는다(axis-save)
+       미리보기    : 학생이 보는 슬라이드를 새 탭에
+       활동지 올리기: 강의 라이브러리의 강의 편집에만 있던 것을 여기에도 둔 것이다
+                     ("콘텐츠에서 활동지 올리는 기능이 없네?"). 같은 importWorksheet를 부른다
+       활동지 지우기: 올린 활동지로 채운 페이지를 비운다(clearWorksheet) */
   const picker = `<div class="axhead">
     <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
       ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
     </select>
-    <span class="axhead-sp"></span>
-    <button class="btn-text" data-act="axis-save"
-      title="저장" aria-label="저장">${icon('check',16)}<span>저장</span></button>
-    <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
-      title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}<span>미리보기</span></button>
-    <button class="btn-text" data-act="lesson-import" data-id="${l.id}"
-      title="활동지를 올려 개념 노트를 만듭니다" aria-label="활동지 올리기">${icon('upload',16)}<span>활동지 올리기</span></button>
+    <div class="tools">
+      <button class="ib ib-primary" data-act="axis-save"
+        title="저장" aria-label="저장">${icon('check',16)}</button>
+      <button class="ib" data-act="axis-preview" data-id="${l.id}"
+        title="슬라이드 미리보기" aria-label="슬라이드 미리보기">${icon('monitor',16)}</button>
+      <button class="ib" data-act="lesson-import" data-id="${l.id}"
+        title="활동지 올리기" aria-label="활동지 올리기">${icon('upload',16)}</button>
+      <button class="ib ib-danger" data-act="axis-clear" data-id="${l.id}"
+        title="올린 활동지 지우기" aria-label="올린 활동지 지우기">${icon('trash-2',16)}</button>
+    </div>
   </div>`;
 
   return picker + `<div class="axwrap">
@@ -1421,6 +1430,31 @@ function importWorksheet(lessonId){
     toast(`개념 노트 ${got.concept.length}페이지${got.mission.length ? `, 미션 활동 ${got.mission.length}페이지` : ''}를 넣었습니다.`);
   });
   inp.click();
+}
+
+/* ── 올린 활동지 지우기 (선생님 지시 2026-10-30, 요구사항 133) ──
+   "올린 활동지를 삭제하는 기능은 없네 그거 추가해줘."
+   활동지 파일은 어디에도 저장하지 않는다(브라우저 안에서 글자만 꺼내 쓰고 버린다).
+   그래서 "올린 활동지를 지운다"는 곧 그 내용으로 채운 페이지를 비우는 것이다.
+   올리기가 개념 노트와 미션 활동 둘을 채우므로 지우기도 둘을 같이 본다.
+   무엇을 지우는지 먼저 세어 보여 주고 묻는다(되돌릴 수 없다). */
+function clearWorksheet(lessonId){
+  // 빈 페이지만 만들어 둔 것은 "내용 없음"으로 본다(올리기의 has와 같은 기준)
+  const pagesOf = k => M.getPages(lessonId, k)
+    .filter(p => p.title.trim() || p.rows.some(r => r.label.trim() || r.text.trim()));
+  const c = pagesOf('concept').length, m = pagesOf('mission').length;
+  if (!c && !m){ toast('지울 내용이 없습니다.'); return; }
+  const what = [c ? `개념 노트 ${c}페이지` : '', m ? `미션 활동 ${m}페이지` : ''].filter(Boolean).join(', ');
+  confirmDelete({ title:'올린 활동지 지우기', okText:'지우기',
+    bodyHtml:`<b>${esc(what)}</b>를 모두 지웁니다.`
+      + `<ul><li>활동지에서 꺼내 넣은 내용과 그 뒤에 손으로 고친 것이 함께 사라집니다</li>`
+      + `<li>되돌릴 수 없습니다. 활동지 PDF로 다시 올릴 수는 있습니다</li></ul>` })
+    .then(ok => {
+      if (!ok) return;
+      if (c) M.setPages(lessonId, 'concept', []);
+      if (m) M.setPages(lessonId, 'mission', []);
+      toast('올린 활동지를 지웠습니다.'); render();
+    });
 }
 /* ── 미션 활동 (hoistory/lms "미션 Check" 카드 틀 이식) ─────────────────────
    선생님 지시 2026-10-28: 미션 활동도 hoistory 기본 틀로.
@@ -2277,6 +2311,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'axis-save':
       document.activeElement?.blur?.();
       toast('저장했습니다.'); break;
+    // 올린 활동지 지우기(요구사항 133). 올리기와 짝이고 개념 노트와 미션 활동을 같이 본다
+    case 'axis-clear': if (id) clearWorksheet(id); break;
     // 미리보기는 학생이 보는 그 슬라이드를 그대로 새 탭에 띄운다(같은 slide-deck.js를 쓴다)
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;
