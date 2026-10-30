@@ -15,15 +15,16 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel } from './shared/slide-axis.js?v=20261030j';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix } from './shared/slide-axis.js?v=20261030n';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
 /* 본문 한 줄을 HTML로. 두 가지 문법만 둔다(2026에서 가져온 것).
-     {정답}   빈칸. 수업 중에는 가려 두었다가 눌러서 연다
-     **굵게** 강조
-   가린 빈칸의 정답은 data-answer에 넣는다: 눌러서 열 때 그 글자를 꺼내 쓴다.
+     {정답}   빈칸. 레드 글씨로 늘 보인다
+     **굵게** 강조. 네이비 굵게
+   빈칸은 처음에 가려 두었다가 눌러서 여는 것이었는데 걷었다(선생님 지시 2026-10-30:
+   "지금 빈칸들이 다 가려져 있는데 다 걷어내줘"). 활동지의 빈칸 자리라는 표시로 레드만 남긴다.
 
    빈칸을 먼저 떼어 두는 자리표는 NUL(눈에 안 보이는 0번 글자)로 둔다. 글 안에 우연히
    나올 수 없는 글자라야 "1 더하기 1 은" 같은 본문을 빈칸으로 잘못 읽지 않는다.
@@ -37,8 +38,7 @@ export function inlineText(str){
     return NUL + (blanks.length - 1) + NUL;
   });
   s = esc(s).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  return s.replace(NUL_RE, (_, i) =>
-    `<span class="blank" data-answer="${esc(blanks[+i])}">${esc(blanks[+i])}</span>`);
+  return s.replace(NUL_RE, (_, i) => `<span class="blank">${esc(blanks[+i])}</span>`);
 }
 
 /* 유튜브 주소에서 영상 id와 시작 시각(초)을 읽는다. watch?v=, youtu.be/, embed/, shorts/ 넷 다 받는다.
@@ -128,24 +128,32 @@ export function buildSlides(lesson, no){
    제목은 있는데 줄이 없는 페이지는 선다(제목만 세운 쪽을 일부러 두는 경우가 있다).
    fallback은 페이지 제목이 비었을 때 대신 쓸 제목이다(미션 이름). */
 function pageSlides(content, fallback){
-  return toPages(content).map(p => ({
-    type: 'page',
-    title: pageTitle(p.title) || pageTitle(fallback),
-    rows: p.rows.map(r => ({
-      label: String(r.label || '').trim(),
-      lines: String(r.text || '').split('\n').map(t => t.trim()).filter(Boolean),
-    })).filter(r => r.lines.length || r.label),
-  })).filter(p => p.rows.length || String(p.title).trim());
+  return toPages(content).map(p => {
+    // 제목의 단계 이름 머리("개념 노트 #1 : ")는 떼고 그린다(배지가 이미 말한다. slide-axis.js의 stripStepPrefix)
+    const t = stripStepPrefix(p.title) || stripStepPrefix(fallback);
+    const src = t.match(SOURCE_RE);
+    return {
+      type: 'page',
+      kind: src ? 'source' : 'notes',
+      title: src ? t.slice(src[0].length).trim() : t,
+      rows: p.rows.map(r => ({
+        label: String(r.label || '').trim(),
+        lines: String(r.text || '').split('\n').map(t => t.trim()).filter(Boolean),
+      })).filter(r => r.lines.length || r.label),
+    };
+  }).filter(p => p.rows.length || p.title);
 }
 
-/* 쪽 제목에서 단계 이름 머리를 뗀다(선생님 지시 2026-10-30:
-   "개념 노트 #1 : 성리학의 확산 이라고 적혀 있으면 배지는 개념 노트 그 옆에는 성리학의 확산만 있어야해").
-   배지가 이미 단계 이름을 말하므로 제목에 같은 말이 또 서지 않게 한다.
-   떼는 것은 단계 이름 꼴의 머리뿐이다: 개념 노트, 개념 Check, 미션 활동, 미션 Check(뒤에 #번호가 붙어도).
-   "사료 : 이황의 사액 서원 건의"의 "사료"처럼 단계 이름이 아닌 머리는 내용이라 남긴다.
-   저장된 제목은 그대로 두고 쪽에 그릴 때만 뗀다(활동지에 적힌 글을 고치지 않는다). */
-const STEP_PREFIX_RE = /^(?:개념\s*노트|개념\s*Check|미션\s*활동|미션\s*Check)\s*(?:#\s*\d+)?\s*:\s*/i;
-const pageTitle = t => String(t ?? '').trim().replace(STEP_PREFIX_RE, '').trim();
+/* 사료 쪽 (선생님 지시 2026-10-30: "사료 : 이황의 사액 서원 건의 되어 있으면 제목 내용만 중앙정렬로
+   위에 띄운 다음 내용이 나오면 되고, 사료나 글자료 같은 건 세리프체로 하고 좌측 상단 우측 하단에
+   연하게 큰따옴표 박아줘. 그리고 출전은 무조건 우측 하단. 그리고 내용은 양쪽 정렬")
+   페이지 제목이 "사료", "글자료", "읽기 자료"로 시작하면(뒤에 번호가 붙어도) 사료 쪽이다.
+   그 머리는 쪽에 내지 않고 뒤의 제목만 가운데 위에 세운다. 저장된 제목은 머리를 그대로 들고 있다
+   (그래야 사료 쪽인 줄 안다).
+   출전: 사료의 마지막 줄이 『퇴계집』처럼 책 이름 괄호에 싸였거나 "출처"로 시작하거나 줄표로
+   시작하는 짧은 줄이면 출전으로 보고 본문에서 떼어 오른쪽 아래에 둔다. */
+const SOURCE_RE = /^(?:사료|글\s*자료|읽기\s*자료)\s*\d*\s*(?::\s*|$)/;
+const CITE_RE = /^(?:[『「《〈<(\[].{0,30}[』」》〉>)\]]|출처\s*[:：]?.{0,40}|[-–]\s*\S.{0,30})$/;
 
 // 축 단계 이름(쪽 맨 위 배지). 표지에는 달지 않는다
 const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
@@ -158,24 +166,44 @@ const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
    잘못 가르지 않게 셋을 본다: 쌍점 뒤에 빈칸이 있고, 앞부분이 15자 이하이고,
    앞부분 안에서 빈칸 문법 {}의 괄호가 맞아야 한다("3:1" 같은 비율이나 긴 문장 속 쌍점은 그대로 둔다). */
 const TERM_RE = /^(.{1,15}?)\s*:\s+(.+)$/;
-function itemHTML(body){
+/* cont는 이 항목에 이어지는 기호 없는 줄들이다. 내용 칸(.pv) 안에 줄로 붙여서
+   소제목 뒤 내용 시작 자리에 맞춰 선다(이어지는 줄도 제 소제목이 있으면 그 안에서 다시 가른다). */
+function itemHTML(body, cont = []){
+  const more = cont.map(c => `<span class="pc">${itemHTML(c)}</span>`).join('');
   const m = body.match(TERM_RE);
   if (m && (m[1].match(/\{/g) || []).length === (m[1].match(/\}/g) || []).length)
-    return `<span class="pt"><span class="pk">${inlineText(m[1].trim())}</span><span class="pv">${inlineText(m[2])}</span></span>`;
-  return `<span class="pt"><span class="pv">${inlineText(body)}</span></span>`;
+    return `<span class="pt"><span class="pk">${inlineText(m[1].trim())}</span><span class="pv">${inlineText(m[2])}${more}</span></span>`;
+  /* 쌍점 없이 짧은 머리만 있고 그 밑에 이어지는 줄이 있으면("1. 서적 편찬" 밑에 책 이름 줄들)
+     머리를 소제목으로, 이어지는 줄들을 내용으로 세운다. "설립 : 내용"과 같은 모양이 된다.
+     개념 노트는 1. 번호를 떼고 그리므로 이렇게 하지 않으면 머리와 그 밑 줄이 같은 자리에 서서 층이 사라진다. */
+  if (cont.length && body.length <= 15)
+    return `<span class="pt"><span class="pk">${inlineText(body)}</span><span class="pv">${
+      cont.map(c => `<span class="pc">${itemHTML(c)}</span>`).join('')}</span></span>`;
+  return `<span class="pt"><span class="pv">${inlineText(body)}${more}</span></span>`;
 }
 
-/* 내용 줄 하나. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
+/* 내용 줄을 항목으로 묶어 그린다. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
    단계가 내려갈수록 들여 쓴다(선생님 지시 2026-10-30). 기호와 글을 두 칸으로 나눠서
    줄이 넘어가도 둘째 줄이 글 시작 자리에 맞춰 내려온다(내어쓰기).
-   기호 없는 줄은 바로 위 항목에 이어지는 줄이라 그 항목의 글 시작 자리에 맞춘다(after). */
-function linesHTML(lines){
-  let prev = 0;
-  return lines.map(t => {
-    const { lv, mark, body } = lineLevel(t);
-    if (!lv) return `<div class="pl lv0 after${prev}">${itemHTML(body)}</div>`;
-    prev = lv;
-    return `<div class="pl lv${lv}"><span class="pm">${esc(mark)}</span>${itemHTML(body)}</div>`;
+
+   기호 없는 줄("→ 사림이 동인과 서인으로 나뉨")은 바로 위 항목에 붙는다(itemHTML의 cont).
+   전에는 따로 한 줄로 그려서 위 항목의 "글 시작 자리"(소제목 자리)에 섰다. 그런데 위 항목은
+   소제목 뒤 내용 칸이 따로 서 있고 그 폭은 위 줄만 안다. 그래서 이어지는 줄이 내용 시작선보다
+   왼쪽에 서서 들여쓰기가 안 된 것처럼 보였다(선생님이 붕당의 형성 쪽에서 찾으셨다, 2026-10-30).
+   이제는 위 항목의 내용 칸 안에 들어가므로 내용 시작선에 맞는다.
+
+   dropNum: 1단계 번호(1. 2.)를 떼고 그린다(선생님 지시 2026-10-30: "1. 설립 : 이렇게 있으면
+   1. 이런 말머리는 떼고 보여줘"). 개념 노트만이다. 미션 활동의 1. 2.는 활동 순서라 남긴다. */
+function linesHTML(lines, dropNum = false){
+  const items = [];
+  lines.forEach(t => {
+    const L = lineLevel(t);
+    if (L.lv || !items.length) items.push({ ...L, cont: [] });
+    else items[items.length - 1].cont.push(L.body);
+  });
+  return items.map(it => {
+    const mark = it.lv && !(dropNum && it.lv === 1);
+    return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}${itemHTML(it.body, it.cont)}</div>`;
   }).join('');
 }
 
@@ -249,11 +277,21 @@ export function renderSlide(s){
 
   /* 개념 노트, 미션 활동의 페이지. 묶음마다 라벨이 위에, 내용 줄이 그 아래에 선다
      (선생님 지시 2026-10-30: "행라벨은 상단 왼쪽 정렬로 위치해주고 그 아래 빨간색 구분선을 넣어줘.
-      구분선 길이는 행라벨 글씨까지만"). 라벨이 없는 묶음은 내용 줄만 선다. */
+      구분선 길이는 행라벨 글씨까지만"). 라벨이 없는 묶음은 내용 줄만 선다.
+     사료 쪽(kind 'source')은 모양이 다르다: 배지만 맨 위에 두고, 제목은 가운데 위, 본문은 세리프체에
+     양쪽 정렬, 왼쪽 위와 오른쪽 아래에 연한 큰따옴표, 출전은 오른쪽 아래(pageSlides 위 주석). */
+  if (s.type === 'page' && s.kind === 'source'){
+    const lines = s.rows.flatMap(r => r.lines);
+    const cite = lines.length > 1 && CITE_RE.test(lines[lines.length - 1]) ? lines.pop() : '';
+    return `${top('')}<div class="s-body s-src">
+      ${s.title ? `<h2 class="src-title">${inlineText(s.title)}</h2>` : ''}
+      <div class="src-quote">${lines.map(t => `<p>${inlineText(t)}</p>`).join('')}</div>
+      ${cite ? `<div class="src-cite">${inlineText(cite)}</div>` : ''}</div>`;
+  }
   if (s.type === 'page')
     return `${top(s.title)}<div class="s-body s-page">${s.rows.map(r =>
       `<div class="prow">${r.label ? `<div class="plabel">${inlineText(r.label)}</div>` : ''}
-        <div class="plines">${linesHTML(r.lines)}</div></div>`).join('')}</div>`;
+        <div class="plines">${linesHTML(r.lines, s.step === 'concept')}</div></div>`).join('')}</div>`;
 
   if (s.type === 'question')
     return `${mark}<div class="s-body s-q">
@@ -265,18 +303,6 @@ export function renderSlide(s){
       `<div class="cline">${inlineText(t)}</div>`).join('')}</div>`;
 
   return mark;
-}
-
-/* 가린 빈칸을 눌러서 여는 것. 쪽을 그린 뒤 한 번 걸어 준다.
-   (전시학습확인 답은 누르는 것이 아니라 넘기기로 나온다. 아래 stepForward)
-   쪽을 다시 그려도 위임이라 다시 걸 필요가 없다(컨테이너에 한 번만). */
-export function wireReveal(root){
-  if (!root || root.dataset.revealWired) return;
-  root.dataset.revealWired = '1';
-  root.addEventListener('click', e => {
-    const t = e.target.closest('.blank');
-    if (t) t.classList.toggle('open');
-  });
 }
 
 /* ── 쪽 안의 단계(슬라이드 애니메이션) ──

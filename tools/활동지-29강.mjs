@@ -24,7 +24,7 @@
  *
  * ── 빈칸 ──
  * 활동지가 빈칸 채우기 꼴이라 핵심 낱말에 슬라이드 빈칸 문법 {낱말}을 걸어 두었다.
- * 수업 중에 눌러서 연다(slide-deck.js의 wireReveal).
+ * 슬라이드에서는 레드 글씨로 보인다(가렸다가 여는 것은 2026-10-30에 걷었다).
  */
 import fs from 'fs';
 import path from 'path';
@@ -45,7 +45,7 @@ const LESSON_ID = 'L_a29';
    처음(같은 날 낮)에는 라벨을 줄 머리에 굵게(**서원**) 붙여 적었는데, 라벨 칸이 생겨 떼어 냈다.
    "1." 줄 밑의 기호 없는 줄(→ 로 시작하는 줄, 책 이름 줄)은 위 항목에 이어지는 줄로 선다. */
 const 개념 = [
-  ['개념 노트 #1 : 성리학적 질서의 확산', [
+  ['성리학적 질서의 확산', [
     ['서원', [
       '1. 설립 : 16C 이후 {사림}이 향촌에 설립',
       '2. 기능 : 훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침',
@@ -61,7 +61,7 @@ const 개념 = [
       '『퇴계집』',
     ]],
   ]],
-  ['개념 노트 #1 : 향약', [
+  ['향약', [
     ['향약', [
       '1. 의미 : 향촌의 {자치 규약} → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦',
       '2. 보급 : 중종 대 {조광조}가 중국의 향약 소개하면서 보급 시작',
@@ -69,7 +69,7 @@ const 개념 = [
       '3. 영향 : 사림의 영향력 강화, 성리학적 사회 질서 확산',
     ]],
   ]],
-  ['개념 노트 #1 : 유교 윤리의 보급', [
+  ['유교 윤리의 보급', [
     ['', [
       '1. 서적 편찬',
       '『{삼강행실도}』: 유교 기본 윤리인 삼강오륜 보급을 위해 편찬',
@@ -78,14 +78,14 @@ const 개념 = [
       '2. 생활 양식 : 유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함',
     ]],
   ]],
-  ['개념 노트 #2 : 붕당의 형성', [
+  ['붕당의 형성', [
     ['붕당 형성', [
       '1. 사림 집권 : 사화 이후 국정 운영 중심이 왕권에서 {신권}으로 옮겨짐 → 사림이 중앙 정치 주도권 확보',
       '2. 붕당 형성 : {외척}의 정치 참여 문제, {이조 전랑}의 임명 문제를 둘러싸고 내부 갈등 심화',
       '→ 사림이 {동인}과 {서인}으로 나뉨',
     ]],
   ]],
-  ['개념 노트 #2 : 동인과 서인', [
+  ['동인과 서인', [
     ['동인', ['주로 {이황}과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 {북인}과 남인으로 분화']],
     ['서인', ['주로 {이이}와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 {노론}과 소론으로 분화']],
   ]],
@@ -228,6 +228,7 @@ async function html(){
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>29강 슬라이드 미리보기</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap">
 <style>
 ${theme}
 ${deckCss}
@@ -260,13 +261,10 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   ${cards}
 </div>
 <script>
-// 가린 빈칸은 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작).
 // 이 문서는 쪽을 넘기지 않으므로, 전시학습확인 쪽은 쪽을 누를 때마다 답이 하나씩 나온다
 // (slide.html에서는 넘기기 단추와 PageDown이 하는 일. slide-deck.js의 stepForward).
 // 답이 다 나온 쪽을 다시 누르면 처음처럼 다 들어간다.
 document.addEventListener('click', e => {
-  const t = e.target.closest('.blank');
-  if (t){ t.classList.toggle('open'); return; }
   const page = e.target.closest('.deckpage'); if (!page) return;
   const next = page.querySelector('[data-step]:not(.shown)');
   if (next) next.classList.add('shown');

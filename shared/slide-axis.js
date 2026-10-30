@@ -185,3 +185,13 @@ export function stripIndent(text){
   return String(text ?? '').split('\n').map(t => t.replace(/^[\s　]+/, '').replace(/\s+$/, ''))
     .join('\n').replace(/^\n+|\n+$/g, '');
 }
+
+/* ── 페이지 제목의 단계 이름 머리 (선생님 지시 2026-10-30) ──
+ * "개념 노트 #1 : 성리학적 질서의 확산이면 성리학적 질서의 확산 이렇게만"
+ * 배지가 이미 단계 이름을 말하므로 제목에 같은 말을 또 두지 않는다. 떼는 것은 단계 이름 꼴의
+ * 머리뿐이다(개념 노트, 개념 Check, 미션 활동, 미션 Check, 뒤에 #번호가 붙어도).
+ * "사료 : ..."의 사료는 단계 이름이 아니라 쪽의 종류라 여기서 떼지 않는다(slide-deck.js가 사료 쪽으로 그린다).
+ * 활동지 변환(worksheet-pdf.js)이 가져올 때 떼고, 슬라이드(slide-deck.js)도 그릴 때 한 번 더 뗀다
+ * (손으로 적은 제목이나 예전에 가져온 제목에 머리가 남아 있어도 쪽에는 서지 않게). */
+export const STEP_PREFIX_RE = /^(?:개념\s*노트|개념\s*Check|미션\s*활동|미션\s*Check)\s*(?:#\s*\d+)?\s*:\s*/i;
+export const stripStepPrefix = t => String(t ?? '').trim().replace(STEP_PREFIX_RE, '').trim();

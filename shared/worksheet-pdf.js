@@ -19,6 +19,7 @@
  *   - 단계: 줄 앞 기호가 "1."이면 1단계, "-"이면 2단계, "·"이면 3단계(slide-axis.js의 lineLevel).
  *           단계는 줄 글자에 기호가 그대로 남아 있어서 따로 적어 두지 않는다.
  *   - 미션: 제목에 "미션"이 든 페이지부터는 미션 활동 쪽으로 간다.
+ *   - 제목의 단계 이름 머리("개념 노트 #1 : ")는 떼고 가져온다(slide-axis.js의 stripStepPrefix).
  *   - 넣지 않는 것: 첫 페이지 제목 위의 줄(활동지 머리: 강의 제목, 반 번호 이름 칸),
  *           제목에 "질문"이나 "생각 Check"가 든 페이지(오늘의 질문 메뉴에 따로 있다),
  *           제목에 "학습 목표"가 든 페이지(축의 학습 목표 단계에 따로 적는다),
@@ -26,7 +27,7 @@
  *
  * 이 파일은 Firebase도 화면도 모른다. 노드에서도 같은 함수로 시험한다(pdfjs를 넘겨준다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030j';
+import { lineLevel, stripStepPrefix } from './slide-axis.js?v=20261030n';
 
 // 브라우저는 CDN에서 PDF.js를 불러온다. 판 번호를 못박아 둔다(바뀌면 꺼내는 결과가 달라질 수 있다)
 const PDFJS_VER = '4.10.38';
@@ -122,7 +123,8 @@ export function linesToParts(lines){
     if (/미션/.test(title)) target = mission;
     // 오늘의 질문(생각 Check)과 학습 목표는 축의 다른 단계에 따로 있으므로 페이지로 넣지 않는다
     skip = /질문|생각\s*Check|학습\s*목표/i.test(title);
-    page = { title, rows: [] }; row = null;
+    // "개념 노트 #1 : 성리학적 질서의 확산"은 "성리학적 질서의 확산"만 가져온다(선생님 지시 2026-10-30)
+    page = { title: stripStepPrefix(title), rows: [] }; row = null;
     if (!skip) target.push(page);
   };
   const ensurePage = () => { if (!page) newPage(''); };

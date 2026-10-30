@@ -653,20 +653,22 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
    2026 편집기의 틀: 페이지마다 제목 칸, 그 아래 묶음(왼쪽 라벨 칸 + 오른쪽 내용 글 칸).
    페이지 하나가 한 묶음 카드이고(화면 규칙: 한 묶음은 카드 하나) 페이지 사이는 선 하나로 나눈다.
    글 칸은 적은 만큼 늘어난다(field-sizing). 못 읽는 브라우저는 rows로 어림한 높이에 손잡이로 늘린다. */
-.pgblock{border-top:1px solid var(--line);padding:14px 0 16px}
+/* 페이지 번호는 "1페이지"가 아니라 숫자만(선생님 지시 2026-10-30: "1 2 이런식으로 간결하게").
+   번호 칸 폭(--pg-in)만큼 그 아래 묶음 칸들을 들여서 번호가 왼쪽에 홀로 서 보이게 한다 */
+.pgblock{--pg-in:34px;border-top:1px solid var(--line);padding:14px 0 16px}
 .pgblock:first-child{border-top:0;padding-top:6px}
 .pghead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.pgno{flex:0 0 auto;min-width:56px;font-weight:700;color:var(--navy)}
+.pgno{flex:0 0 auto;width:calc(var(--pg-in) - 10px);font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
 .pgtitle{font-weight:700}
-.pgcols{display:flex;gap:8px;padding-left:66px;margin-bottom:4px;font-size:var(--fs-meta);color:var(--sub)}
-.pgrow{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px 66px}
+.pgcols{display:flex;gap:8px;padding-left:var(--pg-in);margin-bottom:4px;font-size:var(--fs-meta);color:var(--sub)}
+.pgrow{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px var(--pg-in)}
 .pglabel{flex:0 0 140px;width:140px}
 .pgrow textarea.f{resize:vertical;font:inherit;line-height:1.6;field-sizing:content;min-height:var(--h-ctl)}
 .pgrow .pglabel{font-weight:700}
 /* 내용 칸: 단계 들여쓰기를 빈칸으로 보여 주므로(indentText) 빈칸 폭이 고른 편이 단계가 가지런하다 */
 .pgtext{white-space:pre-wrap;tab-size:4}
 .pgrow .tools{padding-top:3px}
-.pgblock .ce-add{margin:4px 0 0 66px}
+.pgblock .ce-add{margin:4px 0 0 var(--pg-in)}
 .ce-add.pgadd{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 
 /* 좁은 화면에서는 줄자가 위쪽 가로 줄이 되고 편집창이 그 아래로 내려온다.

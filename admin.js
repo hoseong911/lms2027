@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030j';
+import * as M from './model.js?v=20261030n';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1331,7 +1331,7 @@ function pageEditor(l, k){
     // 칸 이름은 칸마다 달지 않고 묶음들 위에 한 줄로 둔다(화면 규칙: 형식 안내는 구역 위에 한 줄)
     const cols = pg.rows.length ? `<div class="pgcols"><span class="pglabel">라벨</span><span>내용</span></div>` : '';
     return `<section class="pgblock">
-      <div class="pghead"><span class="pgno">${p + 1}페이지</span>
+      <div class="pghead"><span class="pgno">${p + 1}</span>
         <input class="f grow pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
         <div class="tools">
           ${btn('pg-up', p, null, 'arrow-up', '페이지 위로', { off: p === 0 })}
@@ -1370,7 +1370,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030j');
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030n');
       got = await worksheetFromPdf(file);
     } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }

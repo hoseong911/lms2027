@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>29강 슬라이드 미리보기</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap">
 <style>
 /* theme.css: 색과 형태의 단일 출처 (2026-10-27)
    ───────────────────────────────────────────────────────────────────────────
@@ -134,9 +135,17 @@
      그 값을 그대로 적을 수 있게 둔다. 쪽이 작아지면 같이 작아진다. */
   --px: calc(var(--sz) * 100 / 1080);
   /* 쪽 본문 글자 크기 55px(선생님 지시 2026-10-30: 개념 노트와 미션 활동에 이어 "나머지 쪽도 55px로").
-     모든 쪽의 본문이 이 값 하나를 쓴다. 이보다 큰 것은 제목 셋뿐이다(쪽 제목과 질문 66, 표지 강의 제목 100).
-     작은 것은 꼬리표 둘(맨 위 배지, 전시학습확인 유형 이름표 34)이다 */
+     모든 쪽의 본문이 이 값 하나를 쓴다. 이보다 큰 것은 제목 둘뿐이다(오늘의 질문 66, 표지 강의 제목 100).
+     작은 것은 맨 위 배지와 쪽 제목(--tfs 44), 전시학습확인 유형 이름표(34), 사료 본문(--srcfs 50)이다 */
   --sfs: calc(var(--px) * 55);
+  /* 맨 위 배지와 그 옆 쪽 제목의 크기. 둘을 같게 둔다(선생님 지시 2026-10-30: "개념 노트 배지 옆에
+     성리학적 질서의 확산 되어 있는데 글씨 크기가 개념 노트랑 안맞잖아 이거 글씨 크기 맞춰줘") */
+  --tfs: calc(var(--px) * 44);
+  /* 사료와 글자료 본문: 세리프체 50px("나중에 디자인 전면 수정하면서 다 크기 조정할거임") */
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  --srcfs: calc(var(--px) * 50);
+  /* 기본 줄간격 1.8(선생님 지시 2026-10-30). 본문은 이 값을 물려받는다. 제목들만 더 촘촘하게 따로 준다 */
+  line-height:1.8;
   position:relative;width:100%;height:100%;background:#fff;color:var(--navy);
   /* 위에서부터 쌓는다: 맨 위 배지 줄, 그 아래 속. 가운데에 모일 쪽(표지, 학습 목표, 질문,
      맺음말)은 속(.s-body)이 남는 높이를 다 먹고 그 안에서 가운데로 모은다 */
@@ -157,9 +166,11 @@
    제목이 두 줄로 넘어가도 배지 높이가 쪽마다 같게(2026에서 같은 까닭으로 그렇게 했다). */
 .deckpage .s-top{flex:0 0 auto;display:flex;align-items:flex-start;gap:calc(var(--px) * 24);
   margin-bottom:calc(var(--px) * 40)}
+/* 배지와 쪽 제목은 글자 크기(--tfs)와 줄 높이가 같아서 배지 글자와 제목 첫 줄이 한 줄로 가지런하다.
+   배지의 위아래 여백만큼 제목도 위아래를 띄운다(.s-head의 padding-block) */
 .deckpage .s-badge{flex:0 0 auto;background:var(--red-100);color:var(--red);border-radius:var(--r);
-  font-size:calc(var(--px) * 34);font-weight:800;line-height:1.3;letter-spacing:-.02em;
-  padding:calc(var(--px) * 8) calc(var(--px) * 22);white-space:nowrap}
+  font-size:var(--tfs);font-weight:800;line-height:1.3;letter-spacing:-.02em;
+  padding:calc(var(--px) * 6) calc(var(--px) * 20);white-space:nowrap}
 
 /* ── 표지 ── 가운데로 모은다. 강 번호와 단원, 쪽수 줄도 본문 크기(55)이고
    강의 제목은 그보다 확실히 크게(100) 둔다 */
@@ -173,10 +184,9 @@
 .deckpage .s-dot{width:calc(var(--px) * 10);height:calc(var(--px) * 10);background:var(--line-strong);
   display:block;flex:0 0 auto}
 
-/* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다.
-   본문(55)보다 확실히 크게. 배지 글자와 첫 줄 높이를 맞추려고 줄 높이를 배지와 같은 값으로 둔다 */
-.deckpage .s-head{flex:1;min-width:0;font-size:calc(var(--px) * 66);font-weight:800;margin:0;
-  line-height:1.15;letter-spacing:-.03em}
+/* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다. 크기는 배지와 같다(--tfs) */
+.deckpage .s-head{flex:1;min-width:0;font-size:var(--tfs);font-weight:800;margin:0;
+  line-height:1.3;padding-block:calc(var(--px) * 6);letter-spacing:-.03em}
 
 /* 속은 배지 줄 아래를 다 쓴다. 줄이 많으면 쪽 안에서만 내려간다(쪽이 잘리지 않게) */
 .deckpage .s-body{flex:1 1 auto;min-height:0;overflow:auto}
@@ -187,17 +197,19 @@
    위치해주고 그 아래 빨간색 구분선을 넣어줘. 구분선 길이는 행라벨 글씨까지만").
    라벨을 글자 폭만큼만 차지하게(width:fit-content) 두고 밑줄을 테두리로 그으면 선 길이가 글씨에 꼭 맞는다.
    그 밖에는 투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
-.deckpage .s-page{font-size:var(--sfs);line-height:1.45;
+.deckpage .s-page{font-size:var(--sfs);
   display:flex;flex-direction:column;gap:calc(var(--px) * 44)}
 .deckpage .plabel{width:fit-content;max-width:100%;font-weight:800;color:var(--navy);
   border-bottom:calc(var(--px) * 5) solid var(--red);padding-bottom:calc(var(--px) * 6);
   margin-bottom:calc(var(--px) * 18)}
-.deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 10);min-width:0}
+.deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 4);min-width:0}
 
 /* 내용 줄의 단계(선생님 지시 2026-10-30): 1. 1단계, - 2단계, · 3단계.
    "수준이 떨어질 수록 들여쓰기". 한 단계마다 --pin 만큼 민다.
    기호 칸(.pm)의 폭을 못박아서 줄이 넘어가도 둘째 줄이 글 시작 자리에 맞춰 내려온다(내어쓰기).
-   기호 없는 줄(.lv0)은 바로 위 항목의 글 시작 자리에 선다(after1, after2, after3). */
+   개념 노트는 1단계 번호(1. 2.)를 그리지 않는다(slide-deck.js의 linesHTML dropNum). 그때는 기호 칸이
+   아예 없어 글이 묶음 왼쪽 끝에서 시작한다.
+   기호 없는 줄은 위 항목의 내용 칸(.pv) 안에 이어지는 줄(.pc)로 들어가 내용 시작선에 맞는다. */
 .deckpage .s-page{--pin:calc(var(--px) * 60);--pmw:calc(var(--px) * 56)}
 .deckpage .pl{display:flex;align-items:baseline}
 .deckpage .pm{flex:0 0 auto;width:var(--pmw);font-weight:800}
@@ -210,9 +222,7 @@
 .deckpage .pl.lv2{padding-left:var(--pin)}
 .deckpage .pl.lv3{padding-left:calc(var(--pin) * 2)}
 .deckpage .pl.lv2 .pm, .deckpage .pl.lv3 .pm{color:var(--sub)}
-.deckpage .pl.lv0.after1{padding-left:var(--pmw)}
-.deckpage .pl.lv0.after2{padding-left:calc(var(--pin) + var(--pmw))}
-.deckpage .pl.lv0.after3{padding-left:calc(var(--pin) * 2 + var(--pmw))}
+.deckpage .pc{display:block}
 
 /* ── 번호 목록(학습 목표) ── 본문 55. 번호 네모는 글 첫 줄 높이에 맞춘다 */
 .deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--px) * 36);justify-content:center}
@@ -220,7 +230,7 @@
 .deckpage .nn{flex:0 0 auto;display:grid;place-items:center;
   width:calc(var(--px) * 76);height:calc(var(--px) * 76);background:var(--navy);color:#fff;
   font-size:calc(var(--px) * 44);font-weight:800}
-.deckpage .nt{flex:1;min-width:0;font-size:var(--sfs);line-height:1.4}
+.deckpage .nt{flex:1;min-width:0;font-size:var(--sfs);margin-top:calc(var(--px) * -11)}
 
 /* ── 전시학습확인 ── 문답 셋(단답형, OX, 초성형). 답은 눌러야 보인다. 물음과 답은 본문 55
    글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
@@ -229,16 +239,15 @@
 .deckpage .s-qa{--qa-nw:calc(var(--px) * 70);--qa-tw:calc(var(--px) * 150);--qa-gap:calc(var(--px) * 24);
   --qa-in:calc(var(--qa-nw) + var(--qa-tw) + var(--qa-gap) * 2);
   display:flex;flex-direction:column;gap:calc(var(--px) * 40);justify-content:center}
-.deckpage .qa-q{display:flex;align-items:baseline;gap:var(--qa-gap);
-  font-size:var(--sfs);line-height:1.45}
+.deckpage .qa-q{display:flex;align-items:baseline;gap:var(--qa-gap);font-size:var(--sfs)}
 .deckpage .qa-n{flex:0 0 auto;width:var(--qa-nw);text-align:right;
   color:var(--red);font-weight:800}
-/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 맨 위 배지와 같은 크기(34)의 꼬리표다.
+/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 작은 꼬리표(34)다.
    폭을 고정해 물음 시작선을 맞춘다 */
 .deckpage .qa-t{flex:0 0 auto;width:var(--qa-tw);
   font-size:calc(var(--px) * 34);font-weight:700;color:var(--sub);
   border:1px solid var(--line-strong);border-radius:2px;
-  padding:calc(var(--px) * 4) 0;text-align:center;letter-spacing:.02em}
+  padding:calc(var(--px) * 4) 0;text-align:center;letter-spacing:.02em;line-height:1.4}
 .deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
 /* 답은 슬라이드 애니메이션처럼 나중에 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘").
    넘기기를 누를 때마다 하나씩 .shown이 붙는다(slide-deck.js의 stepForward).
@@ -247,7 +256,7 @@
 .deckpage .qa-a{display:block;width:fit-content;max-width:calc(100% - var(--qa-in));
   margin:calc(var(--px) * 14) 0 0 var(--qa-in);border-radius:var(--r);
   background:var(--red-100);color:var(--red);font-weight:800;
-  padding:calc(var(--px) * 8) calc(var(--px) * 26);font-size:var(--sfs);line-height:1.4}
+  padding:calc(var(--px) * 4) calc(var(--px) * 26);font-size:var(--sfs)}
 .deckpage .qa-a[data-step]{opacity:0;transform:translateY(calc(var(--px) * 18));
   transition:opacity .35s ease, transform .35s ease}
 .deckpage .qa-a[data-step].shown{opacity:1;transform:none}
@@ -263,12 +272,10 @@
 /* 뒤로 넘겨 들어왔을 때는 움직임 없이 다 나온 모양으로 선다 */
 .deckpage .instant, .deckpage .instant .qa-oxb{transition:none}
 
-/* ── 가린 빈칸 {정답}과 강조 **굵게** ── (선생님 지시 2026-10-30: "빈칸은 레드, 강조할 건 네이비")
-   빈칸은 가려 둔 동안 레드 칸, 누르면 열려서 레드 글씨가 된다. 열고 닫는 것은 slide-deck.js의 wireReveal.
-   강조는 네이비 굵은 글씨다. 전에는 가린 빈칸이 네이비 칸이라 둘이 같은 색이었다. */
-.deckpage .blank{background:var(--red);color:transparent;border-radius:2px;
-  padding:0 .25em;cursor:pointer;-webkit-user-select:none;user-select:none}
-.deckpage .blank.open{background:var(--red-100);color:var(--red);font-weight:700}
+/* ── 빈칸 {정답}과 강조 **굵게** ── (선생님 지시 2026-10-30: "빈칸은 레드, 강조할 건 네이비")
+   빈칸은 레드 굵은 글씨로 늘 보인다. 가렸다가 눌러서 여는 것은 걷었다
+   (선생님 지시 2026-10-30: "지금 빈칸들이 다 가려져 있는데 다 걷어내줘"). 강조는 네이비 굵은 글씨다. */
+.deckpage .blank{color:var(--red);font-weight:800}
 .deckpage strong{color:var(--navy);font-weight:800}
 
 /* ── 동기 유발(사진, 영상) ── 한 쪽에 하나. 쪽을 거의 다 쓴다 */
@@ -281,16 +288,35 @@
   width:min(100%, calc(100cqh * 16 / 9));aspect-ratio:16 / 9;max-height:100%}
 .deckpage .mcap{flex:0 0 auto;font-size:var(--sfs);color:var(--sub);text-align:center}
 
-/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 설명문이 본문 55이고 질문은 그보다 크게(쪽 제목과 같은 66) */
+/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 설명문이 본문 55이고 질문은 그보다 크게(66) */
 .deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--px) * 40)}
 .deckpage .qbig{font-size:calc(var(--px) * 66);font-weight:800;line-height:1.35;letter-spacing:-.03em}
-.deckpage .qguide{font-size:var(--sfs);line-height:1.55;color:var(--sub);
+.deckpage .qguide{font-size:var(--sfs);color:var(--sub);
   border-left:calc(var(--px) * 6) solid var(--red);padding-left:calc(var(--px) * 28)}
 
 /* ── 맺음말 ── 가운데로 모은다. 본문 55에 굵게 */
 .deckpage .s-close{display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:calc(var(--px) * 30);text-align:center}
-.deckpage .cline{font-size:var(--sfs);font-weight:700;line-height:1.45;letter-spacing:-.03em}
+.deckpage .cline{font-size:var(--sfs);font-weight:700;letter-spacing:-.03em}
+
+/* ── 사료, 글자료 쪽 (선생님 지시 2026-10-30) ──
+   "제목 내용만 중앙정렬로 위에 띄운 다음 내용이 나오면 되고, 세리프체로 하고 좌측 상단 우측 하단에
+    연하게 큰따옴표 박아줘. 그리고 출전은 무조건 우측 하단. 그리고 내용은 양쪽 정렬. 폰트 크기 50"
+   큰따옴표는 글 상자의 왼쪽 위와 오른쪽 아래 모서리에 깔린다(글을 가리지 않게 글 상자 안쪽 여백에).
+   출전은 글 상자 밖, 쪽 오른쪽 아래에 붙는다(속이 짧아도 맨 아래로 내려가게 margin-top:auto). */
+.deckpage .s-src{display:flex;flex-direction:column;font-family:var(--serif);font-size:var(--srcfs)}
+.deckpage .src-title{margin:0 0 calc(var(--px) * 36);text-align:center;font-family:var(--font);
+  font-size:var(--sfs);font-weight:800;line-height:1.4;letter-spacing:-.03em}
+.deckpage .src-quote{position:relative;padding:calc(var(--px) * 40) calc(var(--px) * 90)}
+/* 양쪽 정렬은 낱말 단위로 줄을 끊으면(keep-all) 줄마다 빈칸이 크게 벌어진다. 사료는 글자 단위로
+   끊게(normal) 두어 줄 끝이 고르게 맞는다. 다른 쪽은 낱말이 안 쪼개지게 keep-all 그대로다 */
+.deckpage .src-quote p{margin:0;text-align:justify;word-break:normal;overflow-wrap:anywhere}
+.deckpage .src-quote::before, .deckpage .src-quote::after{position:absolute;font-family:var(--serif);
+  font-size:calc(var(--px) * 200);line-height:1;color:var(--navy);opacity:.13;pointer-events:none}
+.deckpage .src-quote::before{content:"\201C";left:0;top:0}
+.deckpage .src-quote::after{content:"\201D";right:0;bottom:calc(var(--px) * -90)}
+.deckpage .src-cite{margin-top:auto;padding-top:calc(var(--px) * 30);align-self:flex-end;
+  color:var(--sub);text-align:right}
 
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
   -webkit-font-smoothing:antialiased}
@@ -364,44 +390,48 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
     <div class="slotbar"><span class="slotno">4</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">성리학적 질서의 확산</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">서원</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">설립</span><span class="pv">16C 이후 <span class="blank" data-answer="사림">사림</span>이 향촌에 설립</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">기능</span><span class="pv">훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침</span></span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt"><span class="pk">최초</span><span class="pv"><span class="blank" data-answer="주세붕">주세붕</span>이 백운동 서원 건립 → 명종 대 ‘<span class="blank" data-answer="소수서원">소수서원</span>’이라는 사액 서원이 됨</span></span></div><div class="pl lv1"><span class="pm">4.</span><span class="pt"><span class="pk">영향</span><span class="pv">향촌 사회에 성리학적 질서 보급, 사림의 정치적 기반 강화</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">설립</span><span class="pv">16C 이후 <span class="blank">사림</span>이 향촌에 설립</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">기능</span><span class="pv">훌륭한 유학자(선현)에게 제사, 성리학 연구하며 지방 양반 자제 교육, 서원 중심으로 결속하여 공론을 모아 중앙 정치에 영향을 끼침</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">최초</span><span class="pv"><span class="blank">주세붕</span>이 백운동 서원 건립 → 명종 대 ‘<span class="blank">소수서원</span>’이라는 사액 서원이 됨</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">영향</span><span class="pv">향촌 사회에 성리학적 질서 보급, 사림의 정치적 기반 강화</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">5</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 이황의 사액 서원 건의</h2></div><div class="s-body s-page"><div class="prow">
-        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">풍기 군수 이황이 말하기를 … 뜻을 구하는 선비들은 세상에서 시끄럽게 다투는 것을 싫어하여, 한적한 들판이나 고요한 물가로 나아가 선왕의 도를 익히므로 기꺼이 서원에 나아갑니다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">… 국학이나 향교는 성곽 안에 있어 학령에 구애되고 과거에 유혹되니, 그 효과를 어찌 서원과 같다 하겠습니까.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">… 바라건대 감사와 군수가 서원에 물품만 지원하게 하고, 가혹한 법령으로 구속하지는 못하게 해 주소서. … 서원 교육이 크게 일어난다면 선비의 풍속이 변혁되고 습속이 날로 아름다워질 것입니다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">『퇴계집』</span></span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span></div><div class="s-body s-src">
+      <h2 class="src-title">이황의 사액 서원 건의</h2>
+      <div class="src-quote"><p>풍기 군수 이황이 말하기를 … 뜻을 구하는 선비들은 세상에서 시끄럽게 다투는 것을 싫어하여, 한적한 들판이나 고요한 물가로 나아가 선왕의 도를 익히므로 기꺼이 서원에 나아갑니다.</p><p>… 국학이나 향교는 성곽 안에 있어 학령에 구애되고 과거에 유혹되니, 그 효과를 어찌 서원과 같다 하겠습니까.</p><p>… 바라건대 감사와 군수가 서원에 물품만 지원하게 하고, 가혹한 법령으로 구속하지는 못하게 해 주소서. … 서원 교육이 크게 일어난다면 선비의 풍속이 변혁되고 습속이 날로 아름다워질 것입니다.</p></div>
+      <div class="src-cite">『퇴계집』</div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">6</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">향약</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">향약</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">의미</span><span class="pv">향촌의 <span class="blank" data-answer="자치 규약">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">보급</span><span class="pv">중종 대 <span class="blank" data-answer="조광조">조광조</span>가 중국의 향약 소개하면서 보급 시작</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pv">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></span></div><div class="pl lv1"><span class="pm">3.</span><span class="pt"><span class="pk">영향</span><span class="pv">사림의 영향력 강화, 성리학적 사회 질서 확산</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">의미</span><span class="pv">향촌의 <span class="blank">자치 규약</span> → 공동체적 생활 풍속에 유교 윤리를 덧붙여서 만듦</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">보급</span><span class="pv">중종 대 <span class="blank">조광조</span>가 중국의 향약 소개하면서 보급 시작<span class="pc"><span class="pt"><span class="pv">→ 이황, 이이 등이 우리 실정에 맞는 향약(예안 향약, 해주 향약 등) 만들어 시행</span></span></span></span></span></div><div class="pl lv1"><span class="pt"><span class="pk">영향</span><span class="pv">사림의 영향력 강화, 성리학적 사회 질서 확산</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">7</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">유교 윤리의 보급</h2></div><div class="s-body s-page"><div class="prow">
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pv">서적 편찬</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="삼강행실도">삼강행실도</span>』</span><span class="pv">유교 기본 윤리인 삼강오륜 보급을 위해 편찬</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="소학">소학</span>』</span><span class="pv">유학의 도덕과 예법을 배우는 기본서, 유학 교육의 입문서</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pk">『<span class="blank" data-answer="주자가례">주자가례</span>』</span><span class="pv">가정에서 지켜야 할 예법 정리한 책</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">생활 양식</span><span class="pv">유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">서적 편찬</span><span class="pv"><span class="pc"><span class="pt"><span class="pk">『<span class="blank">삼강행실도</span>』</span><span class="pv">유교 기본 윤리인 삼강오륜 보급을 위해 편찬</span></span></span><span class="pc"><span class="pt"><span class="pk">『<span class="blank">소학</span>』</span><span class="pv">유학의 도덕과 예법을 배우는 기본서, 유학 교육의 입문서</span></span></span><span class="pc"><span class="pt"><span class="pk">『<span class="blank">주자가례</span>』</span><span class="pv">가정에서 지켜야 할 예법 정리한 책</span></span></span></span></span></div><div class="pl lv1"><span class="pt"><span class="pk">생활 양식</span><span class="pv">유교 예법에 따라 혼인과 장례를 치르고 조상의 제사를 지냄, 가묘나 사당을 설립하기도 함</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">8</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">붕당의 형성</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">붕당 형성</div>
-        <div class="plines"><div class="pl lv1"><span class="pm">1.</span><span class="pt"><span class="pk">사림 집권</span><span class="pv">사화 이후 국정 운영 중심이 왕권에서 <span class="blank" data-answer="신권">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></span></div><div class="pl lv1"><span class="pm">2.</span><span class="pt"><span class="pk">붕당 형성</span><span class="pv"><span class="blank" data-answer="외척">외척</span>의 정치 참여 문제, <span class="blank" data-answer="이조 전랑">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화</span></span></div><div class="pl lv0 after1"><span class="pt"><span class="pv">→ 사림이 <span class="blank" data-answer="동인">동인</span>과 <span class="blank" data-answer="서인">서인</span>으로 나뉨</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv1"><span class="pt"><span class="pk">사림 집권</span><span class="pv">사화 이후 국정 운영 중심이 왕권에서 <span class="blank">신권</span>으로 옮겨짐 → 사림이 중앙 정치 주도권 확보</span></span></div><div class="pl lv1"><span class="pt"><span class="pk">붕당 형성</span><span class="pv"><span class="blank">외척</span>의 정치 참여 문제, <span class="blank">이조 전랑</span>의 임명 문제를 둘러싸고 내부 갈등 심화<span class="pc"><span class="pt"><span class="pv">→ 사림이 <span class="blank">동인</span>과 <span class="blank">서인</span>으로 나뉨</span></span></span></span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">9</span>
       <span class="slotstep">개념 노트</span></div>
     <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">동인과 서인</h2></div><div class="s-body s-page"><div class="prow"><div class="plabel">동인</div>
-        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">주로 <span class="blank" data-answer="이황">이황</span>과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 <span class="blank" data-answer="북인">북인</span>과 남인으로 분화</span></span></div></div></div><div class="prow"><div class="plabel">서인</div>
-        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">주로 <span class="blank" data-answer="이이">이이</span>와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 <span class="blank" data-answer="노론">노론</span>과 소론으로 분화</span></span></div></div></div></div></div></div>
+        <div class="plines"><div class="pl lv0"><span class="pt"><span class="pv">주로 <span class="blank">이황</span>과 조식, 서경덕 학문 계승 / 영남 지역 사림 중심 / 이후 <span class="blank">북인</span>과 남인으로 분화</span></span></div></div></div><div class="prow"><div class="plabel">서인</div>
+        <div class="plines"><div class="pl lv0"><span class="pt"><span class="pv">주로 <span class="blank">이이</span>와 성혼의 학문 계승 / 경기, 충청 지역 사림 중심 / 이후 <span class="blank">노론</span>과 소론으로 분화</span></span></div></div></div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">10</span>
       <span class="slotstep">개념 노트</span></div>
-    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span><h2 class="s-head">사료 : 동인과 서인의 분당</h2></div><div class="s-body s-page"><div class="prow">
-        <div class="plines"><div class="pl lv0 after0"><span class="pt"><span class="pv">이조 전랑 자리를 두고 김효원과 심의겸이 서로 맞섰다. 심의겸은 김효원이 예전에 외척 윤원형의 집에 드나든 자라 하여 그가 전랑이 되는 것을 막았다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">뒤에 김효원이 전랑이 되자, 이번에는 심의겸의 동생 심충겸이 그 자리에 추천되었다. 김효원이 말하기를 &quot;이조의 벼슬자리가 어찌 외척 집안의 물건이냐?&quot; 하며 반대하였다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">이때부터 당론이 나뉘었다. 김효원을 지지하는 이들은 그가 한양 동쪽에 살아 <span class="blank" data-answer="동인">동인</span>(東人)이라 불렸고, 심의겸을 지지하는 이들은 그가 한양 서쪽에 살아 <span class="blank" data-answer="서인">서인</span>(西人)이라 불렸다.</span></span></div><div class="pl lv0 after0"><span class="pt"><span class="pv">『당의통략』</span></span></div></div></div></div></div></div>
+    <div class="deckframe"><div class="deckpage"><div class="s-top"><span class="s-badge">개념 노트</span></div><div class="s-body s-src">
+      <h2 class="src-title">동인과 서인의 분당</h2>
+      <div class="src-quote"><p>이조 전랑 자리를 두고 김효원과 심의겸이 서로 맞섰다. 심의겸은 김효원이 예전에 외척 윤원형의 집에 드나든 자라 하여 그가 전랑이 되는 것을 막았다.</p><p>뒤에 김효원이 전랑이 되자, 이번에는 심의겸의 동생 심충겸이 그 자리에 추천되었다. 김효원이 말하기를 &quot;이조의 벼슬자리가 어찌 외척 집안의 물건이냐?&quot; 하며 반대하였다.</p><p>이때부터 당론이 나뉘었다. 김효원을 지지하는 이들은 그가 한양 동쪽에 살아 <span class="blank">동인</span>(東人)이라 불렸고, 심의겸을 지지하는 이들은 그가 한양 서쪽에 살아 <span class="blank">서인</span>(西人)이라 불렸다.</p></div>
+      <div class="src-cite">『당의통략』</div></div></div></div>
   </section>
   <section class="slot">
     <div class="slotbar"><span class="slotno">11</span>
@@ -423,13 +453,10 @@ h1{font-size:var(--fs-title);margin:0 0 4px;letter-spacing:-.3px}
   </section>
 </div>
 <script>
-// 가린 빈칸은 눌러서 연다(slide-deck.js의 wireReveal과 같은 동작).
 // 이 문서는 쪽을 넘기지 않으므로, 전시학습확인 쪽은 쪽을 누를 때마다 답이 하나씩 나온다
 // (slide.html에서는 넘기기 단추와 PageDown이 하는 일. slide-deck.js의 stepForward).
 // 답이 다 나온 쪽을 다시 누르면 처음처럼 다 들어간다.
 document.addEventListener('click', e => {
-  const t = e.target.closest('.blank');
-  if (t){ t.classList.toggle('open'); return; }
   const page = e.target.closest('.deckpage'); if (!page) return;
   const next = page.querySelector('[data-step]:not(.shown)');
   if (next) next.classList.add('shown');
