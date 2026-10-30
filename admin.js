@@ -1066,12 +1066,19 @@ function openStudentModal(){
 // ── 강의 라이브러리 (개념 노트의 서브 메뉴, 선생님 지시 2026-10-28) ──
 function pageLessons(){
   const lessons = M.getLessonsNewest();   // 새로 만든 강의가 맨 위(요구사항 112)
-  const listSide = lessons.map(l => `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
-      <div class="grow"><div class="t">${esc(l.title)}</div>
+  const listSide = lessons.map(l => {
+    const badge = M.lessonBadge(l.num);
+    return `<div class="row" style="cursor:pointer" data-act="lesson-open" data-id="${l.id}">
+      <div class="grow"><div class="t">${badge ? `<span class="lnum">${esc(badge)}</span> ` : ''}${esc(l.title)}</div>
         <div class="s">${(l.order||[]).map(k => M.partDef(k)?.name).filter(Boolean).join(', ') || '빈 강의'}</div></div>
-      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`).join('') || `<div class="empty">강의가 없습니다.</div>`;
+      ${l.id === state.lessonId ? `<span class="badge">편집 중</span>` : ''}</div>`;
+  }).join('') || `<div class="empty">강의가 없습니다.</div>`;
 
+  /* 강의 만들기 (선생님 지시 2026-10-30): 번호 칸에 숫자를 적으면 표지에 "N강", OT·수행 같은
+     말이면 "[OT]"로 붙는다(shared/slide-axis.js의 lessonBadge). 번호는 비워도 된다. */
   const addForm = `<div class="formrow">
+    <input class="f" id="l-num" placeholder="번호" style="max-width:88px" aria-label="강의 번호"
+      title="숫자면 N강, OT·수행 같은 말이면 [OT]로 표시됩니다">
     <input class="f grow" id="l-title" placeholder="새 강의 제목">
     <button class="btn-text" data-act="lesson-add">강의 만들기</button>
   </div>`;
@@ -1084,9 +1091,10 @@ function pageLessons(){
   const body = state.lessonTab === 'edit' ? lessonEditor(l) : lessonPlacer(l);
 
   // 삭제는 머리줄 오른쪽에. 창고에서 지우는 것이라 강의실 상세와 같은 자리, 같은 모양으로 둔다
+  const badge = M.lessonBadge(l.num);
   return `<div class="pagehead">
       <button class="ib" data-act="lesson-close" title="목록" aria-label="목록">${icon('chevron-left',16)}</button>
-      <h2>${esc(l.title)}</h2>
+      <h2>${badge ? `<span class="lnum">${esc(badge)}</span> ` : ''}${esc(l.title)}</h2>
       <button class="ib ib-danger" data-act="lesson-del" data-id="${l.id}"
         title="강의 삭제" aria-label="강의 삭제">${icon('trash-2',16)}</button></div>${tabs}${body}`;
 }
@@ -1114,7 +1122,14 @@ function lessonEditor(l){
   }).join('');
 
   return `<div class="editor">
-    <div class="deck"><div class="sectionlabel">이 강의의 칸 (순서 자유)</div>${deck}</div>
+    <div class="deck">
+      <div class="sectionlabel">강의 번호</div>
+      <div class="formrow" style="margin-bottom:12px">
+        <input class="f" data-act="lesson-num" data-id="${l.id}" value="${esc(l.num || '')}"
+          placeholder="번호 (예: 1, OT, 수행)" style="max-width:220px" aria-label="강의 번호"
+          title="숫자면 N강, OT·수행 같은 말이면 [OT]로 표시됩니다">
+      </div>
+      <div class="sectionlabel">이 강의의 칸 (순서 자유)</div>${deck}</div>
     <div class="palette"><div class="sectionlabel">칸 넣고 빼기</div>${palette}
       <div class="formrow" style="margin-top:10px;flex-direction:column;align-items:stretch">
         <button class="btn-text" data-act="lesson-import" data-id="${l.id}" style="display:flex;align-items:center;justify-content:center;gap:8px"
@@ -1194,7 +1209,8 @@ function pageAxis(){
        활동지 지우기: 강의 내용을 전부 비운다(clearAxisContent. 요구사항 134) */
   const picker = `<div class="axhead">
     <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
-      ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
+      ${lessons.map(x => { const b = M.lessonBadge(x.num);
+        return `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${b ? esc(b) + ' ' : ''}${esc(x.title)}</option>`; }).join('')}
     </select>
     <div class="tools">
       <button class="ib ib-primary" data-act="axis-save"
@@ -2331,7 +2347,7 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'lesson-add': {
       const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }
-      const l = M.addLesson(title); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
+      const l = M.addLesson(title, val('l-num')); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
     }
     case 'lesson-open': state.lessonId = id; state.lessonTab = 'edit'; render(); break;
     case 'lesson-close': state.lessonId = null; render(); break;
@@ -2725,6 +2741,8 @@ document.getElementById('shell').addEventListener('change', e => {
       const row = pages[p]?.rows[r]; const box = side ? row?.[side] : row;
       if (!box) return false; box[f] = v; });
     if (f === 'text'){ el.value = M.indentText(v); el.rows = Math.max(2, v.split('\n').length); }
+  } else if (el.dataset.act === 'lesson-num'){   // 강의 번호/라벨(머리줄 번호표가 바뀌게 다시 그린다)
+    M.setLessonNum(el.dataset.id, el.value); render();
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 학습 주제, 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운

@@ -513,9 +513,15 @@ export function unenrollStudent(courseId, studentNo){
 // 강의 본체를 Firestore에 통째로 저장한다(parts, order, 개념 콘텐츠, 질문이 다 lessons 문서 안에 있다).
 function saveLesson(lessonId){ const l = getLesson(lessonId); if (l) put(COLLECTIONS.lessons, l); }
 
-export function addLesson(title){
-  const l = { id:nid('L'), title, parts:{}, order:[], createdAt:Date.now() };
+export function addLesson(title, num = ''){
+  const l = { id:nid('L'), title, num:String(num ?? '').trim(), parts:{}, order:[], createdAt:Date.now() };
   DEMO.lessons.push(l); put(COLLECTIONS.lessons, l); return l;
+}
+/* 강의 번호/라벨(선생님 지시 2026-10-30). 숫자면 슬라이드 표지에 "N강", 그 밖이면 "[OT]"로 보인다
+   (보이는 규칙은 shared/slide-axis.js의 lessonBadge). 강의 라이브러리에서 만들 때와 편집할 때 적는다. */
+export function setLessonNum(lessonId, num){
+  const l = getLesson(lessonId); if (!l) return null;
+  l.num = String(num ?? '').trim(); saveLesson(lessonId); return l;
 }
 // 강의 제목 고치기(진도표의 주제 칸, 강의 라이브러리 공용).
 export function setLessonTitle(lessonId, title){
@@ -953,7 +959,7 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow } from './shared/slide-axis.js?v=20261030x';
+  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261030x';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 

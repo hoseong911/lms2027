@@ -38,6 +38,15 @@ export const SLIDE_AXIS = [
 export const AXIS_ORDER = SLIDE_AXIS.map(s => s.key);
 export function axisStep(key){ return SLIDE_AXIS.find(s => s.key === key) || null; }
 
+/* 강의 번호표 (선생님 지시 2026-10-30): 강의마다 적는 번호/라벨을 어떻게 보일지.
+   숫자만 적으면 "N강"(1 → 1강), 그 밖의 말(OT, 수행 등)이면 대괄호로 "[OT]".
+   빈 값이면 아무것도 안 보인다. 강의 라이브러리 목록, 축 고르개, 슬라이드 표지가 같이 쓴다. */
+export function lessonBadge(num){
+  const s = String(num ?? '').trim();
+  if (!s) return '';
+  return /^\d+$/.test(s) ? `${s}강` : `[${s}]`;
+}
+
 /* 전시학습확인 문항의 유형 셋 (선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형").
    말씀하신 순서 그대로다. 키도 이름도 형성평가(model.js의 FORMATIVE_TYPES)와 같다:
    ox를 전시학습확인에서만 "OX"로 부르던 것을 선생님 지시로 진위형으로 맞췄다
