@@ -4,7 +4,8 @@
 
    한 벌로 폰과 PC를 다 본다(선생님 지시 2026-10-27, 요구사항 86).
    PC 전용 화면을 따로 만들지 않는다. 기준은 폰이고, 넓어지면 칸이 늘어난다.
-   손가락으로 누르는 것은 44px 밑으로 내려가지 않게 한다.
+   손가락으로 누르는 것은 44px 밑으로 내려가지 않게 했었는데, 뒤로, 로그아웃, 이전, 다음 단추는
+   선생님이 너무 크다고 해서 조작 칸 높이(--h-ctl)로 줄였다(2026-10-30).
 
    부트 가드 --lms-css-ok는 위의 shared/theme.css에 있다. */
 *{box-sizing:border-box}
@@ -27,16 +28,31 @@ html:not(.lms-ready) #app{display:none}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .topbar .who{font-size:var(--fs-meta);color:var(--sub);white-space:nowrap}
 @media (max-width:420px){ .topbar .who{display:none} }   /* 폰에서는 이름을 접는다 */
-.iconbtn{display:inline-grid;place-items:center;width:44px;height:44px;flex:0 0 auto;
-  border:1px solid var(--line);border-radius:var(--r-btn);background:transparent;color:var(--sub);cursor:pointer}
-.iconbtn:hover{background:var(--hover);color:var(--ink);border-color:var(--line-strong)}
+/* 뒤로, 로그아웃 단추: 크기는 조작 칸 높이(--h-ctl), 테두리 없이 아이콘만
+   (선생님 지시 2026-10-30: "버튼들 크기가 너무 크고 굳이 테두리 칠 필요 없다") */
+.iconbtn{display:inline-grid;place-items:center;width:var(--h-ctl);height:var(--h-ctl);flex:0 0 auto;
+  border:0;border-radius:var(--r-btn);background:transparent;color:var(--sub);cursor:pointer;padding:0}
+.iconbtn:hover{background:var(--hover);color:var(--ink)}
 
-/* ── 배치 전환(강의별 / 메뉴별) ── 카테고리 줄 모양 그대로 */
-.layouttabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-bottom:14px}
-.layouttab{padding:0 0 9px;font-size:var(--fs-body);color:var(--sub);border:none;background:none;cursor:pointer;
-  font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;min-height:38px}
-.layouttab:hover{color:var(--ink)}
-.layouttab.on{color:var(--accent);-webkit-text-stroke:.5px var(--accent);border-bottom-color:var(--accent)}
+/* ── 공지사항 글 목록 (선생님 지시 2026-10-30) ── 강의실 안 맨 위. 가로 구분선만 있는 목록 줄 */
+.notices{margin-bottom:18px}
+.sechead{font-size:var(--fs-head);font-weight:700;margin:0 0 8px}
+.nrow{display:flex;align-items:center;gap:8px;min-height:var(--h-row);padding:0 2px;cursor:pointer;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.nrow + .nrow{border-top:0}
+.nrow:hover{background:var(--accent-fade)}
+.nrow .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nrow .chev{color:var(--sub);flex:0 0 auto;display:grid}
+.nempty{color:var(--sub);padding:12px 2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.morebtn{display:block;width:100%;min-height:var(--h-ctl);margin-top:4px;border:0;background:none;
+  color:var(--sub);font-size:var(--fs-body);font-family:inherit;cursor:pointer}
+.morebtn:hover{color:var(--accent)}
+.notice h2{font-size:var(--fs-title);margin:4px 0 12px;letter-spacing:-.2px}
+.notice .nbody{font-size:var(--fs-body);line-height:1.7;white-space:pre-wrap;
+  border-top:1px solid var(--line);padding-top:14px}
+
+/* 메뉴 묶음 둘(강의 보기와 성적 / 세부 영역) 사이 간격 */
+.grid.menus + .grid.menus{margin-top:18px}
 
 /* ── 카드 ── 폰에서는 한 줄, 넓어지면 두 줄 */
 .grid{display:grid;gap:8px}
@@ -48,7 +64,10 @@ html:not(.lms-ready) #app{display:none}
 .card:hover{border-color:var(--accent)}
 .card:active{background:var(--accent-fade)}
 .card .ic{width:40px;height:40px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
-.card .no{flex:0 0 auto;min-width:38px;font-size:var(--fs-meta);font-weight:700;color:var(--navy-600)}
+/* 강의 차수(1강, 2강). 작아서 안 보인다고 해서 키웠다(선생님 지시 2026-10-30) */
+.card .no{flex:0 0 auto;min-width:48px;font-size:var(--fs-head);font-weight:700;color:var(--navy-600)}
+/* 메뉴 카드 아이콘 바탕은 전부 메인 레드 하나(선생님 지시 2026-10-30: 칸마다 색이 달랐다) */
+.card.menu .ic{background:var(--accent)}
 .card .body{flex:1;min-width:0}
 .card .t{font-weight:700;font-size:var(--fs-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .s{font-size:var(--fs-meta);color:var(--sub);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -192,9 +211,10 @@ html:not(.lms-ready) #app{display:none}
 .fmstep .fm-mark{display:block;font-size:var(--fs-head);margin:16px 0 6px}
 
 .lessonnav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
-.navbtn{border:1px solid var(--line);background:transparent;border-radius:var(--r-btn);padding:0 18px;font-size:var(--fs-body);
-  cursor:pointer;font-family:inherit;color:var(--ink);min-height:44px}
-.navbtn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+/* 이전, 다음: 뒤로 단추와 같이 테두리 없이 글자만(선생님 지시 2026-10-30) */
+.navbtn{border:0;background:transparent;border-radius:var(--r-btn);padding:0 12px;font-size:var(--fs-body);
+  cursor:pointer;font-family:inherit;color:var(--ink);min-height:var(--h-ctl)}
+.navbtn:hover:not(:disabled){color:var(--accent);background:var(--hover)}
 .navbtn:disabled{opacity:.35;cursor:default}
 
 #snack{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;

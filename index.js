@@ -5,26 +5,28 @@
 //  - 강의실 고르기에 반 번호를 띄우지 않는다. 학생은 자기 반밖에 없으므로 "사회", "역사"로 끝낸다
 //  - 강의실 안은 배치 둘: 강의별(1강, 2강 고르기)과 메뉴별(개념노트만, 미션만 모아 보기).
 //    둘은 같은 내용으로 들어가는 두 길이다. 둘 다 필요하다
+//    (2026-10-30 바뀜: 탭을 걷고 메뉴 한 화면만 둔다. 강의별은 그 안의 "강의 보기" 메뉴가 됐다. viewHome 참고)
 //  - 학생은 폰과 패드로 들어온다. 화면은 모바일과 PC가 같은 것을 쓴다
 //  - 개념노트(강의 슬라이드)만 예외로 새 탭 전체화면으로 연다
 //
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261029k';
+import * as M from './model.js?v=20261030a';
 import { icon } from './shared/icons.js?v=20261028h';
 
 const YEAR = 2027;
 const $app = document.getElementById('app');
 
 const state = {
-  view: 'login',          // login | rooms | home | lesson | menu | part
+  view: 'login',          // login | rooms | home | menu | lesson | part | notice
   sno: '', name: '',
   courseId: null,
-  layout: 'byLesson',     // 강의실 안의 배치 (byLesson | byMenu)
-  lessonId: null,         // 강의별로 들어왔을 때 보는 강의
+  lessonId: null,         // 강의 보기에서 고른 강의
   partKey: null,          // 보고 있는 칸
-  menuKey: null,          // 메뉴별로 들어왔을 때 고른 메뉴
+  menuKey: null,          // 고른 메뉴(강의 보기도 메뉴 하나다)
+  noticeAll: false,       // 공지사항 더보기를 눌렀는가(강의실을 새로 열면 다시 5개)
+  noticeId: null,         // 열어 본 공지사항 글
 
   // 로그인 화면 (선생님 지시 2026-10-28)
   loginStep: 'check',     // 'check'(학번, 이름, 비밀번호) | 'setup'(첫 접속: 비밀번호 만들기)
@@ -235,48 +237,69 @@ function viewRooms(){
   return topbar(M.getText('siteName')) + body;
 }
 
-// ── 강의실 안 ── 배치 둘(강의별 / 메뉴별)
+/* ── 강의실 안 ── 메뉴 한 화면 (선생님 지시 2026-10-30, 요구사항 108)
+   전에는 배치 셋(강의 보기 / 메뉴 / 콘텐츠)을 탭으로 넘겼다. 이제 탭 없이 이 한 화면이다.
+     맨 위   : 공지사항 글 목록(최대 5개, 더 있으면 더보기). 버튼이 아니라 글이 바로 보인다(요구사항 110)
+     첫 묶음 : 강의 보기, 성적
+     둘째 묶음: 개념 노트, 미션 활동, 오늘의 질문, 형성평가, 복습
+   콘텐츠(뽑기, 게임)는 강의실 밖으로 옮길 자리라 여기서 뺐다. */
+const NOTICE_MAX = 5;
 function viewHome(){
   const c = M.getCourse(state.courseId);
-  const tabs = `<div class="layouttabs">${M.STUDENT_VIEWS.map(v =>
-    `<button class="layouttab ${v.key === state.layout ? 'on':''}" data-act="layout" data-v="${v.key}">${esc(v.name)}</button>`).join('')}</div>`;
-  const pane = { byLesson:paneByLesson, byMenu:paneByMenu, extras:paneExtras }[state.layout] || paneByLesson;
-  return topbar(roomLabel(c), 'back-rooms') + tabs + pane();
+  return topbar(roomLabel(c), 'back-rooms') + noticeList() + menuGrid('main') + menuGrid('part');
 }
 
-// 배치 3: 콘텐츠. 뽑기, 게임 같은 흥미 요소가 들어올 자리다(선생님 지시 2026-10-27). 아직 비었다.
-function paneExtras(){
-  return `<div class="empty">아직 없습니다.</div>`;
+// 공지사항 글 목록. 제목만 보이고 누르면 그 글이 열린다. 늘 최신순(M.getNotices).
+function noticeList(){
+  const all = M.getNotices(YEAR);
+  const shown = state.noticeAll ? all : all.slice(0, NOTICE_MAX);
+  const rows = shown.map(n => `<div class="nrow" data-act="open-notice" data-id="${esc(n.id)}">
+      <span class="t">${esc(n.title)}</span><span class="chev">${icon('chevron-right',16)}</span></div>`).join('')
+    || `<div class="nempty">공지사항이 없습니다.</div>`;
+  const more = (!state.noticeAll && all.length > NOTICE_MAX)
+    ? `<button class="morebtn" data-act="notice-more">더보기</button>` : '';
+  return `<section class="notices"><div class="sechead">공지사항</div>${rows}${more}</section>`;
 }
 
-// 배치 1: 강의 고르기. 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다.
-function paneByLesson(){
-  const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
-  if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
-  return `<div class="grid">${cls.map((cl, i) => {
-    const tags = (cl.lesson.order || []).map(k =>
-      `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
-    return `<div class="card" data-act="open-lesson" data-lid="${cl.lessonId}">
-      <span class="no">${i + 1}강</span>
-      <div class="body"><div class="t">${esc(cl.lesson.title)}</div><div class="tags">${tags}</div></div>
-      <span class="chev">${icon('chevron-right',18)}</span></div>`;
-  }).join('')}</div>`;
+// 공지사항 글 하나
+function viewNotice(){
+  const n = M.getNotice(state.noticeId);
+  if (!n) return topbar('공지사항', 'back-home') + `<div class="empty">글을 찾지 못했습니다.</div>`;
+  return topbar('공지사항', 'back-home')
+    + `<article class="notice"><h2>${esc(n.title)}</h2><div class="nbody">${esc(n.body)}</div></article>`;
 }
 
-// 배치 2: 메뉴별. 개념노트만, 미션만 모아 본다. 복습과 성적도 여기 선다.
-function paneByMenu(){
+/* 메뉴 카드 묶음 하나. 아이콘 바탕은 전부 메인 레드다(선생님 지시 2026-10-30: 색이 여러 개였다).
+   색은 index.css의 .card.menu .ic 한 곳에서 준다. */
+function menuGrid(group){
   const counts = {};
   M.PART_TYPES.forEach(p => counts[p.key] = M.getPartItems(state.courseId, p.key).length);
   const n = {
     review: M.getCourseQuizzes(state.courseId).filter(cq => cq.isOpen && cq.quiz).length,
   };
-  return `<div class="grid menus">${M.STUDENT_MENUS.map(m => {
+  return `<div class="grid menus">${M.STUDENT_MENUS.filter(m => m.group === group).map(m => {
     const sub = m.kind === 'part'   ? `${counts[m.key]}개`
               : m.kind === 'review' ? `${n.review}개`
               : '';
     return `<div class="card menu" data-act="open-menu" data-k="${m.key}">
-      <span class="ic" style="background:var(--${m.key === 'score' ? 'navy-600' : m.key})">${icon(m.icon,22)}</span>
+      <span class="ic">${icon(m.icon,22)}</span>
       <div class="body"><div class="t">${esc(m.name)}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>
+      <span class="chev">${icon('chevron-right',18)}</span></div>`;
+  }).join('')}</div>`;
+}
+
+/* 강의 보기: 예전 "강의 보기" 배치를 메뉴 하나로 연다(요구사항 111).
+   1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다. 차수는 꽂힌 차례 그대로 매기고,
+   늘어놓는 것은 최신순이라 마지막 강의가 맨 위다(요구사항 112). */
+function lessonCards(){
+  const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
+  if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
+  return `<div class="grid">${cls.map((cl, i) => ({ cl, no:i + 1 })).reverse().map(({ cl, no }) => {
+    const tags = (cl.lesson.order || []).map(k =>
+      `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
+    return `<div class="card" data-act="open-lesson" data-lid="${cl.lessonId}">
+      <span class="no">${no}강</span>
+      <div class="body"><div class="t">${esc(cl.lesson.title)}</div><div class="tags">${tags}</div></div>
       <span class="chev">${icon('chevron-right',18)}</span></div>`;
   }).join('')}</div>`;
 }
@@ -288,11 +311,12 @@ function viewMenu(){
   if (!m) return topbar(roomLabel(c), 'back-home') + `<div class="empty">메뉴를 찾지 못했습니다.</div>`;
   const head = topbar(m.name, 'back-home');
 
-  if (m.kind === 'score')  return head + scoreCard(c);
-  if (m.kind === 'review') return head + reviewList();
+  if (m.kind === 'lessons') return head + lessonCards();
+  if (m.kind === 'score')   return head + scoreCard(c);
+  if (m.kind === 'review')  return head + reviewList();
 
-  // 칸 모아 보기: 강의마다 그 칸 하나씩
-  const items = M.getPartItems(state.courseId, m.key);
+  // 칸 모아 보기: 강의마다 그 칸 하나씩. 최신 강의가 맨 위(요구사항 112)
+  const items = M.getPartItems(state.courseId, m.key).reverse();
   if (!items.length) return head + `<div class="empty">아직 없습니다.</div>`;
 
   // 규칙(선생님 지시 2026-10-29): 오늘의 질문과 형성평가는 목록 모양이 똑같다.
@@ -357,7 +381,7 @@ function scoreCard(c){
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
 function viewLesson(){
   const l = M.getLesson(state.lessonId);
-  if (!l) return topbar('강의', 'back-home') + `<div class="empty">강의를 찾지 못했습니다.</div>`;
+  if (!l) return topbar('강의', 'back-menu') + `<div class="empty">강의를 찾지 못했습니다.</div>`;
   const order = l.order || [];
   if (!state.partKey || !order.includes(state.partKey)) state.partKey = order[0] || null;
 
@@ -372,7 +396,8 @@ function viewLesson(){
     <button class="navbtn" data-act="part-prev" ${idx<=0?'disabled':''}>이전</button>
     <button class="navbtn" data-act="part-next" ${idx>=order.length-1?'disabled':''}>다음</button></div>`;
 
-  return topbar(l.title, 'back-home')
+  // 강의 보기 메뉴에서 들어오므로 뒤로 가면 강의 목록이다
+  return topbar(l.title, 'back-menu')
     + `<div class="lessontabs">${tabs}</div>`
     + `<div class="partview">${partView(l, state.partKey)}</div>` + nav;
 }
@@ -490,7 +515,7 @@ function fmReadOne(it){
 // ── 렌더 ──
 function render(){
   const v = { login:viewLogin, rooms:viewRooms, home:viewHome,
-              lesson:viewLesson, menu:viewMenu, part:viewPart }[state.view];
+              lesson:viewLesson, menu:viewMenu, part:viewPart, notice:viewNotice }[state.view];
   $app.innerHTML = v ? v() : '';
   window.scrollTo(0, 0);
 }
@@ -573,7 +598,7 @@ $app.addEventListener('click', e => {
     // 로그아웃은 이 탭의 세션만 지운다. 기기에 저장한 것은 남기므로 저장 카드가 다시 보인다
     case 'logout':
       for (const k of Object.values(SS)) stDel(sessionStorage, k);
-      Object.assign(state, { view:'login', sno:'', name:'', courseId:null, layout:'byLesson',
+      Object.assign(state, { view:'login', sno:'', name:'', courseId:null, noticeAll:false, noticeId:null,
         loginStep:'check', loginErr:'', loginBusy:false, pending:null, formSno:'', formName:'', fm:null,
         saved: readSaved() });
       render(); break;
@@ -582,11 +607,12 @@ $app.addEventListener('click', e => {
     case 'open-room':
       state.courseId = el.dataset.id;
       stSet(sessionStorage, SS.cid, state.courseId);
-      state.view = 'home'; render(); break;
+      state.noticeAll = false; state.view = 'home'; render(); break;
     case 'back-rooms': state.view = 'rooms'; render(); break;
     case 'back-home': state.view = 'home'; render(); break;
     case 'back-menu': state.view = 'menu'; render(); break;
-    case 'layout': state.layout = el.dataset.v; render(); break;
+    case 'notice-more': state.noticeAll = true; render(); break;
+    case 'open-notice': state.noticeId = el.dataset.id; state.view = 'notice'; render(); break;
 
     case 'open-lesson': state.lessonId = el.dataset.lid; state.partKey = null; state.fm = null; state.view = 'lesson'; render(); break;
     case 'open-menu': state.menuKey = el.dataset.k; state.fm = null; state.view = 'menu'; render(); break;

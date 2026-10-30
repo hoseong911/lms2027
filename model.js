@@ -51,13 +51,16 @@ export const COLLECTIONS = {
   courseConsent:      'hoclass_course_consent', // 학생 동의서              (학생 화면 붙일 때)
   courseScores:       'hoclass_course_scores',  // 안 쓴다. 성적은 grades와 제출물에서 집계한다
   courseXp:           'hoclass_course_xp',       // 경험치/포인트            (6단계 게임 요소)
+
+  // 공지사항 (선생님 지시 2026-10-30). 학년도에 매인 글이라 year 필드를 둔다. 강의실마다 따로 쓰지 않는다
+  notices:            'hoclass_notices',        // { year, title, body, createdAt }
 };
 
 // 강의 안 네 칸: 각 강의에 최대 1개, 순서 자유.
 //   portfolio: 성적(포트폴리오)에 들어가는가   submits: 학생 제출물이 생기는가
 export const PART_TYPES = [
   { key:'concept',   name:'개념 노트',   icon:'book-open',      portfolio:true,  submits:false },
-  { key:'mission',   name:'미션 활동',   icon:'layout-grid',    portfolio:true,  submits:true  },
+  { key:'mission',   name:'미션 활동',   icon:'target',         portfolio:true,  submits:true  },
   { key:'question',  name:'오늘의 질문', icon:'message-square', portfolio:true,  submits:true  },
   { key:'formative', name:'형성평가',  icon:'circle-check',   portfolio:false, submits:true  },
 ];
@@ -67,20 +70,17 @@ export function partDef(key){ return PART_TYPES.find(p => p.key === key) || null
 // 독립 메뉴
 export const REVIEW = { key:'review', name:'복습', icon:'list-ordered' };
 
-/* 학생이 강의실 안에서 쓰는 세 배치 (선생님 지시 2026-10-27, 요구사항 85, 90)
- *   강의 보기: 1강, 2강을 고르면 그 강의의 칸이 차례로 이어진다
- *   메뉴     : 개념 노트만, 미션 활동만 모아 본다. 2026 lms 메뉴와 같은 방식
- *   콘텐츠   : 뽑기, 게임 같은 흥미 요소가 들어올 자리(요구사항 69의 다섯 번째 용도). 아직 비었다
- * 앞의 둘은 같은 내용으로 들어가는 두 개의 길이다. 메뉴에는 강의에 안 매인 복습과 성적도 선다. */
-export const STUDENT_VIEWS = [
-  { key:'byLesson', name:'강의 보기' },
-  { key:'byMenu',   name:'메뉴' },
-  { key:'extras',   name:'콘텐츠' },
-];
+/* 학생이 강의실 안에서 보는 메뉴 (선생님 지시 2026-10-30, 요구사항 108)
+ * 전에는 배치 셋(강의 보기 / 메뉴 / 콘텐츠)을 탭으로 넘겼다(요구사항 85, 90).
+ * 이제 강의실 안은 메뉴 한 화면뿐이다. 맨 위에 공지사항 글 목록, 그 아래 첫 묶음(강의 보기, 성적),
+ * 둘째 묶음(칸 넷과 복습). 강의 보기는 예전 강의 보기 배치를 그대로 여는 메뉴가 됐다.
+ * 콘텐츠(뽑기, 게임)는 강의실 밖, 강의실 고르기 쪽으로 옮길 자리라 강의실 안에서 뺐다.
+ * group: 'main'(첫 묶음) | 'part'(세부 영역 묶음) */
 export const STUDENT_MENUS = [
-  ...PART_TYPES.map(p => ({ key:p.key, name:p.name, icon:p.icon, kind:'part' })),
-  { key:'review', name:'복습', icon:'list-ordered', kind:'review' },
-  { key:'score',  name:'성적', icon:'bar-chart-3',  kind:'score'  },
+  { key:'lessons', name:'강의 보기', icon:'monitor',     kind:'lessons', group:'main' },
+  { key:'score',   name:'성적',      icon:'bar-chart-3', kind:'score',   group:'main' },
+  ...PART_TYPES.map(p => ({ key:p.key, name:p.name, icon:p.icon, kind:'part', group:'part' })),
+  { key:'review',  name:'복습',      icon:'list-ordered', kind:'review', group:'part' },
 ];
 
 // 어드민 왼쪽 메뉴
@@ -90,8 +90,9 @@ export const ADMIN_MENUS = [
   { key:'rooms',     name:'강의실 관리',     icon:'graduation-cap' },
   { key:'students',  name:'학생 관리',       icon:'users' },
   { key:'progress',  name:'진도 관리',       icon:'clipboard-list' },
+  { key:'notice',    name:'공지사항',        icon:'megaphone' },
   { key:'concept',   name:'개념 노트',       icon:'book-open' },
-  { key:'mission',   name:'미션 활동',       icon:'layout-grid' },
+  { key:'mission',   name:'미션 활동',       icon:'target' },
   { key:'question',  name:'오늘의 질문',     icon:'message-square' },
   { key:'formative', name:'형성평가',        icon:'circle-check' },
   { key:'scores',    name:'성적',            icon:'bar-chart-3' },
@@ -103,7 +104,7 @@ export const ADMIN_MENUS = [
    texts 맵에 `menu_키`로, 순서는 menuOrder 배열로 들어간다.
    순서 안의 MENU_SEP는 구분선이다. 메뉴처럼 위아래로 옮길 수 있다. */
 export const MENU_SEP = '|';
-export const DEFAULT_MENU_ORDER = ['rooms','students','progress', MENU_SEP,
+export const DEFAULT_MENU_ORDER = ['rooms','students','progress','notice', MENU_SEP,
   'concept','mission','question','formative','scores', MENU_SEP, 'general'];
 let menuOrder = null;   // 관리자가 정한 순서. loadCore가 settings/general에서 채운다.
 export function menuName(key){
@@ -111,13 +112,18 @@ export function menuName(key){
   if (v != null && v !== '') return v;
   return ADMIN_MENUS.find(m => m.key === key)?.name || '';
 }
-// 저장된 순서를 지금 있는 메뉴에 맞춘다: 없어진 메뉴는 빼고, 새로 생긴 메뉴는 끝에 붙인다.
+// 저장된 순서를 지금 있는 메뉴에 맞춘다: 없어진 메뉴는 빼고, 새로 생긴 메뉴는
+// ADMIN_MENUS에서 바로 앞에 있는 메뉴 뒤에 끼운다(공지사항이 일반 설정 밑으로 떨어지지 않게, 2026-10-30).
 export function getMenuOrder(){
   const keys = ADMIN_MENUS.map(m => m.key);
   const src = Array.isArray(menuOrder) ? menuOrder : DEFAULT_MENU_ORDER;
   const out = [];
   src.forEach(k => { if (k === MENU_SEP || (keys.includes(k) && !out.includes(k))) out.push(k); });
-  keys.forEach(k => { if (!out.includes(k)) out.push(k); });
+  keys.forEach((k, i) => {
+    if (out.includes(k)) return;
+    const at = i > 0 ? out.indexOf(keys[i - 1]) : -1;
+    out.splice(at + 1, 0, k);
+  });
   return out;
 }
 // 왼쪽 메뉴에 그릴 차례: { sep:true } 또는 { key, name, icon }
@@ -227,6 +233,7 @@ const DEMO = {
   submissions:  [],   // course_submissions { id:'꽂힌강의id_칸_학번', clId, part, courseId, studentNo, name, answer, score, at, shared }
   grades:       [],   // course_grades   { id:'꽂힌강의id_학번', clId, studentNo, concept:{achievedN,onTimeN}, mission, question, absent, feedback, manual }
   gradeConf:    { bands:null, lessons:[], feedbackTemplates:[] },  // settings/grade  급간 표 + 반영 강의 + 피드백 템플릿
+  notices:      [],   // notices        { id, year, title, body, createdAt }
 
   // ── 나중 단계에서 채운다(지금은 비움) ──
   quizzes:       [],  // quizzes        { id, title, source, items:[] }
@@ -260,7 +267,7 @@ function del(coll, id){ deleteDoc(doc(db, coll, id)).catch(e => console.error('d
 
 export async function loadCore(){
   const C = COLLECTIONS;
-  const [ys, cs, ss, rs, cls, ls, subs, grs, mas, gen, grc] = await Promise.all([
+  const [ys, cs, ss, rs, cls, ls, subs, grs, mas, nts, gen, grc] = await Promise.all([
     getDocs(collection(db, C.schoolYears)),
     getDocs(collection(db, C.courses)),
     getDocs(collection(db, C.courseStudents)),
@@ -270,6 +277,7 @@ export async function loadCore(){
     getDocs(collection(db, C.courseSubmissions)),
     getDocs(collection(db, C.courseGrades)),
     getDocs(collection(db, C.missionApps)),
+    getDocs(collection(db, C.notices)),
     getDoc(doc(db, 'hoclass_settings', 'general')),
     getDoc(doc(db, 'hoclass_settings', 'grade')),
   ]);
@@ -283,7 +291,8 @@ export async function loadCore(){
   DEMO.submissions = rows(subs);
   DEMO.grades      = rows(grs);
   DEMO.missionApps = rows(mas);
-  siteTexts        = gen.exists() ? (gen.data().texts || {}) : {};
+  DEMO.notices     = rows(nts);
+  siteTexts       = gen.exists() ? (gen.data().texts || {}) : {};
   menuOrder        = gen.exists() ? (gen.data().menuOrder || null) : null;
   DEMO.gradeConf   = grc.exists()
     ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [],
@@ -319,7 +328,27 @@ export function getCoursesOfStudent(year, studentNo){
   const mine = DEMO.students.filter(s => s.studentNo === studentNo);
   return DEMO.courses.filter(c => c.year === +year && mine.some(m => m.courseId === c.id));
 }
+/* ── 최신순 (선생님 지시 2026-10-30, 요구사항 112) ──
+   "특정 정렬 조건이 없다면 무조건 최신순." 새로 등록한 것이 늘 맨 위다.
+   만든 시각은 createdAt(2026-10-30부터 새 문서에 적는다)이고, 그 전에 만든 문서는
+   id에서 읽는다: nid()가 '접두 + Date.now()의 36진수 8자리 + 순번'으로 만들기 때문이다.
+   접두가 소문자면 시각 글자와 붙어 경계를 못 가르므로 접두를 받아서 자른다.
+   읽지 못하면 0(가장 오래된 것)으로 둔다. */
+const MS_2020 = Date.UTC(2020, 0, 1), MS_2100 = Date.UTC(2100, 0, 1);
+export function createdMs(o, prefix = ''){
+  if (typeof o?.createdAt === 'number') return o.createdAt;
+  const id = String(o?.id ?? '');
+  if (!id.startsWith(prefix)) return 0;
+  const n = parseInt(id.slice(prefix.length, prefix.length + 8), 36);
+  return (n > MS_2020 && n < MS_2100) ? n : 0;
+}
+export function newestFirst(list, prefix = ''){
+  return [...list].sort((a, b) => createdMs(b, prefix) - createdMs(a, prefix));
+}
+
 export function getLessons(){ return [...DEMO.lessons]; }
+// 강의 창고를 최신순으로(강의 라이브러리, 개념 노트 콘텐츠 목록). 강의 id 접두는 'L'이다(addLesson).
+export function getLessonsNewest(){ return newestFirst(DEMO.lessons, 'L'); }
 export function getLesson(id){ return DEMO.lessons.find(l => l.id === id) || null; }
 // 강의실에 꽂힌 강의 (order 순). 각 항목에 lesson 본체를 붙여 준다.
 export function getCourseLessons(courseId){
@@ -337,8 +366,8 @@ export function getPartItems(courseId, partKey){
     .filter(x => !!x.part);
 }
 
-// 그 칸(개념 노트, 미션 활동, 오늘의 질문, 형성평가)을 가진 강의만. 칸별 메뉴 넷이 쓴다.
-export function getLessonsWithPart(key){ return DEMO.lessons.filter(l => !!l.parts?.[key]); }
+// 그 칸(개념 노트, 미션 활동, 오늘의 질문, 형성평가)을 가진 강의만, 최신순. 칸별 메뉴 넷이 쓴다.
+export function getLessonsWithPart(key){ return getLessonsNewest().filter(l => !!l.parts?.[key]); }
 
 // 미션 앱은 order 오름차순(작을수록 위). 새 앱은 늘 맨 위로 들어간다(addMissionApp).
 // order가 없는 옛 문서는 order 있는 것들 뒤에 불러온 차례대로 선다.
@@ -476,7 +505,7 @@ export function unenrollStudent(courseId, studentNo){
 function saveLesson(lessonId){ const l = getLesson(lessonId); if (l) put(COLLECTIONS.lessons, l); }
 
 export function addLesson(title){
-  const l = { id:nid('L'), title, parts:{}, order:[] };
+  const l = { id:nid('L'), title, parts:{}, order:[], createdAt:Date.now() };
   DEMO.lessons.push(l); put(COLLECTIONS.lessons, l); return l;
 }
 // 강의 제목 고치기(진도표의 주제 칸, 강의 라이브러리 공용).
@@ -1152,7 +1181,7 @@ export function addMissionApp({ name, studentUrl, adminUrl, key, icon, lessonId,
   // 새 앱은 무조건 맨 위(선생님 지시 2026-10-29): 지금 가장 작은 order보다 하나 작게.
   const top = Math.min(0, ...DEMO.missionApps.map(x => x.order).filter(n => typeof n === 'number'));
   const a = { id, name:nm, studentUrl:String(studentUrl || '').trim(), adminUrl:String(adminUrl || '').trim(),
-              icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal, order:top - 1,
+              icon:String(icon || '').trim(), lessonId:lessonId || '', modal:!!modal, order:top - 1, createdAt:Date.now(),
               archive:{ topic:'', intent:'', content:'', ...(archive || {}) } };
   DEMO.missionApps.push(a); put(COLLECTIONS.missionApps, a); return a;
 }
@@ -1176,6 +1205,31 @@ export function updateMissionApp(id, patch){
 export function deleteMissionApp(id){
   DEMO.missionApps = DEMO.missionApps.filter(a => a.id !== id);
   del(COLLECTIONS.missionApps, id);
+}
+
+/* ── 공지사항 (선생님 지시 2026-10-30, 요구사항 109, 110) ──
+   어드민 공지사항 메뉴에서 쓰고, 학생 화면은 강의실 안 맨 위에 글 목록으로 띄운다(최대 5개, 더보기).
+   학년도에 매인 글이다. 그 학년도 강의실 전부에 같은 글이 뜬다. 늘 최신순(createdAt 큰 것이 위). */
+export function getNotices(year){
+  return newestFirst(DEMO.notices.filter(n => n.year === +year));
+}
+export function getNotice(id){ return DEMO.notices.find(n => n.id === id) || null; }
+export function addNotice(year, { title, body }){
+  const t = String(title ?? '').trim();
+  if (!t) throw new Error('제목을 입력하시길 바랍니다.');
+  const n = { id:nid('n_'), year:+year, title:t, body:String(body ?? '').trim(), createdAt:Date.now() };
+  DEMO.notices.push(n); put(COLLECTIONS.notices, n); return n;
+}
+export function updateNotice(id, { title, body }){
+  const n = getNotice(id); if (!n) throw new Error('글을 찾지 못했습니다.');
+  const t = String(title ?? '').trim();
+  if (!t) throw new Error('제목을 입력하시길 바랍니다.');
+  n.title = t; n.body = String(body ?? '').trim();
+  put(COLLECTIONS.notices, n); return n;
+}
+export function deleteNotice(id){
+  DEMO.notices = DEMO.notices.filter(n => n.id !== id);
+  del(COLLECTIONS.notices, id);
 }
 
 /* ── 학생 로그인: 학번, 이름, 비밀번호 (선생님 지시 2026-10-28) ──────────────────

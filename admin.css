@@ -43,6 +43,7 @@ html:not(.lms-ready) #shell{display:none}
 /* 미션 활동 두 단(선생님 지시 2026-10-29): 왼쪽 미션 이름 목록(.split-list), 오른쪽 세부 내용 칸(.pane).
    세부 칸 첫 줄은 머리줄 밑선과 겹치지 않게 윗선을 뺀다. 글 칸(textarea) 줄은 이름표를 위에 맞춘다 */
 .split-mission .pane .dscroll > .row:first-child,
+.split-notice .pane .dscroll > .row:first-child,
 .split-question .pane .qform > .row:first-child{border-top:0}
 /* 오늘의 질문 편집 칸(질문, 설명문): 글 칸 테두리를 꼭 둔다(선생님 지시 2026-10-29) */
 .qform textarea.f{border:1px solid var(--line-strong);resize:vertical;font:inherit;line-height:1.5}
