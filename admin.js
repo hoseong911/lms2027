@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030y';
-import { icon } from './shared/icons.js?v=20261030y';
+import * as M from './model.js?v=20261030z';
+import { icon } from './shared/icons.js?v=20261030z';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1285,9 +1285,13 @@ function axisEditor(l, ax){
   if (ax.edit === 'question'){
     const q = l.parts?.question;
     if (!q) return `<div class="placeholder">이 강의에는 오늘의 질문 칸이 없습니다.</div>`;
-    if (!String(q.question || '').trim()) return `<div class="placeholder">오늘의 질문이 비어 있습니다.</div>`;
-    return `<div class="axread"><div class="axq">${esc(q.question)}</div>
-      ${q.guide ? `<div class="axg">${esc(q.guide)}</div>` : ''}</div>`;
+    /* 슬라이드에서 질문을 바로 고친다(선생님 지시 2026-10-30). 전에는 읽기만 하고 오늘의 질문 메뉴에서
+       고쳤는데, 활동지로 만든 강의는 강의실에 안 꽂혀 그 메뉴(과목·강의실 단위)에 안 떠서 고칠 길이
+       없었다. 여기서 고친 것은 parts.question이라 강의실에 꽂으면 질문 관리 메뉴와 그대로 이어진다. */
+    return fld('질문', `<textarea class="f grow" rows="2" data-act="axis-question" data-f="question"
+        data-id="${l.id}" aria-label="오늘의 질문">${esc(q.question || '')}</textarea>`)
+      + fld('설명문', `<textarea class="f grow" rows="5" data-act="axis-question" data-f="guide"
+        data-id="${l.id}" aria-label="질문 설명문">${esc(q.guide || '')}</textarea>`);
   }
 
   const items = M.getDeck(l.id)[k]?.items || [];
@@ -1486,7 +1490,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030y');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030z');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });
@@ -2787,6 +2791,8 @@ document.getElementById('shell').addEventListener('change', e => {
     if (f === 'text'){ el.value = M.indentText(v); el.rows = Math.max(2, v.split('\n').length); }
   } else if (el.dataset.act === 'lesson-num'){   // 강의 번호/라벨(머리줄 번호표가 바뀌게 다시 그린다)
     M.setLessonNum(el.dataset.id, el.value); render();
+  } else if (el.dataset.act === 'axis-question'){   // 슬라이드 오늘의 질문 편집(질문, 설명문)
+    M.setQuestion(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 학습 주제, 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운
