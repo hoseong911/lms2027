@@ -417,6 +417,7 @@ h2::before{content:"";display:inline-block;width:3px;height:16px;background:var(
 <li class="sub"><code>shared/worksheet-pdf.js</code>: PDF 길(PDF.js). 자리로 라벨 가리기와 저절로 넘어간 줄 잇기만 제 것이다.</li>
 <li class="sub"><strong>한글 파일이 나은 까닭</strong>: 표 칸과 문단이 그대로 들어 있다. 라벨 칸, 좌우 비교 칸, 일부러 바꾼 줄 (<code>hp:lineBreak</code>)을 자리로 어림하지 않고 그대로 읽고, 저절로 넘어간 줄은 아예 없다. <strong>좌우 비교표는 한글 파일에서만 잡힌다.</strong> PDF에서는 한 줄로 섞인다.</li>
 <li class="sub">한글 파일의 줄 판정(그 파일 머리 주석에 자세히): 칸 하나면 괄호 머리는 새 쪽, 짧은 글은 버림. 칸 둘이 다 짧고 다음 줄도 같은 열 자리의 칸 둘이면 좌우 비교(두 줄을 같이 먹는다). 칸 둘에 첫 칸이 짧으면 라벨 칸 + 내용 칸. 빈 칸과 기호만 든 칸(⇙ ⇘)은 없는 것으로 친다.</li>
+<li class="sub"><strong>빈칸 낱말은 저절로 슬라이드 빈칸 <code>{낱말}</code>이 된다</strong>(선생님 답 2026-10-30 "당연하지", 요구사항 138). 선생님 활동지의 빈칸은 답을 <strong>흰 글씨에 밑줄</strong>로 적어 둔 것이다(종이에는 빈 밑줄로 인쇄된다). <code>worksheet-hwpx.js</code>의 <code>blankStyles</code>가 header.xml에서 그 글자 모양(흰 글씨 + 밑줄 둘 다)을 찾고, <code>hwpxBlocks</code>가 그 모양의 글을 <code>{}</code>로 감싼다. 밑줄을 늘리려고 답 뒤에 넣은 빈칸("향촌  ")은 뗀다 (그래서 한글 파일 길에서는 "향촌 에"처럼 벌어지지 않는다). PDF에는 글자 모양이 남지 않아 이 길이 없다.</li>
 <li class="sub">29강 한글 파일로 확인했다: 개념 노트 5쪽(성리학적 질서의 확산, 사료 이황, 성리학적 질서의 확산 (향약, 유교 윤리의 보급), 붕당의 형성 + 서인/동인 비교, 사료 동인과 서인), 미션 활동 1쪽.</li>
 <li><strong>나누는 기준은 선생님 활동지의 실제 모양이다</strong>(2026-10-30, 29강 활동지로 고침. 요구사항 136). 처음에는 "본문보다 큰 글씨가 쪽 제목"이라고만 봤는데, 선생님 활동지의 묶음 머리는 <code>[ 개념 노트 #1 : 성리학적 질서의 확산 ]</code>, <code>&lt; 사료 : 이황의 사액 서원 건의 &gt;</code>처럼 <strong>본문과 같은 크기에 괄호로만 감싼 줄</strong>이라 하나도 안 잡혔고 활동지 한 장이 통째로 한 쪽 한 묶음이 됐다.</li>
 <li class="sub"><strong>쪽 제목</strong>: 괄호로 감싼 줄(<code>WRAP_RE</code>) 또는 큰 글씨 줄. 괄호는 떼고 안쪽 글만 쓴다.</li>

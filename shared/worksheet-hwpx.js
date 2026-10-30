@@ -28,10 +28,13 @@
  *   - 내용 안에서 "1."로 시작하는 줄은 새 묶음이다(PDF 길과 같다. 활동지 표는 칸마다 1.부터 센다).
  *     라벨 칸이 있는 줄은 라벨이 이미 새 묶음을 열었으므로 그 줄의 1.은 다시 열지 않는다.
  *
- * 이 파일은 Firebase도 화면도 모른다. 노드에서는 JSZip을 넘겨 시험한다.
+ * 빈칸 낱말(흰 글씨에 밑줄)은 슬라이드 빈칸 {낱말}로 감싼다(아래 blankStyles).
+ *
+ * 이 파일은 Firebase도 화면도 모른다. 노드에서는 JSZip을 넘겨 시험한다
+ * (hwpxRead로 꺼내고 hwpxToParts로 바꾼다).
  */
-import { lineLevel } from './slide-axis.js?v=20261030t';
-import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages } from './worksheet.js?v=20261030t';
+import { lineLevel } from './slide-axis.js?v=20261030u';
+import { SHORT, JUNK_RE, unwrapTitle, makeCollector, tidyPages } from './worksheet.js?v=20261030u';
 
 // 브라우저는 CDN에서 JSZip을 불러온다. PDF.js와 같이 판 번호를 못박는다
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';
@@ -42,30 +45,67 @@ const unent = s => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
     : (ENT[e] ?? m));
 const attr = (s, name) => { const m = new RegExp(`\\b${name}="([^"]*)"`).exec(s); return m ? m[1] : ''; };
 
+/* ── 빈칸 낱말 (선생님 지시 2026-10-30: 빈칸을 슬라이드 빈칸으로 "당연하지") ──
+   선생님 활동지의 빈칸은 답 낱말을 **흰 글씨에 밑줄**로 적어 둔 것이다. 종이에는 빈 밑줄로
+   인쇄되고, 파일 안에는 답이 그대로 들어 있다(29강: "향촌", "소수서원", "조광조" 등 34곳).
+   그 글자 모양(header.xml의 hh:charPr)을 찾아 두었다가, 그 모양으로 적힌 글을 슬라이드 빈칸
+   문법 {낱말}로 감싼다. 답 뒤에 밑줄 길이를 늘리려고 넣은 빈칸("향촌  ")은 떼고 감싼다.
+   흰 글씨만으로 가리지 않고 밑줄까지 같이 보는 까닭: 흰 글씨는 다른 까닭으로도 쓸 수 있어서
+   빈칸 꼴(밑줄)까지 갖춘 것만 빈칸으로 본다. PDF에는 글자 모양이 남지 않아 이 길이 없다. */
+const WHITE_RE = /^#?(?:FFFFFF|FFF)$/i;
+export function blankStyles(headerXml){
+  const ids = new Set();
+  for (const m of String(headerXml || '').matchAll(/<hh:charPr\b([^>]*)>([\s\S]*?)<\/hh:charPr>/g)){
+    const under = /<hh:underline\b[^>]*\btype="([^"]*)"/.exec(m[2]);
+    if (WHITE_RE.test(attr(m[1], 'textColor')) && under && under[1] !== 'NONE') ids.add(attr(m[1], 'id'));
+  }
+  return ids;
+}
+
 /* section XML 하나를 덩어리 목록으로 읽는다. 차례는 문서 차례 그대로다.
      { type:'p', text }                                       표 밖 문단
      { type:'tbl', rows:[[{ col, span, paras:[문단 글] }]] }  표. 칸은 열 자리 순서
    문단 글 안의 '\n'은 hp:lineBreak(한글에서 Shift+Enter로 바꾼 줄)다.
-   표 안의 표(칸 속 표)는 드물어서 바깥 칸의 문단으로 펴서 넣는다. */
-export function hwpxBlocks(xml){
+   표 안의 표(칸 속 표)는 드물어서 바깥 칸의 문단으로 펴서 넣는다.
+   blanks는 빈칸 글자 모양 번호들이다(blankStyles). 그 모양의 글은 {낱말}로 감싼다. */
+export function hwpxBlocks(xml, blanks = new Set()){
   const blocks = [];
   const tbls = [];          // 열려 있는 표(안쪽이 끝)
   const paras = [];         // 열려 있는 문단(표가 문단 안에 들기 때문에 쌓인다)
+  const runs = [];          // 열려 있는 글자 묶음(hp:run). 빈칸 모양이면 글을 모았다가 {}로 감싼다
   let inT = 0;
   const cell = () => { const t = tbls[tbls.length - 1]; return t && t.cell; };
-  const RE = /<(\/?)hp:(tbl|tr|tc|p|t|lineBreak|tab|cellAddr|cellSpan)\b([^>]*?)(\/?)>|([^<]+)|<[^>]*>/g;
+  // 빈칸 모양으로 모은 글을 문단에 {낱말}로 내보낸다
+  const flush = r => {
+    const w = r.buf.replace(/[\s　]+/g, ' ').trim();
+    if (w && r.p) r.p.text += `{${w}}`;
+    r.buf = '';
+  };
+  const RE = /<(\/?)hp:(tbl|tr|tc|p|run|t|lineBreak|tab|cellAddr|cellSpan)\b([^>]*?)(\/?)>|([^<]+)|<[^>]*>/g;
   let m;
   while ((m = RE.exec(xml))){
     const [, close, tag, rest, self, text] = m;
-    if (text !== undefined){ if (inT && paras.length) paras[paras.length - 1].text += unent(text); continue; }
+    if (text !== undefined){
+      if (!inT || !paras.length) continue;
+      const r = runs[runs.length - 1];
+      if (r?.blank) r.buf += unent(text);
+      else paras[paras.length - 1].text += unent(text);
+      continue;
+    }
     if (!tag) continue;
     const p = paras[paras.length - 1];
+    const run = runs[runs.length - 1];
     switch (tag){
       case 't':
         if (!self) inT += close ? -1 : 1;
         break;
-      case 'lineBreak': if (inT && p) p.text += '\n'; break;
-      case 'tab':       if (inT && p) p.text += ' '; break;
+      case 'run':
+        if (self) break;
+        if (!close) runs.push({ blank: blanks.has(attr(rest, 'charPrIDRef')), buf: '', p });
+        else { const r = runs.pop(); if (r?.blank) flush(r); }
+        break;
+      case 'lineBreak': if (inT && p){ if (run?.blank) flush(run); p.text += '\n'; } break;
+      case 'tab':       if (inT && p){ if (run?.blank) run.buf += ' '; else p.text += ' '; } break;
       case 'p':
         if (!close){ paras.push({ text: '' }); break; }
         { const done = paras.pop(); if (!done) break;
@@ -168,13 +208,23 @@ export function blocksToParts(blocks){
   return { concept: tidyPages(concept), mission: tidyPages(mission) };
 }
 
-/* zip 안의 section XML을 차례대로 읽는다. JSZip은 부르는 쪽이 넘긴다(노드 시험용). */
-export async function hwpxSections(data, JSZip){
+/* zip 안에서 글자 모양 표(Contents/header.xml)와 section XML들을 차례대로 꺼낸다.
+   JSZip은 부르는 쪽이 넘긴다(노드 시험용). */
+export async function hwpxRead(data, JSZip){
   const zip = await JSZip.loadAsync(data);
   const names = Object.keys(zip.files)
     .filter(n => /^Contents\/section\d+\.xml$/i.test(n))
     .sort((a, b) => +a.match(/(\d+)\.xml$/i)[1] - +b.match(/(\d+)\.xml$/i)[1]);
-  return Promise.all(names.map(n => zip.file(n).async('string')));
+  const header = zip.file('Contents/header.xml');
+  return {
+    header: header ? await header.async('string') : '',
+    sections: await Promise.all(names.map(n => zip.file(n).async('string'))),
+  };
+}
+// 꺼낸 것을 { concept, mission } 페이지 배열로
+export function hwpxToParts({ header, sections }){
+  const blanks = blankStyles(header);
+  return blocksToParts(sections.flatMap(x => hwpxBlocks(x, blanks)));
 }
 
 let jszipP = null;
@@ -183,9 +233,9 @@ const loadJSZip = () => (jszipP ||= import(JSZIP_CDN).then(m => m.default || m))
 // 어드민이 부르는 길(worksheet.js의 worksheetFromFile을 거친다)
 export async function worksheetFromHwpx(file){
   const JSZip = await loadJSZip();
-  let xmls;
-  try { xmls = await hwpxSections(await file.arrayBuffer(), JSZip); }
+  let got;
+  try { got = await hwpxRead(await file.arrayBuffer(), JSZip); }
   catch { throw new Error('한글 파일을 열지 못했습니다. 한글에서 .hwpx로 다시 저장해 주시길 바랍니다.'); }
-  if (!xmls.length) throw new Error('한글 파일 안에서 글을 찾지 못했습니다.');
-  return blocksToParts(xmls.flatMap(hwpxBlocks));
+  if (!got.sections.length) throw new Error('한글 파일 안에서 글을 찾지 못했습니다.');
+  return hwpxToParts(got);
 }

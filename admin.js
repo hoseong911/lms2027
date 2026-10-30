@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030t';
+import * as M from './model.js?v=20261030u';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1425,7 +1425,7 @@ function importWorksheet(lessonId){
     toast('활동지에서 글자를 꺼내고 있습니다.');
     let got;
     try {
-      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030t');
+      const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030u');
       got = await worksheetFromFile(file);
     } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); return; }
     if (!got.concept.length && !got.mission.length){ toast('활동지에서 넣을 내용을 찾지 못했습니다.'); return; }
