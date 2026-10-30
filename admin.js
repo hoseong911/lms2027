@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030z';
-import { icon } from './shared/icons.js?v=20261030z';
+import * as M from './model.js?v=20261031a';
+import { icon } from './shared/icons.js?v=20261031a';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1490,7 +1490,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261030z');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031a');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });
@@ -1518,6 +1518,14 @@ function applyWorksheet(lessonId, got){
   if (got.mission.length){
     if (!l.parts?.mission) M.setLessonPart(lessonId, 'mission', true);   // "미션" 있으면 미션 활동 자동 생성
     M.setPages(lessonId, 'mission', got.mission); done.push(`미션 활동 ${got.mission.length}페이지`);
+    /* 미션 미니앱 기본정보도 자동 등록한다(선생님 지시 2026-10-30: 웹앱 주소가 없어도 기본정보는
+       등록된다). 이름은 활동지의 미션 이름, 강의와 연결(lessonId), 주소는 비워 두고 나중에 채운다.
+       이미 이 강의에 연결된 앱이 있으면 두 번 만들지 않는다(활동지를 다시 올려도 중복 안 됨). */
+    if (!M.getMissionApps().some(a => a.lessonId === lessonId)){
+      M.addMissionApp({ name: got.mission[0]?.title || l.title || '미션', lessonId,
+        archive:{ topic: cover.topic || '' } });
+      done.push('미션 앱');
+    }
   }
   if (question){
     if (!l.parts?.question) M.setQuestionEnabled(lessonId, true);         // "질문" 있으면 오늘의 질문 자동 생성
@@ -1558,8 +1566,13 @@ async function createLessonFromWorksheet(){
   const title = (got.cover?.topic || got.concept?.[0]?.title || '새 강의').trim();
   const l = M.addLesson(title, got.num || '');
   const done = applyWorksheet(l.id, got);
+  /* 활동지로 만든 강의는 그 해 강의실 전부에 자동으로 꽂는다(선생님 지시 2026-10-30:
+     "활동지 올리면 자동으로 강의랑 강의실이랑 연결"). 그래야 질문 관리, 미션 연결, 성적 메뉴에
+     바로 뜬다. 필요 없는 반은 강의실 연결 콘텐츠 탭에서 체크를 풀면 된다. */
+  const courses = M.getCourses(state.year);
+  courses.forEach(c => M.placeLesson(c.id, l.id));
   state.lessonId = l.id; state.lessonTab = 'edit'; render();
-  toast(`"${title}" 강의를 만들었습니다 (${done.join(', ')}).`);
+  toast(`"${title}" 강의 생성 (${done.join(', ')})${courses.length ? ` · 강의실 ${courses.length}곳 연결` : ''}`);
 }
 
 /* ── 올린 활동지 지우기 (선생님 지시 2026-10-30, 요구사항 133, 134) ──
