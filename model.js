@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck } from './shared/slide-axis.js?v=20261030i';
+import { normalizeDeck, toPages, fromPages } from './shared/slide-axis.js?v=20261030j';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -883,39 +883,37 @@ export function gradeStats(clId, studentNos){
   return out;
 }
 
-/* ── 개념 노트 콘텐츠 (2026 class_lessons.contentLines 모티브) ──
-   content는 줄의 배열: { type:'divider', title }(페이지 제목) | { type:'row', text }(내용 줄). */
-function conceptOf(lessonId){
-  const l = getLesson(lessonId); if (!l?.parts?.concept) return null;
-  if (!Array.isArray(l.parts.concept.content)) l.parts.concept.content = [];
-  return l.parts.concept.content;
+/* ── 개념 노트와 미션 활동의 페이지 (선생님 지시 2026-10-30) ──
+   둘은 같은 모양이다: 페이지(제목) 안에 "라벨 + 내용" 묶음. 모양과 옛 줄 옮기기는
+   shared/slide-axis.js의 toPages, fromPages에 있다(슬라이드 엔진과 활동지 변환이 같이 쓴다).
+   개념 노트는 parts.concept.content, 미션 활동은 deck.mission.content에 저장한다.
+
+   편집기는 페이지 배열을 받아 고친 뒤 통째로 돌려준다(setPages). 줄 하나 고칠 때마다
+   길을 따로 두지 않은 까닭: 묶음을 더하고 지우고 옮기는 일이 전부 "페이지 배열을 고친다"로 같다. */
+function pagesContent(lessonId, key){
+  const l = getLesson(lessonId); if (!l) return null;
+  if (key === 'concept'){
+    if (!l.parts?.concept) return null;
+    if (!Array.isArray(l.parts.concept.content)) l.parts.concept.content = [];
+    return l.parts.concept.content;
+  }
+  if (key === 'mission') return normalizeDeck(l).mission.content;
+  return null;
 }
-export function getConceptContent(lessonId){ return conceptOf(lessonId) || []; }
-export function conceptAddLine(lessonId, type){
-  const c = conceptOf(lessonId); if (!c) return;
-  c.push(type === 'divider' ? { type:'divider', title:'' } : { type:'row', text:'' });
+export function getPages(lessonId, key){ return toPages(pagesContent(lessonId, key)); }
+export function setPages(lessonId, key, pages){
+  const l = getLesson(lessonId); if (!l || pagesContent(lessonId, key) === null) return;
+  if (key === 'concept') l.parts.concept.content = fromPages(pages);
+  else l.deck.mission.content = fromPages(pages);
   saveLesson(lessonId);
-}
-export function conceptSetLine(lessonId, idx, value){
-  const c = conceptOf(lessonId), line = c?.[idx]; if (!line) return;
-  if (line.type === 'divider') line.title = value; else line.text = value;
-  saveLesson(lessonId);
-}
-export function conceptMoveLine(lessonId, idx, dir){
-  const c = conceptOf(lessonId); if (!c) return;
-  const j = idx + dir; if (j < 0 || j >= c.length) return;
-  [c[idx], c[j]] = [c[j], c[idx]];
-  saveLesson(lessonId);
-}
-export function conceptDelLine(lessonId, idx){
-  const c = conceptOf(lessonId); if (c && c[idx]){ c.splice(idx, 1); saveLesson(lessonId); }
 }
 
 /* ══ 강의 슬라이드의 축과 덱 (선생님 지시 2026-10-30, 요구사항 125) ══════════
    축 정의와 덱 모양은 shared/slide-axis.js 한 곳에 있다(슬라이드 엔진과 변환 도구가
    Firebase 없이 쓸 수 있어야 해서 갈라 두었다). 여기에는 고치고 저장하는 길만 둔다.
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
-export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef } from './shared/slide-axis.js?v=20261030i';
+export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
+  lineLevel, indentText, stripIndent } from './shared/slide-axis.js?v=20261030j';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
@@ -962,11 +960,13 @@ export function deckDelItem(lessonId, key, idx){
 export function deckStepFilled(lessonId, key){
   const l = getLesson(lessonId); if (!l) return false;
   if (key === 'cover') return true;                       // 표지는 제목만 있어도 선다
-  if (key === 'concept') return (l.parts?.concept?.content || []).some(ln =>
-    String(ln.type === 'divider' ? ln.title : ln.text || '').trim());
+  // 페이지 제목, 라벨, 내용 중 하나라도 적혀 있으면 쪽이 선다(slide-deck.js의 pageSlides와 같은 기준)
+  const pageFilled = content => toPages(content).some(p => String(p.title).trim()
+    || p.rows.some(r => String(r.label).trim() || String(r.text).trim()));
+  if (key === 'concept') return pageFilled(l.parts?.concept?.content);
   if (key === 'question') return !!String(l.parts?.question?.question || '').trim();
   const d = getDeck(lessonId);
-  if (key === 'mission') return (d.mission.items || []).some(t => String(t).trim())
+  if (key === 'mission') return pageFilled(d.mission.content)
     || !!String(l.parts?.mission?.title || '').trim();
   const arr = d[key]?.items || [];
   if (key === 'review') return arr.some(it => String(it?.q || '').trim());

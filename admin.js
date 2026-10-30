@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261030i';
+import * as M from './model.js?v=20261030j';
 import { icon } from './shared/icons.js?v=20261028h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
@@ -1177,8 +1177,9 @@ function pageAxis(){
   if (!M.SLIDE_AXIS.some(a => a.key === state.axisStep)) state.axisStep = M.SLIDE_AXIS[0].key;
   const ax = M.axisStep(state.axisStep);
 
+  // 드롭다운은 어드민의 다른 고르개(.sel)와 같은 모양이다. 글자와 화살표 둘레에 여백이 있다
   const picker = `<div class="axhead">
-    <select class="f axpick" data-act="axis-lesson" aria-label="강의 고르기">
+    <select class="sel axpick" data-act="axis-lesson" aria-label="강의 고르기">
       ${lessons.map(x => `<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.title)}</option>`).join('')}
     </select>
     <button class="btn-text" data-act="axis-preview" data-id="${l.id}"
@@ -1193,16 +1194,16 @@ function pageAxis(){
     </div></div>`;
 }
 
-/* 왼쪽 줄자: 축 여덟 단계. 좁아서 번호와 이름만 들어간다.
-   채운 단계는 이름이 진하고 왼쪽에 레드 띠가 선다. 안 채운 단계는 흐리다
-   (켜고 끄는 스위치를 두지 않는 대신 여기서 어디가 비었는지 본다). */
+/* 왼쪽 줄자: 축 여덟 단계. 단계 이름만 둔다.
+   번호와 굵은 글씨는 걷었다(선생님 지시 2026-10-30: "번호 삭제, 글씨 굵기 해제, 각 개체끼리 간격 두기").
+   안 채운 단계는 흐린 글씨다(켜고 끄는 스위치를 두지 않는 대신 여기서 어디가 비었는지 본다). */
 function axisRail(l){
-  return M.SLIDE_AXIS.map((ax, i) => {
+  return M.SLIDE_AXIS.map(ax => {
     const on = state.axisStep === ax.key;
     const filled = M.deckStepFilled(l.id, ax.key);
     return `<button class="axrow ${on?'on':''} ${filled?'':'off'}"
       data-act="axis-step" data-k="${ax.key}" aria-current="${on?'true':'false'}">
-      <span class="axno">${i + 1}</span><span class="axnm">${esc(ax.name)}</span></button>`;
+      <span class="axnm">${esc(ax.name)}</span></button>`;
   }).join('');
 }
 
@@ -1226,9 +1227,9 @@ function axisEditor(l, ax){
         value="${esc(d.cover.pages)}" aria-label="교과서 쪽수">`);
   }
 
-  if (ax.edit === 'concept')
-    // 개념 노트는 parts.concept.content를 그대로 쓴다: 이미 있는 줄 편집기를 그 자리에 둔다
-    return conceptLines(l);
+  if (ax.edit === 'pages')
+    // 개념 노트와 미션 활동: 같은 페이지 편집기(2026 편집기가 둘을 같은 틀로 고쳤다)
+    return pageEditor(l, k);
 
   if (ax.edit === 'question'){
     const q = l.parts?.question;
@@ -1288,42 +1289,111 @@ function axisEditor(l, ax){
     }).join('');
 
   } else {
-    /* 학습 목표, 미션 활동 안내, 맺음말: 줄 하나가 글자 하나다.
-       줄이 길어지는 자리(미션 안내)가 있어 한 칸짜리 입력이 아니라 늘어나는 글 칸을 쓴다. */
+    /* 학습 목표, 맺음말: 줄 하나가 글자 하나다.
+       줄이 길어지는 자리가 있어 한 칸짜리 입력이 아니라 늘어나는 글 칸을 쓴다. */
     rows = items.map((it, i) => `<div class="ce-line">
       <span class="ce-tag">${i + 1}</span>
       <textarea class="f grow ta ta1" rows="2" data-act="deck-set" data-id="${l.id}" data-k="${k}"
         data-i="${i}" aria-label="${esc(ax.name)} ${i + 1}번">${esc(it)}</textarea>${tools(i)}</div>`).join('');
   }
 
-  // 미션 활동은 제목이 미션 활동 메뉴에서 온다. 여기 적는 것은 활동 안내 줄이다
-  const head = k === 'mission' && String(l.parts?.mission?.title || '').trim()
-    ? `<div class="axread"><div class="axq">${esc(l.parts.mission.title)}</div></div>` : '';
-
-  return head + (rows || `<div class="placeholder">내용이 없습니다.</div>`)
+  return (rows || `<div class="placeholder">내용이 없습니다.</div>`)
     + `<div class="ce-add"><button class="btn-chip" data-act="deck-add" data-id="${l.id}" data-k="${k}">
         ${icon('plus',13)}줄 추가</button></div>`;
 }
 
-/* 개념 노트 줄(페이지 제목과 내용 줄). 전에는 pageConcept이 바로 그렸는데,
-   축 편집기의 개념 노트 단계가 그 자리를 그대로 쓰도록 따로 뗐다. */
-function conceptLines(l){
-  const content = M.getConceptContent(l.id);
-  const lines = content.length ? content.map((ln, i) => {
-    const tools = `<div class="tools">
-      <button class="ib ib-sm" data-act="ce-up" data-id="${l.id}" data-k="${i}" ${i===0?'disabled':''} title="위로" aria-label="위로">${icon('arrow-up',14)}</button>
-      <button class="ib ib-sm" data-act="ce-down" data-id="${l.id}" data-k="${i}" ${i===content.length-1?'disabled':''} title="아래로" aria-label="아래로">${icon('arrow-down',14)}</button>
-      <button class="ib ib-sm ib-danger" data-act="ce-del" data-id="${l.id}" data-k="${i}" title="삭제" aria-label="삭제">${icon('trash-2',14)}</button></div>`;
-    if (ln.type === 'divider')
-      return `<div class="ce-line ce-page"><span class="ce-tag">페이지</span>
-        <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.title)}">${tools}</div>`;
-    return `<div class="ce-line"><span class="ce-bullet"></span>
-      <input class="f grow" data-act="ce-edit" data-id="${l.id}" data-k="${i}" value="${esc(ln.text)}">${tools}</div>`;
-  }).join('') : `<div class="placeholder">내용이 없습니다.</div>`;
-  const add = `<div class="ce-add">
-    <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="divider">${icon('plus',13)}페이지</button>
-    <button class="btn-chip" data-act="ce-add" data-id="${l.id}" data-k="row">${icon('plus',13)}내용 줄</button></div>`;
-  return `<div class="ce-wrap">${lines}${add}</div>`;
+/* ── 개념 노트와 미션 활동의 페이지 편집기 (선생님 지시 2026-10-30) ──
+   "2026에 사용한 lms 콘텐츠 편집기를 참고하여 개념노트 페이지와 미션 활동 페이지 만들어줄것"
+
+   2026 편집기(개념 Check, 미션 Check)에서 본뜬 틀: 페이지마다 제목 칸이 있고, 그 아래에
+   묶음(왼쪽 라벨 칸 + 오른쪽 내용 글 칸)이 여럿 선다. 내용 글 칸은 한 줄이 한 항목이다.
+   2026처럼 개념과 미션이 같은 편집기다(k가 'concept'이냐 'mission'이냐만 다르다).
+   2026의 형식 고르기(연표, 비교표 등), 이미지 번호, 글자 크기 칸, 끌어서 옮기기는 가져오지
+   않았다. 시킨 것이 아니다.
+
+   내용 칸 안의 들여쓰기(선생님 지시: "수준이 떨어질 수록 들여쓰기"): 줄 앞 기호(1. / - / ·)로
+   단계를 읽어 그만큼 빈칸을 넣어 보여 준다(M.indentText). 저장할 때는 빈칸을 걷는다(M.stripIndent).
+   단계는 기호가 정하므로 빈칸은 보기용이다. 그래서 선생님이 빈칸을 손으로 맞출 필요가 없다. */
+function pageEditor(l, k){
+  const pages = M.getPages(l.id, k);
+  const at = (act, p, r) => `data-act="${act}" data-id="${l.id}" data-k="${k}"`
+    + (p != null ? ` data-p="${p}"` : '') + (r != null ? ` data-r="${r}"` : '');
+  const btn = (act, p, r, ic, title, { danger = false, off = false } = {}) =>
+    `<button class="ib ib-sm ${danger ? 'ib-danger' : ''}" ${at(act, p, r)} ${off ? 'disabled' : ''}
+      title="${title}" aria-label="${title}">${icon(ic, 14)}</button>`;
+
+  const body = pages.map((pg, p) => {
+    const rows = pg.rows.map((r, ri) => `<div class="pgrow">
+        <textarea class="f pglabel" rows="1" ${at('pg-set', p, ri)} data-f="label" aria-label="라벨">${esc(r.label)}</textarea>
+        <textarea class="f grow pgtext" rows="${Math.max(2, r.text.split('\n').length)}" ${at('pg-set', p, ri)}
+          data-f="text" aria-label="내용">${esc(M.indentText(r.text))}</textarea>
+        <div class="tools">${btn('pg-row-del', p, ri, 'trash-2', '묶음 삭제', { danger:true })}</div></div>`).join('');
+    // 칸 이름은 칸마다 달지 않고 묶음들 위에 한 줄로 둔다(화면 규칙: 형식 안내는 구역 위에 한 줄)
+    const cols = pg.rows.length ? `<div class="pgcols"><span class="pglabel">라벨</span><span>내용</span></div>` : '';
+    return `<section class="pgblock">
+      <div class="pghead"><span class="pgno">${p + 1}페이지</span>
+        <input class="f grow pgtitle" ${at('pg-title', p)} value="${esc(pg.title)}" aria-label="페이지 제목">
+        <div class="tools">
+          ${btn('pg-up', p, null, 'arrow-up', '페이지 위로', { off: p === 0 })}
+          ${btn('pg-down', p, null, 'arrow-down', '페이지 아래로', { off: p === pages.length - 1 })}
+          ${btn('pg-del', p, null, 'trash-2', '페이지 삭제', { danger:true })}</div></div>
+      ${cols}${rows}
+      <div class="ce-add"><button class="btn-chip" ${at('pg-row-add', p)}>${icon('plus',13)}묶음</button></div>
+    </section>`;
+  }).join('');
+
+  return (body || `<div class="placeholder">내용이 없습니다.</div>`)
+    + `<div class="ce-add pgadd"><button class="btn-chip" ${at('pg-add')}>${icon('plus',13)}페이지</button></div>`;
+}
+
+/* 페이지 편집기의 단추와 칸이 부르는 길. 페이지 배열을 받아 고치고 통째로 저장한다(M.setPages).
+   getPages는 부를 때마다 새 배열을 만들어 주므로 여기서 고쳐도 저장 전에는 아무것도 바뀌지 않는다. */
+function editPages(el, fn){
+  const { id, k } = el.dataset;
+  const pages = M.getPages(id, k);
+  if (fn(pages, +el.dataset.p, +el.dataset.r) === false) return;
+  M.setPages(id, k, pages);
+}
+
+/* ── 활동지 PDF 올리기 (선생님 지시 2026-10-30) ──
+   "토큰이 안드는 방향으로 변환해서 내용 인식해줄 것."
+   AI를 거치지 않는다. 브라우저 안에서 PDF 글자를 꺼내 페이지와 묶음으로 나눈다
+   (shared/worksheet-pdf.js. 파일이 어디로도 나가지 않고 사용료도 없다).
+   제목에 "미션"이 든 페이지부터는 미션 활동으로, 나머지는 개념 노트로 들어간다.
+   이미 적힌 내용이 있으면 바꿀지 먼저 묻는다(덮어쓰면 되돌릴 수 없다).
+   다 넣으면 콘텐츠 탭의 개념 노트 단계로 옮겨 가서 바로 고칠 수 있게 한다. */
+function importWorksheet(lessonId){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
+  inp.addEventListener('change', async () => {
+    const file = inp.files?.[0]; if (!file) return;
+    toast('활동지에서 글자를 꺼내고 있습니다.');
+    let got;
+    try {
+      const { worksheetFromPdf } = await import('./shared/worksheet-pdf.js?v=20261030j');
+      got = await worksheetFromPdf(file);
+    } catch (e){ console.error(e); toast(e.message || 'PDF를 읽지 못했습니다.'); return; }
+    if (!got.concept.length && !got.mission.length){ toast('PDF에서 넣을 내용을 찾지 못했습니다.'); return; }
+
+    // 지금 적힌 페이지가 있는가(빈 페이지만 만들어 둔 것은 없는 것으로 본다)
+    const has = k => M.getPages(lessonId, k).some(p => p.title.trim()
+      || p.rows.some(r => r.label.trim() || r.text.trim()));
+    const l = M.getLesson(lessonId);
+    if ((got.concept.length && has('concept')) || (got.mission.length && has('mission'))){
+      const ok = await confirmDelete({ title:'이미 적힌 내용을 바꿀까요?', okText:'바꾸기',
+        bodyHtml:`<p>활동지에서 꺼낸 내용으로 개념 노트${got.mission.length ? '와 미션 활동' : ''} 페이지를 바꿉니다. 지금 적힌 페이지는 지워집니다.</p>` });
+      if (!ok) return;
+    }
+    if (got.concept.length){
+      if (!l.parts?.concept) M.setLessonPart(lessonId, 'concept', true);
+      M.setPages(lessonId, 'concept', got.concept);
+    }
+    if (got.mission.length) M.setPages(lessonId, 'mission', got.mission);
+    state.conceptTab = 'content'; state.conceptLessonId = lessonId; state.axisStep = 'concept';
+    render();
+    toast(`개념 노트 ${got.concept.length}페이지${got.mission.length ? `, 미션 활동 ${got.mission.length}페이지` : ''}를 넣었습니다.`);
+  });
+  inp.click();
 }
 /* ── 미션 활동 (hoistory/lms "미션 Check" 카드 틀 이식) ─────────────────────
    선생님 지시 2026-10-28: 미션 활동도 hoistory 기본 틀로.
@@ -2138,7 +2208,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'part-off': M.setLessonPart(state.lessonId, k, false); render(); break;
     case 'part-up': M.moveLessonPart(state.lessonId, k, -1); render(); break;
     case 'part-down': M.moveLessonPart(state.lessonId, k, 1); render(); break;
-    case 'lesson-import': toast('활동지 올리기와 개념 노트 변환은 다음 단계에서 만듭니다.'); break;
+    case 'lesson-import': if (state.lessonId) importWorksheet(state.lessonId); break;
     case 'place-toggle': {
       // 데모: 꽂기만(해제는 다음 단계). 꽂혀 있지 않으면 꽂는다.
       const already = M.getCourseLessons(id).some(cl => cl.lessonId === state.lessonId);
@@ -2148,10 +2218,26 @@ document.getElementById('shell').addEventListener('click', e => {
     }
     // 개념 노트
     case 'concept-tab': state.conceptTab = v; state.conceptLessonId = null; render(); break;
-    case 'ce-add': M.conceptAddLine(id, k); render(); break;
-    case 'ce-up': M.conceptMoveLine(id, +k, -1); render(); break;
-    case 'ce-down': M.conceptMoveLine(id, +k, 1); render(); break;
-    case 'ce-del': M.conceptDelLine(id, +k); render(); break;
+    // 개념 노트와 미션 활동의 페이지 편집기(pageEditor). 새 묶음과 새 페이지는 빈 칸 하나씩으로 시작한다
+    case 'pg-add': editPages(el, pages => { pages.push({ title:'', rows:[{ label:'', text:'' }] }); }); render(); break;
+    case 'pg-up': case 'pg-down': editPages(el, (pages, p) => {
+      const j = p + (act === 'pg-up' ? -1 : 1);
+      if (j < 0 || j >= pages.length) return false;
+      [pages[p], pages[j]] = [pages[j], pages[p]];
+    }); render(); break;
+    case 'pg-row-add': editPages(el, (pages, p) => { pages[p]?.rows.push({ label:'', text:'' }); }); render(); break;
+    case 'pg-row-del': editPages(el, (pages, p, r) => { pages[p]?.rows.splice(r, 1); }); render(); break;
+    case 'pg-del': {
+      // 내용이 든 페이지는 지우기 전에 묻는다(빈 페이지는 바로 지운다)
+      const pg = M.getPages(id, k)[+el.dataset.p]; if (!pg) break;
+      const full = pg.title.trim() || pg.rows.some(r => r.label.trim() || r.text.trim());
+      const drop = () => { editPages(el, (pages, p) => { pages.splice(p, 1); }); render(); };
+      if (!full){ drop(); break; }
+      confirmDelete({ title:'페이지 삭제',
+        bodyHtml:`<b>${esc(pg.title.trim() || `${+el.dataset.p + 1}페이지`)}</b>의 내용을 모두 지웁니다. 되돌릴 수 없습니다.` })
+        .then(ok => { if (ok) drop(); });
+      break;
+    }
 
     /* 강의 슬라이드 축 편집기(요구사항 125, 126). 강의 고르기는 드롭다운이라 change 쪽에 있다.
        단계는 늘 하나 열려 있다(오른쪽 편집창이 비지 않게). 같은 줄을 다시 눌러도 닫지 않는다. */
@@ -2407,8 +2493,15 @@ document.getElementById('shell').addEventListener('change', e => {
     state.questionLessonId = el.value; render();
   } else if (el.dataset.act === 'fm-result-lesson'){   // 형성평가 성취도: 전체 누적 또는 한 강의
     state.formativeResultId = el.value; render();
-  } else if (el.dataset.act === 'ce-edit'){   // 개념 콘텐츠 줄: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
-    M.conceptSetLine(el.dataset.id, +el.dataset.k, el.value);
+  } else if (el.dataset.act === 'pg-title'){   // 페이지 제목: 포커스 빠질 때 저장(다시 그리지 않아 커서 유지)
+    editPages(el, (pages, p) => { if (pages[p]) pages[p].title = el.value.trim(); });
+  } else if (el.dataset.act === 'pg-set'){
+    /* 묶음의 라벨과 내용. 다시 그리지 않는다(다른 칸을 눌러 포커스가 옮겨 가는 중이라 그리면 커서가 날아간다).
+       내용은 들여쓰기 빈칸을 걷어 저장하고, 그 칸만 단계에 맞춰 다시 들여 써 보여 준다. */
+    const f = el.dataset.f;
+    const v = f === 'text' ? M.stripIndent(el.value) : el.value.trim();
+    editPages(el, (pages, p, r) => { const row = pages[p]?.rows[r]; if (!row) return false; row[f] = v; });
+    if (f === 'text'){ el.value = M.indentText(v); el.rows = Math.max(2, v.split('\n').length); }
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운

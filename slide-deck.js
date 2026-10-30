@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef } from './shared/slide-axis.js?v=20261030i';
+import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel } from './shared/slide-axis.js?v=20261030j';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -98,28 +98,17 @@ export function buildSlides(lesson, no){
       });
 
     } else if (ax.key === 'concept'){
-      // 개념 노트는 parts.concept.content를 쓴다(이미 있는 줄 편집기 그대로).
-      // 'divider' 줄이 쪽을 나눈다: 페이지 제목이 나오면 거기서 새 쪽이다.
-      const content = lesson.parts?.concept?.content || [];
-      let cur = null;
-      content.forEach(ln => {
-        if (ln.type === 'divider'){
-          cur = { type:'rows', title:String(ln.title || '').trim(), rows:[] };
-          push('concept', cur);
-        } else {
-          const text = String(ln.text || '').trim(); if (!text) return;
-          if (!cur){ cur = { type:'rows', title:'', rows:[] }; push('concept', cur); }
-          cur.rows.push(text);
-        }
-      });
-      // 제목만 있고 줄이 하나도 없는 쪽은 뺀다(페이지 줄만 만들어 두고 비워 둔 경우)
-      for (let i = out.length - 1; i >= 0; i--)
-        if (out[i].step === 'concept' && !out[i].rows.length && !out[i].title) out.splice(i, 1);
+      // 개념 노트는 parts.concept.content를 쓴다. 페이지 하나가 쪽 하나다
+      pageSlides(lesson.parts?.concept?.content, '').forEach(s => push('concept', s));
 
     } else if (ax.key === 'mission'){
-      const items = lines('mission');
-      const title = String(lesson.parts?.mission?.title || '').trim();
-      if (items.length || title) push('mission', { type:'mission', title, items });
+      /* 미션 활동 페이지는 덱이 들고 있다. 페이지 제목을 비우면 미션 이름(parts.mission의 제목)이
+         선다: 같은 이름을 두 군데 적지 않게. 페이지가 하나도 없어도 미션 이름이 있으면 쪽 하나가 선다
+         (페이지 모양이 되기 전에도 그랬다). 이 기준은 model.js의 deckStepFilled와 같아야 한다. */
+      const name = String(lesson.parts?.mission?.title || '').trim();
+      const pages = pageSlides(deck.mission?.content, name);
+      if (!pages.length && name) pages.push({ type:'page', title:name, rows:[] });
+      pages.forEach(s => push('mission', s));
 
     } else if (ax.key === 'question'){
       const q = String(lesson.parts?.question?.question || '').trim();
@@ -134,15 +123,51 @@ export function buildSlides(lesson, no){
   return out;
 }
 
-// 축 단계 이름(쪽 왼쪽 위 이름표). 표지에는 달지 않는다
+/* 개념 노트와 미션 활동의 페이지를 쪽으로 편다(페이지 모양은 shared/slide-axis.js의 toPages).
+   빈 줄은 떨어뜨리고, 줄도 제목도 없는 페이지는 쪽을 만들지 않는다.
+   제목은 있는데 줄이 없는 페이지는 선다(제목만 세운 쪽을 일부러 두는 경우가 있다).
+   fallback은 페이지 제목이 비었을 때 대신 쓸 제목이다(미션 이름). */
+function pageSlides(content, fallback){
+  return toPages(content).map(p => ({
+    type: 'page',
+    title: String(p.title || '').trim() || fallback,
+    rows: p.rows.map(r => ({
+      label: String(r.label || '').trim(),
+      lines: String(r.text || '').split('\n').map(t => t.trim()).filter(Boolean),
+    })).filter(r => r.lines.length || r.label),
+  })).filter(p => p.rows.length || String(p.title).trim());
+}
+
+// 축 단계 이름(쪽 맨 위 배지). 표지에는 달지 않는다
 const stepName = key => (SLIDE_AXIS.find(a => a.key === key) || {}).name || '';
+
+/* 내용 줄 하나. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
+   단계가 내려갈수록 들여 쓴다(선생님 지시 2026-10-30). 기호와 글을 두 칸으로 나눠서
+   줄이 넘어가도 둘째 줄이 글 시작 자리에 맞춰 내려온다(내어쓰기).
+   기호 없는 줄은 바로 위 항목에 이어지는 줄이라 그 항목의 글 시작 자리에 맞춘다(after). */
+function linesHTML(lines){
+  let prev = 0;
+  return lines.map(t => {
+    const { lv, mark, body } = lineLevel(t);
+    if (!lv) return `<div class="pl lv0 after${prev}"><span class="pt">${inlineText(body)}</span></div>`;
+    prev = lv;
+    return `<div class="pl lv${lv}"><span class="pm">${esc(mark)}</span><span class="pt">${inlineText(body)}</span></div>`;
+  }).join('');
+}
 
 /* ── 쪽 하나를 HTML로 ────────────────────────────────────────────────────
    돌려주는 것은 #page 안에 들어갈 속이다. 바깥 16:9 틀과 색은 slide-deck.css가 잡는다. */
 export function renderSlide(s){
   if (!s) return '';
-  const mark = s.type === 'cover' ? ''
-    : `<div class="s-mark">${esc(stepName(s.step))}</div>`;
+  /* 쪽 맨 위 배지(선생님 지시 2026-10-30: "2026 사용한 슬라이드에서는 최상단부에 배지가 있었음.
+     그 배지로 전시학습 확인, 학습 목표, 개념노트 이런걸 설명했었음. 그거 살릴 것.")
+     2026의 배지(개념 Check, 미션 Check)처럼 쪽이 축의 어느 단계인지 알린다. 글자는 축 단계 이름이다.
+     2027 화면 규칙에 맞춰 알약 모양과 테두리 없이 연한 레드 바탕만 깐다(배지 규칙).
+     페이지 제목이 있는 쪽(개념 노트, 미션 활동)은 배지 옆에 제목이 같은 줄로 선다. */
+  const top = title => s.type === 'cover' ? ''
+    : `<div class="s-top"><span class="s-badge">${esc(stepName(s.step))}</span>${
+        title ? `<h2 class="s-head">${inlineText(title)}</h2>` : ''}</div>`;
+  const mark = top('');
 
   if (s.type === 'cover'){
     const no = s.no != null && String(s.no).trim() !== '' ? `${esc(s.no)}강` : '';
@@ -195,15 +220,15 @@ export function renderSlide(s){
       ${s.caption ? `<div class="mcap">${inlineText(s.caption)}</div>` : ''}</div>`;
   }
 
-  if (s.type === 'rows')
-    return `${mark}${s.title ? `<h2 class="s-head">${inlineText(s.title)}</h2>` : ''}
-      <div class="s-body s-rows">${s.rows.map(t =>
-        `<div class="rline">${inlineText(t)}</div>`).join('')}</div>`;
-
-  if (s.type === 'mission')
-    return `${mark}${s.title ? `<h2 class="s-head">${inlineText(s.title)}</h2>` : ''}
-      <div class="s-body s-rows">${s.items.map(t =>
-        `<div class="rline">${inlineText(t)}</div>`).join('')}</div>`;
+  /* 개념 노트, 미션 활동의 페이지. 묶음마다 왼쪽에 라벨, 오른쪽에 내용 줄(2026 편집기의 행 모양).
+     라벨이 하나라도 있는 페이지는 두 칸 격자로 세워 라벨 칸 폭을 페이지 안에서 맞춘다
+     (가장 긴 라벨에 맞춰지므로 내용 시작선이 가지런하다). 라벨이 없는 페이지는 내용이 폭을 다 쓴다. */
+  if (s.type === 'page'){
+    const hasLabel = s.rows.some(r => r.label);
+    return `${top(s.title)}<div class="s-body s-page ${hasLabel ? 'haslabel' : ''}">${s.rows.map(r =>
+      `<div class="prow">${hasLabel ? `<div class="plabel">${inlineText(r.label)}</div>` : ''}
+        <div class="plines">${linesHTML(r.lines)}</div></div>`).join('')}</div>`;
+  }
 
   if (s.type === 'question')
     return `${mark}<div class="s-body s-q">

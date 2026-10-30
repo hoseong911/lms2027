@@ -1,4 +1,4 @@
-@import url("shared/theme.css?v=20261030i");
+@import url("shared/theme.css?v=20261030j");
 /* 2027 LMS 어드민: 형태만 여기서. 색과 글자 크기는 shared/theme.css 한 곳에서.
    기조: 플랫 + 미니멀: 그림자, 그라데이션, 알약 테두리 없음. 선은 1px, 모서리는 작게.
    글자 크기는 네 단계(--fs-title/head/body/meta)만 쓴다. 어중간한 px 금지(선생님 지시 2026-10-27).
@@ -406,12 +406,9 @@ div.selrow{cursor:default}
   color:var(--ink);border-radius:var(--r-btn);height:var(--h-ctl);padding:0 10px;font-size:var(--fs-meta);font-weight:600;cursor:pointer;font-family:inherit}
 .btn-chip:hover:not(:disabled){border-color:var(--line-strong)}
 
-/* 개념 콘텐츠 편집기: 페이지(제목)와 내용 줄 */
-.ce-wrap{padding:2px 0}
+/* 줄 목록 편집(학습 목표, 맺음말): 번호와 글 칸 한 줄씩 */
 .ce-line{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.ce-page .f{font-weight:700}
 .ce-tag{flex:0 0 auto;font-size:var(--fs-meta);font-weight:700;color:var(--navy);min-width:40px}
-.ce-bullet{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:var(--sub);margin:0 18px}
 .ce-add{display:flex;gap:8px;margin-top:10px}
 .btn-chip.danger{border-color:var(--red);color:var(--red)}
 .btn-chip.danger:hover:not(:disabled){background:var(--red);color:#fff}
@@ -594,31 +591,28 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
    그래서 강의 목록 단(--w-list 300px)을 걷고 머리줄 드롭다운으로 바꿨다. 남은 너비를
    편집창이 다 쓴다. 그 안이 다시 두 칸인데 왼쪽은 축 단계 줄자(--w-axis)라 훨씬 좁다.
    다른 두 단 화면(.split)과 섞이지 않게 클래스 이름을 따로 뒀다(.axwrap). */
-.axhead{display:flex;align-items:center;gap:10px;margin:0 0 14px}
-.axpick{flex:0 1 420px;min-width:0;font-weight:700}
+/* 강의 드롭다운: 다른 고르개(.sel)와 같은 모양에 여백을 더 준다
+   (선생님 지시 2026-10-30: "드롭다운 칸 여백 너무 없음"). 높이는 조작 칸 규칙(--h-ctl) 그대로다 */
+.axhead{display:flex;align-items:center;gap:12px;margin:0 0 20px}
+.axpick{flex:0 1 460px;min-width:0;font-weight:700;padding:0 38px 0 16px;background-position:right 14px center}
 
 .axwrap{display:grid;grid-template-columns:var(--w-axis) minmax(0,1fr);gap:20px;
   align-items:stretch;min-height:0}
 
 /* 왼쪽 줄자: 단계 고르개라서 목록 줄(--h-row 46px)보다 낮고 글씨도 본문 크기 그대로다.
-   가로 구분선만, 맞닿는 테두리는 하나로(화면 규칙) */
-.axrail{display:flex;flex-direction:column;min-width:0;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.axrow{display:flex;align-items:center;gap:9px;width:100%;border:0;border-top:1px solid var(--line);
-  border-radius:0;min-height:var(--h-ctl);padding:5px 6px 5px 2px;cursor:pointer;
+   선생님 지시 2026-10-30: "번호 삭제, 글씨 굵기 해제, 각 개체끼리 간격 두기".
+   그래서 번호 칸을 걷고 보통 굵기로 두었다. 줄끼리 붙어 있지 않고 띄워 두므로(gap) 맞닿는
+   구분선도 없다. 고른 단계만 반투명 레드 바탕으로 알린다(화면 규칙) */
+.axrail{display:flex;flex-direction:column;gap:6px;min-width:0}
+.axrow{display:flex;align-items:center;width:100%;border:0;border-radius:var(--r);
+  min-height:var(--h-ctl);padding:5px 12px;cursor:pointer;
   background:transparent;font-family:inherit;font-size:var(--fs-body);color:var(--ink);text-align:left}
-.axrow:first-child{border-top:0}
 .axrow:hover{background:var(--hover)}
-.axrow.on{background:var(--accent-fade)}
+.axrow.on{background:var(--accent-fade);color:var(--accent)}
 .axrow.on:hover{background:var(--accent-fade-hover)}
-/* 단계 번호: 축 순서가 한눈에 보여야 해서 줄마다 단다 */
-.axno{flex:0 0 auto;display:grid;place-items:center;width:20px;height:20px;
-  background:var(--navy);color:#fff;font-size:var(--fs-meta);font-weight:700}
-.axrow.on .axno{background:var(--accent)}
-.axnm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.axnm{flex:1;min-width:0;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 안 채운 단계는 흐리게 둔다. 켜고 끄는 스위치를 두지 않는 대신 여기서 빈 자리를 본다 */
-.axrow.off .axnm{font-weight:500;color:var(--sub)}
-.axrow.off .axno{background:var(--line-strong)}
+.axrow.off:not(.on) .axnm{color:var(--sub)}
 
 /* 오른쪽 편집 상세. 상세 패널이라 바탕 없이 세로 구분선 하나로만 나눈다(화면 규칙) */
 .axpane{display:flex;flex-direction:column;min-width:0;min-height:0;
@@ -655,12 +649,37 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 올리�
 .axpane-body .ce-line .tools{padding-top:3px}
 .ta1{min-height:var(--h-ctl);resize:vertical}
 
-/* 좁은 화면에서는 줄자가 위쪽 가로 줄이 되고 편집창이 그 아래로 내려온다 */
+/* ── 개념 노트, 미션 활동의 페이지 편집기 (선생님 지시 2026-10-30) ──
+   2026 편집기의 틀: 페이지마다 제목 칸, 그 아래 묶음(왼쪽 라벨 칸 + 오른쪽 내용 글 칸).
+   페이지 하나가 한 묶음 카드이고(화면 규칙: 한 묶음은 카드 하나) 페이지 사이는 선 하나로 나눈다.
+   글 칸은 적은 만큼 늘어난다(field-sizing). 못 읽는 브라우저는 rows로 어림한 높이에 손잡이로 늘린다. */
+.pgblock{border-top:1px solid var(--line);padding:14px 0 16px}
+.pgblock:first-child{border-top:0;padding-top:6px}
+.pghead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pgno{flex:0 0 auto;min-width:56px;font-weight:700;color:var(--navy)}
+.pgtitle{font-weight:700}
+.pgcols{display:flex;gap:8px;padding-left:66px;margin-bottom:4px;font-size:var(--fs-meta);color:var(--sub)}
+.pgrow{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px 66px}
+.pglabel{flex:0 0 140px;width:140px}
+.pgrow textarea.f{resize:vertical;font:inherit;line-height:1.6;field-sizing:content;min-height:var(--h-ctl)}
+.pgrow .pglabel{font-weight:700}
+/* 내용 칸: 단계 들여쓰기를 빈칸으로 보여 주므로(indentText) 빈칸 폭이 고른 편이 단계가 가지런하다 */
+.pgtext{white-space:pre-wrap;tab-size:4}
+.pgrow .tools{padding-top:3px}
+.pgblock .ce-add{margin:4px 0 0 66px}
+.ce-add.pgadd{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+
+/* 좁은 화면에서는 줄자가 위쪽 가로 줄이 되고 편집창이 그 아래로 내려온다.
+   페이지 편집기는 라벨 칸이 내용 칸 위로 올라가고 왼쪽 들여쓰기를 걷는다 */
 @media (max-width:860px){
+  .pgcols{display:none}
+  .pgrow{flex-wrap:wrap;margin-left:0}
+  .pglabel{flex:1 1 100%;width:auto}
+  .pgblock .ce-add{margin-left:0}
   .axwrap{grid-template-columns:minmax(0,1fr);gap:14px}
   .axrail{flex-direction:row;overflow-x:auto;scrollbar-width:none;border-bottom:0}
   .axrail::-webkit-scrollbar{display:none}
-  .axrow{width:auto;flex:0 0 auto;border-top:0;padding:5px 10px 5px 6px}
+  .axrow{width:auto;flex:0 0 auto}
   .axnm{white-space:nowrap}
   .axpane{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:4px}
   .axpick{flex:1 1 auto}

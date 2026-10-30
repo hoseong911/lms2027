@@ -14,22 +14,24 @@
  *
  * 내용이 어디서 오는가(from)
  *   null        그 단계가 덱(lesson.deck)에 직접 들고 있다
- *   'concept'   parts.concept.content 를 그대로 쓴다(개념 노트 줄 편집기가 이미 있다)
- *   'mission'   parts.mission 의 제목을 머리글로 쓰고, 활동 안내 줄은 덱이 들고 있다
+ *   'concept'   parts.concept.content 를 그대로 쓴다(아래 toPages의 페이지 모양)
+ *   'mission'   페이지는 덱(deck.mission.content)이 들고 있고, 페이지 제목을 비우면
+ *               parts.mission 의 제목(미션 활동 메뉴의 이름)을 쓴다
  *   'question'  parts.question 의 질문과 설명문을 그대로 쓴다
  * 같은 내용을 두 군데 적지 않게 하려고 이렇게 갈랐다. 미션 활동 메뉴에서 제목을 고치면
  * 슬라이드 제목도 같이 바뀐다.
  *
  * edit 는 어드민 편집기가 그 단계를 어떤 칸으로 그릴지다(admin.js의 deckStepEditor).
- *   cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / concept 개념 줄 / question 읽기만
+ *   cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / pages 페이지 / question 읽기만
+ * 개념 노트와 미션 활동은 둘 다 pages다(2026 편집기가 둘을 같은 틀로 고쳤다).
  */
 export const SLIDE_AXIS = [
   { key:'cover',     name:'표지',         edit:'cover',    from:null },
   { key:'review',    name:'전시학습확인',  edit:'qa',       from:null },
   { key:'objective', name:'학습 목표',     edit:'lines',    from:null },
   { key:'hook',      name:'동기 유발',     edit:'media',    from:null },
-  { key:'concept',   name:'개념 노트',     edit:'concept',  from:'concept' },
-  { key:'mission',   name:'미션 활동',     edit:'lines',    from:'mission' },
+  { key:'concept',   name:'개념 노트',     edit:'pages',    from:'concept' },
+  { key:'mission',   name:'미션 활동',     edit:'pages',    from:'mission' },
   { key:'question',  name:'오늘의 질문',   edit:'question', from:'question' },
   { key:'closing',   name:'맺음말',        edit:'lines',    from:null },
 ];
@@ -61,7 +63,7 @@ export function blankDeck(){
     review:    { items:[] },            // [{ q, a }]
     objective: { items:[] },            // ['목표 한 줄', ...]
     hook:      { items:[] },            // [{ kind:'image'|'video', url, caption }]
-    mission:   { items:[] },            // ['안내 한 줄', ...]
+    mission:   { content:[] },          // 개념 노트와 같은 페이지 모양(아래 toPages)
     closing:   { items:[] },            // ['맺음말 한 줄', ...]
   };
 }
@@ -81,5 +83,105 @@ export function normalizeDeck(lesson){
   lesson.deck.review.items.forEach(it => {
     if (it && typeof it === 'object' && !REVIEW_TYPES.some(t => t.key === it.type)) it.type = 'short';
   });
+  /* 미션 활동이 페이지 모양이 되기 전(2026-10-30 낮)에는 안내 줄 목록(items)이었다.
+     그 줄들을 제목 없는 페이지 하나, 라벨 없는 묶음 하나로 옮긴다
+     (페이지 제목이 비면 슬라이드에는 미션 이름이 선다). */
+  const ms = lesson.deck.mission;
+  if (!Array.isArray(ms.content)){
+    const old = (Array.isArray(ms.items) ? ms.items : []).map(t => String(t ?? '').trim()).filter(Boolean);
+    ms.content = old.length ? [{ type:'divider', title:'' }, { type:'row', label:'', text:old.join('\n') }] : [];
+  }
+  delete ms.items;
   return lesson.deck;
+}
+
+/* ══ 개념 노트와 미션 활동의 페이지 (선생님 지시 2026-10-30) ═══════════════════
+ *
+ * "2026에 사용한 lms 콘텐츠 편집기를 참고하여 개념노트 페이지와 미션 활동 페이지 만들어줄것"
+ *
+ * 2026 편집기(개념 Check, 미션 Check)의 틀을 보고 따랐다: 페이지마다 제목이 있고,
+ * 페이지 안은 "라벨 + 내용" 묶음 여러 개다. 내용은 한 줄이 한 항목이다.
+ * 2026은 개념과 미션을 같은 편집기로 고쳤다. 2027도 둘이 같은 모양, 같은 편집기다.
+ *
+ * 저장 모양은 예전 개념 노트 줄 배열을 그대로 잇는다(옛 강의를 옮기지 않아도 되게):
+ *   { type:'divider', title }        페이지 제목. 여기서 새 페이지
+ *   { type:'row', label, text }      묶음 하나. text는 여러 줄(줄바꿈으로 나눈다)
+ * 개념 노트는 parts.concept.content, 미션 활동은 deck.mission.content 에 든다.
+ *
+ * 예전 줄(label 칸이 아예 없는 row)은 한 줄이 row 하나였다. 그런 줄이 이어지면
+ * 페이지로 펼 때 한 묶음으로 합친다(보이는 모양은 같고 편집기에서 칸이 줄줄이 서지 않게).
+ * 새로 만든 묶음은 label 칸을 늘 들고 있어서(빈 글자라도) 합쳐지지 않는다.
+ */
+export function toPages(content){
+  const pages = [];
+  let cur = null, lastLegacy = false;
+  (Array.isArray(content) ? content : []).forEach(ln => {
+    if (!ln || typeof ln !== 'object') return;
+    if (ln.type === 'divider'){
+      cur = { title: String(ln.title ?? ''), rows: [] }; pages.push(cur); lastLegacy = false; return;
+    }
+    if (!cur){ cur = { title: '', rows: [] }; pages.push(cur); }
+    const legacy = !('label' in ln);
+    const text = String(ln.text ?? '');
+    if (legacy && lastLegacy) cur.rows[cur.rows.length - 1].text += '\n' + text;
+    else cur.rows.push({ label: String(ln.label ?? ''), text });
+    lastLegacy = legacy;
+  });
+  return pages;
+}
+export function fromPages(pages){
+  const out = [];
+  (pages || []).forEach(p => {
+    out.push({ type:'divider', title: String(p.title ?? '') });
+    (p.rows || []).forEach(r => out.push({ type:'row', label: String(r.label ?? ''), text: String(r.text ?? '') }));
+  });
+  return out;
+}
+
+/* ── 내용 줄의 단계 (선생님 지시 2026-10-30) ──
+ * "내용 수준 단계는 총 3단계로 1. , -, · 임. 활동지에서 수준이 떨어질 수록 들여쓰기를 해야 함."
+ *
+ *   1단계  1. 2. 3.   (숫자와 마침표)
+ *   2단계  -
+ *   3단계  ·          (가운뎃점. 한글 자판의 ㆍ, 일본식 ・, 동그라미 • 도 같이 받는다)
+ *   0      기호 없는 줄. 바로 위 항목에 이어지는 줄로 본다
+ *
+ * 기호는 선생님이 활동지에 쓴 글자 그대로라 줄 글자에 남겨 둔다. 단계를 따로 적어 두지 않는다.
+ * 그래서 이 함수가 슬라이드(들여쓰기), 편집기(칸 안 들여쓰기), 활동지 변환(라벨 가리기)의
+ * 공통 기준이다. 여기만 고치면 셋이 같이 바뀐다.
+ *
+ * "1.5배", "-5도"처럼 기호가 내용인 줄을 잘못 읽지 않게 숫자가 바로 붙으면 기호로 보지 않는다.
+ * (글머리 기호를 가려내는 정규식이라 가운뎃점 글자 자체가 자료다. 화면 규칙의 예외 자리)
+ */
+const LEVEL_RES = [
+  [1, /^(\d{1,2}\.)(?!\d)\s*/],
+  [2, /^([-–])(?!\s*\d)\s*/],
+  [3, /^([·ㆍ・•∙])\s*/],
+];
+export function lineLevel(line){
+  const s = String(line ?? '').replace(/^[\s　]+/, '');
+  for (const [lv, re] of LEVEL_RES){
+    const m = s.match(re);
+    if (m && s.length > m[0].length) return { lv, mark: m[1], body: s.slice(m[0].length) };
+  }
+  return { lv: 0, mark: '', body: s };
+}
+
+/* 편집기 글 칸에서 단계가 보이게 줄 앞에 빈칸을 넣고(indentText), 저장할 때 걷는다(stripIndent).
+   저장되는 글에는 들여쓰기 빈칸이 없다. 단계는 기호가 정하므로 빈칸은 보기용일 뿐이다.
+   기호 없는 줄은 바로 위 항목의 글 시작 자리에 맞춘다(기호 폭만큼 더 민다). */
+const IND = 4;
+export function indentText(text){
+  let prev = 0, prevMark = 0;
+  return String(text ?? '').split('\n').map(raw => {
+    const t = raw.replace(/^[\s　]+/, '');
+    if (!t) return '';
+    const { lv, mark } = lineLevel(t);
+    if (lv){ prev = (lv - 1) * IND; prevMark = mark.length + 1; return ' '.repeat(prev) + t; }
+    return ' '.repeat(prev + prevMark) + t;
+  }).join('\n');
+}
+export function stripIndent(text){
+  return String(text ?? '').split('\n').map(t => t.replace(/^[\s　]+/, '').replace(/\s+$/, ''))
+    .join('\n').replace(/^\n+|\n+$/g, '');
 }
