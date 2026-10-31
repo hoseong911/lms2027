@@ -676,6 +676,16 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
   border-bottom:1px solid var(--line);margin-bottom:4px}
 .rvpage-title{font-size:var(--fs-body);font-weight:700;color:var(--navy)}
 .rvpage .axitem:first-child{border-top:0}
+/* 문항 카드(선생님 지시 2026-10-31): 번호를 한 줄 통째로 먹지 않게 맨 왼쪽에 두고, 유형 줄과 높이를 맞춘다.
+   순서·삭제 버튼은 유형 줄 오른쪽 끝에. 문제·정답은 그 아래로(번호 칸만큼 들여 쓰여 유형 아래에 정렬). */
+.rvq{display:flex;align-items:flex-start;gap:8px;border-top:1px solid var(--line);padding:8px 0}
+.rvq:first-child{border-top:0}
+.rvq-n{flex:0 0 auto;width:26px;min-height:var(--h-ctl);display:flex;align-items:center;justify-content:center;
+  font-size:var(--fs-head);font-weight:800;color:var(--navy)}
+.rvq-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rvq-main .row{border-top:0;margin:0}
+.rvq-top{display:flex;align-items:center;gap:8px}
+.rvq-top .row{flex:1;padding-block:0}
 /* 유형과 종류 고르개는 칸을 다 채우지 않는다: 짧은 낱말이라 길면 읽기가 더 힘들다 */
 .axtype{width:130px;flex:0 0 auto}
 

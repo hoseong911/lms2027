@@ -1470,9 +1470,15 @@ function axisEditor(l, ax){
               <input type="radio" class="fmradio" name="rv-${l.id}-${i}" value="${v}"
                 ${String(it.a).toUpperCase()===v?'checked':''} ${set('a')}>${v}</label>`).join('')}</div>`
           : `<input class="f grow" ${set('a')} value="${esc(it.a)}" aria-label="정답">`;
-        return card(i, fld('유형', `<div class="grow">${type}</div>`)
-          + fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)
-          + fld('정답', a), '', qn);
+        /* 번호는 한 줄을 통째로 먹지 않고 맨 왼쪽에 선다(선생님 지시 2026-10-31). 유형 줄과 같은 높이로
+           왼쪽에 두고, 순서·삭제 버튼은 그 유형 줄 오른쪽에. 문제·정답은 그 아래로 들여 쓴다. */
+        return `<div class="rvq">
+          <span class="rvq-n">${qn}</span>
+          <div class="rvq-main">
+            <div class="rvq-top">${fld('유형', `<div class="grow">${type}</div>`)}${tools(i)}</div>
+            ${fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)}
+            ${fld('정답', a)}
+          </div></div>`;
       }).join('') || `<div class="placeholder">문항이 없습니다. ‘문제 추가’를 누르세요.</div>`;
       return `<div class="rvpage">
         <div class="rvpage-head"><span class="rvpage-title">페이지 ${p + 1}</span>
