@@ -215,41 +215,53 @@
 .deckpage .s-objectives .blank{border-bottom:calc(var(--px) * 4) solid var(--red);color:#F4F1E8;
   background:transparent;letter-spacing:.12em;padding:0 3px 2px;font-weight:900}
 
-/* ── 전시학습확인 ── 문답 셋(단답형, 진위형, 초성형). 답은 눌러야 보인다. 물음과 답은 본문 55
-   글배치(선생님 지시 2026-10-31): 번호 + 물음이 한 줄 왼쪽, 답은 같은 줄 오른쪽에 붙는다.
-   교실 화면에는 유형 이름표(단답형/진위형/초성형)를 띄우지 않는다(편집기에서만 고른다).
-   문항 사이 간격은 좁혔다(전엔 40, 이제 22). */
-.deckpage .s-qa{--qa-nw:calc(var(--px) * 56);--qa-gap:calc(var(--px) * 24);
-  display:flex;flex-direction:column;gap:calc(var(--px) * 22);justify-content:center}
-.deckpage .qa{display:flex;align-items:center;gap:var(--qa-gap);font-size:var(--sfs)}
-.deckpage .qa-n{flex:0 0 auto;width:var(--qa-nw);text-align:right;color:var(--red);font-weight:800}
-.deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
+/* ── 전시학습확인 ── 학습 목표와 같은 다크 톤(선생님 지시 2026-10-31: "톤을 학습목표랑 같이 맞춰줘").
+   쪽 전체를 덮는 자립 블록이라 배지(지난 시간에는?)도 그 안에서 다크 알약으로 선다. 번호는 큰 레드,
+   문항 사이는 얇은 구분선. 번호 + 물음은 왼쪽, 답은 오른쪽. 유형 이름표는 교실 화면에 안 띄운다. */
+.deckpage .s-qa{position:absolute;inset:0;z-index:1;overflow:hidden;color:#F4F1E8;
+  background:radial-gradient(120% 120% at 50% 40%, #1a2130 0%, #12151C 55%, #0b0d12 100%)}
+.deckpage .s-qa::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
+.deckpage .s-qa .qa-badge{position:absolute;top:calc(var(--px) * 56);left:calc(var(--px) * 80);z-index:3;
+  font-family:var(--title-font);font-weight:500;font-size:var(--tfs);color:var(--red);letter-spacing:-.02em;
+  background:color-mix(in srgb, var(--red) 16%, transparent);border:1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border-radius:999px;padding:calc(var(--px) * 6) calc(var(--px) * 22)}
+.deckpage .qa-list{position:absolute;top:calc(var(--px) * 150);bottom:calc(var(--px) * 60);
+  left:calc(var(--px) * 96);right:calc(var(--px) * 96);z-index:3;
+  display:flex;flex-direction:column;justify-content:center}
+.deckpage .qa{display:flex;align-items:center;gap:calc(var(--px) * 44);
+  padding:calc(var(--px) * 26) 0;border-top:1px solid rgba(244,241,232,.15);font-size:var(--sfs)}
+.deckpage .qa:first-child{border-top:none}
+.deckpage .qa-n{flex:0 0 auto;width:2.2ch;text-align:center;font-family:var(--title-font);font-weight:900;
+  color:var(--red);font-size:calc(var(--px) * 76);line-height:.82}
+.deckpage .qa-txt{flex:1;min-width:0;font-family:var(--title-font);font-weight:600;word-break:keep-all}
 /* 답 자리: 줄 오른쪽. 물음과 세로 가운데로 맞춘다 */
 .deckpage .qa-slot{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end}
-/* 단답형 답 알약: 눌러야 나온다(아래에서 떠오른다). 열린 빈칸과 같은 레드 모양 */
+/* 단답형 답 알약: 눌러야 나온다(아래에서 떠오른다). 다크 톤이라 꽉 찬 레드에 흰 글씨 */
 .deckpage .qa-a{display:inline-block;border-radius:var(--r);white-space:nowrap;
-  background:var(--red-100);color:var(--red);font-weight:800;
+  background:var(--red);color:#fff;font-weight:800;
   padding:calc(var(--px) * 6) calc(var(--px) * 26);font-size:var(--sfs)}
 .deckpage .qa-a[data-step]{opacity:0;transform:translateY(calc(var(--px) * 12));
   transition:opacity .35s ease, transform .35s ease}
 .deckpage .qa-a[data-step].shown{opacity:1;transform:none}
-/* 진위형: O와 X 두 칸은 처음부터 오른쪽에 서 있다. 답이 나올 차례가 되면 정답 쪽(.is)이 켜진다 */
+/* 진위형: O와 X 두 칸은 처음부터 오른쪽에 서 있다(다크 톤이라 연한 흰 테두리).
+   답이 나올 차례가 되면 정답 쪽(.is)이 레드로 켜지고 아닌 쪽은 흐려진다 */
 .deckpage .qa-ox{display:flex;gap:calc(var(--px) * 14)}
-.deckpage .qa-oxb{display:block;min-width:calc(var(--px) * 104);border:2px solid var(--navy);border-radius:var(--r);
-  background:transparent;color:var(--navy);text-align:center;
+.deckpage .qa-oxb{display:block;min-width:calc(var(--px) * 104);border:2px solid rgba(244,241,232,.4);border-radius:var(--r);
+  background:transparent;color:#F4F1E8;text-align:center;
   font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) calc(var(--px) * 16);line-height:1.2;
   transition:color .35s ease, border-color .35s ease, background-color .35s ease, opacity .35s ease}
 .deckpage .qa-ox.shown .qa-oxb{opacity:.3}
-.deckpage .qa-ox.shown .qa-oxb.is{opacity:1;border-color:var(--red);color:var(--red);background:var(--red-100)}
+.deckpage .qa-ox.shown .qa-oxb.is{opacity:1;border-color:var(--red);color:#fff;background:var(--red)}
 /* 초성형(선생님 지시 2026-10-31): 초성 힌트가 오른쪽에 서 있고, 답이 나올 때 그 위를 덮는다.
    힌트와 답을 같은 자리에 포개 두고(relative/absolute), 답은 꽉 찬 레드 바탕으로 힌트를 가린다. */
 .deckpage .qa-ini{position:relative;display:inline-flex;align-items:center;justify-content:center}
-.deckpage .qa-ini-hint{display:inline-block;letter-spacing:.35em;color:var(--sub);font-weight:800;
+.deckpage .qa-ini-hint{display:inline-block;letter-spacing:.35em;color:rgba(244,241,232,.6);font-weight:800;
   font-size:var(--sfs);padding:calc(var(--px) * 6) calc(var(--px) * 26);
-  border:2px dashed var(--line-strong);border-radius:var(--r)}
+  border:2px dashed rgba(244,241,232,.4);border-radius:var(--r)}
 .deckpage .qa-ini-ans{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   min-width:100%;text-align:center;white-space:nowrap;border-radius:var(--r);
-  background:var(--red-100);color:var(--red);font-weight:800;font-size:var(--sfs);
+  background:var(--red);color:#fff;font-weight:800;font-size:var(--sfs);
   padding:calc(var(--px) * 6) calc(var(--px) * 26)}
 .deckpage .qa-ini-ans[data-step]{opacity:0;transition:opacity .35s ease}
 .deckpage .qa-ini-ans[data-step].shown{opacity:1}

@@ -1042,6 +1042,20 @@ export function deckAddReviewBreak(lessonId){
   const arr = deckItems(lessonId, 'review'); if (!arr) return;
   arr.push({ pagebreak:true }); saveLesson(lessonId);
 }
+// 페이지 안 '문제 추가': 그 페이지 끝 자리(at)에 빈 단답형 문항을 끼운다(선생님 지시 2026-10-31).
+export function deckInsertReviewItem(lessonId, at){
+  const arr = deckItems(lessonId, 'review'); if (!arr) return;
+  const i = Math.max(0, Math.min(+at || 0, arr.length));
+  arr.splice(i, 0, { type:'short', q:'', a:'' }); saveLesson(lessonId);
+}
+/* 전시학습확인 페이지 삭제: 페이지를 여는 마커(bi)와 그 안 문항(cnt개)을 함께 지운다.
+   bi가 -1이면 마커 없이 시작하는 첫 페이지라 문항만 지운다(마커가 없다). */
+export function deckDelReviewPage(lessonId, bi, cnt){
+  const arr = deckItems(lessonId, 'review'); if (!arr) return;
+  const start = bi < 0 ? 0 : bi;
+  const len = (bi < 0 ? 0 : 1) + Math.max(0, +cnt || 0);
+  arr.splice(start, len); saveLesson(lessonId);
+}
 // field가 없으면 줄 전체가 글자 하나인 단계(학습 목표, 미션 안내, 맺음말)다.
 export function deckSetItem(lessonId, key, idx, field, value){
   const arr = deckItems(lessonId, key); if (!arr || arr[idx] === undefined) return;

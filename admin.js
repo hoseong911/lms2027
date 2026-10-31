@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031i';
+import * as M from './model.js?v=20261031j';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031h';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031i';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1348,7 +1348,9 @@ function pageAxis(){
   return picker + `<div class="axwrap">
     <nav class="axrail">${axisRail(l)}</nav>
     <div class="axpane">
-      <div class="axpane-head"><h3>${esc(ax.name)}</h3></div>
+      <div class="axpane-head"><h3>${esc(ax.name)}</h3>${ax.key === 'review'
+        ? `<button class="btn-chip" data-act="deck-add-break" data-id="${l.id}">${icon('plus',13)}페이지 추가</button>`
+        : ''}</div>
       <div class="axpane-body">${axisEditor(l, ax)}</div>
     </div></div>`;
 }
@@ -1424,32 +1426,47 @@ function axisEditor(l, ax){
 
   let rows = '';
   if (ax.edit === 'qa'){
-    /* 전시학습확인: 문항 유형 셋(선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형".
-       이름은 같은 날 지시로 진위형, 단답형, 초성형으로 맞췄다. shared/slide-axis.js의 REVIEW_TYPES).
-       유형은 문항마다 따로 고른다(한 화면에 세 유형이 섞여 서는 것이 보통이다).
-       진위형만 답 칸이 라디오 둘(O, X)이고 단답형과 초성형은 글자 한 칸이다.
-       초성은 선생님이 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
-    /* 페이지 나누기 마커(model.js의 deckAddReviewBreak)는 문항이 아니라 쪽을 가르는 줄이다.
-       문항 사이에 가로줄로 서고, 번호는 매기지 않는다. 문항 번호(qn)는 마커를 건너뛰고 이어 센다
-       (슬라이드의 쪽 넘어 이어지는 번호와 맞춘다). */
-    let qn = 0;
-    rows = items.map((it, i) => {
-      if (it && it.pagebreak) return `<div class="axbreak">
-        <span class="axbreak-label">${icon('scissors',13)} 페이지 나누기</span>
-        <span class="axitem-sp"></span>${tools(i)}</div>`;
-      qn++;
-      const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
-      const type = `<select class="f axtype" ${set('type')} aria-label="문항 유형">
-        ${M.REVIEW_TYPES.map(t => `<option value="${t.key}" ${it.type===t.key?'selected':''}>${esc(t.name)}</option>`).join('')}
-      </select>`;
-      const a = it.type === 'ox'
-        ? `<div class="grow fmox">${['O','X'].map(v => `<label class="fmoxb">
-            <input type="radio" class="fmradio" name="rv-${l.id}-${i}" value="${v}"
-              ${String(it.a).toUpperCase()===v?'checked':''} ${set('a')}>${v}</label>`).join('')}</div>`
-        : `<input class="f grow" ${set('a')} value="${esc(it.a)}" aria-label="정답">`;
-      return card(i, fld('유형', `<div class="grow">${type}</div>`)
-        + fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)
-        + fld('정답', a), '', qn);
+    /* 전시학습확인(선생님 지시 2026-10-31): 페이지 안에 문항을 넣는 방식이다. 원래는 비어 있고,
+       제목 우측 '페이지 추가'로 페이지를 먼저 만든 뒤, 페이지 안 '문제 추가'로 문항을 넣는다.
+       저장은 평면 배열에 페이지 나누기 마커(pagebreak)를 섞어 둔 모양이다: 마커가 페이지를 열고,
+       마커 없이 시작하는 앞 문항들은 첫 페이지다. 슬라이드(buildSlides)도 같은 기준으로 쪽을 가른다.
+       문항 유형 셋(단답형/진위형/초성형)은 문항마다 고른다. 진위형만 답이 O/X 라디오다.
+       초성은 선생님이 문제 글 끝 괄호에 적는다(슬라이드가 떼어 힌트로 세운다. pullChosung). */
+    const pages = [];
+    let cur = null;
+    items.forEach((it, i) => {
+      if (it && it.pagebreak){ cur = { bi:i, items:[] }; pages.push(cur); }
+      else { if (!cur){ cur = { bi:-1, items:[] }; pages.push(cur); } cur.items.push({ it, i }); }
+    });
+    if (!pages.length)
+      return `<div class="placeholder">아직 페이지가 없습니다. 오른쪽 위 ‘페이지 추가’를 눌러 페이지를 먼저 만드세요.</div>`;
+    let qn = 0;   // 문항 번호: 페이지를 넘어 이어 센다(슬라이드 번호와 맞춘다)
+    return pages.map((pg, p) => {
+      // '문제 추가'가 끼울 자리: 이 페이지 마지막 문항 바로 뒤(비었으면 마커 바로 뒤)
+      const insertAt = pg.items.length ? pg.items[pg.items.length - 1].i + 1 : pg.bi + 1;
+      const qCards = pg.items.map(({ it, i }) => {
+        qn++;
+        const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
+        const type = `<select class="f axtype" ${set('type')} aria-label="문항 유형">
+          ${M.REVIEW_TYPES.map(t => `<option value="${t.key}" ${it.type===t.key?'selected':''}>${esc(t.name)}</option>`).join('')}
+        </select>`;
+        const a = it.type === 'ox'
+          ? `<div class="grow fmox">${['O','X'].map(v => `<label class="fmoxb">
+              <input type="radio" class="fmradio" name="rv-${l.id}-${i}" value="${v}"
+                ${String(it.a).toUpperCase()===v?'checked':''} ${set('a')}>${v}</label>`).join('')}</div>`
+          : `<input class="f grow" ${set('a')} value="${esc(it.a)}" aria-label="정답">`;
+        return card(i, fld('유형', `<div class="grow">${type}</div>`)
+          + fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)
+          + fld('정답', a), '', qn);
+      }).join('') || `<div class="placeholder">문항이 없습니다. ‘문제 추가’를 누르세요.</div>`;
+      return `<div class="rvpage">
+        <div class="rvpage-head"><span class="rvpage-title">페이지 ${p + 1}</span>
+          <span class="axitem-sp"></span>
+          <button class="btn-chip" data-act="deck-add-q" data-id="${l.id}" data-at="${insertAt}">${icon('plus',13)}문제 추가</button>
+          ${pg.bi >= 0 ? `<button class="ib ib-sm ib-danger" data-act="deck-del-page" data-id="${l.id}"
+            data-bi="${pg.bi}" data-cnt="${pg.items.length}" title="페이지 삭제" aria-label="페이지 삭제">${icon('trash-2',14)}</button>` : ''}
+        </div>
+        ${qCards}</div>`;
     }).join('');
 
   } else if (ax.edit === 'media'){
@@ -1474,12 +1491,9 @@ function axisEditor(l, ax){
         data-i="${i}" aria-label="${esc(ax.name)} ${i + 1}번">${esc(it)}</textarea>${tools(i)}</div>`).join('');
   }
 
-  // 전시학습확인에만 페이지 나누기 단추를 더 둔다(선생님 지시 2026-10-31: 2쪽 이상으로 나누게)
   return (rows || `<div class="placeholder">내용이 없습니다.</div>`)
     + `<div class="ce-add"><button class="btn-chip" data-act="deck-add" data-id="${l.id}" data-k="${k}">
-        ${icon('plus',13)}줄 추가</button>${k === 'review'
-      ? `<button class="btn-chip" data-act="deck-add-break" data-id="${l.id}">
-          ${icon('scissors',13)}페이지 나누기</button>` : ''}</div>`;
+        ${icon('plus',13)}줄 추가</button></div>`;
 }
 
 /* ── 개념 노트와 미션 활동의 페이지 편집기 (선생님 지시 2026-10-30) ──
@@ -2677,7 +2691,16 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;
     case 'deck-add': M.deckAddItem(id, k); render(); break;
-    case 'deck-add-break': M.deckAddReviewBreak(id); render(); break;
+    case 'deck-add-break': M.deckAddReviewBreak(id); render(); break;   // 전시학습확인 '페이지 추가'
+    case 'deck-add-q': M.deckInsertReviewItem(id, +el.dataset.at); render(); break;   // 페이지 안 '문제 추가'
+    case 'deck-del-page': {   // 전시학습확인 페이지 삭제(마커 + 그 안 문항). 문항이 있으면 확인을 받는다
+      const bi = +el.dataset.bi, cnt = +el.dataset.cnt;
+      if (cnt > 0) confirmDelete({ title:'페이지 삭제',
+          bodyHtml:`이 페이지와 그 안의 문항 <b>${cnt}</b>개를 지웁니다.`, okText:'삭제' })
+        .then(ok => { if (ok){ M.deckDelReviewPage(id, bi, cnt); render(); } });
+      else { M.deckDelReviewPage(id, bi, cnt); render(); }
+      break;
+    }
     case 'deck-up': M.deckMoveItem(id, k, +el.dataset.i, -1); render(); break;
     case 'deck-down': M.deckMoveItem(id, k, +el.dataset.i, 1); render(); break;
     case 'deck-del': M.deckDelItem(id, k, +el.dataset.i); render(); break;
