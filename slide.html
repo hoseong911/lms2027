@@ -72,7 +72,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 </div>
 
 <script type="module">
-import * as M from './model.js?v=20261031f';
+import * as M from './model.js?v=20261031h';
 import { SLIDE_AXIS, lessonBadge } from './shared/slide-axis.js?v=20261031f';
 import { buildSlides, renderSlide, stepForward, stepBack, stepsLeft, showAllSteps } from './slide-deck.js?v=20261031g';
 
@@ -83,8 +83,11 @@ await M.loadCore();
 // 디자인 탭에서 정한 글자 크기를 슬라이드에 건다(전체 공통). slide-deck.css의 --fs-* 기본값을 덮어쓴다
 { const css = M.designCss();
   if (css){ const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); } }
-const lesson = M.getLesson(q.get('lesson'));
-const no = q.get('no') || '';
+// 주소는 연도+과목+강 번호(y/s/n)로 연다(랜덤 id 대신). 옛 방식(lesson=id)도 그대로 받는다.
+const lesson = q.get('lesson')
+  ? M.getLesson(q.get('lesson'))
+  : M.getLessonByYSNum(q.get('y'), q.get('s'), q.get('n'));
+const no = q.get('no') || q.get('n') || lesson?.num || '';
 
 if (!lesson){
   $('guard').textContent = '강의를 찾지 못했습니다.';

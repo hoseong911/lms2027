@@ -12,7 +12,7 @@
 // 지금은 데모 데이터로 돈다(model.js). 로그인도 데모: 학번만 맞으면 입장.
 // 규칙: 인라인 onclick/window 노출 없이 data-act + 이벤트 위임. 상태는 state 하나.
 
-import * as M from './model.js?v=20261031e';
+import * as M from './model.js?v=20261031h';
 import { icon } from './shared/icons.js?v=20261031e';
 
 const YEAR = 2027;
@@ -302,11 +302,11 @@ function menuGrid(group){
 function lessonCards(){
   const cls = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson);
   if (!cls.length) return `<div class="empty">열린 강의가 없습니다.</div>`;
-  return `<div class="grid">${cls.map((cl, i) => ({ cl, no:i + 1 })).reverse().map(({ cl, no }) => {
+  return `<div class="grid">${cls.slice().reverse().map(cl => {
     const tags = (cl.lesson.order || []).map(k =>
       `<span class="tag" style="--c:var(--${k})">${esc(M.partDef(k)?.name || k)}</span>`).join('');
     return `<div class="card" data-act="open-lesson" data-lid="${cl.lessonId}">
-      <span class="no">${no}강</span>
+      <span class="no">${esc(lnum(cl.lesson))}</span>
       <div class="body"><div class="t">${esc(cl.lesson.title)}</div><div class="tags">${tags}</div></div>
       <span class="chev">${icon('chevron-right',18)}</span></div>`;
   }).join('')}</div>`;
@@ -337,7 +337,7 @@ function viewMenu(){
       const app = M.getMissionApps().find(a => a.lessonId === it.lesson.id && a.studentUrl);
       const act = app ? `data-act="open-ext" data-url="${esc(app.studentUrl)}"` : 'data-act="noop"';
       return `<div class="card" ${act}>
-        <span class="no">${it.no}강</span>
+        <span class="no">${esc(lnum(it.lesson))}</span>
         <div class="body"><div class="t">${esc(it.lesson.title)}</div></div>
         <span class="chev">${icon('globe',18)}</span></div>`;
     }).join('')}</div>`;
@@ -346,8 +346,8 @@ function viewMenu(){
      제목 밑의 부제목(강의 제목)은 걷었다(요구사항 119). 제목은 다른 메뉴처럼 강의 제목 하나다
      (칸 제목은 기본값이 "개념 노트"라 그대로 쓰면 카드가 다 같은 글자가 된다). */
   return head + `<div class="grid">${items.map(it => `
-    <div class="card" data-act="open-slide" data-lid="${it.lesson.id}" data-no="${it.no}">
-      <span class="no">${it.no}강</span>
+    <div class="card" data-act="open-slide" data-lid="${it.lesson.id}">
+      <span class="no">${esc(lnum(it.lesson))}</span>
       <div class="body"><div class="t">${esc(it.lesson.title)}</div></div>
       <span class="chev">${icon('monitor',18)}</span></div>`).join('')}</div>`;
 }
@@ -356,7 +356,7 @@ function viewMenu(){
 // 차수 글씨는 학생 화면의 모든 목록이 같은 .no 하나를 쓴다(요구사항 119).
 function bigLessonCard(it){
   return `<div class="card bigcard" data-act="open-part" data-lid="${it.lesson.id}" data-k="${state.menuKey}">
-    <span class="no">${it.no}강</span>
+    <span class="no">${esc(lnum(it.lesson))}</span>
     <div class="body"><div class="t big">${esc(it.lesson.title)}</div></div>
     <span class="chev">${icon('chevron-right',18)}</span></div>`;
 }
@@ -383,15 +383,10 @@ function scoreCard(c){
    못 찾으면 제목만 쓴다. */
 /* 그 강의실에서 몇 번째로 연결한 강의인가(1강, 2강). 연결돼 공개된 것만 센다.
    화면 제목(lessonHead)과 슬라이드 주소의 no가 같은 값을 써야 해서 셈을 여기 하나로 모았다. */
-function lessonNo(l){
-  const i = M.getCourseLessons(state.courseId).filter(cl => cl.isOpen && cl.lesson)
-    .findIndex(cl => cl.lessonId === l.id);
-  return i < 0 ? '' : String(i + 1);
-}
-function lessonHead(l){
-  const no = lessonNo(l);
-  return no ? `${no}강. ${l.title}` : l.title;
-}
+// 차수는 강의 고정 번호(lesson.num)로 표시한다(선생님 지시 2026-10-31: 반마다 세는 순번이 아니라
+// 어디서나 같은 고정 번호). lessonBadge가 숫자면 "29강", OT 같은 말이면 "[OT]"로 만든다.
+const lnum = l => M.lessonBadge(l?.num);
+function lessonHead(l){ const b = lnum(l); return b ? `${b}. ${l.title}` : l.title; }
 
 // ── 강의 하나를 고른 화면(배치 1): 칸을 탭으로 넘긴다 ──
 function viewLesson(){
@@ -434,7 +429,7 @@ function partView(l, k){
   if (k === 'concept')
     return `<div class="pt">${icon(d.icon,15)} ${esc(d.name)}</div>
       <div class="bigt">${esc(p.title || d.name)}</div>
-      <button class="primary wide" data-act="open-slide" data-lid="${l.id}" data-no="${lessonNo(l)}">
+      <button class="primary wide" data-act="open-slide" data-lid="${l.id}">
         ${icon('monitor',18)}<span>슬라이드 열기</span></button>`;
 
   if (k === 'mission'){
@@ -661,9 +656,16 @@ $app.addEventListener('click', e => {
     case 'part-next': shiftPart(1); break;
 
     // 강의 슬라이드는 늘 새 탭 전체화면(요구사항 87). 교실 화면에 투사하는 것이 주 용도다.
-    case 'open-slide':
-      window.open(`slide.html?lesson=${encodeURIComponent(el.dataset.lid)}&no=${encodeURIComponent(el.dataset.no || '')}`, '_blank', 'noopener');
+    case 'open-slide': {
+      // URL은 랜덤 id 대신 연도+과목+강 번호로 연다(선생님 지시 2026-10-31). num/과목을 못 구하면 id로 폴백.
+      const lesson = M.getLesson(el.dataset.lid), course = M.getCourse(state.courseId);
+      const num = String(lesson?.num || '').trim();
+      const url = (course && num)
+        ? `slide.html?y=${encodeURIComponent(course.year)}&s=${encodeURIComponent(course.subject)}&n=${encodeURIComponent(num)}`
+        : `slide.html?lesson=${encodeURIComponent(el.dataset.lid)}`;
+      window.open(url, '_blank', 'noopener');
       break;
+    }
 
     case 'submit-demo': alertBox('제출되었습니다. (데모)'); break;
     case 'open-ext': openMissionApp(el.dataset.url); break;

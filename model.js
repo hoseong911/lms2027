@@ -368,8 +368,21 @@ export function getCourseLessons(courseId){
 export function getPartItems(courseId, partKey){
   return getCourseLessons(courseId)
     .filter(cl => cl.isOpen && cl.lesson)
-    .map((cl, i) => ({ cl, lesson:cl.lesson, part:cl.lesson.parts?.[partKey], no:i + 1 }))
+    // 차수(no)는 그 반에서의 순번이 아니라 강의 고정 번호(lesson.num)다(선생님 지시 2026-10-31:
+    // 반마다 다르게 세지 않는다). 번호는 생성 때 필수라 늘 있다. 표시는 lessonBadge로 29강/[OT].
+    .map(cl => ({ cl, lesson:cl.lesson, part:cl.lesson.parts?.[partKey], no:cl.lesson.num }))
     .filter(x => !!x.part);
+}
+/* 연도+과목+강 번호(lesson.num)로 강의 하나를 찾는다(슬라이드 URL이 랜덤 id 대신 차수로 열리게).
+   강의엔 연도/과목이 없으므로 그 해 그 과목 강의실(course)에 배치된 강의 중 num이 같은 것을 고른다.
+   같은 번호가 여럿이면 첫째(교사가 과목·연도 안에서 번호를 겹치지 않게 매기는 전제). */
+export function getLessonByYSNum(year, subject, num){
+  const n = String(num ?? '').trim(); if (!n) return null;
+  const courseIds = new Set(DEMO.courses
+    .filter(c => c.year === +year && c.subject === subject).map(c => c.id));
+  const lessonIds = new Set(DEMO.courseLessons
+    .filter(cl => courseIds.has(cl.courseId)).map(cl => cl.lessonId));
+  return DEMO.lessons.find(l => lessonIds.has(l.id) && String(l.num).trim() === n) || null;
 }
 
 // 그 칸(개념 노트, 미션 활동, 오늘의 질문, 형성평가)을 가진 강의만, 최신순. 칸별 메뉴 넷이 쓴다.
