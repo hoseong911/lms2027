@@ -6,7 +6,7 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031f';
+import * as M from './model.js?v=20261031g';
 import { icon } from './shared/icons.js?v=20261031e';
 import { buildSlides, renderSlide } from './slide-deck.js?v=20261031g';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
@@ -464,6 +464,7 @@ function pageProgress(){
 
   const { placed, lessons } = placedLessons(rooms);
   const addRow = state.progAdding ? `<div class="row">
+    <input class="f" id="prog-new-num" autocomplete="off" aria-label="강 번호" style="max-width:88px">
     <input class="f grow" id="prog-new-title" autocomplete="off" aria-label="강의 제목">
     <span class="unit">${esc(state.progSubject)} 강의실 ${rooms.length}개에 같이 연결합니다</span>
     <div class="tools">
@@ -1674,7 +1675,11 @@ async function createLessonFromWorksheet(){
   const got = await pickWorksheet();
   if (worksheetEmpty(got)){ if (got) toast('활동지에서 강의로 만들 내용을 찾지 못했습니다.'); return; }
   const title = (got.cover?.topic || got.concept?.[0]?.title || '새 강의').trim();
-  const l = M.addLesson(title, got.num || '');
+  // 강 번호는 필수다. 활동지에서 못 뽑았으면 교사에게 묻고, 그래도 없으면 만들지 않는다.
+  let num = String(got.num || '').trim();
+  if (!num){ num = (prompt('이 강의의 강 번호를 입력해 주세요 (예: 29, OT)') || '').trim();
+    if (!num){ toast('강 번호가 없어 강의를 만들지 못했습니다.'); return; } }
+  const l = M.addLesson(title, num);
   const done = applyWorksheet(l.id, got);
   /* 활동지로 만든 강의는 그 해 강의실 전부에 자동으로 꽂는다(선생님 지시 2026-10-30:
      "활동지 올리면 자동으로 강의랑 강의실이랑 연결"). 그래야 질문 관리, 미션 연결, 성적 메뉴에
@@ -2532,7 +2537,8 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'lesson-add': {
       const title = val('l-title'); if (!title){ toast('강의 제목을 적어 주세요.'); return; }
-      const l = M.addLesson(title, val('l-num')); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
+      const num = val('l-num'); if (!num){ toast('강 번호를 적어 주세요.'); return; }
+      const l = M.addLesson(title, num); state.lessonId = l.id; state.lessonTab = 'edit'; render(); break;
     }
     case 'lesson-from-worksheet': createLessonFromWorksheet(); break;   // 활동지 하나로 강의 통째로 만들기
     case 'lesson-open': state.lessonId = id; state.lessonTab = 'edit'; render(); break;
@@ -2814,7 +2820,8 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'prog-add-cancel': state.progAdding = false; render(); break;
     case 'prog-add-save': {
       const t = val('prog-new-title');
-      const r = run(() => M.addLessonToSubject(state.year, state.progSubject, t));
+      const n = val('prog-new-num'); if (!n){ toast('강 번호를 적어 주세요.'); return; }
+      const r = run(() => M.addLessonToSubject(state.year, state.progSubject, t, n));
       if (r){ state.progAdding = false; toast(`${state.progSubject} 강의실 ${r.rooms}개에 연결했습니다.`); render(); }
       break;
     }

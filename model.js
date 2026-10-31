@@ -516,7 +516,11 @@ export function unenrollStudent(courseId, studentNo){
 function saveLesson(lessonId){ const l = getLesson(lessonId); if (l) put(COLLECTIONS.lessons, l); }
 
 export function addLesson(title, num = ''){
-  const l = { id:nid('L'), title, num:String(num ?? '').trim(), parts:{}, order:[], createdAt:Date.now() };
+  // 강 번호는 필수다(선생님 지시 2026-10-31: 애초에 고정 번호 없이는 강의 생성 불가). 모든 생성 경로가
+  // 여기를 지나므로 여기서 막으면 번호 없는 강의가 생길 수 없다. 숫자면 N강, OT 같은 말이면 [OT]로 쓴다.
+  const n = String(num ?? '').trim();
+  if (!n) throw new Error('강 번호를 입력해 주세요. 번호 없이는 강의를 만들 수 없습니다.');
+  const l = { id:nid('L'), title, num:n, parts:{}, order:[], createdAt:Date.now() };
   DEMO.lessons.push(l); put(COLLECTIONS.lessons, l); return l;
 }
 /* 강의 번호/라벨(선생님 지시 2026-10-30). 숫자면 슬라이드 표지에 "N강", 그 밖이면 "[OT]"로 보인다
@@ -633,12 +637,14 @@ export function deleteLesson(lessonId){
    hoistory에서는 진도표 한 줄이 모든 반에 공통이고 반마다 날짜만 달랐다. 2027도 같게 둔다:
    진도표에서 강의를 더하면 **그 과목의 강의실 전부에 같이 연결된다**(요구사항 49의 과목 일괄).
    돌려주는 것은 만든 강의와 연결한 강의실 수다. */
-export function addLessonToSubject(year, subject, title){
+export function addLessonToSubject(year, subject, title, num){
   const t = String(title ?? '').trim();
   if (!t) throw new Error('강의 제목을 적어 주세요.');
+  const n = String(num ?? '').trim();
+  if (!n) throw new Error('강 번호를 적어 주세요.');
   const rooms = DEMO.courses.filter(c => c.year === +year && c.subject === subject && c.status === 'active');
   if (!rooms.length) throw new Error(`${subject} 강의실이 없습니다.`);
-  const lesson = addLesson(t);
+  const lesson = addLesson(t, n);
   rooms.forEach(c => placeLesson(c.id, lesson.id));
   return { lesson, rooms: rooms.length };
 }
