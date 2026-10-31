@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031d';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031e';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -170,6 +170,7 @@ export const TEXT_FIELDS = [
   // 그 글은 index.js에 바로 적혀 있다.
 ];
 let siteTexts = {};   // 관리자가 고친 값만. loadCore가 settings/general에서 채운다.
+let slideDesign = {}; // 슬라이드 글자 크기(디자인 탭). 전체 공통, settings/general의 slideDesign 맵.
 export function getText(key){
   const v = siteTexts[key];
   if (v != null && v !== '') return v;
@@ -298,6 +299,7 @@ export async function loadCore(){
   DEMO.notices     = rows(nts);
   siteTexts       = gen.exists() ? (gen.data().texts || {}) : {};
   menuOrder        = gen.exists() ? (gen.data().menuOrder || null) : null;
+  slideDesign      = gen.exists() ? (gen.data().slideDesign || {}) : {};
   DEMO.gradeConf   = grc.exists()
     ? { bands:grc.data().bands || null, lessons:grc.data().lessons || [],
         feedbackTemplates: grc.data().feedbackTemplates || [] }
@@ -959,7 +961,22 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031d';
+  ROW_TYPES, rowKind, convertRow, lessonBadge,
+  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031e';
+import { slideDesignDefault as _sdDef, designVarsCss as _sdCss } from './shared/slide-axis.js?v=20261031e';
+
+/* 슬라이드 글자 크기 설정(디자인 탭, 전체 공통). 기본값 위에 관리자가 고친 값을 얹어 돌려준다.
+   슬라이드에 걸 CSS는 designCss()가 만든다(슬라이드 문서가 <style>로 끼운다). */
+export function getSlideDesign(){ return { ..._sdDef(), ...slideDesign }; }
+export function designCss(){ return _sdCss(getSlideDesign()); }
+export async function setSlideDesignValue(key, val){
+  slideDesign = { ...slideDesign, [key]: Math.round(+val) || 0 };
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign }, { merge:true });
+}
+export async function resetSlideDesign(){
+  slideDesign = {};
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign:{} }, { merge:true });
+}
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 

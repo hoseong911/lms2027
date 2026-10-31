@@ -25,16 +25,27 @@
   /* 1080 높이 쪽의 1픽셀. 선생님이 크기를 픽셀로 말씀하시므로(2026 슬라이드가 1920x1080 틀이었다)
      그 값을 그대로 적을 수 있게 둔다. 쪽이 작아지면 같이 작아진다. */
   --px: calc(var(--sz) * 100 / 1080);
-  /* 쪽 본문 글자 크기 55px(선생님 지시 2026-10-30: 개념 노트와 미션 활동에 이어 "나머지 쪽도 55px로").
-     모든 쪽의 본문이 이 값 하나를 쓴다. 이보다 큰 것은 제목 둘뿐이다(오늘의 질문 66, 표지 강의 제목 100).
-     작은 것은 맨 위 배지와 쪽 제목(--tfs 44), 전시학습확인 유형 이름표(34), 사료 본문(--srcfs 50)이다 */
-  --sfs: calc(var(--px) * 55);
-  /* 맨 위 배지와 그 옆 쪽 제목의 크기. 둘을 같게 둔다(선생님 지시 2026-10-30: "개념 노트 배지 옆에
-     성리학적 질서의 확산 되어 있는데 글씨 크기가 개념 노트랑 안맞잖아 이거 글씨 크기 맞춰줘") */
-  --tfs: calc(var(--px) * 44);
-  /* 사료와 글자료 본문: 세리프체 50px("나중에 디자인 전면 수정하면서 다 크기 조정할거임") */
+  /* ── 글자 크기 변수 (디자인 탭에서 조절, 선생님 지시 2026-10-31) ──
+     값은 1080 높이 기준 픽셀이고 --px로 쪽 크기에 맞춰 함께 커진다. 디자인 탭은 이 변수들을
+     calc(var(--px) * N)으로 덮어쓴다(model.js의 designVarsCss). 여기 값이 기본값이다.
+     --sfs/--tfs/--srcfs는 옛 이름이라 아래에서 새 변수의 별칭으로 남긴다. */
+  --fs-body:          calc(var(--px) * 55);   /* 개념/미션 본문, 맺음말, 전시확인, 미디어 설명 */
+  --fs-slide-title:   calc(var(--px) * 44);   /* 배지와 그 옆 쪽 제목 */
+  --fs-src:           calc(var(--px) * 50);   /* 사료 본문(세리프) */
+  --fs-cover-title:   calc(var(--px) * 120);  /* 표지 강의 제목 */
+  --fs-cover-tagline: calc(var(--px) * 44);   /* 표지 학습 주제(태그라인) */
+  --fs-cover-meta:    calc(var(--px) * 40);   /* 표지 단원/쪽수 */
+  --fs-cover-num:     calc(var(--px) * 100);  /* 표지 강 번호 */
+  --fs-obj:           calc(var(--px) * 60);   /* 학습 목표 항목 */
+  --fs-obj-num:       calc(var(--px) * 130);  /* 학습 목표 큰 번호 */
+  --fs-cmp-head:      calc(var(--px) * 44);   /* 비교표 머리 */
+  --fs-cmp-body:      calc(var(--px) * 55);   /* 비교표 내용 */
+  --fs-question:      calc(var(--px) * 66);   /* 오늘의 질문 */
+  --fs-think-guide:   calc(var(--px) * 55);   /* 오늘의 질문 안내문 */
   --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
-  --srcfs: calc(var(--px) * 50);
+  --sfs: var(--fs-body);
+  --tfs: var(--fs-slide-title);
+  --srcfs: var(--fs-src);
   /* 2026 LMS 차용(선생님 지시 2026-10-31): 제목은 Paperlogy(없으면 Pretendard 폴백),
      표지 태그라인/메타는 Gowun Batang 세리프. Gowun Batang/Great Vibes는 슬라이드 문서가 링크로 받는다 */
   --title-font: 'Paperlogy', var(--font);

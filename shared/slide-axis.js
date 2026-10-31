@@ -47,6 +47,48 @@ export function lessonBadge(num){
   return /^\d+$/.test(s) ? `${s}강` : `[${s}]`;
 }
 
+/* ══ 슬라이드 글자 크기 설정 (디자인 탭, 선생님 지시 2026-10-31) ══════════════
+ * 전체 공통(강의 무관) 설정이다. 값은 1080 높이 기준 px. slide-deck.css의 --fs-* 기본값을 덮어쓴다.
+ * 적용은 designVarsCss가 만든 한 줄 CSS(.deckpage{--fs-…})를 슬라이드 문서가 <style>로 끼운다.
+ * 어드민 디자인 탭과 슬라이드가 이 한 곳을 같이 본다(스펙이 어긋나지 않게). */
+export const SLIDE_DESIGN = [
+  { group:'표지', rows:[
+    { key:'coverTitle',   cssVar:'--fs-cover-title',   label:'제목',      def:120, min:40, max:220 },
+    { key:'coverTagline', cssVar:'--fs-cover-tagline', label:'학습 주제', def:44,  min:20, max:90 },
+    { key:'coverMeta',    cssVar:'--fs-cover-meta',    label:'단원/쪽수', def:40,  min:20, max:80 },
+    { key:'coverNum',     cssVar:'--fs-cover-num',     label:'강 번호',   def:100, min:30, max:200 },
+  ]},
+  { group:'학습 목표', rows:[
+    { key:'obj',    cssVar:'--fs-obj',     label:'항목',    def:60,  min:24, max:110 },
+    { key:'objNum', cssVar:'--fs-obj-num', label:'큰 번호', def:130, min:40, max:240 },
+  ]},
+  { group:'공통', rows:[
+    { key:'slideTitle', cssVar:'--fs-slide-title', label:'쪽 제목/배지', def:44, min:20, max:90 },
+    { key:'body',       cssVar:'--fs-body',        label:'본문',         def:55, min:24, max:100 },
+  ]},
+  { group:'비교표', rows:[
+    { key:'cmpHead', cssVar:'--fs-cmp-head', label:'머리', def:44, min:20, max:90 },
+    { key:'cmpBody', cssVar:'--fs-cmp-body', label:'내용', def:55, min:24, max:100 },
+  ]},
+  { group:'사료 인용', rows:[
+    { key:'src', cssVar:'--fs-src', label:'본문', def:50, min:24, max:100 },
+  ]},
+  { group:'오늘의 질문', rows:[
+    { key:'question',   cssVar:'--fs-question',    label:'질문',   def:66, min:28, max:120 },
+    { key:'thinkGuide', cssVar:'--fs-think-guide', label:'안내문', def:55, min:24, max:100 },
+  ]},
+];
+export const SLIDE_DESIGN_ROWS = SLIDE_DESIGN.flatMap(g => g.rows);
+export function slideDesignDefault(){ const o = {}; SLIDE_DESIGN_ROWS.forEach(r => o[r.key] = r.def); return o; }
+/* 설정값(키→px)을 슬라이드에 걸 CSS 한 줄로. 기본값과 같은 항목은 빼서 slide-deck.css 기본을 그대로 둔다. */
+export function designVarsCss(values){
+  const v = values || {};
+  const decls = SLIDE_DESIGN_ROWS
+    .filter(r => v[r.key] != null && +v[r.key] !== r.def)
+    .map(r => `${r.cssVar}:calc(var(--px) * ${+v[r.key]})`);
+  return decls.length ? `.deckpage{${decls.join(';')}}` : '';
+}
+
 /* 전시학습확인 문항의 유형 셋 (선생님 지시 2026-10-30: "단답형 OX 초성형 3개 유형").
    말씀하신 순서 그대로다. 키도 이름도 형성평가(model.js의 FORMATIVE_TYPES)와 같다:
    ox를 전시학습확인에서만 "OX"로 부르던 것을 선생님 지시로 진위형으로 맞췄다

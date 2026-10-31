@@ -6,8 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031d';
-import { icon } from './shared/icons.js?v=20261031d';
+import * as M from './model.js?v=20261031e';
+import { icon } from './shared/icons.js?v=20261031e';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031e';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1180,10 +1181,52 @@ function pageConcept(){
     return head + pageLessons();
 
   if (state.conceptTab === 'design')
-    return head + `<div class="placeholder">디자인 조절 (다음 단계)</div>`;
+    return head + pageDesign();
 
   // 콘텐츠 탭이 곧 강의 슬라이드 축 편집기다(선생님 지시 2026-10-30, 요구사항 125)
   return head + pageAxis();
+}
+
+/* ── 디자인 탭: 슬라이드 글자 크기 조절 (선생님 지시 2026-10-31) ──────────────
+   2026 LMS의 글꼴 크기 패널을 HOCLASS 슬라이드 타입에 맞춰 가져왔다. 전체 공통 설정이라
+   한 번 정하면 모든 강의 슬라이드에 걸린다(model.js의 getSlideDesign/designCss).
+   왼쪽은 그룹별 슬라이더, 오른쪽은 고른 강의의 대표 쪽 라이브 미리보기(슬라이더를 끌면 즉시 바뀐다). */
+function pageDesign(){
+  const vals = M.getSlideDesign();
+  const panel = M.SLIDE_DESIGN.map(g => `<div class="ds-group"><div class="sectionlabel">${esc(g.group)}</div>
+    ${g.rows.map(r => `<div class="ds-row">
+      <span class="ds-label">${esc(r.label)}</span>
+      <input type="range" class="ds-slider" data-act="design-fs" data-k="${r.key}"
+        min="${r.min}" max="${r.max}" step="1" value="${vals[r.key]}" aria-label="${esc(g.group)} ${esc(r.label)}">
+      <span class="ds-val" id="dsval-${r.key}">${vals[r.key]}</span>
+    </div>`).join('')}</div>`).join('');
+
+  const lessons = M.getLessonsWithPart('concept');
+  if (!lessons.some(l => l.id === state.conceptLessonId)) state.conceptLessonId = lessons[0]?.id || null;
+  const l = lessons.find(x => x.id === state.conceptLessonId) || lessons[0];
+
+  return `<div class="editor ds-layout">
+    <div class="ds-panel">
+      <div class="sectionlabel between">글자 크기 (px)
+        <button class="btn-link" data-act="design-reset">기본값으로</button></div>
+      ${panel}
+    </div>
+    <div class="ds-preview">
+      <style id="dpv-style">${M.designVarsCss(vals)}</style>
+      ${l ? designPreviewHTML(l) : `<div class="empty">미리볼 강의가 없습니다.</div>`}
+    </div>
+  </div>`;
+}
+// 대표 쪽(표지, 학습 목표, 개념 몇 쪽, 비교, 사료, 질문 중 있는 것)을 작은 16:9 틀로 렌더한다
+function designPreviewHTML(l){
+  const slides = buildSlides(l, l.num || '');
+  const pick = [];
+  const first = step => slides.find(s => s.step === step);
+  ['cover', 'objective'].forEach(k => { const s = first(k); if (s) pick.push(s); });
+  slides.filter(s => s.step === 'concept').slice(0, 3).forEach(s => pick.push(s));
+  const q = first('question'); if (q) pick.push(q);
+  return pick.map(s => `<div class="deckframe"><div class="deckpage">${renderSlide(s)}</div></div>`).join('')
+    || `<div class="empty">미리볼 쪽이 없습니다.</div>`;
 }
 
 
@@ -1501,7 +1544,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031d');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031e');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });
@@ -2761,6 +2804,10 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
 
+    case 'design-reset':   // 디자인 탭: 글자 크기를 전부 기본값으로
+      M.resetSlideDesign().then(() => { toast('기본값으로 되돌렸습니다.'); render(); });
+      break;
+
     case 'noop': toast('다음 단계에서 만듭니다.'); break;
   }
 });
@@ -2779,6 +2826,8 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setCourseSchedule(el.dataset.id, el.value);
   } else if (el.dataset.act === 'prog-topic'){   // 진도표의 주제 = 강의 제목
     run(() => M.setLessonTitle(el.dataset.lid, el.value));
+  } else if (el.dataset.act === 'design-fs'){   // 디자인 탭 슬라이더: 손 뗄 때 저장(미리보기는 input이 이미 갱신)
+    M.setSlideDesignValue(el.dataset.k, el.value);
   } else if (el.dataset.act === 'sc-subject-pick'){   // 성적: 머리줄의 과목 드롭다운
     state.scSubject = el.value; state.scCourseId = null; state.scClId = null; state.scOpenNo = null; render();
   } else if (el.dataset.act === 'sc-lesson'){   // 성적 입력: 채점할 강의
@@ -2871,6 +2920,17 @@ document.getElementById('shell').addEventListener('change', e => {
 });
 
 document.getElementById('shell').addEventListener('input', e => {
+  /* 디자인 탭 슬라이더: 끄는 대로 미리보기를 즉시 바꾼다(다시 그리지 않고 CSS만 갈아 끼운다).
+     저장은 손을 뗄 때(change)만 한다. */
+  if (e.target.dataset.act === 'design-fs'){
+    const vals = {};
+    document.querySelectorAll('.ds-slider').forEach(s => { vals[s.dataset.k] = +s.value; });
+    const lab = document.getElementById('dsval-' + e.target.dataset.k);
+    if (lab) lab.textContent = e.target.value;
+    const st = document.getElementById('dpv-style');
+    if (st) st.textContent = M.designVarsCss(vals);
+    return;
+  }
   // 설명문 글자수: 다시 그리지 않고 숫자만 고쳐 쓴다(커서 유지)
   if (e.target.id === 'q-ed-guide'){
     const n = document.getElementById('q-ed-guide-n');
