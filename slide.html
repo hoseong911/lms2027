@@ -19,10 +19,12 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff;font-family:var(--font)}
 #guard{position:fixed;inset:0;display:grid;place-items:center;color:#9FB3CC;font-size:var(--fs-body)}
 
-/* 쪽을 화면에 꽉 채운다(선생님 지시 2026-10-31: 레터박스 없이 꽉 채움). 16:9 투사면에서는 꼭 맞고,
-   그 밖의 화면에서는 쪽 바탕이 화면을 다 덮고 글은 짧은 변 기준(--sz)으로 커져 가운데에 선다. */
-#stage{position:fixed;inset:0}
-#stage .deckframe{width:100vw;height:100vh;aspect-ratio:auto}
+/* 쪽은 항상 1920×1080으로 그린 뒤 화면에 맞춰 통째로 축소한다(transform:scale). 그래서 어느 해상도·기기에서도
+   줄바꿈과 분량이 똑같다(선생님 지시 2026-10-31). 16:9가 아닌 화면은 남는 자리(레터박스)를 현재 쪽 배경색과
+   같은 색으로 메워 티 안 나게 한다(다크 쪽=표지·학습목표, 그 밖=흰색. draw에서 #stage 배경을 바꾼다). */
+#stage{position:fixed;inset:0;overflow:hidden;background:#fff}
+#stage .deckframe{position:absolute;left:50%;top:50%;width:1920px;height:1080px;
+  transform:translate(-50%,-50%) scale(1);transform-origin:center center}
 
 /* 위쪽 막대: 마우스를 올리거나 화면을 건드리면 나온다. 투사 중에는 숨는다 */
 #bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
@@ -81,6 +83,14 @@ if (!lesson){
   const stepName = k => (SLIDE_AXIS.find(a => a.key === k) || {}).name || '';
   let i = 0;
 
+  /* 쪽을 1920×1080 고정으로 그리고 화면에 맞춰 통째로 축소한다(짧은 변 기준). 레이아웃(줄바꿈·넘침)이
+     언제나 1920×1080에서 한 번만 계산되므로 어느 기기·해상도에서도 분량이 똑같다. */
+  const frame = $('stage').querySelector('.deckframe');
+  const fit = () => { const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    frame.style.transform = `translate(-50%,-50%) scale(${s})`; };
+  // 16:9가 아닌 화면의 남는 자리(레터박스) 색을 현재 쪽 배경과 맞춘다. 다크 쪽은 표지·학습목표뿐이다.
+  const DARK = new Set(['cover', 'objective']);
+
   // 좌우 단추: 첫 쪽이라도 꺼낸 답이 있으면 되돌릴 수 있고, 끝 쪽이라도 남은 답이 있으면 넘길 수 있다
   const syncNav = () => {
     $('prev').hidden = i === 0 && !$('page').querySelector('[data-step].shown');
@@ -90,6 +100,7 @@ if (!lesson){
     $('page').innerHTML = renderSlide(pages[i]);
     $('bar-step').textContent = stepName(pages[i]?.step);
     $('bar-no').textContent = `${i + 1} / ${pages.length}`;
+    $('stage').style.background = DARK.has(pages[i]?.step) ? '#0b0d12' : '#fff';
   };
   /* 넘기기(선생님 지시 2026-10-30: 전시학습확인 답은 "화살표 버튼으로 조작하거나 페이지 업다운으로
      조작할때 나오게 해줘. 슬라이드 애니메이션처럼"). 쪽 안에 아직 안 나온 답이 있으면 쪽을 넘기지 않고
@@ -105,7 +116,9 @@ if (!lesson){
   $('guard').hidden = true;
   $('stage').hidden = false;
   $('bar-title').textContent = no ? `${no}강. ${lesson.title}` : lesson.title;
-  draw(); syncNav();
+  draw(); syncNav(); fit();
+  addEventListener('resize', fit, { passive:true });
+  document.addEventListener('fullscreenchange', fit);
 
   /* 전체화면: 브라우저는 사용자가 누른 뒤에만 들어가게 해 준다(자동 진입 불가).
      그래서 이 탭이 열리면 위쪽 막대를 한 번 보여 주고, 버튼을 누르면 들어간다.
