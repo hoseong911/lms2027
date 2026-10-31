@@ -11,7 +11,7 @@
      쪽을 만들고 그리는 것은 slide-deck.js 하나다(축은 shared/slide-axis.js).
      어드민 미리보기가 같은 파일을 불러써서 두 화면이 어긋나지 않는다.
      주소: slide.html?lesson=강의id&no=강번호  (no는 그 강의실에서 몇 번째로 연결했는가) -->
-<link rel="stylesheet" href="slide-deck.css?v=20261031f">
+<link rel="stylesheet" href="slide-deck.css?v=20261031g">
 <!-- 사료 세리프(Noto Serif KR), 표지 태그라인/메타(Gowun Batang), 필기체(Great Vibes). 2026 LMS 차용 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Gowun+Batang:wght@400;700&family=Great+Vibes&display=swap">
 <style>
@@ -41,9 +41,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
   color:#fff;opacity:0;transition:opacity .15s;z-index:3;font-size:30px}
 .nav:hover{opacity:.55}
 #prev{left:0}#next{right:0}
-#dots{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:7px;z-index:3}
-#dots i{width:7px;height:7px;background:rgba(255,255,255,.35);display:block}
-#dots i.on{background:#fff}
 </style>
 </head>
 <body>
@@ -53,9 +50,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
   <div class="deckframe"><div class="deckpage" id="page"></div></div>
 </div>
 <button class="nav" id="prev" aria-label="이전 쪽" hidden>‹</button>
-<button class="nav" id="next" aria-label="다음 쪽" hidden>›</button>
-<div id="dots" hidden></div>
-<div id="hot"></div>
+<button class="nav" id="next" aria-label="다음 쪽" hidden>›</button><div id="hot"></div>
 <div id="bar">
   <span class="grow" id="bar-title"></span>
   <span class="step" id="bar-step"></span>
@@ -92,7 +87,6 @@ if (!lesson){
     $('page').innerHTML = renderSlide(pages[i]);
     $('bar-step').textContent = stepName(pages[i]?.step);
     $('bar-no').textContent = `${i + 1} / ${pages.length}`;
-    $('dots').innerHTML = pages.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('');
   };
   /* 넘기기(선생님 지시 2026-10-30: 전시학습확인 답은 "화살표 버튼으로 조작하거나 페이지 업다운으로
      조작할때 나오게 해줘. 슬라이드 애니메이션처럼"). 쪽 안에 아직 안 나온 답이 있으면 쪽을 넘기지 않고
@@ -107,7 +101,6 @@ if (!lesson){
 
   $('guard').hidden = true;
   $('stage').hidden = false;
-  $('dots').hidden = false;
   $('bar-title').textContent = no ? `${no}강. ${lesson.title}` : lesson.title;
   draw(); syncNav();
 

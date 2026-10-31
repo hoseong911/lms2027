@@ -45,7 +45,9 @@
   /* 위에서부터 쌓는다: 맨 위 배지 줄, 그 아래 속. 가운데에 모일 쪽(표지, 학습 목표, 질문,
      맺음말)은 속(.s-body)이 남는 높이를 다 먹고 그 안에서 가운데로 모은다 */
   display:flex;flex-direction:column;justify-content:flex-start;
-  padding:calc(var(--sz) * 7) calc(var(--sz) * 8);
+  /* 모든 쪽에서 배지(왼쪽 위)가 같은 자리에 서도록 여백을 한 값으로 못박는다(선생님 지시 2026-10-31).
+     학습 목표 다크 쪽의 배지도 같은 top/left(56/80)에 선다. */
+  padding:calc(var(--px) * 56) calc(var(--px) * 80) calc(var(--px) * 60);
   overflow:hidden;font-family:var(--font);letter-spacing:-.02em;
 }
 /* 안쪽 여백이 폭에 더해지면 쪽이 상자보다 넓어져 오른쪽 글자가 잘린다. 쪽을 불러 쓰는 문서가
@@ -63,9 +65,11 @@
   margin-bottom:calc(var(--px) * 40)}
 /* 배지와 쪽 제목은 글자 크기(--tfs)와 줄 높이가 같아서 배지 글자와 제목 첫 줄이 한 줄로 가지런하다.
    배지의 위아래 여백만큼 제목도 위아래를 띄운다(.s-head의 padding-block) */
-.deckpage .s-badge{flex:0 0 auto;background:var(--red-100);color:var(--red);border-radius:var(--r);
-  font-family:var(--title-font);font-size:var(--tfs);font-weight:800;line-height:1.3;letter-spacing:-.02em;
-  padding:calc(var(--px) * 6) calc(var(--px) * 20);white-space:nowrap}
+/* 배지: 알약 모양 + Paperlogy 보통 굵기(선생님 지시 2026-10-31). 모든 쪽에서 같은 높이, 같은 자리 */
+.deckpage .s-badge{flex:0 0 auto;background:var(--red-100);color:var(--red);
+  border:1px solid color-mix(in srgb, var(--red) 35%, transparent);border-radius:999px;
+  font-family:var(--title-font);font-size:var(--tfs);font-weight:500;line-height:1.3;letter-spacing:-.02em;
+  padding:calc(var(--px) * 6) calc(var(--px) * 22);white-space:nowrap}
 
 /* ── 표지: 다크 무빙 포스터 (2026 LMS 차용, 선생님 지시 2026-10-31. 색만 HOCLASS 테마로) ──
    표지 쪽은 흰 바탕을 덮고 어둡게 깔린다(인트로 다크, 본문은 밝은 톤). 빛(intro-sweep)이 천천히
@@ -91,11 +95,11 @@
   font-size:var(--fs-cover-title, calc(var(--px) * 120));line-height:1.08;letter-spacing:-.01em}
 .deckpage .cover-meta{font-family:var(--cover-serif);font-size:var(--fs-cover-meta, calc(var(--px) * 40));
   opacity:.56;margin-top:calc(var(--px) * 40);display:flex;align-items:center;justify-content:center;gap:calc(var(--px) * 22)}
-.deckpage .cover-dot{width:calc(var(--px) * 8);height:calc(var(--px) * 8);border-radius:50%;
-  background:currentColor;opacity:.6;display:block;flex:0 0 auto}
+/* 단원과 쪽수 사이 구분: 가운뎃점(·) 대신 얇은 세로선(선생님 지시 2026-10-31: 가운뎃점 안 씀) */
+.deckpage .cover-sep{width:1px;height:1em;background:currentColor;opacity:.4;flex:0 0 auto;display:inline-block}
 
 /* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다. 크기는 배지와 같다(--tfs) */
-.deckpage .s-head{flex:1;min-width:0;font-family:var(--title-font);font-size:var(--tfs);font-weight:800;margin:0;
+.deckpage .s-head{flex:1;min-width:0;font-family:var(--title-font);font-size:var(--tfs);font-weight:600;margin:0;
   line-height:1.3;padding-block:calc(var(--px) * 6);letter-spacing:-.03em}
 
 /* 속은 배지 줄 아래를 다 쓴다. 줄이 많으면 쪽 안에서만 내려간다(쪽이 잘리지 않게) */
@@ -114,24 +118,27 @@
   margin-bottom:calc(var(--px) * 18)}
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 4);min-width:0}
 
-/* 좌우 비교 묶음(요구사항 137. 2026 슬라이드의 compare를 보고 따랐다). 두 칸이 같은 폭으로 나란히 서고
-   가운데에 VS가 선다. 칸 안은 보통 묶음과 같다(라벨 밑 레드 줄, 내용 줄 그리기).
-   2026의 그림자 상자와 색 채운 머리 띠는 가져오지 않았다(2027 화면 규칙: 그림자 없음, 선으로만 나눈다).
-   두 칸 사이는 세로 선 하나로 가르고 VS가 그 선 위에 앉는다. */
-.deckpage .pcmp{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
-  column-gap:calc(var(--px) * 40);align-items:stretch}
-.deckpage .pcmp-col{min-width:0}
-.deckpage .pcmp-vs{position:relative;display:flex;align-items:center;justify-content:center;
-  font-size:var(--tfs);font-weight:800;color:var(--red);letter-spacing:.02em;line-height:1.3}
-.deckpage .pcmp-vs::before{content:"";position:absolute;inset:0 50%;border-left:2px solid var(--line)}
-/* VS 글자 뒤만 쪽 바탕색으로 덮어 선이 글자를 지나가지 않게 한다 */
-.deckpage .pcmp-vs span{position:relative;background:#fff;padding-block:calc(var(--px) * 12)}
+/* 좌우 비교 묶음: 2026 LMS 비교표 차용(선생님 지시 2026-10-31, 색만 HOCLASS로, VS 없음).
+   두 칸이 카드로 나란히 서고, 머리(라벨)는 네이비 색 띠 + 흰 글씨, 내용은 그 아래 흰 칸이다.
+   카드라 옅은 그림자로 흰 바탕과 뜬다. 내용은 보통 묶음과 같은 줄 그리기(.cmp-body 안 .pl). */
+.deckpage .pcmp{display:flex;gap:calc(var(--px) * 28);align-items:stretch}
+.deckpage .cmp-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:calc(var(--px) * 14);
+  overflow:hidden;box-shadow:0 calc(var(--px) * 2) calc(var(--px) * 6) rgba(4,30,66,.08),
+    0 calc(var(--px) * 10) calc(var(--px) * 26) rgba(4,30,66,.10)}
+.deckpage .cmp-head{background:var(--navy);color:#fff;font-family:var(--title-font);font-weight:700;
+  font-size:var(--fs-cmp-head, var(--tfs));padding:calc(var(--px) * 16) calc(var(--px) * 26);word-break:keep-all}
+.deckpage .cmp-body{flex:1;background:var(--navy-050, #f3f5f9);color:var(--navy);
+  font-size:var(--fs-cmp-body, var(--sfs));padding:calc(var(--px) * 26) calc(var(--px) * 30);
+  display:flex;flex-direction:column;gap:calc(var(--px) * 8);justify-content:flex-start}
 
 /* 사료 인용 묶음(요구사항 139). 사료 쪽(.s-src)과 같은 모양을 쪽 안의 묶음 하나로 줄인 것이다:
    세리프체, 양쪽 정렬, 큰따옴표, 오른쪽 아래 출전. 제목은 묶음 라벨(.plabel) 그대로라
    보통 묶음과 같은 자리에 선다. 쪽 전체가 아니라 묶음이므로 여백과 큰따옴표를 줄인다
    (사료 쪽의 ::after는 글 상자 밖 아래로 90 내려가 있어 묶음에서는 다음 묶음을 밟는다). */
 .deckpage .psrc{font-family:var(--serif);font-size:var(--srcfs)}
+/* 사료 인용은 제목을 가운데로, 라벨 밑 레드 구분선은 뺀다(선생님 지시 2026-10-31) */
+.deckpage .psrc .plabel{width:100%;text-align:center;border-bottom:none;padding-bottom:0;
+  margin-bottom:calc(var(--px) * 24)}
 .deckpage .psrc .src-quote{padding:calc(var(--px) * 24) calc(var(--px) * 76)}
 .deckpage .psrc .src-quote::before, .deckpage .psrc .src-quote::after{font-size:calc(var(--px) * 140)}
 .deckpage .psrc .src-quote::after{bottom:0}
@@ -149,10 +156,14 @@
 /* 항목 글(.pt) = 소제목(.pk, 굵게) + 내용(.pv). "1. 설립 : ~"의 쌍점은 지우고 그 자리를 여백으로 둔다.
    내용 칸이 남는 폭을 따로 차지하므로 줄이 넘어가면 내용 시작 자리에 맞춰 내려온다(내어쓰기). */
 .deckpage .pt{flex:1;min-width:0;display:flex;align-items:baseline;gap:calc(var(--px) * 30)}
-.deckpage .pk{flex:0 0 auto;max-width:40%;font-weight:800;color:var(--navy);word-break:keep-all}
+.deckpage .pk{flex:0 0 auto;max-width:40%;font-family:var(--title-font);font-weight:800;color:var(--navy);word-break:keep-all}
+/* heading(쌍점 없는 소제목 + 하위 항목): 소제목을 제 줄에 블록으로, 하위 항목을 그 아래로 들여쓴다 (#7) */
+.deckpage .pt.pt-head{display:block}
+.deckpage .pt.pt-head > .pk-head{display:block;max-width:none;margin-bottom:calc(var(--px) * 10)}
+.deckpage .pt.pt-head > .pv-head{display:block;padding-left:calc(var(--px) * 40)}
 .deckpage .pv{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
-.deckpage .pl.lv1 .pm{color:var(--red)}
-.deckpage .pl.lv2 .pm, .deckpage .pl.lv3 .pm{color:var(--sub)}
+/* 수준 기호(1. - ·)는 모두 레드로 통일(선생님 지시 2026-10-31: -나 ·를 다른 기호와 색 맞춤) */
+.deckpage .pl.lv1 .pm, .deckpage .pl.lv2 .pm, .deckpage .pl.lv3 .pm{color:var(--red)}
 .deckpage .pc{display:block}
 .deckpage .pv > .pl, .deckpage .pv > .pc{margin-top:calc(var(--px) * 4)}
 
@@ -164,9 +175,9 @@
 .deckpage .s-objectives::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
   background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
 .deckpage .s-objectives .obj-badge{position:absolute;top:calc(var(--px) * 56);left:calc(var(--px) * 80);z-index:3;
-  font-family:var(--title-font);font-weight:800;font-size:var(--tfs);color:var(--red);letter-spacing:-.02em;
-  background:color-mix(in srgb, var(--red) 16%, transparent);border-radius:var(--r);
-  padding:calc(var(--px) * 6) calc(var(--px) * 20)}
+  font-family:var(--title-font);font-weight:500;font-size:var(--tfs);color:var(--red);letter-spacing:-.02em;
+  background:color-mix(in srgb, var(--red) 16%, transparent);border:1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border-radius:999px;padding:calc(var(--px) * 6) calc(var(--px) * 22)}
 .deckpage .obj-list{position:absolute;top:calc(var(--px) * 150);bottom:calc(var(--px) * 60);
   left:calc(var(--px) * 96);right:calc(var(--px) * 96);z-index:3;
   display:flex;flex-direction:column;justify-content:center}
@@ -237,11 +248,19 @@
   width:min(100%, calc(100cqh * 16 / 9));aspect-ratio:16 / 9;max-height:100%}
 .deckpage .mcap{flex:0 0 auto;font-size:var(--sfs);color:var(--sub);text-align:center}
 
-/* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 설명문이 본문 55이고 질문은 그보다 크게(66) */
-.deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--px) * 40)}
-.deckpage .qbig{font-family:var(--title-font);font-size:var(--fs-question, calc(var(--px) * 66));font-weight:800;line-height:1.35;letter-spacing:-.03em}
-.deckpage .qguide{font-size:var(--sfs);color:var(--sub);
-  border-left:calc(var(--px) * 6) solid var(--red);padding-left:calc(var(--px) * 28)}
+/* ── 오늘의 질문: 2026 LMS 생각 Check 차용(선생님 지시 2026-10-31, 색만 HOCLASS로) ──
+   질문은 가운데에 크게(Paperlogy), 안내문은 그 아래 세리프 글상자(레드 테두리, 옅은 바탕). */
+.deckpage .s-q{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:calc(var(--px) * 40)}
+.deckpage .qbig{font-family:var(--title-font);font-size:var(--fs-question, calc(var(--px) * 66));font-weight:900;
+  line-height:1.4;letter-spacing:-.03em;word-break:keep-all;max-width:90%}
+.deckpage .qbig strong, .deckpage .qbig .blank{color:var(--red)}
+.deckpage .qguide{font-family:var(--cover-serif);font-size:var(--fs-think-guide, var(--sfs));color:var(--navy);
+  line-height:1.6;text-align:justify;max-width:82%;
+  border:calc(var(--px) * 2) solid color-mix(in srgb, var(--red) 55%, transparent);
+  background:color-mix(in srgb, var(--red) 6%, #fff);border-radius:calc(var(--px) * 16);
+  padding:calc(var(--px) * 24) calc(var(--px) * 34);
+  box-shadow:0 calc(var(--px) * 6) calc(var(--px) * 22) rgba(4,30,66,.08)}
 
 /* ── 맺음말 ── 가운데로 모은다. 본문 55에 굵게 */
 .deckpage .s-close{display:flex;flex-direction:column;align-items:center;justify-content:center;

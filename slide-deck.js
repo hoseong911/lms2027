@@ -217,13 +217,15 @@ function itemHTML(it, dropNum){
     + it.kids.map(k => itemHTML(k, dropNum)).join('');
   const t = termOf(it.body);
   const heading = !t && (it.cont.length || it.kids.length) && it.body.length <= 15;
+  /* heading: 쌍점 없는 소제목("1. 서적 편찬")에 한 수준 낮은 항목이 달린 것. 소제목을 제 줄에 세우고
+     하위 항목은 그 아래로 내린다(pt-head). 쌍점이 있는 묶음("설립 : 내용")만 소제목과 내용이 한 줄이다. */
   const pt = t
     ? `<span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}${under}</span>`
     : heading
-      ? `<span class="pk">${inlineText(it.body)}</span><span class="pv">${under}</span>`
+      ? `<span class="pk pk-head">${inlineText(it.body)}</span><span class="pv pv-head">${under}</span>`
       : `<span class="pv">${inlineText(it.body)}${under}</span>`;
   const mark = it.lv && !(dropNum && it.lv === 1);
-  return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}<span class="pt">${pt}</span></div>`;
+  return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}<span class="pt${heading ? ' pt-head' : ''}">${pt}</span></div>`;
 }
 
 /* 내용 줄을 그린다. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
@@ -266,7 +268,7 @@ export function renderSlide(s){
       <div class="cover-fg">
         ${tagline ? `<div class="cover-tagline">${esc(tagline)}</div>` : ''}
         <h1 class="cover-title">${esc(s.title)}</h1>
-        ${meta.length ? `<div class="cover-meta">${meta.join('<span class="cover-dot"></span>')}</div>` : ''}
+        ${meta.length ? `<div class="cover-meta">${meta.join('<span class="cover-sep"></span>')}</div>` : ''}
       </div>
     </div>`;
   }
@@ -343,17 +345,14 @@ export function renderSlide(s){
       ${s.title ? `<h2 class="src-title">${inlineText(s.title)}</h2>` : ''}
       ${srcBody(lines)}</div>`;
   }
-  /* 좌우 비교 묶음(선생님 지시 2026-10-30, 요구사항 137: "기존 lms에서 좌우 비교하는 내용이 있거든?
-     그거를 참고해봐"). 2026 슬라이드의 compareBodyHTML을 보고 따랐다: 두 칸이 나란히 서고
-     칸마다 머리(라벨)와 내용이 있으며 가운데에 VS가 선다.
-     2027 모양으로 바꾼 것: 2026의 그림자 상자와 색 채운 머리 띠 대신, 머리는 보통 묶음 라벨과 같은
-     모양(.plabel, 레드 밑줄)이고 내용은 보통 묶음과 같은 줄 그리기(linesHTML)를 쓴다.
-     그래서 내용 안의 1. - · 단계, 소제목, 빈칸이 보통 묶음과 똑같이 그려진다. */
+  /* 좌우 비교 묶음(요구사항 137). 2026 LMS의 비교표를 가져왔다(선생님 지시 2026-10-31, 색만 HOCLASS로):
+     두 칸이 카드로 나란히 서고, 칸마다 머리(라벨)가 색 띠로, 내용이 그 아래 흰 칸에 선다. VS는 뺐다.
+     내용은 보통 묶음과 같은 줄 그리기(linesHTML)라 1. - · 단계, 소제목, 빈칸이 똑같이 그려진다. */
   const compareHTML = (r, dropNum) => {
-    const col = c => `<div class="pcmp-col">
-      ${c.label ? `<div class="plabel">${inlineText(c.label)}</div>` : ''}
-      <div class="plines">${linesHTML(c.lines, dropNum)}</div></div>`;
-    return `<div class="prow pcmp">${col(r.left)}<div class="pcmp-vs"><span>VS</span></div>${col(r.right)}</div>`;
+    const col = c => `<div class="cmp-col">
+      ${c.label ? `<div class="cmp-head">${inlineText(c.label)}</div>` : ''}
+      <div class="cmp-body">${linesHTML(c.lines, dropNum)}</div></div>`;
+    return `<div class="prow pcmp">${col(r.left)}${col(r.right)}</div>`;
   };
   /* 사료 인용 묶음(요구사항 139): 쪽 하나가 통째로 사료인 사료 쪽과 달리 쪽 안의 묶음 하나다.
      제목은 묶음 라벨 자리에 그대로 서고(.plabel, 레드 밑줄) 본문만 사료 모양이다. 그래서
