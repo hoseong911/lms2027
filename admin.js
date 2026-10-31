@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031m';
+import * as M from './model.js?v=20261031n';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031n';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031o';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1405,6 +1405,13 @@ function axisEditor(l, ax){
         data-id="${l.id}" aria-label="오늘의 질문">${esc(q.question || '')}</textarea>`)
       + fld('설명문', `<textarea class="f grow" rows="5" data-act="axis-question" data-f="guide"
         data-id="${l.id}" aria-label="질문 설명문">${esc(q.guide || '')}</textarea>`);
+  }
+
+  if (ax.edit === 'closing'){
+    // 맺음말: 슬라이드엔 'NEXT CLASS'가 고정으로 뜨고(편집 불가), 여기서 고치는 것은 그 아래 다음 학습 주제뿐이다
+    const d = M.getDeck(l.id);
+    return fld('다음 학습 주제', `<input class="f grow" data-act="deck-closing" data-id="${l.id}"
+        value="${esc(d.closing.nextTopic || '')}" aria-label="다음 학습 주제">`);
   }
 
   const items = M.getDeck(l.id)[k]?.items || [];
@@ -2991,6 +2998,8 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setQuestion(el.dataset.id, { [el.dataset.f]: el.value });
   } else if (el.dataset.act === 'deck-cover'){   // 축 편집기 표지: 학습 주제, 단원, 교과서 쪽수
     M.deckSetCover(el.dataset.id, { [el.dataset.f]: el.value });
+  } else if (el.dataset.act === 'deck-closing'){   // 맺음말: 다음 학습 주제
+    M.deckSetClosingTopic(el.dataset.id, el.value);
   } else if (el.dataset.act === 'axis-lesson'){   // 축 편집기: 강의 고르기 드롭다운
     state.conceptLessonId = el.value; render();
   } else if (el.dataset.act === 'deck-set'){

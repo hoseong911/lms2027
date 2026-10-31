@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031j';
+import { SLIDE_AXIS, normalizeDeck, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031k';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -139,8 +139,9 @@ export function buildSlides(lesson, no){
         guide:String(lesson.parts?.question?.guide || '').trim() });
 
     } else if (ax.key === 'closing'){
-      const items = lines('closing');
-      if (items.length) push('closing', { type:'closing', items });
+      // 맺음말: 'NEXT CLASS'(슬라이드에 고정) + 다음 학습 주제. 주제가 있어야 쪽이 선다
+      const nextTopic = String(deck.closing?.nextTopic || '').trim();
+      if (nextTopic) push('closing', { type:'closing', nextTopic });
     }
   });
   return out;
@@ -413,9 +414,16 @@ export function renderSlide(s){
       <div class="qbig">${inlineText(s.question)}</div>
       ${s.guide ? `<div class="qguide">${inlineText(s.guide)}</div>` : ''}</div>`;
 
+  /* 맺음말: 표지·학습목표처럼 다크 자립 블록, 배지 없음(선생님 지시 2026-10-31).
+     'NEXT CLASS'는 필기체로 고정, 그 아래에 다음 학습 주제(어드민에서 고친 nextTopic)가 선다. */
   if (s.type === 'closing')
-    return `${mark}<div class="s-body s-close">${s.items.map(t =>
-      `<div class="cline">${inlineText(t)}</div>`).join('')}</div>`;
+    return `<div class="s-close">
+      <div class="intro-sweep"></div>
+      <div class="close-fg">
+        <div class="close-next">NEXT CLASS</div>
+        <div class="close-topic">${inlineText(s.nextTopic)}</div>
+      </div>
+    </div>`;
 
   return mark;
 }

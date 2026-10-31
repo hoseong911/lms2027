@@ -22,7 +22,7 @@
  * 슬라이드 제목도 같이 바뀐다.
  *
  * edit 는 어드민 편집기가 그 단계를 어떤 칸으로 그릴지다(admin.js의 deckStepEditor).
- *   cover 표지 메타 / qa 문답 / lines 줄 목록 / preview 사진과 영상 / pages 페이지 / question 읽기만
+ *   cover 표지 메타 / qa 문답 / lines 줄 목록(학습 목표) / preview 사진과 영상 / pages 페이지 / question 읽기만 / closing 다음 학습 주제
  * 개념 노트와 미션 활동은 둘 다 pages다(2026 편집기가 둘을 같은 틀로 고쳤다).
  */
 export const SLIDE_AXIS = [
@@ -33,7 +33,7 @@ export const SLIDE_AXIS = [
   { key:'concept',   name:'개념 노트',     edit:'pages',    from:'concept' },
   { key:'mission',   name:'미션 활동',     edit:'pages',    from:'mission' },
   { key:'question',  name:'오늘의 질문',   edit:'question', from:'question' },
-  { key:'closing',   name:'맺음말',        edit:'lines',    from:null },
+  { key:'closing',   name:'맺음말',        edit:'closing',  from:null },
 ];
 export const AXIS_ORDER = SLIDE_AXIS.map(s => s.key);
 export function axisStep(key){ return SLIDE_AXIS.find(s => s.key === key) || null; }
@@ -149,7 +149,7 @@ export function blankDeck(){
     objective: { items:[] },            // ['목표 한 줄', ...]
     hook:      { items:[] },            // [{ kind:'image'|'video', url, caption }]
     mission:   { content:[] },          // 개념 노트와 같은 페이지 모양(아래 toPages)
-    closing:   { items:[] },            // ['맺음말 한 줄', ...]
+    closing:   { items:[], nextTopic:'' },  // 맺음말: 'NEXT CLASS'(필기체 고정) + 다음 학습 주제(nextTopic)
   };
 }
 
@@ -179,6 +179,8 @@ export function normalizeDeck(lesson){
     ms.content = old.length ? [{ type:'divider', title:'' }, { type:'row', label:'', text:old.join('\n') }] : [];
   }
   delete ms.items;
+  // 맺음말: 'NEXT CLASS'(고정) 아래에 적는 다음 학습 주제. 옛 문서엔 없으니 빈 글자로 채운다
+  if (typeof lesson.deck.closing.nextTopic !== 'string') lesson.deck.closing.nextTopic = '';
   return lesson.deck;
 }
 

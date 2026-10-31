@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031j';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031k';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -981,9 +981,9 @@ export function setPages(lessonId, key, pages){
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
   ROW_TYPES, rowKind, convertRow, lessonBadge,
-  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031j';
+  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031k';
 import { slideDesignDefault as _sdDef, designVarsCss as _sdCss,
-  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031j';
+  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031k';
 
 /* 슬라이드 글자 크기 설정(디자인 탭, 전체 공통). 기본값 위에 관리자가 고친 값을 얹어 돌려준다.
    슬라이드에 걸 CSS는 designCss()가 만든다(슬라이드 문서가 <style>로 끼운다). */
@@ -1022,6 +1022,11 @@ export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 export function deckSetCover(lessonId, patch){
   const d = getDeck(lessonId); if (!d) return;
   Object.assign(d.cover, patch); saveLesson(lessonId);
+}
+// 맺음말의 다음 학습 주제('NEXT CLASS' 아래에 뜨는 글). 'NEXT CLASS'는 슬라이드에 고정이라 안 저장한다
+export function deckSetClosingTopic(lessonId, topic){
+  const d = getDeck(lessonId); if (!d) return;
+  d.closing.nextTopic = String(topic ?? ''); saveLesson(lessonId);
 }
 
 /* 단계 안의 줄을 더하고 고치고 옮기고 지운다. 줄의 모양이 단계마다 달라서(글자 하나,
@@ -1097,6 +1102,7 @@ export function deckStepFilled(lessonId, key){
   const d = getDeck(lessonId);
   if (key === 'mission') return pageFilled(d.mission.content)
     || !!String(l.parts?.mission?.title || '').trim();
+  if (key === 'closing') return !!String(d.closing?.nextTopic || '').trim();   // 맺음말 = 다음 학습 주제
   const arr = d[key]?.items || [];
   if (key === 'review') return arr.some(it => String(it?.q || '').trim());
   if (key === 'hook')   return arr.some(it => String(it?.url || '').trim());
@@ -1133,6 +1139,7 @@ function stepHasContent(lessonId, key){
   if (key === 'concept')  return pageFilled(l.parts?.concept?.content);
   if (key === 'mission')  return pageFilled(d.mission.content);
   if (key === 'question') return false;              // 다른 메뉴 소유라 비우지 않는다
+  if (key === 'closing')  return !!String(d.closing?.nextTopic || '').trim();   // 맺음말 = 다음 학습 주제
   const arr = d[key]?.items || [];
   if (key === 'review') return arr.some(it => String(it?.q || '').trim());
   if (key === 'hook')   return arr.some(it => String(it?.url || '').trim());

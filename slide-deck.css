@@ -309,10 +309,19 @@
   padding:calc(var(--px) * 24) calc(var(--px) * 34);
   box-shadow:0 calc(var(--px) * 6) calc(var(--px) * 22) rgba(4,30,66,.08)}
 
-/* ── 맺음말 ── 가운데로 모은다. 본문 55에 굵게 */
-.deckpage .s-close{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:calc(var(--px) * 30);text-align:center}
-.deckpage .cline{font-size:var(--sfs);font-weight:700;letter-spacing:-.03em}
+/* ── 맺음말 ── 표지·학습목표와 같은 다크 자립 블록, 배지 없음(선생님 지시 2026-10-31).
+   'NEXT CLASS'는 필기체(Great Vibes)로 고정, 그 아래에 다음 학습 주제가 선다. */
+.deckpage .s-close{position:absolute;inset:0;z-index:1;overflow:hidden;color:#F4F1E8;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(120% 120% at 50% 40%, #1a2130 0%, #12151C 55%, #0b0d12 100%)}
+.deckpage .s-close::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
+.deckpage .close-fg{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--px) * 20);padding:0 calc(var(--px) * 96)}
+.deckpage .close-next{font-family:'Great Vibes', var(--cover-serif);font-weight:400;color:var(--red);
+  font-size:calc(var(--px) * 150);line-height:1;letter-spacing:.02em}
+.deckpage .close-topic{font-family:var(--title-font);font-weight:700;font-size:calc(var(--px) * 64);
+  line-height:1.3;word-break:keep-all}
 
 /* ── 사료, 글자료 쪽 (선생님 지시 2026-10-30) ──
    "제목 내용만 중앙정렬로 위에 띄운 다음 내용이 나오면 되고, 세리프체로 하고 좌측 상단 우측 하단에
@@ -343,8 +352,8 @@
 .deckpage .cover-num{letter-spacing:var(--ls-cover-num, -.03em);line-height:var(--lh-cover-num, 1)}
 .deckpage .obj-text{letter-spacing:var(--ls-obj, inherit);line-height:var(--lh-obj, 1.6)}
 .deckpage .obj-num{letter-spacing:var(--ls-objnum, inherit);line-height:var(--lh-objnum, .82)}
-.deckpage .s-head{letter-spacing:var(--ls-title, -.03em);line-height:var(--lh-title, 1.3)}
-.deckpage .s-badge{letter-spacing:var(--ls-title, -.02em);line-height:var(--lh-title, 1.3)}
+.deckpage .s-head{letter-spacing:var(--ls-title, -.03em);line-height:var(--lh-title, 1.2)}
+.deckpage .s-badge{letter-spacing:var(--ls-title, -.02em);line-height:var(--lh-title, 1.2)}
 .deckpage .plines{letter-spacing:var(--ls-body, inherit);line-height:var(--lh-body, inherit)}
 .deckpage .cmp-head{letter-spacing:var(--ls-cmphead, inherit);line-height:var(--lh-cmphead, inherit)}
 .deckpage .cmp-body{letter-spacing:var(--ls-cmpbody, inherit);line-height:var(--lh-cmpbody, inherit)}
