@@ -22,14 +22,14 @@
  * 슬라이드 제목도 같이 바뀐다.
  *
  * edit 는 어드민 편집기가 그 단계를 어떤 칸으로 그릴지다(admin.js의 deckStepEditor).
- *   cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / pages 페이지 / question 읽기만
+ *   cover 표지 메타 / qa 문답 / lines 줄 목록 / preview 사진과 영상 / pages 페이지 / question 읽기만
  * 개념 노트와 미션 활동은 둘 다 pages다(2026 편집기가 둘을 같은 틀로 고쳤다).
  */
 export const SLIDE_AXIS = [
   { key:'cover',     name:'표지',         edit:'cover',    from:null },
   { key:'review',    name:'전시학습확인',  edit:'qa',       from:null },
   { key:'objective', name:'학습 목표',     edit:'lines',    from:null },
-  { key:'hook',      name:'동기 유발',     edit:'media',    from:null },
+  { key:'hook',      name:'동기 유발',     edit:'preview',    from:null },
   { key:'concept',   name:'개념 노트',     edit:'pages',    from:'concept' },
   { key:'mission',   name:'미션 활동',     edit:'pages',    from:'mission' },
   { key:'question',  name:'오늘의 질문',   edit:'question', from:'question' },

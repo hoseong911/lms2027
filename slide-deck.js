@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031g';
+import { SLIDE_AXIS, normalizeDeck, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031h';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -116,7 +116,7 @@ export function buildSlides(lesson, no){
       // 사진과 영상은 한 쪽에 하나다: 교실 화면에 띄우는 것이라 크게 봐야 한다
       (deck.hook?.items || []).forEach(it => {
         if (String(it?.url || '').trim())
-          push('hook', { type:'media', kind:it.kind === 'video' ? 'video' : 'image',
+          push('hook', { type:'preview', kind:it.kind === 'video' ? 'video' : 'image',
             url:it.url, caption:it.caption || '' });
       });
 
@@ -353,17 +353,17 @@ export function renderSlide(s){
 
   /* 동기 유발(사진, 영상): 표지·학습목표·전시학습확인과 같은 다크 톤의 자립 블록이다
      (선생님 지시 2026-10-31: 다크로, 레터박스까지, 배지는 없앤다). 배지 없이 사진/영상만 크게 띄운다. */
-  if (s.type === 'media'){
+  if (s.type === 'preview'){
     const yt = s.kind === 'video' ? youTube(s.url) : null;
     const frame = yt
       ? `<iframe src="https://www.youtube-nocookie.com/embed/${esc(yt.id)}?rel=0${yt.start ? '&start=' + yt.start : ''}"
            title="영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
            allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`
       : `<img src="${esc(s.url)}" alt="${esc(s.caption || '')}" loading="lazy">`;
-    return `<div class="s-media">
+    return `<div class="s-preview">
       <div class="intro-sweep"></div>
-      <div class="mframe ${s.kind === 'video' ? 'vid' : 'img'}">${frame}</div>
-      ${s.caption ? `<div class="mcap">${inlineText(s.caption)}</div>` : ''}</div>`;
+      <div class="pvframe ${s.kind === 'video' ? 'vid' : 'img'}">${frame}</div>
+      ${s.caption ? `<div class="pvcap">${inlineText(s.caption)}</div>` : ''}</div>`;
   }
 
   /* 개념 노트, 미션 활동의 페이지. 묶음마다 라벨이 위에, 내용 줄이 그 아래에 선다

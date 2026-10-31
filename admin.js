@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031j';
+import * as M from './model.js?v=20261031k';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031k';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031l';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1369,7 +1369,7 @@ function axisRail(l){
 }
 
 /* 단계 하나를 고치는 칸. 어떤 칸을 그릴지는 축 정의의 edit가 정한다
-   (cover 표지 메타 / qa 문답 / lines 줄 목록 / media 사진과 영상 / pages 페이지 / question 읽기만). */
+   (cover 표지 메타 / qa 문답 / lines 줄 목록 / preview 사진과 영상 / pages 페이지 / question 읽기만). */
 function axisEditor(l, ax){
   const k = ax.key;
 
@@ -1469,7 +1469,7 @@ function axisEditor(l, ax){
         ${qCards}</div>`;
     }).join('');
 
-  } else if (ax.edit === 'media'){
+  } else if (ax.edit === 'preview'){
     // 동기 유발: 사진이면 그림 주소, 영상이면 유튜브 주소. 한 쪽에 하나씩 뜬다
     rows = items.map((it, i) => {
       const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
