@@ -300,18 +300,9 @@ export function renderSlide(s){
     </div>`;
   }
 
-  /* 전시학습확인: 문항 유형 셋(단답형, 진위형, 초성형. 선생님 지시 2026-10-30).
-     유형이 가르는 것은 "학생이 어떻게 답하는가"라서 답 칸의 모양만 다르다.
-       진위형 : O와 X 두 칸이 처음부터 서 있고(답하는 꼴이라서), 정답인 쪽이 나중에 켜진다
-       그 밖  : 답 칸이 처음에는 아예 보이지 않다가 나중에 나타난다
-     답은 슬라이드 애니메이션처럼 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘. 답은 내가
-     화살표 버튼으로 조작하거나 페이지 업다운으로 조작할때 나오게"). 답 하나가 한 단계(data-step)이고
-     넘기기를 누를 때마다 위에서부터 하나씩 나온다. 다루는 것은 아래 stepForward, stepBack.
-     글배치: 묻는 줄은 번호와 유형 이름표를 머리에 두고, 답은 묻는 줄 밑으로 들여 쓴다.
-     번호 칸 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가 가지런하다. */
   /* 전시학습확인: 학습 목표와 같은 다크 톤(선생님 지시 2026-10-31: "톤을 학습목표랑 같이 맞춰줘").
-     쪽 전체를 덮는 자립 블록(.s-qa)이라 배지("지난 시간에는?")도 그 안에서 다크로 선다.
-     글배치: 번호 + 물음은 한 줄 왼쪽, 답은 그 줄 오른쪽.
+     쪽 전체를 덮는 자립 블록(.s-qa)이라 배지("지난 시간에는?")와 그 옆 제목("지난 시간 복습하기")도
+     그 안에서 다크로 선다(선생님 지시 2026-10-31: 배지 옆에 제목). 글배치: 번호 + 물음은 한 줄 왼쪽, 답은 오른쪽.
        진위형 : O와 X 두 칸이 오른쪽에 서 있고, 답이 나올 때 정답 쪽이 켜진다
        단답형 : 답 알약이 오른쪽에 나온다(눌러야 보인다)
        초성형 : 물음 글 안의 초성(ㅁㅇㅅㅎ) 자리를 답이 덮는다(splitChosung). 오른쪽 별도 답은 없다
@@ -320,7 +311,7 @@ export function renderSlide(s){
     const base = s.startNum || 0;
     return `<div class="s-qa">
       <div class="intro-sweep"></div>
-      <div class="qa-badge">지난 시간에는?</div>
+      <div class="qa-top"><span class="qa-badge">지난 시간에는?</span><h2 class="qa-title">지난 시간 복습하기</h2></div>
       <div class="qa-list">${s.items.map((it, i) => {
         const ans = String(it.a || '').trim();
         let qHtml = inlineText(it.q), slot = '';
@@ -360,6 +351,8 @@ export function renderSlide(s){
           <span class="obj-text">${inlineText(t)}</span></div>`).join('')}</div>
     </div>`;
 
+  /* 동기 유발(사진, 영상): 표지·학습목표·전시학습확인과 같은 다크 톤의 자립 블록이다
+     (선생님 지시 2026-10-31: 다크로, 레터박스까지, 배지는 없앤다). 배지 없이 사진/영상만 크게 띄운다. */
   if (s.type === 'media'){
     const yt = s.kind === 'video' ? youTube(s.url) : null;
     const frame = yt
@@ -367,7 +360,8 @@ export function renderSlide(s){
            title="영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
            allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`
       : `<img src="${esc(s.url)}" alt="${esc(s.caption || '')}" loading="lazy">`;
-    return `${mark}<div class="s-body s-media">
+    return `<div class="s-media">
+      <div class="intro-sweep"></div>
       <div class="mframe ${s.kind === 'video' ? 'vid' : 'img'}">${frame}</div>
       ${s.caption ? `<div class="mcap">${inlineText(s.caption)}</div>` : ''}</div>`;
   }
