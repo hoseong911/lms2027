@@ -252,17 +252,22 @@ export function renderSlide(s){
   const mark = top('');
 
   if (s.type === 'cover'){
-    // 강의 번호표: 강의에 적은 번호/라벨(s.num)을 먼저 쓰고(1→1강, OT→[OT]), 없으면 연결 순서(s.no)
+    /* 표지: 2026 LMS의 무빙 포스터를 가져왔다(선생님 지시 2026-10-31: 색 빼고 디자인 차용).
+       다크 바탕에 빛이 쓸고 지나가고, 강 번호는 오른쪽 위, 학습 주제가 태그라인, 강의 제목이 크게,
+       단원과 쪽수가 맨 아래. 색은 HOCLASS 테마(레드 강조)를 쓴다. */
     const no = s.num ? lessonBadge(s.num)
       : (s.no != null && String(s.no).trim() !== '' ? `${esc(s.no)}강` : '');
     const meta = [s.unit, s.pages && `교과서 ${s.pages}`].filter(Boolean).map(esc);
-    // 학습 주제는 제목과 다를 때만 부제로 세운다(강의 이름을 주제로 지으면 겹쳐 보이지 않게)
-    const sub = s.topic && s.topic !== s.title ? s.topic : '';
+    // 학습 주제는 제목과 다를 때만 태그라인으로(강의 이름을 주제로 지으면 겹쳐 보이지 않게)
+    const tagline = s.topic && s.topic !== s.title ? s.topic : '';
     return `<div class="s-cover">
-      ${no ? `<div class="s-no">${no}</div>` : ''}
-      <h1 class="s-title">${esc(s.title)}</h1>
-      ${sub ? `<div class="s-sub">${esc(sub)}</div>` : ''}
-      ${meta.length ? `<div class="s-meta">${meta.join('<span class="s-dot"></span>')}</div>` : ''}
+      <div class="intro-sweep"></div>
+      ${no ? `<div class="cover-num">${esc(no)}</div>` : ''}
+      <div class="cover-fg">
+        ${tagline ? `<div class="cover-tagline">${esc(tagline)}</div>` : ''}
+        <h1 class="cover-title">${esc(s.title)}</h1>
+        ${meta.length ? `<div class="cover-meta">${meta.join('<span class="cover-dot"></span>')}</div>` : ''}
+      </div>
     </div>`;
   }
 

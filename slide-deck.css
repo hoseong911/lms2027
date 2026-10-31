@@ -35,6 +35,10 @@
   /* 사료와 글자료 본문: 세리프체 50px("나중에 디자인 전면 수정하면서 다 크기 조정할거임") */
   --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
   --srcfs: calc(var(--px) * 50);
+  /* 2026 LMS 차용(선생님 지시 2026-10-31): 제목은 Paperlogy(없으면 Pretendard 폴백),
+     표지 태그라인/메타는 Gowun Batang 세리프. Gowun Batang/Great Vibes는 슬라이드 문서가 링크로 받는다 */
+  --title-font: 'Paperlogy', var(--font);
+  --cover-serif: 'Gowun Batang', 'Noto Serif KR', serif;
   /* 기본 줄간격 1.8(선생님 지시 2026-10-30). 본문은 이 값을 물려받는다. 제목들만 더 촘촘하게 따로 준다 */
   line-height:1.8;
   position:relative;width:100%;height:100%;background:#fff;color:var(--navy);
@@ -63,19 +67,32 @@
   font-size:var(--tfs);font-weight:800;line-height:1.3;letter-spacing:-.02em;
   padding:calc(var(--px) * 6) calc(var(--px) * 20);white-space:nowrap}
 
-/* ── 표지 ── 가운데로 모은다. 강 번호와 단원, 쪽수 줄도 본문 크기(55)이고
-   강의 제목은 그보다 확실히 크게(100) 둔다 */
-.deckpage .s-cover{text-align:center;margin:auto}
-.deckpage .s-no{font-size:var(--sfs);font-weight:700;color:var(--red);
-  letter-spacing:.1em;margin-bottom:calc(var(--px) * 24)}
-.deckpage .s-title{font-size:calc(var(--px) * 100);font-weight:800;margin:0;line-height:1.25;
-  letter-spacing:-.03em}
-.deckpage .s-sub{font-size:calc(var(--px) * 40);font-weight:600;color:var(--sub);
-  margin-top:calc(var(--px) * 20);line-height:1.3}
-.deckpage .s-meta{display:flex;align-items:center;justify-content:center;gap:calc(var(--px) * 24);
-  margin-top:calc(var(--px) * 40);font-size:var(--sfs);color:var(--sub)}
-.deckpage .s-dot{width:calc(var(--px) * 10);height:calc(var(--px) * 10);background:var(--line-strong);
-  display:block;flex:0 0 auto}
+/* ── 표지: 다크 무빙 포스터 (2026 LMS 차용, 선생님 지시 2026-10-31. 색만 HOCLASS 테마로) ──
+   표지 쪽은 흰 바탕을 덮고 어둡게 깔린다(인트로 다크, 본문은 밝은 톤). 빛(intro-sweep)이 천천히
+   쓸고 지나가고, 강 번호는 오른쪽 위에 레드로, 학습 주제가 태그라인, 강의 제목이 크게 선다.
+   글자 크기는 --fs-cover-* 변수다(없으면 아래 기본값). 디자인 탭이 이 변수를 덮어쓴다. */
+.deckpage .s-cover{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;overflow:hidden;
+  padding:0 calc(var(--px) * 96);color:#F4F1E8;
+  background:radial-gradient(120% 120% at 50% 40%, #1a2130 0%, #12151C 55%, #0b0d12 100%)}
+.deckpage .s-cover::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
+.deckpage .s-cover .intro-sweep{position:absolute;inset:-25% -45%;z-index:1;pointer-events:none;
+  mix-blend-mode:screen;opacity:.5;animation:introSweep 8s ease-in-out infinite;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--red) 42%, transparent) 0%, transparent 72%)}
+@keyframes introSweep{0%{transform:translate(-42%,-8%)}50%{transform:translate(45%,10%)}100%{transform:translate(-42%,-8%)}}
+.deckpage .cover-num{position:absolute;top:calc(var(--px) * 70);right:calc(var(--px) * 90);z-index:3;
+  font-family:var(--title-font);font-weight:900;font-size:var(--fs-cover-num, calc(var(--px) * 100));
+  line-height:1;color:var(--red);letter-spacing:-.03em}
+.deckpage .cover-fg{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center}
+.deckpage .cover-tagline{font-family:var(--cover-serif);font-size:var(--fs-cover-tagline, calc(var(--px) * 44));
+  letter-spacing:.04em;opacity:.72;margin-bottom:calc(var(--px) * 34)}
+.deckpage .cover-title{font-family:var(--title-font);font-weight:900;margin:0;word-break:keep-all;
+  font-size:var(--fs-cover-title, calc(var(--px) * 120));line-height:1.08;letter-spacing:-.01em}
+.deckpage .cover-meta{font-family:var(--cover-serif);font-size:var(--fs-cover-meta, calc(var(--px) * 40));
+  opacity:.56;margin-top:calc(var(--px) * 40);display:flex;align-items:center;justify-content:center;gap:calc(var(--px) * 22)}
+.deckpage .cover-dot{width:calc(var(--px) * 8);height:calc(var(--px) * 8);border-radius:50%;
+  background:currentColor;opacity:.6;display:block;flex:0 0 auto}
 
 /* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다. 크기는 배지와 같다(--tfs) */
 .deckpage .s-head{flex:1;min-width:0;font-size:var(--tfs);font-weight:800;margin:0;
