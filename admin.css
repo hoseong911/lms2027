@@ -674,7 +674,7 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
 .rvpage{border:1px solid var(--line);border-radius:8px;padding:6px 12px 10px;margin-bottom:12px}
 .rvpage-head{display:flex;align-items:center;gap:9px;min-height:var(--h-ctl);
   border-bottom:1px solid var(--line);margin-bottom:4px}
-.rvpage-title{font-size:14px;font-weight:700;color:var(--navy)}
+.rvpage-title{font-size:var(--fs-body);font-weight:700;color:var(--navy)}
 .rvpage .axitem:first-child{border-top:0}
 /* 유형과 종류 고르개는 칸을 다 채우지 않는다: 짧은 낱말이라 길면 읽기가 더 힘들다 */
 .axtype{width:130px;flex:0 0 auto}
