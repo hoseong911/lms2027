@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031l';
+import * as M from './model.js?v=20261031m';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031m';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031n';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1193,7 +1193,7 @@ function pageConcept(){
    큰 미리보기(위) + 조절(아래). 슬라이드 종류를 ◀▶로 넘기면 그 종류에 맞는 요소만 뜬다.
      - 전체(global): 자간·줄간격. 요소가 미설정이면 이 값을 상속한다.
      - 요소별: 크기·자간·줄간격. 개별로 바꾸면 그 요소만. 전체를 다시 움직이면 전체값이 다시 먹는다.
-   크기·자간은 1080 기준 px(쪽 크기에 맞춰 함께 커진다), 줄간격은 배수(글자 크기의 몇 배).
+   크기·자간은 pt(한글·워드와 같은 단위. 1pt=2 design-px, 쪽 크기에 맞춰 함께 커진다), 줄간격은 배수(글자 크기의 몇 배).
    미리보기는 1920×1080 고정 렌더 + transform:scale로 축소 → 실제 투사와 분량이 같다(wireDesignStage).
    미리보기 쪽은 종류별 대표 샘플이다(설정이 전체 공통이라 특정 강의에 매이지 않는다). */
 // 종류별 대표 샘플 쪽(디자인 미리보기 전용). 그 종류가 조절하는 요소가 다 보이게 짰다.
@@ -1211,7 +1211,7 @@ function designSampleSlide(g){
     '1. 설립 : 16C 이후 발달','- 유입 : 성리학이 전래됨','· 안향이 소개','- 서적 편찬','· 소학'] }] };
 }
 // 슬라이더 한 줄. set=true면 개별값(검정), false면 전체값을 따르는 중(파랑 숫자)
-function dsSlider(act, k, label, val, min, max, set, unit = 'px', step = 1){
+function dsSlider(act, k, label, val, min, max, set, unit = 'pt', step = 1){
   return `<div class="ds-ctl"><label>${label}</label>`
     + `<input type="range" data-act="${act}" data-k="${k}" data-set="${set ? 1 : 0}" min="${min}" max="${max}" step="${step}" value="${val}">`
     + `<span class="ds-v${set ? '' : ' g'}">${val}${unit}</span></div>`;
@@ -3038,11 +3038,11 @@ document.getElementById('shell').addEventListener('input', e => {
     // 자간/줄간격 요소를 움직이면 그 요소는 개별값(set=1)이 된다
     if (dsa === 'ds-ls' || dsa === 'ds-lh') t.dataset.set = '1';
     // 전체를 움직이면 그 축의 요소 개별값을 풀어(set=0) 전체값에 맞춘다(미리보기도 전체 우선)
-    // 줄간격은 배수라 단위가 '배', 나머지(크기·자간)는 'px'
-    const unitOf = (act, key) => (act === 'ds-lh' || (act === 'ds-g' && key === M.SLIDE_DESIGN_GLOBAL.lh.key)) ? '배' : 'px';
+    // 줄간격은 배수라 단위가 '배', 나머지(크기·자간)는 'pt'
+    const unitOf = (act, key) => (act === 'ds-lh' || (act === 'ds-g' && key === M.SLIDE_DESIGN_GLOBAL.lh.key)) ? '배' : 'pt';
     if (dsa === 'ds-g'){
       const axisAct = t.dataset.k === M.SLIDE_DESIGN_GLOBAL.ls.key ? 'ds-ls' : 'ds-lh';
-      const u = axisAct === 'ds-lh' ? '배' : 'px';
+      const u = axisAct === 'ds-lh' ? '배' : 'pt';
       document.querySelectorAll(`[data-act="${axisAct}"]`).forEach(s => {
         s.dataset.set = '0'; s.value = t.value;
         const v = s.parentElement.querySelector('.ds-v'); if (v){ v.textContent = t.value + u; v.classList.add('g'); }

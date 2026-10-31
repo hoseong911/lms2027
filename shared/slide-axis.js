@@ -49,14 +49,15 @@ export function lessonBadge(num){
 
 /* ══ 슬라이드 디자인 설정 (디자인 탭, 선생님 지시 2026-10-31) ══════════════
  * 전체 공통(강의 무관) 설정이다. 값은 1080 높이 기준 px. slide-deck.css의 --fs- / --ls- / --lh- 기본값을 덮어쓴다.
- * 요소마다 크기(fs)·자간(ls)·줄간격(lh) 셋을 조절한다. 크기·자간은 1080 기준 px(--px를 곱해 쪽
- * 크기에 맞춰 함께 커진다), 줄간격은 배수다(글자 크기의 몇 배. 선생님 지시 2026-10-31: 줄간격만 배수로).
+ * 요소마다 크기(fs)·자간(ls)·줄간격(lh) 셋을 조절한다. 크기·자간은 pt(한글·워드와 같은 단위.
+ * 1pt=2 design-px, 쪽 높이 1080=540pt. --px를 곱해 쪽 크기에 맞춰 함께 커진다), 줄간격은 배수다
+ * (글자 크기의 몇 배. 선생님 지시 2026-10-31: 크기·자간은 pt, 줄간격은 배수).
  *   저장 키: 크기=key, 자간=key+'Ls', 줄간격=key+'Lh'.
  * 자간·줄간격은 "전체(global)"가 기본이라 요소값이 없으면(미설정) 쪽 전체값(gLs/gLh)을 그대로 상속한다.
  *   그래서 요소를 건드리지 않은 학생 화면은 slide-deck.css의 후크 기본값(현재 모양) 그대로다.
  * 적용은 designVarsCss가 만든 한 줄 CSS(.deckpage{…})를 슬라이드 문서가 <style>로 끼운다.
  * 어드민 디자인 탭과 슬라이드가 이 한 곳을 같이 본다(스펙이 어긋나지 않게). */
-export const SLIDE_DESIGN_LS = { min:-8, max:14 };     // 자간 px 범위
+export const SLIDE_DESIGN_LS = { min:-4, max:7 };      // 자간 pt 범위(크기와 같은 pt 단위)
 export const SLIDE_DESIGN_LH = { min:1, max:2.5, step:0.1 };  // 줄간격은 배수(글자 크기의 몇 배). px 아님
 /* 전체(global): 모든 슬라이드 공통 자간·줄간격. 기본값은 지금 모양(자간 0px, 줄간격 1.8배)과 같다.
    자간은 px, 줄간격은 배수다(선생님 지시 2026-10-31: 줄간격만 픽셀이 헷갈리니 배수로). */
@@ -66,31 +67,33 @@ export const SLIDE_DESIGN_GLOBAL = {
 };
 // 요소 한 줄: 크기 변수(cssVar)+기본/범위, 자간 변수(lsVar), 줄간격 변수(lhVar)
 const E = (key, cssVar, label, def, min, max, lsVar, lhVar) => ({ key, cssVar, label, def, min, max, lsVar, lhVar });
+/* 크기는 pt다(한글·워드와 같은 단위. 선생님 지시 2026-10-31). 1pt = 2 design-px(쪽 높이 1080 = 540pt,
+   16:9 표준 슬라이드 높이). 값은 정수로 둔다(선생님이 다시 고른다). designVarsCss가 적용할 때 ×2 한다. */
 export const SLIDE_DESIGN = [
   { group:'표지', step:'cover', rows:[
-    E('coverTitle',   '--fs-cover-title',   '제목',      120, 40, 220, '--ls-cover-title',   '--lh-cover-title'),
-    E('coverTagline', '--fs-cover-tagline', '학습 주제',  44, 20,  90, '--ls-cover-tagline', '--lh-cover-tagline'),
-    E('coverMeta',    '--fs-cover-meta',    '단원/쪽수',  40, 20,  80, '--ls-cover-meta',    '--lh-cover-meta'),
-    E('coverNum',     '--fs-cover-num',     '강 번호',   100, 30, 200, '--ls-cover-num',     '--lh-cover-num'),
+    E('coverTitle',   '--fs-cover-title',   '제목',     60, 20, 110, '--ls-cover-title',   '--lh-cover-title'),
+    E('coverTagline', '--fs-cover-tagline', '학습 주제', 22, 10,  45, '--ls-cover-tagline', '--lh-cover-tagline'),
+    E('coverMeta',    '--fs-cover-meta',    '단원/쪽수', 20, 10,  40, '--ls-cover-meta',    '--lh-cover-meta'),
+    E('coverNum',     '--fs-cover-num',     '강 번호',   50, 15, 100, '--ls-cover-num',     '--lh-cover-num'),
   ]},
   { group:'학습 목표', step:'objective', rows:[
-    E('obj',    '--fs-obj',     '항목',     60, 24, 110, '--ls-obj',    '--lh-obj'),
-    E('objNum', '--fs-obj-num', '큰 번호', 130, 40, 240, '--ls-objnum', '--lh-objnum'),
+    E('obj',    '--fs-obj',     '항목',    30, 12, 55, '--ls-obj',    '--lh-obj'),
+    E('objNum', '--fs-obj-num', '큰 번호', 65, 20,120, '--ls-objnum', '--lh-objnum'),
   ]},
   { group:'공통(쪽 제목·본문)', step:'concept', rows:[
-    E('slideTitle', '--fs-slide-title', '쪽 제목·배지', 44, 20, 90, '--ls-title', '--lh-title'),
-    E('body',       '--fs-body',        '본문',         55, 24,100, '--ls-body',  '--lh-body'),
+    E('slideTitle', '--fs-slide-title', '쪽 제목·배지', 22, 10, 45, '--ls-title', '--lh-title'),
+    E('body',       '--fs-body',        '본문',         28, 12, 50, '--ls-body',  '--lh-body'),
   ]},
   { group:'비교표', step:null, rows:[
-    E('cmpHead', '--fs-cmp-head', '머리', 44, 20, 90, '--ls-cmphead', '--lh-cmphead'),
-    E('cmpBody', '--fs-cmp-body', '내용', 55, 24,100, '--ls-cmpbody', '--lh-cmpbody'),
+    E('cmpHead', '--fs-cmp-head', '머리', 22, 10, 45, '--ls-cmphead', '--lh-cmphead'),
+    E('cmpBody', '--fs-cmp-body', '내용', 28, 12, 50, '--ls-cmpbody', '--lh-cmpbody'),
   ]},
   { group:'사료 인용', step:null, rows:[
-    E('src', '--fs-src', '본문', 50, 24,100, '--ls-src', '--lh-src'),
+    E('src', '--fs-src', '본문', 25, 12, 50, '--ls-src', '--lh-src'),
   ]},
   { group:'오늘의 질문', step:'question', rows:[
-    E('question',   '--fs-question',    '질문',   66, 28,120, '--ls-question', '--lh-question'),
-    E('thinkGuide', '--fs-think-guide', '안내문', 55, 24,100, '--ls-guide',    '--lh-guide'),
+    E('question',   '--fs-question',    '질문',   33, 14, 60, '--ls-question', '--lh-question'),
+    E('thinkGuide', '--fs-think-guide', '안내문', 28, 12, 50, '--ls-guide',    '--lh-guide'),
   ]},
 ];
 export const SLIDE_DESIGN_ROWS = SLIDE_DESIGN.flatMap(g => g.rows);
@@ -105,17 +108,17 @@ export function slideDesignDefault(){
 /* 설정값을 슬라이드에 걸 CSS 한 줄로. 기본값과 같은 항목은 빼서 slide-deck.css 기본(현재 모양)을 그대로 둔다.
    자간·줄간격은 요소값이 있을 때만 변수를 낸다(없으면 후크의 inherit로 전체값을 따른다). */
 export function designVarsCss(values){
-  const v = values || {}, g = SLIDE_DESIGN_GLOBAL, px = n => `calc(var(--px) * ${n})`;
+  // 크기·자간은 pt라 1pt=2 design-px로 적용한다(--px 곱하기 값의 2배). 줄간격(lh)은 배수라 단위 없이 그대로.
+  // 4를 넘는 lh는 옛 px 설정 잔재라 건너뛴다(배수 범위 1~2.5 → 그러면 slide-deck.css의 배수 기본값이 선다).
+  const v = values || {}, g = SLIDE_DESIGN_GLOBAL, pt = n => `calc(var(--px) * ${n * 2})`;
   const decls = [];
-  // 줄간격(lh)은 배수라 단위 없이 그대로 쓴다. 크기(fs)·자간(ls)은 px(--px 곱). 4를 넘는 lh는 옛 px 설정이
-  // 남은 것이라 건너뛴다(배수 범위는 1~2.5. 그러면 slide-deck.css의 배수 기본값이 그대로 선다).
   const lhOK = x => x != null && +x <= 4;
   SLIDE_DESIGN_ROWS.forEach(r => {
-    if (v[r.key] != null && +v[r.key] !== r.def) decls.push(`${r.cssVar}:${px(+v[r.key])}`);
-    if (v[r.key + 'Ls'] != null) decls.push(`${r.lsVar}:${px(+v[r.key + 'Ls'])}`);
+    if (v[r.key] != null && +v[r.key] !== r.def) decls.push(`${r.cssVar}:${pt(+v[r.key])}`);
+    if (v[r.key + 'Ls'] != null) decls.push(`${r.lsVar}:${pt(+v[r.key + 'Ls'])}`);
     if (lhOK(v[r.key + 'Lh'])) decls.push(`${r.lhVar}:${+v[r.key + 'Lh']}`);
   });
-  if (v[g.ls.key] != null && +v[g.ls.key] !== g.ls.def) decls.push(`${g.ls.cssVar}:${px(+v[g.ls.key])}`);
+  if (v[g.ls.key] != null && +v[g.ls.key] !== g.ls.def) decls.push(`${g.ls.cssVar}:${pt(+v[g.ls.key])}`);
   if (lhOK(v[g.lh.key]) && +v[g.lh.key] !== g.lh.def) decls.push(`${g.lh.cssVar}:${+v[g.lh.key]}`);
   return decls.length ? `.deckpage{${decls.join(';')}}` : '';
 }
