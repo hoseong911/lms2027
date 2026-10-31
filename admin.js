@@ -6,8 +6,8 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031c';
-import { icon } from './shared/icons.js?v=20261031c';
+import * as M from './model.js?v=20261031d';
+import { icon } from './shared/icons.js?v=20261031d';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -331,7 +331,7 @@ function roomDetailCols(c){
   const lessonRows = lessons.length ? shown.map(({ x:cl, no }) => {
     const st = M.dateStatus(cl.date);
     return `<div class="row compact plrow">
-      <div class="plnum">${no}강</div>
+      <div class="plnum">${lnumPlain(cl.lesson, no)}</div>
       <div class="grow"><div class="t" title="${esc(cl.lesson?.title || '')}">${esc(cl.lesson?.title || '(삭제된 강의)')}</div></div>
       <input class="f dateinput ds-${st}" data-act="cl-date" data-id="${cl.id}" value="${esc(cl.date || '')}" inputmode="numeric" aria-label="수업일자">
       <button class="ib ib-sm ${cl.isOpen?'ib-primary':''}" data-act="cl-open" data-id="${cl.id}" title="${cl.isOpen?'공개 중 (누르면 숨김)':'숨김 (누르면 공개)'}" aria-label="공개 전환">${icon('eye',14)}</button>
@@ -496,7 +496,7 @@ function pageProgress(){
     }).join('');
     // 메모가 있으면 주제 칸에 마우스를 올릴 때 버블로 뜬다(data-memo, 아래 memo 버블).
     const row = `<tr>
-      <td class="pl-num">${li + 1}강</td>
+      <td class="pl-num">${lnumPlain(l, li + 1)}</td>
       <td class="lname" ${l.memo ? `data-memo="${esc(l.memo)}"` : ''}><span class="lname-in">
         <input class="f" data-act="prog-topic" data-lid="${l.id}" value="${esc(l.title)}" aria-label="주제">
         ${l.memo ? `<span class="memo-mark" aria-label="메모 있음">${icon('file-text',14)}</span>` : ''}</span></td>
@@ -789,7 +789,7 @@ function scoreLines(g){
     if (!rows.length) return head + `<div class="empty">미실시</div>`;
     const body = rows.map(r => {
       const v = r.areas[a.key];
-      return `<tr><td class="no">${r.no}강</td>` + (r.absent
+      return `<tr><td class="no">${lnumPlain(r, r.no)}</td>` + (r.absent
         ? `<td colspan="2"><span class="gnote bad">결석</span></td>`
         : `<td>${mark(v.achievedN, v.weight)}</td><td>${mark(v.onTimeN, v.weight)}</td>`) + `</tr>`;
     }).join('');
@@ -800,7 +800,7 @@ function scoreLines(g){
   const fb = g.rows.filter(r => r.feedback);
   if (!fb.length) return tables;
   return tables + `<div class="sectionlabel">피드백</div>` + fb.map(r => `<div class="row compact scvrow">
-      <div class="plnum">${r.no}강</div><div class="grow"><div class="s">${esc(r.feedback)}</div></div></div>`).join('');
+      <div class="plnum">${lnumPlain(r, r.no)}</div><div class="grow"><div class="s">${esc(r.feedback)}</div></div></div>`).join('');
 }
 
 /* 추가 팝업: 학년도 생성 / 강의실 생성을 한곳에 모았다(요구사항 5).
@@ -1078,6 +1078,9 @@ function lessonNo(l, no){
   if (b) return /^\d/.test(b) ? `${b}.` : b;
   return no != null ? `${no}강.` : '';
 }
+/* 번호 상자(제목 없이 번호만 서는 칸: 진도표 차수 칸, 강의실 상세 차수, 성적 행). 마침표 없이
+   "29강"/"[OT]"로. num 없으면 그 자리 차례(no)로 "N강"(진도·강의실은 연결 차례, 선생님 지시 2026-10-31). */
+function lnumPlain(l, no){ return M.lessonBadge(l?.num) || (no != null ? `${no}강` : ''); }
 
 // ── 강의 라이브러리 (개념 노트의 서브 메뉴, 선생님 지시 2026-10-28) ──
 function pageLessons(){
@@ -1498,7 +1501,7 @@ async function pickWorksheet(){
       const file = inp.files?.[0]; if (!file){ resolve(null); return; }
       toast('활동지에서 글자를 꺼내고 있습니다.');
       try {
-        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031c');
+        const { worksheetFromFile } = await import('./shared/worksheet.js?v=20261031d');
         resolve(await worksheetFromFile(file));
       } catch (e){ console.error(e); toast(e.message || '활동지를 읽지 못했습니다.'); resolve(null); }
     });

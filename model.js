@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031c';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031d';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -890,7 +890,7 @@ export function studentGrade(courseId, studentNo){
   const sum = {}; GRADE_AREAS.forEach(a => { sum[a.key] = { achieved:0, total:0 }; });
   const rows = cls.map((cl, i) => {
     const rec = gradeRec(cl.id, studentNo);
-    const row = { clId:cl.id, no:i + 1, title:cl.lesson?.title || '(삭제된 강의)',
+    const row = { clId:cl.id, no:i + 1, num:cl.lesson?.num || '', title:cl.lesson?.title || '(삭제된 강의)',
                   areas:{}, absent:!!rec.absent, feedback:rec.feedback || '' };
     GRADE_AREAS.forEach(a => {
       const w = partWeight(cl.lessonId, a.key);
@@ -959,7 +959,7 @@ export function setPages(lessonId, key, pages){
    어드민과 학생 화면은 M.SLIDE_AXIS로 쓴다(아래에서 그대로 다시 내보낸다). */
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
-  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031c';
+  ROW_TYPES, rowKind, convertRow, lessonBadge } from './shared/slide-axis.js?v=20261031d';
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }
 
