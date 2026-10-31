@@ -213,19 +213,23 @@ function itemHTML(it, dropNum){
   const contHTML = c => { const t = termOf(c);
     return t ? `<span class="pt"><span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}</span></span>`
       : inlineText(c); };
-  const under = it.cont.map(c => `<span class="pc">${contHTML(c)}</span>`).join('')
-    + it.kids.map(k => itemHTML(k, dropNum)).join('');
+  // 이어지는 줄(.pc)은 내용칸(.pv) 안에 남겨 내어쓰기를 살리고, 한 수준 낮은 항목(kids)은 .pv 밖으로
+  // 빼 .pkids 블록으로 내린다. 그래야 자식 기호가 부모 내용 시작선이 아니라 소제목 시작선 아래로 온다(안 A).
+  const contPart = it.cont.map(c => `<span class="pc">${contHTML(c)}</span>`).join('');
+  const kidsPart = it.kids.map(k => itemHTML(k, dropNum)).join('');
+  const kids = kidsPart ? `<span class="pkids">${kidsPart}</span>` : '';
   const t = termOf(it.body);
   const heading = !t && (it.cont.length || it.kids.length) && it.body.length <= 15;
   /* heading: 쌍점 없는 소제목("1. 서적 편찬")에 한 수준 낮은 항목이 달린 것. 소제목을 제 줄에 세우고
      하위 항목은 그 아래로 내린다(pt-head). 쌍점이 있는 묶음("설립 : 내용")만 소제목과 내용이 한 줄이다. */
   const pt = t
-    ? `<span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}${under}</span>`
+    ? `<span class="pk">${inlineText(t.term)}</span><span class="pv">${inlineText(t.text)}${contPart}</span>${kids}`
     : heading
-      ? `<span class="pk pk-head">${inlineText(it.body)}</span><span class="pv pv-head">${under}</span>`
-      : `<span class="pv">${inlineText(it.body)}${under}</span>`;
+      ? `<span class="pk pk-head">${inlineText(it.body)}</span>${contPart ? `<span class="pv pv-head">${contPart}</span>` : ''}${kids}`
+      : `<span class="pv">${inlineText(it.body)}${contPart}</span>${kids}`;
   const mark = it.lv && !(dropNum && it.lv === 1);
-  return `<div class="pl lv${it.lv}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}<span class="pt${heading ? ' pt-head' : ''}">${pt}</span></div>`;
+  // 번호를 뗀 lv1(.nomark)은 자식을 한 글자 들여 대시가 소제목 2번째 글자 아래로 오게 한다(slide-deck.css).
+  return `<div class="pl lv${it.lv}${mark ? '' : ' nomark'}">${mark ? `<span class="pm">${esc(it.mark)}</span>` : ''}<span class="pt${heading ? ' pt-head' : ''}">${pt}</span></div>`;
 }
 
 /* 내용 줄을 그린다. 단계는 줄 앞 기호가 정한다(1. 1단계, - 2단계, · 3단계. slide-axis.js의 lineLevel).
