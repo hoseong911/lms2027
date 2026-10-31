@@ -258,13 +258,16 @@
 .deckpage .qa-ini{position:relative;display:inline-flex;align-items:center;justify-content:center}
 .deckpage .qa-ini-hint{display:inline-block;letter-spacing:.35em;color:rgba(244,241,232,.6);font-weight:800;
   font-size:var(--sfs);padding:calc(var(--px) * 6) calc(var(--px) * 26);
-  border:2px dashed rgba(244,241,232,.4);border-radius:var(--r)}
+  border:2px dashed rgba(244,241,232,.4);border-radius:var(--r);transition:opacity .35s ease}
+/* 답은 초성 힌트 위에 포개 뜬다. 힌트보다 넉넉히 커서(최소 폭 = 힌트 폭, 바깥으로 2px 더) 점선까지 덮고,
+   답이 나오면 힌트는 흐려져 사라진다(크로스페이드. 선생님 지시 2026-10-31: 초성 위에 답을 덮어라). */
 .deckpage .qa-ini-ans{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  min-width:100%;text-align:center;white-space:nowrap;border-radius:var(--r);
+  min-width:calc(100% + var(--px) * 4);text-align:center;white-space:nowrap;border-radius:var(--r);
   background:var(--red);color:#fff;font-weight:800;font-size:var(--sfs);
   padding:calc(var(--px) * 6) calc(var(--px) * 26)}
 .deckpage .qa-ini-ans[data-step]{opacity:0;transition:opacity .35s ease}
 .deckpage .qa-ini-ans[data-step].shown{opacity:1}
+.deckpage .qa-ini:has(.qa-ini-ans.shown) .qa-ini-hint{opacity:0}
 /* 뒤로 넘겨 들어왔을 때는 움직임 없이 다 나온 모양으로 선다 */
 .deckpage .instant, .deckpage .instant .qa-oxb{transition:none}
 
