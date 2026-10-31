@@ -298,10 +298,17 @@ export function renderSlide(s){
         ${answer}</div>`;
     }).join('')}</div>`;
 
+  /* 학습 목표: 2026 LMS의 다크 빅넘버 스택(선생님 지시 2026-10-31). 표지와 같은 다크 인트로 톤.
+     큰 레드 숫자 + 항목, 항목 사이는 얇은 구분선. 쪽 전체를 덮는 자립 블록이라(.s-objectives)
+     배지도 그 안에서 다크로 선다(표지와 같은 까닭). */
   if (s.type === 'numbered')
-    return `${mark}<div class="s-body s-num">${s.items.map((t, i) => `
-      <div class="nitem"><span class="nn">${i + 1}</span><span class="nt">${inlineText(t)}</span></div>`
-    ).join('')}</div>`;
+    return `<div class="s-objectives">
+      <div class="intro-sweep"></div>
+      <div class="obj-badge">${esc(stepName(s.step))}</div>
+      <div class="obj-list">${s.items.map((t, i) => `
+        <div class="obj-item"><span class="obj-num">${i + 1}</span>
+          <span class="obj-text">${inlineText(t)}</span></div>`).join('')}</div>
+    </div>`;
 
   if (s.type === 'media'){
     const yt = s.kind === 'video' ? youTube(s.url) : null;

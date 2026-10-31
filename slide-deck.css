@@ -64,7 +64,7 @@
 /* 배지와 쪽 제목은 글자 크기(--tfs)와 줄 높이가 같아서 배지 글자와 제목 첫 줄이 한 줄로 가지런하다.
    배지의 위아래 여백만큼 제목도 위아래를 띄운다(.s-head의 padding-block) */
 .deckpage .s-badge{flex:0 0 auto;background:var(--red-100);color:var(--red);border-radius:var(--r);
-  font-size:var(--tfs);font-weight:800;line-height:1.3;letter-spacing:-.02em;
+  font-family:var(--title-font);font-size:var(--tfs);font-weight:800;line-height:1.3;letter-spacing:-.02em;
   padding:calc(var(--px) * 6) calc(var(--px) * 20);white-space:nowrap}
 
 /* ── 표지: 다크 무빙 포스터 (2026 LMS 차용, 선생님 지시 2026-10-31. 색만 HOCLASS 테마로) ──
@@ -95,7 +95,7 @@
   background:currentColor;opacity:.6;display:block;flex:0 0 auto}
 
 /* ── 쪽 제목(개념 노트, 미션 활동의 페이지 제목) ── 배지 옆에 선다. 크기는 배지와 같다(--tfs) */
-.deckpage .s-head{flex:1;min-width:0;font-size:var(--tfs);font-weight:800;margin:0;
+.deckpage .s-head{flex:1;min-width:0;font-family:var(--title-font);font-size:var(--tfs);font-weight:800;margin:0;
   line-height:1.3;padding-block:calc(var(--px) * 6);letter-spacing:-.03em}
 
 /* 속은 배지 줄 아래를 다 쓴다. 줄이 많으면 쪽 안에서만 내려간다(쪽이 잘리지 않게) */
@@ -109,7 +109,7 @@
    그 밖에는 투사 화면이라 줄과 줄 사이에 선을 긋지 않는다(선이 많으면 글자가 묻힌다). 묶음 사이만 띄운다. */
 .deckpage .s-page{font-size:var(--sfs);
   display:flex;flex-direction:column;gap:calc(var(--px) * 44)}
-.deckpage .plabel{width:fit-content;max-width:100%;font-weight:800;color:var(--navy);
+.deckpage .plabel{width:fit-content;max-width:100%;font-family:var(--title-font);font-weight:900;color:var(--navy);
   border-bottom:calc(var(--px) * 5) solid var(--red);padding-bottom:calc(var(--px) * 6);
   margin-bottom:calc(var(--px) * 18)}
 .deckpage .plines{display:flex;flex-direction:column;gap:calc(var(--px) * 4);min-width:0}
@@ -156,13 +156,30 @@
 .deckpage .pc{display:block}
 .deckpage .pv > .pl, .deckpage .pv > .pc{margin-top:calc(var(--px) * 4)}
 
-/* ── 번호 목록(학습 목표) ── 본문 55. 번호 네모는 글 첫 줄 높이에 맞춘다 */
-.deckpage .s-num{display:flex;flex-direction:column;gap:calc(var(--px) * 36);justify-content:center}
-.deckpage .nitem{display:flex;align-items:flex-start;gap:calc(var(--px) * 28)}
-.deckpage .nn{flex:0 0 auto;display:grid;place-items:center;
-  width:calc(var(--px) * 76);height:calc(var(--px) * 76);background:var(--navy);color:#fff;
-  font-size:calc(var(--px) * 44);font-weight:800}
-.deckpage .nt{flex:1;min-width:0;font-size:var(--sfs);margin-top:calc(var(--px) * -11)}
+/* ── 학습 목표: 다크 빅넘버 스택 (2026 LMS 차용, 선생님 지시 2026-10-31. 색만 HOCLASS 테마로) ──
+   표지와 같은 다크 인트로 톤. 큰 레드 숫자 + 항목, 항목 사이는 얇은 구분선. 쪽 전체를 덮는
+   자립 블록(.s-objectives)이라 배지도 그 안에서 다크로 선다. 크기는 --fs-obj* 변수(없으면 기본값). */
+.deckpage .s-objectives{position:absolute;inset:0;z-index:1;overflow:hidden;color:#F4F1E8;
+  background:radial-gradient(120% 120% at 50% 40%, #1a2130 0%, #12151C 55%, #0b0d12 100%)}
+.deckpage .s-objectives::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(130% 130% at 50% 50%, transparent 60%, rgba(0,0,0,.4) 100%)}
+.deckpage .s-objectives .obj-badge{position:absolute;top:calc(var(--px) * 56);left:calc(var(--px) * 80);z-index:3;
+  font-family:var(--title-font);font-weight:800;font-size:var(--tfs);color:var(--red);letter-spacing:-.02em;
+  background:color-mix(in srgb, var(--red) 16%, transparent);border-radius:var(--r);
+  padding:calc(var(--px) * 6) calc(var(--px) * 20)}
+.deckpage .obj-list{position:absolute;top:calc(var(--px) * 150);bottom:calc(var(--px) * 60);
+  left:calc(var(--px) * 96);right:calc(var(--px) * 96);z-index:3;
+  display:flex;flex-direction:column;justify-content:center}
+.deckpage .obj-item{display:flex;align-items:flex-start;gap:calc(var(--px) * 56);
+  padding:calc(var(--px) * 40) 0;border-top:1px solid rgba(244,241,232,.15)}
+.deckpage .obj-item:first-child{border-top:none}
+.deckpage .obj-num{flex:0 0 auto;width:2.2ch;text-align:center;font-family:var(--title-font);font-weight:900;
+  color:var(--red);font-size:var(--fs-obj-num, calc(var(--px) * 130));line-height:.82}
+.deckpage .obj-text{flex:1;min-width:0;font-family:var(--title-font);font-weight:600;word-break:keep-all;
+  font-size:var(--fs-obj, calc(var(--px) * 60));line-height:var(--lh-obj, 1.6)}
+.deckpage .obj-text strong{color:var(--red);font-weight:900}
+.deckpage .s-objectives .blank{border-bottom:calc(var(--px) * 4) solid var(--red);color:#F4F1E8;
+  background:transparent;letter-spacing:.12em;padding:0 3px 2px;font-weight:900}
 
 /* ── 전시학습확인 ── 문답 셋(단답형, 진위형, 초성형). 답은 눌러야 보인다. 물음과 답은 본문 55
    글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
@@ -222,7 +239,7 @@
 
 /* ── 오늘의 질문 ── 쪽 하나에 질문 하나. 설명문이 본문 55이고 질문은 그보다 크게(66) */
 .deckpage .s-q{display:flex;flex-direction:column;justify-content:center;gap:calc(var(--px) * 40)}
-.deckpage .qbig{font-size:calc(var(--px) * 66);font-weight:800;line-height:1.35;letter-spacing:-.03em}
+.deckpage .qbig{font-family:var(--title-font);font-size:var(--fs-question, calc(var(--px) * 66));font-weight:800;line-height:1.35;letter-spacing:-.03em}
 .deckpage .qguide{font-size:var(--sfs);color:var(--sub);
   border-left:calc(var(--px) * 6) solid var(--red);padding-left:calc(var(--px) * 28)}
 
