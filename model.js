@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031f';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031g';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -981,9 +981,9 @@ export function setPages(lessonId, key, pages){
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
   ROW_TYPES, rowKind, convertRow, lessonBadge,
-  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031f';
+  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031g';
 import { slideDesignDefault as _sdDef, designVarsCss as _sdCss,
-  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031f';
+  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031g';
 
 /* 슬라이드 글자 크기 설정(디자인 탭, 전체 공통). 기본값 위에 관리자가 고친 값을 얹어 돌려준다.
    슬라이드에 걸 CSS는 designCss()가 만든다(슬라이드 문서가 <style>로 끼운다). */
@@ -1034,6 +1034,13 @@ export function deckAddItem(lessonId, key){
   else if (key === 'hook') arr.push({ kind:'image', url:'', caption:'' });
   else                     arr.push('');
   saveLesson(lessonId);
+}
+/* 전시학습확인에만: 문항 사이에 페이지 나누기 마커를 넣는다(선생님 지시 2026-10-31: 2쪽 이상으로).
+   마커는 문항이 아니라 쪽을 가르는 표시라 q/a가 없다. 슬라이드(slide-deck.js의 buildSlides)가
+   이 마커에서 쪽을 나누고, 번호는 쪽을 넘어 이어진다. normalizeDeck은 이 마커에 유형을 매기지 않는다. */
+export function deckAddReviewBreak(lessonId){
+  const arr = deckItems(lessonId, 'review'); if (!arr) return;
+  arr.push({ pagebreak:true }); saveLesson(lessonId);
 }
 // field가 없으면 줄 전체가 글자 하나인 단계(학습 목표, 미션 안내, 맺음말)다.
 export function deckSetItem(lessonId, key, idx, field, value){

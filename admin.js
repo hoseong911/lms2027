@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031g';
+import * as M from './model.js?v=20261031i';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031g';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031h';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1417,8 +1417,8 @@ function axisEditor(l, ax){
   /* 줄 하나를 묶는 틀. 머리에 번호와 도구를 두고 그 아래에 이름표 붙은 칸을 쌓는다.
      번호는 콘텐츠 탭 어디서나 같은 모양(.axnum) 하나다(선생님 지시 2026-10-30:
      "번호를 표시하든 페이지를 표시하든 숫자가 있잖아 그거 하나로 통일"). */
-  const card = (i, body, badge = '') => `<div class="axitem">
-    <div class="axitem-head"><span class="axnum">${i + 1}</span>${badge}
+  const card = (i, body, badge = '', num = i + 1) => `<div class="axitem">
+    <div class="axitem-head"><span class="axnum">${num}</span>${badge}
       <span class="axitem-sp"></span>${tools(i)}</div>
     <div class="axitem-body">${body}</div></div>`;
 
@@ -1429,7 +1429,15 @@ function axisEditor(l, ax){
        유형은 문항마다 따로 고른다(한 화면에 세 유형이 섞여 서는 것이 보통이다).
        진위형만 답 칸이 라디오 둘(O, X)이고 단답형과 초성형은 글자 한 칸이다.
        초성은 선생님이 문제 글에 직접 적는다(형성평가와 같은 규칙. 자동으로 만들지 않는다). */
+    /* 페이지 나누기 마커(model.js의 deckAddReviewBreak)는 문항이 아니라 쪽을 가르는 줄이다.
+       문항 사이에 가로줄로 서고, 번호는 매기지 않는다. 문항 번호(qn)는 마커를 건너뛰고 이어 센다
+       (슬라이드의 쪽 넘어 이어지는 번호와 맞춘다). */
+    let qn = 0;
     rows = items.map((it, i) => {
+      if (it && it.pagebreak) return `<div class="axbreak">
+        <span class="axbreak-label">${icon('scissors',13)} 페이지 나누기</span>
+        <span class="axitem-sp"></span>${tools(i)}</div>`;
+      qn++;
       const set = f => `data-act="deck-set" data-id="${l.id}" data-k="${k}" data-i="${i}" data-f="${f}"`;
       const type = `<select class="f axtype" ${set('type')} aria-label="문항 유형">
         ${M.REVIEW_TYPES.map(t => `<option value="${t.key}" ${it.type===t.key?'selected':''}>${esc(t.name)}</option>`).join('')}
@@ -1441,7 +1449,7 @@ function axisEditor(l, ax){
         : `<input class="f grow" ${set('a')} value="${esc(it.a)}" aria-label="정답">`;
       return card(i, fld('유형', `<div class="grow">${type}</div>`)
         + fld('문제', `<textarea class="f grow ta" rows="2" ${set('q')} aria-label="문제">${esc(it.q)}</textarea>`)
-        + fld('정답', a));
+        + fld('정답', a), '', qn);
     }).join('');
 
   } else if (ax.edit === 'media'){
@@ -1466,9 +1474,12 @@ function axisEditor(l, ax){
         data-i="${i}" aria-label="${esc(ax.name)} ${i + 1}번">${esc(it)}</textarea>${tools(i)}</div>`).join('');
   }
 
+  // 전시학습확인에만 페이지 나누기 단추를 더 둔다(선생님 지시 2026-10-31: 2쪽 이상으로 나누게)
   return (rows || `<div class="placeholder">내용이 없습니다.</div>`)
     + `<div class="ce-add"><button class="btn-chip" data-act="deck-add" data-id="${l.id}" data-k="${k}">
-        ${icon('plus',13)}줄 추가</button></div>`;
+        ${icon('plus',13)}줄 추가</button>${k === 'review'
+      ? `<button class="btn-chip" data-act="deck-add-break" data-id="${l.id}">
+          ${icon('scissors',13)}페이지 나누기</button>` : ''}</div>`;
 }
 
 /* ── 개념 노트와 미션 활동의 페이지 편집기 (선생님 지시 2026-10-30) ──
@@ -2666,6 +2677,7 @@ document.getElementById('shell').addEventListener('click', e => {
     case 'axis-preview':
       window.open(`slide.html?lesson=${encodeURIComponent(id)}`, '_blank', 'noopener'); break;
     case 'deck-add': M.deckAddItem(id, k); render(); break;
+    case 'deck-add-break': M.deckAddReviewBreak(id); render(); break;
     case 'deck-up': M.deckMoveItem(id, k, +el.dataset.i, -1); render(); break;
     case 'deck-down': M.deckMoveItem(id, k, +el.dataset.i, 1); render(); break;
     case 'deck-del': M.deckDelItem(id, k, +el.dataset.i); render(); break;

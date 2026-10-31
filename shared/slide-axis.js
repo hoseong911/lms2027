@@ -159,7 +159,9 @@ export function normalizeDeck(lesson){
   /* 전시학습확인에 유형이 생기기 전(2026-10-30 낮)에 적어 둔 문항은 유형 칸이 없다.
      그런 문항은 단답형으로 본다: 그때 적을 수 있던 것이 묻는 줄과 답 줄뿐이었다. */
   lesson.deck.review.items.forEach(it => {
-    if (it && typeof it === 'object' && !REVIEW_TYPES.some(t => t.key === it.type)) it.type = 'short';
+    // 페이지 나누기 마커(선생님 지시 2026-10-31: 전시학습확인을 여러 쪽으로)는 문항이 아니라
+    // 쪽을 가르는 표시라 유형을 매기지 않는다. 슬라이드(buildSlides)가 이 마커에서 쪽을 나눈다.
+    if (it && typeof it === 'object' && !it.pagebreak && !REVIEW_TYPES.some(t => t.key === it.type)) it.type = 'short';
   });
   /* 미션 활동이 페이지 모양이 되기 전(2026-10-30 낮)에는 안내 줄 목록(items)이었다.
      그 줄들을 제목 없는 페이지 하나, 라벨 없는 묶음 하나로 옮긴다

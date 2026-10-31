@@ -669,6 +669,11 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
 .axitem-head{display:flex;align-items:center;gap:9px;min-height:var(--h-ctl)}
 .axitem-sp{flex:1}
 .axitem-body > .row{border-top:0}
+/* 전시학습확인 페이지 나누기 줄(선생님 지시 2026-10-31): 문항이 아니라 쪽을 가르는 표시라
+   문항 카드와 달리 번호 없이 가로줄 하나로 선다. 레드 점선으로 "여기서 쪽이 나뉜다"를 알린다. */
+.axbreak{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px dashed var(--red)}
+.axbreak-label{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--red)}
+.axbreak-label svg{width:13px;height:13px}
 /* 유형과 종류 고르개는 칸을 다 채우지 않는다: 짧은 낱말이라 길면 읽기가 더 힘들다 */
 .axtype{width:130px;flex:0 0 auto}
 

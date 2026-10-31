@@ -15,7 +15,7 @@
    2026의 글꼴 슬라이더, 장평, 디자인 설정 50여 칸은 가져오지 않았다. 아직 시킨 것이 아니다.
    ════════════════════════════════════════════════════════════════════════ */
 // Firebase를 끌어오지 않는 축 파일만 쓴다: 혼자 도는 미리보기 문서도 이 엔진을 그대로 쓴다
-import { SLIDE_AXIS, normalizeDeck, reviewTypeDef, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031f';
+import { SLIDE_AXIS, normalizeDeck, toPages, lineLevel, stripStepPrefix, SOURCE_RE, rowFilled, rowKind, lessonBadge } from './shared/slide-axis.js?v=20261031g';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c =>
   ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -60,6 +60,18 @@ export function youTube(url){
   return { id: m[1], start };
 }
 
+/* 초성형 물음 끝의 괄호 초성((ㅁㅇㅅㅎ) 꼴)을 떼어 온다(선생님 지시 2026-10-31:
+   초성은 질문 글에서 뽑는다). 괄호 안이 한글 자음(ㄱ~ㅎ)과 빈칸뿐일 때만 초성으로 본다
+   (사화는?(무오사화) 처럼 낱말이 든 괄호는 건드리지 않는다). 돌려주는 것은
+   { body: 초성을 뗀 물음, hint: 초성 글자 }. 초성이 없으면 물음 그대로, hint는 빈 글자다. */
+const CHOSUNG_RE = /\s*\(\s*([ㄱ-ㅎ][ㄱ-ㅎ\s]*)\s*\)\s*$/;
+export function pullChosung(q){
+  const s = String(q ?? '');
+  const m = s.match(CHOSUNG_RE);
+  if (!m) return { body: s.trim(), hint: '' };
+  return { body: s.slice(0, m.index).trim(), hint: m[1].replace(/\s+/g, ' ').trim() };
+}
+
 /* ── 덱을 쪽 배열로 편다 ──────────────────────────────────────────────────
    쪽 하나 = { type, step, 그 종류가 쓰는 칸들 }. step은 축 단계 key라 쪽마다
    어느 단계에서 나온 쪽인지 알 수 있다(위쪽 단계 이름표와 어드민 미리보기가 쓴다).
@@ -82,8 +94,19 @@ export function buildSlides(lesson, no){
         topic:deck.cover?.topic || '', unit:deck.cover?.unit || '', pages:deck.cover?.pages || '' });
 
     } else if (ax.key === 'review'){
-      const qa = (deck.review?.items || []).filter(it => String(it?.q || '').trim());
-      if (qa.length) push('review', { type:'qa', items:qa });
+      /* 페이지 나누기 마커(model.js의 deckAddReviewBreak)로 쪽을 가른다. 마커마다 새 쪽이 서고,
+         번호는 쪽을 넘어 이어진다(startNum). 마커뿐이거나 비어 있는 쪽은 만들지 않는다. */
+      const pages = [[]];
+      (deck.review?.items || []).forEach(it => {
+        if (it && it.pagebreak){ pages.push([]); return; }
+        if (String(it?.q || '').trim()) pages[pages.length - 1].push(it);
+      });
+      let startNum = 0;
+      pages.forEach(items => {
+        if (!items.length) return;
+        push('review', { type:'qa', items, startNum });
+        startNum += items.length;
+      });
 
     } else if (ax.key === 'objective'){
       const items = lines('objective');
@@ -252,8 +275,12 @@ export function renderSlide(s){
      2026의 배지(개념 Check, 미션 Check)처럼 쪽이 축의 어느 단계인지 알린다. 글자는 축 단계 이름이다.
      2027 화면 규칙에 맞춰 알약 모양과 테두리 없이 연한 레드 바탕만 깐다(배지 규칙).
      페이지 제목이 있는 쪽(개념 노트, 미션 활동)은 배지 옆에 제목이 같은 줄로 선다. */
+  /* 배지 글: 보통은 축 단계 이름이다. 전시학습확인(qa)만 "지난 시간에는?"으로 보인다
+     (선생님 지시 2026-10-31: 2026 슬라이드의 "지난 수업 시간에는?"을 되살린다). 메뉴와 편집기에서
+     부르는 이름(전시학습확인)은 그대로 두고, 교실에 띄우는 쪽 맨 위 배지만 이 말로 바꾼다. */
+  const badgeText = s.type === 'qa' ? '지난 시간에는?' : stepName(s.step);
   const top = title => s.type === 'cover' ? ''
-    : `<div class="s-top"><span class="s-badge">${esc(stepName(s.step))}</span>${
+    : `<div class="s-top"><span class="s-badge">${esc(badgeText)}</span>${
         title ? `<h2 class="s-head">${inlineText(title)}</h2>` : ''}</div>`;
   const mark = top('');
 
@@ -286,23 +313,38 @@ export function renderSlide(s){
      넘기기를 누를 때마다 위에서부터 하나씩 나온다. 다루는 것은 아래 stepForward, stepBack.
      글배치: 묻는 줄은 번호와 유형 이름표를 머리에 두고, 답은 묻는 줄 밑으로 들여 쓴다.
      번호 칸 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가 가지런하다. */
-  if (s.type === 'qa')
+  /* 글배치(선생님 지시 2026-10-31): 번호 + 물음은 한 줄 왼쪽, 답은 그 줄 오른쪽에 붙는다.
+       진위형 : O와 X 두 칸이 오른쪽에 서 있고, 답이 나올 때 정답 쪽이 켜진다
+       단답형 : 답 알약이 오른쪽에 나온다(눌러야 보인다)
+       초성형 : 물음 글의 끝 괄호에서 초성(ㅁㅇㅅㅎ)을 떼어 오른쪽에 힌트로 세우고,
+                답이 나올 때 그 위를 덮어 뜬다(pullChosung). 유형 이름표(단답형/진위형/초성형)는
+                교실 화면에서는 보이지 않는다(선생님 지시 2026-10-31). 편집기에서만 고른다.
+     번호는 쪽을 나눠도 이어진다(startNum). */
+  if (s.type === 'qa'){
+    const base = s.startNum || 0;
     return `${mark}<div class="s-body s-qa">${s.items.map((it, i) => {
       const ans = String(it.a || '').trim();
-      let answer = '';
+      let qText = it.q, slot = '';
       if (it.type === 'ox'){
         const on = ans.toUpperCase();
-        answer = `<div class="qa-ox" ${on === 'O' || on === 'X' ? 'data-step' : ''}>${['O','X'].map(v =>
+        slot = `<div class="qa-ox" ${on === 'O' || on === 'X' ? 'data-step' : ''}>${['O','X'].map(v =>
           `<span class="qa-oxb ${on === v ? 'is' : ''}">${v}</span>`).join('')}</div>`;
+      } else if (it.type === 'initial'){
+        const { body, hint } = pullChosung(it.q);
+        qText = body;
+        // 초성 힌트가 있으면 그 위를 답이 덮는다. 초성을 안 적었으면 단답형처럼 알약으로 나온다
+        if (hint) slot = `<div class="qa-ini"><span class="qa-ini-hint">${esc(hint)}</span>${
+          ans ? `<span class="qa-ini-ans" data-step>${inlineText(ans)}</span>` : ''}</div>`;
+        else if (ans) slot = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
       } else if (ans){
-        answer = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
+        slot = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
       }
       return `<div class="qa">
-        <div class="qa-q"><span class="qa-n">${i + 1}</span>
-          <span class="qa-t">${esc(reviewTypeDef(it.type).name)}</span>
-          <span class="qa-txt">${inlineText(it.q)}</span></div>
-        ${answer}</div>`;
+        <span class="qa-n">${base + i + 1}</span>
+        <span class="qa-txt">${inlineText(qText)}</span>
+        <div class="qa-slot">${slot}</div></div>`;
     }).join('')}</div>`;
+  }
 
   /* 학습 목표: 2026 LMS의 다크 빅넘버 스택(선생님 지시 2026-10-31). 표지와 같은 다크 인트로 톤.
      큰 레드 숫자 + 항목, 항목 사이는 얇은 구분선. 쪽 전체를 덮는 자립 블록이라(.s-objectives)

@@ -216,42 +216,43 @@
   background:transparent;letter-spacing:.12em;padding:0 3px 2px;font-weight:900}
 
 /* ── 전시학습확인 ── 문답 셋(단답형, 진위형, 초성형). 답은 눌러야 보인다. 물음과 답은 본문 55
-   글배치: 번호 칸과 유형 이름표 칸의 폭을 고정해서 문항이 여럿이어도 물음의 시작 위치가
-   가지런하다. 답 칸은 그 시작 위치에 맞춰 들여 쓴다(--qa-in 한 값으로 묶어 둔다).
-   --qa-in = 번호 칸(--qa-nw) + 틈 + 이름표 칸(--qa-tw) + 틈. 칸 폭을 바꾸면 저절로 따라간다. */
-.deckpage .s-qa{--qa-nw:calc(var(--px) * 70);--qa-tw:calc(var(--px) * 150);--qa-gap:calc(var(--px) * 24);
-  --qa-in:calc(var(--qa-nw) + var(--qa-tw) + var(--qa-gap) * 2);
-  display:flex;flex-direction:column;gap:calc(var(--px) * 40);justify-content:center}
-.deckpage .qa-q{display:flex;align-items:baseline;gap:var(--qa-gap);font-size:var(--sfs)}
-.deckpage .qa-n{flex:0 0 auto;width:var(--qa-nw);text-align:right;
-  color:var(--red);font-weight:800}
-/* 유형 이름표: 학생이 어떻게 답할지 한눈에 알게. 작은 꼬리표(34)다.
-   폭을 고정해 물음 시작선을 맞춘다 */
-.deckpage .qa-t{flex:0 0 auto;width:var(--qa-tw);
-  font-size:calc(var(--px) * 34);font-weight:700;color:var(--sub);
-  border:1px solid var(--line-strong);border-radius:2px;
-  padding:calc(var(--px) * 4) 0;text-align:center;letter-spacing:.02em;line-height:1.4}
+   글배치(선생님 지시 2026-10-31): 번호 + 물음이 한 줄 왼쪽, 답은 같은 줄 오른쪽에 붙는다.
+   교실 화면에는 유형 이름표(단답형/진위형/초성형)를 띄우지 않는다(편집기에서만 고른다).
+   문항 사이 간격은 좁혔다(전엔 40, 이제 22). */
+.deckpage .s-qa{--qa-nw:calc(var(--px) * 56);--qa-gap:calc(var(--px) * 24);
+  display:flex;flex-direction:column;gap:calc(var(--px) * 22);justify-content:center}
+.deckpage .qa{display:flex;align-items:center;gap:var(--qa-gap);font-size:var(--sfs)}
+.deckpage .qa-n{flex:0 0 auto;width:var(--qa-nw);text-align:right;color:var(--red);font-weight:800}
 .deckpage .qa-txt{flex:1;min-width:0;font-weight:700}
-/* 답은 슬라이드 애니메이션처럼 나중에 나온다(선생님 지시 2026-10-30: "답이 늦게 나오게 해줘").
-   넘기기를 누를 때마다 하나씩 .shown이 붙는다(slide-deck.js의 stepForward).
-   나오기 전에도 자리는 차지하고 있어서(투명할 뿐) 답이 나올 때 아래 문항이 밀려 내려가지 않는다.
-   열린 답은 열린 빈칸과 같은 모양이다(레드 글씨, 연한 레드 바탕. "빈칸은 레드"). */
-.deckpage .qa-a{display:block;width:fit-content;max-width:calc(100% - var(--qa-in));
-  margin:calc(var(--px) * 14) 0 0 var(--qa-in);border-radius:var(--r);
+/* 답 자리: 줄 오른쪽. 물음과 세로 가운데로 맞춘다 */
+.deckpage .qa-slot{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end}
+/* 단답형 답 알약: 눌러야 나온다(아래에서 떠오른다). 열린 빈칸과 같은 레드 모양 */
+.deckpage .qa-a{display:inline-block;border-radius:var(--r);white-space:nowrap;
   background:var(--red-100);color:var(--red);font-weight:800;
-  padding:calc(var(--px) * 4) calc(var(--px) * 26);font-size:var(--sfs)}
-.deckpage .qa-a[data-step]{opacity:0;transform:translateY(calc(var(--px) * 18));
+  padding:calc(var(--px) * 6) calc(var(--px) * 26);font-size:var(--sfs)}
+.deckpage .qa-a[data-step]{opacity:0;transform:translateY(calc(var(--px) * 12));
   transition:opacity .35s ease, transform .35s ease}
 .deckpage .qa-a[data-step].shown{opacity:1;transform:none}
-/* OX: O와 X 두 칸은 처음부터 서 있다(학생이 고르는 꼴). 답이 나올 차례가 되면 정답인 쪽(.is)이
-   레드로 켜지고 아닌 쪽은 흐려진다 */
-.deckpage .qa-ox{display:flex;gap:calc(var(--px) * 18);margin:calc(var(--px) * 14) 0 0 var(--qa-in)}
-.deckpage .qa-oxb{display:block;width:calc(var(--px) * 130);border:2px solid var(--navy);border-radius:var(--r);
+/* 진위형: O와 X 두 칸은 처음부터 오른쪽에 서 있다. 답이 나올 차례가 되면 정답 쪽(.is)이 켜진다 */
+.deckpage .qa-ox{display:flex;gap:calc(var(--px) * 14)}
+.deckpage .qa-oxb{display:block;min-width:calc(var(--px) * 104);border:2px solid var(--navy);border-radius:var(--r);
   background:transparent;color:var(--navy);text-align:center;
-  font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) 0;line-height:1.2;
+  font-size:var(--sfs);font-weight:800;padding:calc(var(--px) * 6) calc(var(--px) * 16);line-height:1.2;
   transition:color .35s ease, border-color .35s ease, background-color .35s ease, opacity .35s ease}
 .deckpage .qa-ox.shown .qa-oxb{opacity:.3}
 .deckpage .qa-ox.shown .qa-oxb.is{opacity:1;border-color:var(--red);color:var(--red);background:var(--red-100)}
+/* 초성형(선생님 지시 2026-10-31): 초성 힌트가 오른쪽에 서 있고, 답이 나올 때 그 위를 덮는다.
+   힌트와 답을 같은 자리에 포개 두고(relative/absolute), 답은 꽉 찬 레드 바탕으로 힌트를 가린다. */
+.deckpage .qa-ini{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.deckpage .qa-ini-hint{display:inline-block;letter-spacing:.35em;color:var(--sub);font-weight:800;
+  font-size:var(--sfs);padding:calc(var(--px) * 6) calc(var(--px) * 26);
+  border:2px dashed var(--line-strong);border-radius:var(--r)}
+.deckpage .qa-ini-ans{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  min-width:100%;text-align:center;white-space:nowrap;border-radius:var(--r);
+  background:var(--red-100);color:var(--red);font-weight:800;font-size:var(--sfs);
+  padding:calc(var(--px) * 6) calc(var(--px) * 26)}
+.deckpage .qa-ini-ans[data-step]{opacity:0;transition:opacity .35s ease}
+.deckpage .qa-ini-ans[data-step].shown{opacity:1}
 /* 뒤로 넘겨 들어왔을 때는 움직임 없이 다 나온 모양으로 선다 */
 .deckpage .instant, .deckpage .instant .qa-oxb{transition:none}
 
