@@ -229,14 +229,16 @@
 .deckpage .qa-list{position:absolute;top:calc(var(--px) * 150);bottom:calc(var(--px) * 60);
   left:calc(var(--px) * 96);right:calc(var(--px) * 96);z-index:3;
   display:flex;flex-direction:column;justify-content:center}
-.deckpage .qa{display:flex;align-items:center;gap:calc(var(--px) * 44);
+/* 번호는 학습 목표와 같은 큰 레드 숫자(선생님 지시 2026-10-31). 번호와 물음은 윗줄을 맞춘다(flex-start):
+   큰 숫자의 윗변과 물음 첫 줄의 윗변이 한 높이에서 시작한다(학습 목표 obj-item과 같다). */
+.deckpage .qa{display:flex;align-items:flex-start;gap:calc(var(--px) * 44);
   padding:calc(var(--px) * 26) 0;border-top:1px solid rgba(244,241,232,.15);font-size:var(--sfs)}
 .deckpage .qa:first-child{border-top:none}
 .deckpage .qa-n{flex:0 0 auto;width:2.2ch;text-align:center;font-family:var(--title-font);font-weight:900;
-  color:var(--red);font-size:calc(var(--px) * 76);line-height:.82}
+  color:var(--red);font-size:var(--fs-obj-num, calc(var(--px) * 130));line-height:.82}
 .deckpage .qa-txt{flex:1;min-width:0;font-family:var(--title-font);font-weight:600;word-break:keep-all}
-/* 답 자리: 줄 오른쪽. 물음과 세로 가운데로 맞춘다 */
-.deckpage .qa-slot{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end}
+/* 답 자리(진위형·단답형): 줄 오른쪽. 큰 번호로 줄이 높아지므로 세로 가운데로 맞춘다 */
+.deckpage .qa-slot{flex:0 0 auto;align-self:center;display:flex;align-items:center;justify-content:flex-end}
 /* 단답형 답 알약: 눌러야 나온다(아래에서 떠오른다). 다크 톤이라 꽉 찬 레드에 흰 글씨 */
 .deckpage .qa-a{display:inline-block;border-radius:var(--r);white-space:nowrap;
   background:var(--red);color:#fff;font-weight:800;
@@ -253,18 +255,15 @@
   transition:color .35s ease, border-color .35s ease, background-color .35s ease, opacity .35s ease}
 .deckpage .qa-ox.shown .qa-oxb{opacity:.3}
 .deckpage .qa-ox.shown .qa-oxb.is{opacity:1;border-color:var(--red);color:#fff;background:var(--red)}
-/* 초성형(선생님 지시 2026-10-31): 초성 힌트가 오른쪽에 서 있고, 답이 나올 때 그 위를 덮는다.
-   힌트와 답을 같은 자리에 포개 두고(relative/absolute), 답은 꽉 찬 레드 바탕으로 힌트를 가린다. */
-.deckpage .qa-ini{position:relative;display:inline-flex;align-items:center;justify-content:center}
-.deckpage .qa-ini-hint{display:inline-block;letter-spacing:.35em;color:rgba(244,241,232,.6);font-weight:800;
-  font-size:var(--sfs);padding:calc(var(--px) * 6) calc(var(--px) * 26);
-  border:2px dashed rgba(244,241,232,.4);border-radius:var(--r);transition:opacity .35s ease}
-/* 답은 초성 힌트 위에 포개 뜬다. 힌트보다 넉넉히 커서(최소 폭 = 힌트 폭, 바깥으로 2px 더) 점선까지 덮고,
-   답이 나오면 힌트는 흐려져 사라진다(크로스페이드. 선생님 지시 2026-10-31: 초성 위에 답을 덮어라). */
+/* 초성형(선생님 지시 2026-10-31): 초성은 물음 글 안에 그대로 있고, 답이 바로 그 자리를 덮는다.
+   초성 자리를 relative로 두고 답을 absolute로 포개(글자 크기는 물음과 같게 상속), 답이 뜨면 초성은
+   흐려진다(크로스페이드). 오른쪽 별도 답 알약은 없다. */
+.deckpage .qa-ini{position:relative;display:inline-block;vertical-align:baseline}
+.deckpage .qa-ini-hint{display:inline-block;letter-spacing:.15em;color:rgba(244,241,232,.65);font-weight:800;
+  padding:0 calc(var(--px) * 12);border:2px dashed rgba(244,241,232,.4);border-radius:var(--r);transition:opacity .35s ease}
 .deckpage .qa-ini-ans{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  min-width:calc(100% + var(--px) * 4);text-align:center;white-space:nowrap;border-radius:var(--r);
-  background:var(--red);color:#fff;font-weight:800;font-size:var(--sfs);
-  padding:calc(var(--px) * 6) calc(var(--px) * 26)}
+  min-width:100%;text-align:center;white-space:nowrap;border-radius:var(--r);
+  background:var(--red);color:#fff;font-weight:800;padding:calc(var(--px) * 2) calc(var(--px) * 16)}
 .deckpage .qa-ini-ans[data-step]{opacity:0;transition:opacity .35s ease}
 .deckpage .qa-ini-ans[data-step].shown{opacity:1}
 .deckpage .qa-ini:has(.qa-ini-ans.shown) .qa-ini-hint{opacity:0}

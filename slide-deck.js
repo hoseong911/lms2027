@@ -60,16 +60,16 @@ export function youTube(url){
   return { id: m[1], start };
 }
 
-/* 초성형 물음 끝의 괄호 초성((ㅁㅇㅅㅎ) 꼴)을 떼어 온다(선생님 지시 2026-10-31:
-   초성은 질문 글에서 뽑는다). 괄호 안이 한글 자음(ㄱ~ㅎ)과 빈칸뿐일 때만 초성으로 본다
-   (사화는?(무오사화) 처럼 낱말이 든 괄호는 건드리지 않는다). 돌려주는 것은
-   { body: 초성을 뗀 물음, hint: 초성 글자 }. 초성이 없으면 물음 그대로, hint는 빈 글자다. */
-const CHOSUNG_RE = /\s*\(\s*([ㄱ-ㅎ][ㄱ-ㅎ\s]*)\s*\)\s*$/;
-export function pullChosung(q){
+/* 초성형: 물음 글 안의 초성(ㅁㅇㅅㅎ 같은 자음 둘 이상 연속)을 그 자리에서 찾는다(선생님 지시 2026-10-31:
+   초성은 질문 글 안에 그대로 적고, 답이 바로 그 자리를 덮는다. 끝 괄호로 떼지 않는다).
+   자음(ㄱ~ㅎ, U+3131~U+314E)이 둘 이상 이어진 첫 자리를 초성으로 본다. 찾으면 { before, hint, after },
+   없으면 null(그땐 단답형처럼 오른쪽에 답 알약). */
+const CHOSUNG_RUN = /[ㄱ-ㅎ]{2,}/;
+export function splitChosung(q){
   const s = String(q ?? '');
-  const m = s.match(CHOSUNG_RE);
-  if (!m) return { body: s.trim(), hint: '' };
-  return { body: s.slice(0, m.index).trim(), hint: m[1].replace(/\s+/g, ' ').trim() };
+  const m = s.match(CHOSUNG_RUN);
+  if (!m) return null;
+  return { before: s.slice(0, m.index), hint: m[0], after: s.slice(m.index + m[0].length) };
 }
 
 /* ── 덱을 쪽 배열로 편다 ──────────────────────────────────────────────────
@@ -314,7 +314,7 @@ export function renderSlide(s){
      글배치: 번호 + 물음은 한 줄 왼쪽, 답은 그 줄 오른쪽.
        진위형 : O와 X 두 칸이 오른쪽에 서 있고, 답이 나올 때 정답 쪽이 켜진다
        단답형 : 답 알약이 오른쪽에 나온다(눌러야 보인다)
-       초성형 : 물음 끝 괄호의 초성(ㅁㅇㅅㅎ)을 떼어 오른쪽에 힌트로 세우고, 답이 그 위를 덮는다(pullChosung)
+       초성형 : 물음 글 안의 초성(ㅁㅇㅅㅎ) 자리를 답이 덮는다(splitChosung). 오른쪽 별도 답은 없다
      유형 이름표(단답형/진위형/초성형)는 교실 화면에 띄우지 않는다. 번호는 쪽을 나눠도 이어진다(startNum). */
   if (s.type === 'qa'){
     const base = s.startNum || 0;
@@ -323,24 +323,26 @@ export function renderSlide(s){
       <div class="qa-badge">지난 시간에는?</div>
       <div class="qa-list">${s.items.map((it, i) => {
         const ans = String(it.a || '').trim();
-        let qText = it.q, slot = '';
+        let qHtml = inlineText(it.q), slot = '';
         if (it.type === 'ox'){
           const on = ans.toUpperCase();
           slot = `<div class="qa-ox" ${on === 'O' || on === 'X' ? 'data-step' : ''}>${['O','X'].map(v =>
             `<span class="qa-oxb ${on === v ? 'is' : ''}">${v}</span>`).join('')}</div>`;
         } else if (it.type === 'initial'){
-          const { body, hint } = pullChosung(it.q);
-          qText = body;
-          // 초성 힌트가 있으면 그 위를 답이 덮는다. 초성을 안 적었으면 단답형처럼 알약으로 나온다
-          if (hint) slot = `<div class="qa-ini"><span class="qa-ini-hint">${esc(hint)}</span>${
-            ans ? `<span class="qa-ini-ans" data-step>${inlineText(ans)}</span>` : ''}</div>`;
+          // 초성을 물음 글 안에서 찾아 그 자리를 답이 덮게 한다(오른쪽 별도 답 없음).
+          // 초성을 못 찾으면 단답형처럼 오른쪽 알약으로 답을 보인다.
+          const sp = ans ? splitChosung(it.q) : null;
+          if (sp) qHtml = inlineText(sp.before)
+            + `<span class="qa-ini"><span class="qa-ini-hint">${esc(sp.hint)}</span>`
+            + `<span class="qa-ini-ans" data-step>${inlineText(ans)}</span></span>`
+            + inlineText(sp.after);
           else if (ans) slot = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
         } else if (ans){
           slot = `<div class="qa-a" data-step>${inlineText(ans)}</div>`;
         }
         return `<div class="qa">
           <span class="qa-n">${base + i + 1}</span>
-          <span class="qa-txt">${inlineText(qText)}</span>
+          <span class="qa-txt">${qHtml}</span>
           <div class="qa-slot">${slot}</div></div>`;
       }).join('')}</div>
     </div>`;
