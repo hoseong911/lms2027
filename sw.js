@@ -14,9 +14,29 @@
    캐시 로직을 바꿀 땐 CACHE 이름의 버전을 올린다(예: v1 → v2). 그러면 activate에서
    옛 캐시를 지운다.
    ════════════════════════════════════════════════════════════════ */
-const CACHE = 'lms2027-v1';
+const CACHE = 'lms2027-v2';
 
-self.addEventListener('install', () => self.skipWaiting());
+/* 폰트는 install 때 미리 받아 둔다(선생님 지시 2026-10-31: 기기마다 폰트가 늦거나 다르게 떠서 분량이
+   달라지지 않게). 주소가 고정인 Paperlogy(제목)와 구글폰트 CSS만 프리캐시하고, 구글폰트가 참조하는
+   실제 woff2(fonts.gstatic)는 아래 SWR 규칙이 처음 온라인 접속 때 캐시한다. */
+const FONT_PRECACHE = [
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2',
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2',
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2',
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2',
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2',
+  'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Gowun+Batang:wght@400;700&family=Great+Vibes&display=swap',
+];
+
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+  // 하나가 실패해도(네트워크/CORS) 나머지는 받도록 개별 처리한다. 설치를 막지는 않는다.
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(FONT_PRECACHE.map((u) =>
+      fetch(u, { mode: 'cors' }).then((r) => (r && r.ok) ? cache.put(u, r.clone()) : null).catch(() => {})));
+  })());
+});
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   const keys = await caches.keys();

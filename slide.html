@@ -25,6 +25,16 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 #stage{position:fixed;inset:0;overflow:hidden;background:#fff}
 #stage .deckframe{position:absolute;left:50%;top:50%;width:1920px;height:1080px;
   transform:translate(-50%,-50%) scale(1);transform-origin:center center}
+/* 다크 쪽(표지·학습목표)은 움직이는 다크 배경이라 단색 레터박스가 옆에 붙으면 티가 난다. 그래서 다크
+   배경(그라데이션+스윕)을 #stage 전체(레터박스 포함)에 깔고, 프레임은 투명하게 둬서 배경이 화면 끝까지
+   끊김 없이 이어지게 한다(글·번호 같은 내용만 16:9 안에서 축소돼 뜬다). 스윕 애니메이션도 화면 하나로 돈다. */
+#stage.dark{background:radial-gradient(120% 120% at 50% 40%, #1a2130 0%, #12151C 55%, #0b0d12 100%)}
+#stage.dark::before{content:'';position:absolute;inset:-25% -45%;z-index:0;pointer-events:none;mix-blend-mode:screen;
+  opacity:.5;background:radial-gradient(closest-side, color-mix(in srgb, var(--red) 42%, transparent) 0%, transparent 72%);
+  animation:introSweep 8s ease-in-out infinite}
+#stage.dark .deckframe, #stage.dark .deckpage, #stage.dark .s-cover, #stage.dark .s-objectives{background:transparent}
+#stage.dark .s-cover::after, #stage.dark .s-objectives::after,
+#stage.dark .s-cover .intro-sweep, #stage.dark .s-objectives .intro-sweep{display:none}
 
 /* 위쪽 막대: 마우스를 올리거나 화면을 건드리면 나온다. 투사 중에는 숨는다 */
 #bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
@@ -63,7 +73,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--navy);color:#fff
 
 <script type="module">
 import * as M from './model.js?v=20261031f';
-import { SLIDE_AXIS } from './shared/slide-axis.js?v=20261031f';
+import { SLIDE_AXIS, lessonBadge } from './shared/slide-axis.js?v=20261031f';
 import { buildSlides, renderSlide, stepForward, stepBack, stepsLeft, showAllSteps } from './slide-deck.js?v=20261031g';
 
 const q = new URLSearchParams(location.search);
@@ -100,7 +110,7 @@ if (!lesson){
     $('page').innerHTML = renderSlide(pages[i]);
     $('bar-step').textContent = stepName(pages[i]?.step);
     $('bar-no').textContent = `${i + 1} / ${pages.length}`;
-    $('stage').style.background = DARK.has(pages[i]?.step) ? '#0b0d12' : '#fff';
+    $('stage').classList.toggle('dark', DARK.has(pages[i]?.step));
   };
   /* 넘기기(선생님 지시 2026-10-30: 전시학습확인 답은 "화살표 버튼으로 조작하거나 페이지 업다운으로
      조작할때 나오게 해줘. 슬라이드 애니메이션처럼"). 쪽 안에 아직 안 나온 답이 있으면 쪽을 넘기지 않고
@@ -116,6 +126,9 @@ if (!lesson){
   $('guard').hidden = true;
   $('stage').hidden = false;
   $('bar-title').textContent = no ? `${no}강. ${lesson.title}` : lesson.title;
+  // 새 탭 이름(브라우저 탭 제목)을 강의명으로. 차수가 있으면 "29강 제목" / "[OT] 제목" 꼴.
+  { const badge = lessonBadge(no || lesson.num);
+    document.title = (badge ? badge + ' ' : '') + lesson.title; }
   draw(); syncNav(); fit();
   addEventListener('resize', fit, { passive:true });
   document.addEventListener('fullscreenchange', fit);
