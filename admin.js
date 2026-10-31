@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031e';
+import * as M from './model.js?v=20261031f';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031f';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031g';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1187,46 +1187,102 @@ function pageConcept(){
   return head + pageAxis();
 }
 
-/* ── 디자인 탭: 슬라이드 글자 크기 조절 (선생님 지시 2026-10-31) ──────────────
-   2026 LMS의 글꼴 크기 패널을 HOCLASS 슬라이드 타입에 맞춰 가져왔다. 전체 공통 설정이라
-   한 번 정하면 모든 강의 슬라이드에 걸린다(model.js의 getSlideDesign/designCss).
-   왼쪽은 그룹별 슬라이더, 오른쪽은 고른 강의의 대표 쪽 라이브 미리보기(슬라이더를 끌면 즉시 바뀐다). */
+/* ── 디자인 탭: 슬라이드 요소별 크기·자간·줄간격 (선생님 지시 2026-10-31) ──────
+   전체 공통 설정이라 한 번 정하면 모든 강의 슬라이드에 걸린다(model.js의 getSlideDesign/designCss).
+   큰 미리보기(위) + 조절(아래). 슬라이드 종류를 ◀▶로 넘기면 그 종류에 맞는 요소만 뜬다.
+     - 전체(global): 자간·줄간격. 요소가 미설정이면 이 값을 상속한다.
+     - 요소별: 크기·자간·줄간격. 개별로 바꾸면 그 요소만. 전체를 다시 움직이면 전체값이 다시 먹는다.
+   단위는 셋 다 1080 기준 px(자간·줄간격도 쪽 크기에 맞춰 함께 커진다).
+   미리보기는 1920×1080 고정 렌더 + transform:scale로 축소 → 실제 투사와 분량이 같다(wireDesignStage).
+   미리보기 쪽은 종류별 대표 샘플이다(설정이 전체 공통이라 특정 강의에 매이지 않는다). */
+// 종류별 대표 샘플 쪽(디자인 미리보기 전용). 그 종류가 조절하는 요소가 다 보이게 짰다.
+function designSampleSlide(g){
+  switch (g.step){
+    case 'cover': return { type:'cover', num:'29', title:'사림의 성장과 붕당', topic:'조선 전기의 정치 변화', unit:'Ⅱ-2 사림의 대두', pages:'72~79' };
+    case 'objective': return { type:'numbered', step:'objective', items:['사림의 성장 과정을 설명할 수 있다.','4대 사화의 원인과 결과를 비교할 수 있다.','붕당 형성의 배경을 파악할 수 있다.'] };
+    case 'question': return { type:'question', step:'question', question:'사림과 훈구의 대립은 오늘날 정치에 어떤 교훈을 줄까?', guide:'두 세력의 가치관 차이를 근거로 들어 서술해 보자.' };
+  }
+  if (g.group === '비교표') return { type:'page', step:'concept', title:'훈구와 사림', rows:[{ kind:'compare',
+    left:{ label:'훈구', lines:['중앙 집권 강조','부국강병'] }, right:{ label:'사림', lines:['향촌 자치','왕도 정치'] } }] };
+  if (g.group === '사료 인용') return { type:'page', step:'concept', kind:'source', title:'사료 조광조의 건의', rows:[{ kind:'source',
+    lines:['임금은 마음을 바르게 하여 조정을 바르게 하고, 조정을 바르게 하여 백성을 바르게 하소서.','『중종실록』'] }] };
+  return { type:'page', step:'concept', title:'성리학의 수용', rows:[{ label:'성리학', lines:[
+    '1. 설립 : 16C 이후 발달','- 유입 : 성리학이 전래됨','· 안향이 소개','- 서적 편찬','· 소학'] }] };
+}
+// 슬라이더 한 줄. set=true면 개별값(검정), false면 전체값을 따르는 중(파랑 숫자)
+function dsSlider(act, k, label, val, min, max, set){
+  return `<div class="ds-ctl"><label>${label}</label>`
+    + `<input type="range" data-act="${act}" data-k="${k}" data-set="${set ? 1 : 0}" min="${min}" max="${max}" step="1" value="${val}">`
+    + `<span class="ds-v${set ? '' : ' g'}">${val}px</span></div>`;
+}
 function pageDesign(){
-  const vals = M.getSlideDesign();
-  const panel = M.SLIDE_DESIGN.map(g => `<div class="ds-group"><div class="sectionlabel">${esc(g.group)}</div>
-    ${g.rows.map(r => `<div class="ds-row">
-      <span class="ds-label">${esc(r.label)}</span>
-      <input type="range" class="ds-slider" data-act="design-fs" data-k="${r.key}"
-        min="${r.min}" max="${r.max}" step="1" value="${vals[r.key]}" aria-label="${esc(g.group)} ${esc(r.label)}">
-      <span class="ds-val" id="dsval-${r.key}">${vals[r.key]}</span>
-    </div>`).join('')}</div>`).join('');
+  const groups = M.SLIDE_DESIGN, N = groups.length;
+  if (!(state.designGroupIx >= 0 && state.designGroupIx < N)) state.designGroupIx = 0;
+  const gi = state.designGroupIx, grp = groups[gi];
+  const vals = M.getSlideDesign(), G = M.SLIDE_DESIGN_GLOBAL;
+  const gLs = vals[G.ls.key] ?? G.ls.def, gLh = vals[G.lh.key] ?? G.lh.def;
+  const lsR = G.ls, lhR = G.lh;
 
-  const lessons = M.getLessonsWithPart('concept');
-  if (!lessons.some(l => l.id === state.conceptLessonId)) state.conceptLessonId = lessons[0]?.id || null;
-  const l = lessons.find(x => x.id === state.conceptLessonId) || lessons[0];
+  const elems = grp.rows.map(r => {
+    const fs = vals[r.key] ?? r.def;
+    const lsSet = vals[r.key + 'Ls'] != null, lhSet = vals[r.key + 'Lh'] != null;
+    return `<div class="ds-elem"><div class="ds-en">${esc(r.label)}</div>
+      ${dsSlider('ds-fs', r.key, '크기',   fs,                          r.min, r.max, true)}
+      ${dsSlider('ds-ls', r.key, '자간',   lsSet ? vals[r.key + 'Ls'] : gLs, lsR.min, lsR.max, lsSet)}
+      ${dsSlider('ds-lh', r.key, '줄간격', lhSet ? vals[r.key + 'Lh'] : gLh, lhR.min, lhR.max, lhSet)}
+    </div>`;
+  }).join('');
 
-  return `<div class="editor ds-layout">
+  return `<div class="ds2">
+    <style id="dpv-style">${M.designVarsCss(vals)}</style>
+    <div class="ds-stage" id="ds-stage"><div class="deckframe"><div class="deckpage">${renderSlide(designSampleSlide(grp))}</div></div></div>
     <div class="ds-panel">
-      <div class="sectionlabel between">글자 크기 (px)
-        <button class="btn-link" data-act="design-reset">기본값으로</button></div>
-      ${panel}
+      <div class="ds-top">
+        <div class="ds-nav">
+          <button data-act="ds-nav" data-d="-1" aria-label="이전 종류">◀</button>
+          <span class="ds-nm">${esc(grp.group)} <small>${gi + 1}/${N}</small></span>
+          <button data-act="ds-nav" data-d="1" aria-label="다음 종류">▶</button>
+        </div>
+        <div class="ds-gbox">
+          <span class="ds-glabel">전체</span>
+          ${dsSlider('ds-g', G.ls.key, '자간',   gLs, lsR.min, lsR.max, true)}
+          ${dsSlider('ds-g', G.lh.key, '줄간격', gLh, lhR.min, lhR.max, true)}
+        </div>
+        <button class="btn-link" data-act="design-reset">기본값으로</button>
+      </div>
+      <div class="sectionlabel">이 슬라이드 요소</div>
+      <div class="ds-elems">${elems}</div>
     </div>
-    <div class="ds-preview">
-      <style id="dpv-style">${M.designVarsCss(vals)}</style>
-      ${l ? designPreviewHTML(l) : `<div class="empty">미리볼 강의가 없습니다.</div>`}
-    </div>
+    <style>
+      .ds2{display:flex;flex-direction:column;gap:16px}
+      .ds-stage{width:100%;max-width:1000px;background:#777;border-radius:12px;overflow:hidden}
+      .ds-stage .deckframe{width:1920px;height:1080px;transform-origin:top left}
+      .ds-panel{background:#fff;border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:14px 18px;max-width:1000px}
+      .ds-top{display:flex;align-items:center;gap:22px;flex-wrap:wrap;border-bottom:1px dashed var(--line,#e2e8f0);padding-bottom:12px;margin-bottom:12px}
+      .ds-nav{display:flex;align-items:center;gap:8px}
+      .ds-nav button{width:32px;height:32px;border:1px solid var(--line,#e2e8f0);background:#fff;border-radius:8px;font-size:15px;cursor:pointer}
+      .ds-nm{min-width:120px;text-align:center;font-weight:700;font-size:15px}
+      .ds-nm small{color:#64748b;font-weight:500}
+      .ds-gbox{display:flex;align-items:center;gap:16px}
+      .ds-glabel{font-size:12px;font-weight:700;color:#64748b}
+      .ds-elems{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 26px}
+      .ds-elem{padding:8px 0}
+      .ds-en{font-weight:700;font-size:13px;margin-bottom:4px}
+      .ds-ctl{display:grid;grid-template-columns:44px 1fr 48px;align-items:center;gap:8px;margin:4px 0}
+      .ds-ctl label{font-size:12px;color:#64748b}
+      .ds-ctl input[type=range]{width:100%}
+      .ds-v{font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+      .ds-v.g{color:#2563eb}
+    </style>
   </div>`;
 }
-// 대표 쪽(표지, 학습 목표, 개념 몇 쪽, 비교, 사료, 질문 중 있는 것)을 작은 16:9 틀로 렌더한다
-function designPreviewHTML(l){
-  const slides = buildSlides(l, l.num || '');
-  const pick = [];
-  const first = step => slides.find(s => s.step === step);
-  ['cover', 'objective'].forEach(k => { const s = first(k); if (s) pick.push(s); });
-  slides.filter(s => s.step === 'concept').slice(0, 3).forEach(s => pick.push(s));
-  const q = first('question'); if (q) pick.push(q);
-  return pick.map(s => `<div class="deckframe"><div class="deckpage">${renderSlide(s)}</div></div>`).join('')
-    || `<div class="empty">미리볼 쪽이 없습니다.</div>`;
+/* 미리보기를 1920×1080 고정 렌더로 두고 칸 너비에 맞춰 축소한다(실제 투사와 분량이 같아지도록). */
+function wireDesignStage(){
+  const stage = $main.querySelector('#ds-stage'); if (!stage) return;
+  const frame = stage.querySelector('.deckframe'); if (!frame) return;
+  const fit = () => { const s = stage.clientWidth / 1920; frame.style.transform = `scale(${s})`; stage.style.height = (1080 * s) + 'px'; };
+  fit();
+  requestAnimationFrame(fit);   // 글꼴이 늦게 와도 한 번 더 맞춘다
 }
 
 
@@ -2342,6 +2398,7 @@ function wireFades(){
   requestAnimationFrame(() => $main.querySelectorAll(FADE_SEL).forEach(el => markFade(el)));
 }
 addEventListener('resize', () => $main.querySelectorAll(FADE_SEL).forEach(el => markFade(el)), { passive:true });
+addEventListener('resize', wireDesignStage, { passive:true });
 
 // ── 렌더 ──
 function render(){
@@ -2351,6 +2408,7 @@ function render(){
               scores:pageScores, general:pageGeneral }[state.page];
   $main.innerHTML = p ? p() : '';
   wireFades();
+  wireDesignStage();
 }
 
 // ── 이벤트 위임 ──
@@ -2804,7 +2862,11 @@ document.getElementById('shell').addEventListener('click', e => {
 
     case 'logout': signOut(auth); break;   // onAuthStateChanged가 로그인 화면으로 되돌린다
 
-    case 'design-reset':   // 디자인 탭: 글자 크기를 전부 기본값으로
+    case 'ds-nav':   // 디자인 탭: 슬라이드 종류 넘기기
+      state.designGroupIx = (state.designGroupIx + (+el.dataset.d) + M.SLIDE_DESIGN.length) % M.SLIDE_DESIGN.length;
+      render(); break;
+
+    case 'design-reset':   // 디자인 탭: 크기·자간·줄간격을 전부 기본값으로
       M.resetSlideDesign().then(() => { toast('기본값으로 되돌렸습니다.'); render(); });
       break;
 
@@ -2826,8 +2888,14 @@ document.getElementById('shell').addEventListener('change', e => {
     M.setCourseSchedule(el.dataset.id, el.value);
   } else if (el.dataset.act === 'prog-topic'){   // 진도표의 주제 = 강의 제목
     run(() => M.setLessonTitle(el.dataset.lid, el.value));
-  } else if (el.dataset.act === 'design-fs'){   // 디자인 탭 슬라이더: 손 뗄 때 저장(미리보기는 input이 이미 갱신)
+  } else if (el.dataset.act === 'ds-fs'){   // 디자인 탭: 요소 크기(손 뗄 때 저장, 미리보기는 input이 이미 갱신)
     M.setSlideDesignValue(el.dataset.k, el.value);
+  } else if (el.dataset.act === 'ds-ls'){   // 요소 자간
+    M.setSlideDesignValue(el.dataset.k + 'Ls', el.value);
+  } else if (el.dataset.act === 'ds-lh'){   // 요소 줄간격
+    M.setSlideDesignValue(el.dataset.k + 'Lh', el.value);
+  } else if (el.dataset.act === 'ds-g'){   // 전체 자간/줄간격: 그 축 개별값을 지우고 저장 후 다시 그린다
+    M.setSlideDesignGlobal(el.dataset.k === M.SLIDE_DESIGN_GLOBAL.ls.key ? 'ls' : 'lh', el.value).then(render);
   } else if (el.dataset.act === 'sc-subject-pick'){   // 성적: 머리줄의 과목 드롭다운
     state.scSubject = el.value; state.scCourseId = null; state.scClId = null; state.scOpenNo = null; render();
   } else if (el.dataset.act === 'sc-lesson'){   // 성적 입력: 채점할 강의
@@ -2922,13 +2990,29 @@ document.getElementById('shell').addEventListener('change', e => {
 document.getElementById('shell').addEventListener('input', e => {
   /* 디자인 탭 슬라이더: 끄는 대로 미리보기를 즉시 바꾼다(다시 그리지 않고 CSS만 갈아 끼운다).
      저장은 손을 뗄 때(change)만 한다. */
-  if (e.target.dataset.act === 'design-fs'){
-    const vals = {};
-    document.querySelectorAll('.ds-slider').forEach(s => { vals[s.dataset.k] = +s.value; });
-    const lab = document.getElementById('dsval-' + e.target.dataset.k);
-    if (lab) lab.textContent = e.target.value;
+  const dsa = e.target.dataset.act;
+  if (dsa === 'ds-fs' || dsa === 'ds-ls' || dsa === 'ds-lh' || dsa === 'ds-g'){
+    const t = e.target;
+    // 자간/줄간격 요소를 움직이면 그 요소는 개별값(set=1)이 된다
+    if (dsa === 'ds-ls' || dsa === 'ds-lh') t.dataset.set = '1';
+    // 전체를 움직이면 그 축의 요소 개별값을 풀어(set=0) 전체값에 맞춘다(미리보기도 전체 우선)
+    if (dsa === 'ds-g'){
+      const axisAct = t.dataset.k === M.SLIDE_DESIGN_GLOBAL.ls.key ? 'ds-ls' : 'ds-lh';
+      document.querySelectorAll(`[data-act="${axisAct}"]`).forEach(s => {
+        s.dataset.set = '0'; s.value = t.value;
+        const v = s.parentElement.querySelector('.ds-v'); if (v){ v.textContent = t.value + 'px'; v.classList.add('g'); }
+      });
+    }
+    const chip = t.parentElement.querySelector('.ds-v');
+    if (chip){ chip.textContent = t.value + 'px'; if (dsa === 'ds-ls' || dsa === 'ds-lh') chip.classList.remove('g'); }
+    // 미리보기 CSS를 다시 깐다(개별 설정된 자간/줄간격만 모은다)
+    const v = {};
+    document.querySelectorAll('[data-act="ds-fs"]').forEach(s => { v[s.dataset.k] = +s.value; });
+    document.querySelectorAll('[data-act="ds-g"]').forEach(s => { v[s.dataset.k] = +s.value; });
+    document.querySelectorAll('[data-act="ds-ls"]').forEach(s => { if (s.dataset.set === '1') v[s.dataset.k + 'Ls'] = +s.value; });
+    document.querySelectorAll('[data-act="ds-lh"]').forEach(s => { if (s.dataset.set === '1') v[s.dataset.k + 'Lh'] = +s.value; });
     const st = document.getElementById('dpv-style');
-    if (st) st.textContent = M.designVarsCss(vals);
+    if (st) st.textContent = M.designVarsCss(v);
     return;
   }
   // 설명문 글자수: 다시 그리지 않고 숫자만 고쳐 쓴다(커서 유지)

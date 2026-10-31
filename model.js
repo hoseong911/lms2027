@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031e';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031f';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -962,20 +962,36 @@ export function setPages(lessonId, key, pages){
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
   ROW_TYPES, rowKind, convertRow, lessonBadge,
-  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031e';
-import { slideDesignDefault as _sdDef, designVarsCss as _sdCss } from './shared/slide-axis.js?v=20261031e';
+  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031f';
+import { slideDesignDefault as _sdDef, designVarsCss as _sdCss,
+  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031f';
 
 /* 슬라이드 글자 크기 설정(디자인 탭, 전체 공통). 기본값 위에 관리자가 고친 값을 얹어 돌려준다.
    슬라이드에 걸 CSS는 designCss()가 만든다(슬라이드 문서가 <style>로 끼운다). */
 export function getSlideDesign(){ return { ..._sdDef(), ...slideDesign }; }
 export function designCss(){ return _sdCss(getSlideDesign()); }
+/* 값 하나 저장. val이 null/빈 값이면 그 키를 null로 둔다(요소별 자간·줄간격을 "전체"로 되돌릴 때).
+   null은 designVarsCss가 건너뛰어 "미설정"으로 본다(merge:true라 중첩 맵 키를 못 지우므로 null로 표시한다).
+   0과 음수도 그대로 저장한다(자간은 음수가 흔하다). */
 export async function setSlideDesignValue(key, val){
-  slideDesign = { ...slideDesign, [key]: Math.round(+val) || 0 };
-  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign }, { merge:true });
+  const v = (val === null || val === '' || !Number.isFinite(+val)) ? null : Math.round(+val);
+  slideDesign = { ...slideDesign, [key]: v };
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign: { [key]: v } }, { merge:true });
 }
 export async function resetSlideDesign(){
+  // merge:true는 중첩 맵 키를 지우지 못하므로, 지금까지 넣은 키를 전부 null로 덮어 "미설정"으로 되돌린다.
+  const cleared = {}; Object.keys(slideDesign).forEach(k => cleared[k] = null);
   slideDesign = {};
-  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign:{} }, { merge:true });
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign: cleared }, { merge:true });
+}
+/* 전체(global) 자간('ls') 또는 줄간격('lh')을 정한다. 이때 그 축의 요소별 개별값은 전부 지워(null)
+   전체값이 다시 먹게 한다(선생님 지시 2026-10-31: 개별로 바꿨다가 전체를 다시 움직이면 전체가 우선). */
+export async function setSlideDesignGlobal(axis, val){
+  const suffix = axis === 'ls' ? 'Ls' : 'Lh';
+  const patch = { [_sdG[axis].key]: Math.round(+val) };
+  _sdRows.forEach(r => { const k = r.key + suffix; if (slideDesign[k] != null) patch[k] = null; });
+  slideDesign = { ...slideDesign, ...patch };
+  await setDoc(doc(db, 'hoclass_settings', 'general'), { slideDesign: patch }, { merge:true });
 }
 
 export function getDeck(lessonId){ return normalizeDeck(getLesson(lessonId)); }

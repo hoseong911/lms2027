@@ -801,14 +801,5 @@ label.checkline{cursor:pointer}   /* 강의 라이브러리의 강의실 연결 
   .plrow{flex-wrap:nowrap}
 }
 
-/* ── 디자인 탭: 슬라이드 글자 크기 조절 (선생님 지시 2026-10-31) ── */
-.ds-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:22px;align-items:start}
-.ds-panel .sectionlabel.between{display:flex;justify-content:space-between;align-items:center}
-.ds-group{margin-bottom:12px}
-.ds-row{display:flex;align-items:center;gap:10px;margin:7px 0}
-.ds-label{flex:0 0 76px;font-size:var(--fs-meta);color:var(--sub)}
-.ds-slider{flex:1;min-width:0;accent-color:var(--red)}
-.ds-val{flex:0 0 38px;text-align:right;font-size:var(--fs-meta);color:var(--navy);font-variant-numeric:tabular-nums}
-.ds-preview{display:flex;flex-direction:column;gap:14px;min-width:0}
-.ds-preview .deckframe{width:100%}
-@media (max-width:860px){ .ds-layout{grid-template-columns:1fr} }
+/* 디자인 탭(슬라이드 요소별 크기·자간·줄간격) 스타일은 admin.js의 pageDesign이 <style>로 함께 낸다
+   (미리보기 스케일·슬라이더가 한 덩어리라 거기 두는 편이 읽기 쉽다. 선생님 지시 2026-10-31). */

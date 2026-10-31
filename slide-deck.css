@@ -50,8 +50,9 @@
      표지 태그라인/메타는 Gowun Batang 세리프. Gowun Batang/Great Vibes는 슬라이드 문서가 링크로 받는다 */
   --title-font: 'Paperlogy', var(--font);
   --cover-serif: 'Gowun Batang', 'Noto Serif KR', serif;
-  /* 기본 줄간격 1.8(선생님 지시 2026-10-30). 본문은 이 값을 물려받는다. 제목들만 더 촘촘하게 따로 준다 */
-  line-height:1.8;
+  /* 기본 줄간격 1.8(선생님 지시 2026-10-30). 본문은 이 값을 물려받는다. 제목들만 더 촘촘하게 따로 준다.
+     디자인 탭의 전체(global) 줄간격이 있으면 그 px값으로 덮인다(없으면 1.8 그대로). */
+  line-height:var(--lh-global, 1.8);
   position:relative;width:100%;height:100%;background:#fff;color:var(--navy);
   /* 위에서부터 쌓는다: 맨 위 배지 줄, 그 아래 속. 가운데에 모일 쪽(표지, 학습 목표, 질문,
      맺음말)은 속(.s-body)이 남는 높이를 다 먹고 그 안에서 가운데로 모은다 */
@@ -59,7 +60,7 @@
   /* 모든 쪽에서 배지(왼쪽 위)가 같은 자리에 서도록 여백을 한 값으로 못박는다(선생님 지시 2026-10-31).
      학습 목표 다크 쪽의 배지도 같은 top/left(56/80)에 선다. */
   padding:calc(var(--px) * 56) calc(var(--px) * 80) calc(var(--px) * 60);
-  overflow:hidden;font-family:var(--font);letter-spacing:-.02em;
+  overflow:hidden;font-family:var(--font);letter-spacing:var(--ls-global, -.02em);
 }
 /* 안쪽 여백이 폭에 더해지면 쪽이 상자보다 넓어져 오른쪽 글자가 잘린다. 쪽을 불러 쓰는 문서가
    box-sizing을 따로 주지 않아도(혼자 도는 미리보기 문서처럼) 잘리지 않게 여기서 못박는다 */
@@ -307,3 +308,22 @@
 .deckpage .src-quote::after{content:"\201D";right:0;bottom:calc(var(--px) * -90)}
 .deckpage .src-cite{margin-top:auto;padding-top:calc(var(--px) * 30);align-self:flex-end;
   color:var(--sub);text-align:right}
+
+/* ── 디자인 탭 자간·줄간격 후크 (선생님 지시 2026-10-31) ──────────────────────
+   요소마다 자간(--ls-*)·줄간격(--lh-*)을 걸 자리를 둔다(값은 shared/slide-axis.js의 SLIDE_DESIGN이 정하고
+   designVarsCss가 px로 꽂는다). 변수가 없으면(교사가 안 건드리면) 괄호 뒤 기본값=지금 모양 그대로다:
+   inherit는 전체(global) 값을 따르고, 숫자는 그 요소가 원래 쓰던 값이다. 그래서 학생 화면은 기본이 안 바뀐다. */
+.deckpage .cover-title{letter-spacing:var(--ls-cover-title, -.01em);line-height:var(--lh-cover-title, 1.08)}
+.deckpage .cover-tagline{letter-spacing:var(--ls-cover-tagline, .04em);line-height:var(--lh-cover-tagline, inherit)}
+.deckpage .cover-meta{letter-spacing:var(--ls-cover-meta, inherit);line-height:var(--lh-cover-meta, inherit)}
+.deckpage .cover-num{letter-spacing:var(--ls-cover-num, -.03em);line-height:var(--lh-cover-num, 1)}
+.deckpage .obj-text{letter-spacing:var(--ls-obj, inherit);line-height:var(--lh-obj, 1.6)}
+.deckpage .obj-num{letter-spacing:var(--ls-objnum, inherit);line-height:var(--lh-objnum, .82)}
+.deckpage .s-head{letter-spacing:var(--ls-title, -.03em);line-height:var(--lh-title, 1.3)}
+.deckpage .s-badge{letter-spacing:var(--ls-title, -.02em);line-height:var(--lh-title, 1.3)}
+.deckpage .plines{letter-spacing:var(--ls-body, inherit);line-height:var(--lh-body, inherit)}
+.deckpage .cmp-head{letter-spacing:var(--ls-cmphead, inherit);line-height:var(--lh-cmphead, inherit)}
+.deckpage .cmp-body{letter-spacing:var(--ls-cmpbody, inherit);line-height:var(--lh-cmpbody, inherit)}
+.deckpage .src-quote p{letter-spacing:var(--ls-src, inherit);line-height:var(--lh-src, inherit)}
+.deckpage .qbig{letter-spacing:var(--ls-question, -.03em);line-height:var(--lh-question, 1.4)}
+.deckpage .qguide{letter-spacing:var(--ls-guide, inherit);line-height:var(--lh-guide, 1.6)}
