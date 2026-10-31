@@ -16,7 +16,7 @@
 import { db, collection, getDocs, doc, getDoc, setDoc, deleteDoc } from './shared/fb.js?v=20261028a';
 import { CLAUDE_PROXY_URL } from './shared/util.js?v=20261028f';
 // 슬라이드 축과 덱 모양은 shared/slide-axis.js 한 곳에서. 아래에서 그대로 다시 내보낸다
-import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031k';
+import { normalizeDeck, toPages, fromPages, blankDeck, AXIS_ORDER, pagesFilled } from './shared/slide-axis.js?v=20261031l';
 
 /* 컬렉션 설계: 제로베이스 재합의 (2026-10-27, 선생님 Q&A)
  * 규칙:
@@ -981,9 +981,9 @@ export function setPages(lessonId, key, pages){
 export { SLIDE_AXIS, AXIS_ORDER, axisStep, REVIEW_TYPES, reviewTypeDef,
   lineLevel, indentText, stripIndent, blankCompare, rowFilled, pagesFilled,
   ROW_TYPES, rowKind, convertRow, lessonBadge,
-  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031k';
+  SLIDE_DESIGN, SLIDE_DESIGN_ROWS, SLIDE_DESIGN_GLOBAL, slideDesignDefault, designVarsCss } from './shared/slide-axis.js?v=20261031l';
 import { slideDesignDefault as _sdDef, designVarsCss as _sdCss,
-  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031k';
+  SLIDE_DESIGN_ROWS as _sdRows, SLIDE_DESIGN_GLOBAL as _sdG } from './shared/slide-axis.js?v=20261031l';
 
 /* 슬라이드 글자 크기 설정(디자인 탭, 전체 공통). 기본값 위에 관리자가 고친 값을 얹어 돌려준다.
    슬라이드에 걸 CSS는 designCss()가 만든다(슬라이드 문서가 <style>로 끼운다). */
@@ -992,9 +992,8 @@ export function designCss(){ return _sdCss(getSlideDesign()); }
 /* 값 하나 저장. val이 null/빈 값이면 그 키를 null로 둔다(요소별 자간·줄간격을 "전체"로 되돌릴 때).
    null은 designVarsCss가 건너뛰어 "미설정"으로 본다(merge:true라 중첩 맵 키를 못 지우므로 null로 표시한다).
    0과 음수도 그대로 저장한다(자간은 음수가 흔하다). */
-/* 줄간격(lh: gLh 또는 ...Lh)은 배수라 소수 한 자리까지 둔다(1.8 등). 크기·자간은 정수 px로 반올림한다. */
-const isLhKey = key => key === _sdG.lh.key || String(key).endsWith('Lh');
-const roundDesign = (key, val) => isLhKey(key) ? Math.round(+val * 10) / 10 : Math.round(+val);
+/* 크기·자간은 pt, 줄간격은 퍼센트라 셋 다 정수로 반올림한다(1.6배는 160으로 적는다). */
+const roundDesign = (key, val) => Math.round(+val);
 export async function setSlideDesignValue(key, val){
   const v = (val === null || val === '' || !Number.isFinite(+val)) ? null : roundDesign(key, val);
   slideDesign = { ...slideDesign, [key]: v };

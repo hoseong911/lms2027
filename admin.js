@@ -6,9 +6,9 @@
 // 지금은 데모 데이터(model.js)로 돈다. 규칙: data-act + 위임, 상태는 state 하나,
 // 알약 금지, 태그/카테고리는 구분선, 액션은 아이콘 버튼, 숫자 칸은 text+inputmode.
 
-import * as M from './model.js?v=20261031n';
+import * as M from './model.js?v=20261031o';
 import { icon } from './shared/icons.js?v=20261031e';
-import { buildSlides, renderSlide } from './slide-deck.js?v=20261031o';
+import { buildSlides, renderSlide } from './slide-deck.js?v=20261031p';
 import { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from './shared/fb.js?v=20261028a';
 
 const YEAR = 2027;
@@ -1210,11 +1210,14 @@ function designSampleSlide(g){
   return { type:'page', step:'concept', title:'성리학의 수용', rows:[{ label:'성리학', lines:[
     '1. 설립 : 16C 이후 발달','- 유입 : 성리학이 전래됨','· 안향이 소개','- 서적 편찬','· 소학'] }] };
 }
-// 슬라이더 한 줄. set=true면 개별값(검정), false면 전체값을 따르는 중(파랑 숫자)
+/* 슬라이더 한 줄 = 막대 + 숫자 입력 칸 + 단위. 숫자 칸에 직접 쳐 넣을 수 있다(선생님 지시 2026-10-31).
+   set=false면 전체값을 따르는 중(파랑). 막대와 숫자 칸은 같은 data-act라 저장·미리보기 핸들러가 둘 다 받는다. */
 function dsSlider(act, k, label, val, min, max, set, unit = 'pt', step = 1){
-  return `<div class="ds-ctl"><label>${label}</label>`
-    + `<input type="range" data-act="${act}" data-k="${k}" data-set="${set ? 1 : 0}" min="${min}" max="${max}" step="${step}" value="${val}">`
-    + `<span class="ds-v${set ? '' : ' g'}">${val}${unit}</span></div>`;
+  const d = `data-act="${act}" data-k="${k}" data-set="${set ? 1 : 0}"`;
+  return `<div class="ds-ctl${set ? '' : ' g'}"><label>${label}</label>`
+    + `<input type="range" ${d} min="${min}" max="${max}" step="${step}" value="${val}">`
+    + `<input type="number" class="ds-num" ${d} min="${min}" max="${max}" step="${step}" value="${val}" aria-label="${label} 값">`
+    + `<span class="ds-unit">${unit}</span></div>`;
 }
 function pageDesign(){
   const groups = M.SLIDE_DESIGN, N = groups.length;
@@ -1230,7 +1233,7 @@ function pageDesign(){
     return `<div class="ds-elem"><div class="ds-en">${esc(r.label)}</div>
       ${dsSlider('ds-fs', r.key, '크기',   fs,                          r.min, r.max, true)}
       ${dsSlider('ds-ls', r.key, '자간',   lsSet ? vals[r.key + 'Ls'] : gLs, lsR.min, lsR.max, lsSet)}
-      ${dsSlider('ds-lh', r.key, '줄간격', lhSet ? vals[r.key + 'Lh'] : gLh, lhR.min, lhR.max, lhSet, '배', lhR.step)}
+      ${dsSlider('ds-lh', r.key, '줄간격', lhSet ? vals[r.key + 'Lh'] : gLh, lhR.min, lhR.max, lhSet, '%', lhR.step)}
     </div>`;
   }).join('');
 
@@ -1247,7 +1250,7 @@ function pageDesign(){
         <div class="ds-gbox">
           <span class="ds-glabel">전체</span>
           ${dsSlider('ds-g', G.ls.key, '자간',   gLs, lsR.min, lsR.max, true)}
-          ${dsSlider('ds-g', G.lh.key, '줄간격', gLh, lhR.min, lhR.max, true, '배', lhR.step)}
+          ${dsSlider('ds-g', G.lh.key, '줄간격', gLh, lhR.min, lhR.max, true, '%', lhR.step)}
         </div>
         <button class="btn-link" data-act="design-reset">기본값으로</button>
       </div>
@@ -1255,25 +1258,30 @@ function pageDesign(){
       <div class="ds-elems">${elems}</div>
     </div>
     <style>
-      .ds2{display:flex;flex-direction:column;gap:16px}
-      .ds-stage{width:100%;max-width:1000px;background:#777;border-radius:12px;overflow:hidden}
+      /* 디자인 탭: 내용은 너비를 다 쓰고(선생님 지시 2026-10-31), 미리보기 쪽은 가운데로 모은다.
+         조절 칸 글자는 키웠고, 요소 조절은 4단 격자다. 숫자 칸에 직접 쳐 넣을 수 있다. */
+      .ds2{display:flex;flex-direction:column;gap:18px;width:100%}
+      .ds-stage{width:100%;max-width:1200px;margin:0 auto;background:#777;border-radius:12px;overflow:hidden}
       .ds-stage .deckframe{width:1920px;height:1080px;transform-origin:top left}
-      .ds-panel{background:#fff;border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:14px 18px;max-width:1000px}
-      .ds-top{display:flex;align-items:center;gap:22px;flex-wrap:wrap;border-bottom:1px dashed var(--line,#e2e8f0);padding-bottom:12px;margin-bottom:12px}
+      .ds-panel{background:#fff;border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:16px 20px}
+      .ds-top{display:flex;align-items:center;gap:24px;flex-wrap:wrap;border-bottom:1px dashed var(--line,#e2e8f0);padding-bottom:14px;margin-bottom:14px}
       .ds-nav{display:flex;align-items:center;gap:8px}
-      .ds-nav button{width:32px;height:32px;border:1px solid var(--line,#e2e8f0);background:#fff;border-radius:8px;font-size:15px;cursor:pointer}
-      .ds-nm{min-width:120px;text-align:center;font-weight:700;font-size:15px}
+      .ds-nav button{width:36px;height:36px;border:1px solid var(--line,#e2e8f0);background:#fff;border-radius:8px;font-size:16px;cursor:pointer}
+      .ds-nm{min-width:130px;text-align:center;font-weight:700;font-size:16px}
       .ds-nm small{color:#64748b;font-weight:500}
-      .ds-gbox{display:flex;align-items:center;gap:16px}
-      .ds-glabel{font-size:12px;font-weight:700;color:#64748b}
-      .ds-elems{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 26px}
-      .ds-elem{padding:8px 0}
-      .ds-en{font-weight:700;font-size:13px;margin-bottom:4px}
-      .ds-ctl{display:grid;grid-template-columns:44px 1fr 48px;align-items:center;gap:8px;margin:4px 0}
-      .ds-ctl label{font-size:12px;color:#64748b}
-      .ds-ctl input[type=range]{width:100%}
-      .ds-v{font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
-      .ds-v.g{color:#2563eb}
+      .ds-gbox{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+      .ds-glabel{font-size:14px;font-weight:700;color:#64748b}
+      .ds-elems{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 28px}
+      .ds-elem{padding:8px 0;min-width:0}
+      .ds-en{font-weight:700;font-size:16px;margin-bottom:6px}
+      .ds-ctl{display:grid;grid-template-columns:50px 1fr auto auto;align-items:center;gap:8px;margin:6px 0}
+      .ds-ctl label{font-size:14px;color:#64748b}
+      .ds-ctl input[type=range]{width:100%;min-width:0}
+      .ds-num{width:58px;padding:3px 6px;border:1px solid var(--line,#e2e8f0);border-radius:6px;
+        font-size:15px;text-align:right;font-variant-numeric:tabular-nums;font-family:inherit}
+      .ds-ctl.g .ds-num{color:#2563eb;border-color:#bfdbfe}
+      .ds-unit{font-size:13px;color:#64748b;min-width:18px}
+      @media (max-width:1100px){ .ds-elems{grid-template-columns:repeat(2,minmax(0,1fr))} }
     </style>
   </div>`;
 }
@@ -3044,27 +3052,26 @@ document.getElementById('shell').addEventListener('input', e => {
   const dsa = e.target.dataset.act;
   if (dsa === 'ds-fs' || dsa === 'ds-ls' || dsa === 'ds-lh' || dsa === 'ds-g'){
     const t = e.target;
-    // 자간/줄간격 요소를 움직이면 그 요소는 개별값(set=1)이 된다
-    if (dsa === 'ds-ls' || dsa === 'ds-lh') t.dataset.set = '1';
+    if (t.value === '') return;   // 숫자 칸을 비우는 중이면 기다린다
+    const ctl = t.closest('.ds-ctl');
+    // 한 줄 안의 막대와 숫자 칸을 같은 값으로 맞춘다(막대 범위를 벗어난 숫자는 막대만 끝에 걸린다)
+    if (ctl) ctl.querySelectorAll('input').forEach(i => { if (i !== t) i.value = t.value; });
+    // 자간/줄간격 요소를 건드리면 그 요소는 개별값(set=1)이 된다(파랑 해제)
+    if ((dsa === 'ds-ls' || dsa === 'ds-lh') && ctl){
+      ctl.classList.remove('g'); ctl.querySelectorAll('input').forEach(i => i.dataset.set = '1');
+    }
     // 전체를 움직이면 그 축의 요소 개별값을 풀어(set=0) 전체값에 맞춘다(미리보기도 전체 우선)
-    // 줄간격은 배수라 단위가 '배', 나머지(크기·자간)는 'pt'
-    const unitOf = (act, key) => (act === 'ds-lh' || (act === 'ds-g' && key === M.SLIDE_DESIGN_GLOBAL.lh.key)) ? '배' : 'pt';
     if (dsa === 'ds-g'){
       const axisAct = t.dataset.k === M.SLIDE_DESIGN_GLOBAL.ls.key ? 'ds-ls' : 'ds-lh';
-      const u = axisAct === 'ds-lh' ? '배' : 'pt';
-      document.querySelectorAll(`[data-act="${axisAct}"]`).forEach(s => {
-        s.dataset.set = '0'; s.value = t.value;
-        const v = s.parentElement.querySelector('.ds-v'); if (v){ v.textContent = t.value + u; v.classList.add('g'); }
-      });
+      document.querySelectorAll(`[data-act="${axisAct}"]`).forEach(s => { s.dataset.set = '0'; s.value = t.value; });
+      document.querySelectorAll(`.ds-ctl`).forEach(c => { if (c.querySelector(`[data-act="${axisAct}"]`)) c.classList.add('g'); });
     }
-    const chip = t.parentElement.querySelector('.ds-v');
-    if (chip){ chip.textContent = t.value + unitOf(dsa, t.dataset.k); if (dsa === 'ds-ls' || dsa === 'ds-lh') chip.classList.remove('g'); }
-    // 미리보기 CSS를 다시 깐다(개별 설정된 자간/줄간격만 모은다)
+    // 미리보기 CSS 다시 깔기. 숫자 칸(ds-num) 기준으로 모은다(쳐 넣은 값이 그대로 반영되게)
     const v = {};
-    document.querySelectorAll('[data-act="ds-fs"]').forEach(s => { v[s.dataset.k] = +s.value; });
-    document.querySelectorAll('[data-act="ds-g"]').forEach(s => { v[s.dataset.k] = +s.value; });
-    document.querySelectorAll('[data-act="ds-ls"]').forEach(s => { if (s.dataset.set === '1') v[s.dataset.k + 'Ls'] = +s.value; });
-    document.querySelectorAll('[data-act="ds-lh"]').forEach(s => { if (s.dataset.set === '1') v[s.dataset.k + 'Lh'] = +s.value; });
+    document.querySelectorAll('.ds-num[data-act="ds-fs"]').forEach(s => { if (s.value !== '') v[s.dataset.k] = +s.value; });
+    document.querySelectorAll('.ds-num[data-act="ds-g"]').forEach(s => { if (s.value !== '') v[s.dataset.k] = +s.value; });
+    document.querySelectorAll('.ds-num[data-act="ds-ls"]').forEach(s => { if (s.dataset.set === '1' && s.value !== '') v[s.dataset.k + 'Ls'] = +s.value; });
+    document.querySelectorAll('.ds-num[data-act="ds-lh"]').forEach(s => { if (s.dataset.set === '1' && s.value !== '') v[s.dataset.k + 'Lh'] = +s.value; });
     const st = document.getElementById('dpv-style');
     if (st) st.textContent = M.designVarsCss(v);
     return;
